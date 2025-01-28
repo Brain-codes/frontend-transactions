@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -53,12 +54,12 @@ export default function Home() {
               key={transaction._id}
               className="border rounded-lg p-4 shadow-md border-blue-100 text-blue-950"
             >
-              <Image
+              <img
                 src={transaction.stoveImage.url}
                 alt={transaction.stoveSerialNo}
                 width={300}
                 height={200}
-                className="rounded bg-blue-950 w-full"
+                className="rounded bg-blue-950 w-full md:h-[40dvh] h-[20dvh] object-cover"
               />
               <h2 className="font-bold text-lg mt-2 ">
                 {transaction.transactionId}
@@ -70,8 +71,8 @@ export default function Home() {
               </p>
               <p>
                 {" "}
-                <span className="font-[600]">Amount:</span> $
-                {transaction.amount.toFixed(2)}
+                <span className="font-[600]">Amount:</span> ₦
+                {transaction.amount.toLocaleString()}
               </p>
               <p>
                 <span className="font-[600]">Sales Date: </span>
