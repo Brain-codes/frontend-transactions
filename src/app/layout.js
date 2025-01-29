@@ -2,8 +2,10 @@ import "./globals.css";
 
 export const metadata = {
   title: "Stove Transaction Viewer",
-  description: "An intuitive application for tracking and managing stove transactions efficiently.",
-  keywords: "stove transactions, transaction management, financial tracking, stove sales",
+  description:
+    "An intuitive application for tracking and managing stove transactions efficiently.",
+  keywords:
+    "stove transactions, transaction management, financial tracking, stove sales",
   author: "Your Name",
 };
 
@@ -21,9 +23,7 @@ export default function RootLayout({ children }) {
         <meta property="og:url" content="https://yourwebsite.com" />
         <meta property="og:image" content="https://yourwebsite.com/image.jpg" />
       </head>
-      <body className="antialiased">
-        {children}
-      </body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }
