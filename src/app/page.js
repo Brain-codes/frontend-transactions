@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import axios from "axios";
 import { lgaAndStates } from "./constants"; // Import the lgaAndStates constant
 import DatePicker from "react-datepicker"; // Import DatePicker
@@ -9,7 +10,7 @@ import "react-datepicker/dist/react-datepicker.css"; // Import DatePicker styles
 import { FaTh, FaListUl } from "react-icons/fa"; // Import new icons from react-icons
 import { BsFillGrid1X2Fill } from "react-icons/bs";
 import { LuListFilter } from "react-icons/lu";
-import { Table } from "antd"; // Import Table from antd
+import { Table, Modal } from "antd"; // Import Table and Modal from antd
 
 export default function Home() {
   const [transactions, setTransactions] = useState([]);
@@ -19,6 +20,8 @@ export default function Home() {
   const [dateRange, setDateRange] = useState([null, null]); // State for date range
   const [selectedState, setSelectedState] = useState("");
   const [selectedLGA, setSelectedLGA] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -50,6 +53,16 @@ export default function Home() {
 
     return matchesSearchTerm && matchesDateRange && matchesState && matchesLGA;
   });
+
+  const handleRowClick = (record) => {
+    setSelectedTransaction(record);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedTransaction(null);
+  };
 
   return (
     <div className="p-8">
@@ -108,20 +121,28 @@ export default function Home() {
               ))}
           </select>
         </div>
+        <div className="flex justify-between items-center mb-4 w-full">
+          <Link
+            href="/map"
+            className=" p-2 border border-gray-300 rounded text-blue-950"
+          >
+            Go to Heat Map
+          </Link>
 
-        <div className="flex mb-4 text-blue-950 border">
-          <button
-            onClick={() => setViewType("grid")}
-            className={`p-2 ${viewType === "grid" ? "bg-blue-300" : ""}`}
-          >
-            <BsFillGrid1X2Fill />
-          </button>
-          <button
-            onClick={() => setViewType("table")}
-            className={`p-2 ${viewType === "table" ? "bg-blue-300" : ""}`}
-          >
-            <LuListFilter />
-          </button>
+          <div className="flex  text-blue-950 border">
+            <button
+              onClick={() => setViewType("grid")}
+              className={`p-2 ${viewType === "grid" ? "bg-blue-300" : ""}`}
+            >
+              <BsFillGrid1X2Fill />
+            </button>
+            <button
+              onClick={() => setViewType("table")}
+              className={`p-2 ${viewType === "table" ? "bg-blue-300" : ""}`}
+            >
+              <LuListFilter />
+            </button>
+          </div>
         </div>
       </div>
       {loading ? (
@@ -172,10 +193,14 @@ export default function Home() {
         <div style={{ overflowX: "auto" }}>
           <Table
             dataSource={filteredTransactions}
-            
             rowKey="_id"
             className="min-w-full mt-10 text-blue-950"
             pagination={{ pageSize: 10 }}
+            onRow={(record) => {
+              return {
+                onClick: () => handleRowClick(record),
+              };
+            }}
           >
             <Table.Column
               title="TRANSACTION ID"
@@ -232,6 +257,65 @@ export default function Home() {
           </Table>
         </div>
       )}
+
+      <Modal
+        title="Transaction Details"
+        open={isModalOpen}
+        onCancel={handleCloseModal}
+        footer={null}
+      >
+        {selectedTransaction && (
+          <div className="text-blue-950">
+            <div className="mb-4">
+              <img
+                src={selectedTransaction.stoveImage.url}
+                alt={selectedTransaction.stoveSerialNo}
+                className="w-full h-48 object-cover rounded"
+              />
+            </div>
+            <p>
+              <strong>Transaction ID:</strong>{" "}
+              {selectedTransaction.transactionId}
+            </p>
+            <p>
+              <strong>Stove Serial No:</strong>{" "}
+              {selectedTransaction.stoveSerialNo}
+            </p>
+            <p>
+              <strong>End User:</strong> {selectedTransaction.endUserName}
+            </p>
+            <p>
+              <strong>Amount:</strong> ₦
+              {selectedTransaction.amount.toLocaleString()}
+            </p>
+            <p>
+              <strong>Sales Date:</strong>{" "}
+              {new Date(selectedTransaction.salesDate).toLocaleDateString()}
+            </p>
+            <p>
+              <strong>Contact:</strong> {selectedTransaction.contactPerson} (
+              {selectedTransaction.contactPhone})
+            </p>
+            <p>
+              <strong>Address:</strong> {selectedTransaction.address}
+            </p>
+            <p>
+              <strong>State:</strong> {selectedTransaction.state}
+            </p>
+            <p>
+              <strong>LGA:</strong> {selectedTransaction.lga}
+            </p>
+            <div className="mt-4">
+              <strong>Signature:</strong>
+              <img
+                src={`data:image/png;base64,${selectedTransaction.signature}`}
+                alt="Signature"
+                className="w-24 h-24"
+              />
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
