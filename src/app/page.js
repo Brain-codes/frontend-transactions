@@ -145,119 +145,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-      {loading ? (
-        <p className="text-blue-950">Loading transactions...</p>
-      ) : filteredTransactions.length === 0 ? (
-        <p className="text-blue-950">No transactions found.</p>
-      ) : viewType === "grid" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
-          {filteredTransactions.map((transaction) => (
-            <div
-              key={transaction._id}
-              className="border rounded-lg p-4 shadow-md border-blue-100 text-blue-950"
-            >
-              <img
-                src={transaction.stoveImage.url}
-                alt={transaction.stoveSerialNo}
-                width={300}
-                height={200}
-                className="rounded bg-blue-950 w-full md:h-[40dvh] h-[20dvh] object-cover"
-              />
-              <h2 className="font-bold text-lg mt-2 ">
-                {transaction.transactionId}
-              </h2>
-              <p>
-                <span className="font-[600]">End User: </span>
-                {transaction.endUserName}
-              </p>
-              <p>
-                <span className="font-[600]">Amount:</span> ₦
-                {transaction.amount.toLocaleString()}
-              </p>
-              <p>
-                <span className="font-[600]">Sales Date: </span>
-                {new Date(transaction.salesDate).toLocaleDateString()}
-              </p>
-              <p>
-                <span className="font-[600]">Contact: </span>
-                {transaction.contactPerson} ({transaction.contactPhone})
-              </p>
-              <p>
-                <span className="font-[600]">Address:</span>{" "}
-                {transaction.address}
-              </p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ overflowX: "auto" }}>
-          <Table
-            dataSource={filteredTransactions}
-            rowKey="_id"
-            className="min-w-full mt-10 text-blue-950"
-            pagination={{ pageSize: 10 }}
-            onRow={(record) => {
-              return {
-                onClick: () => handleRowClick(record),
-              };
-            }}
-          >
-            <Table.Column
-              title="TRANSACTION ID"
-              dataIndex="transactionId"
-              key="transactionId"
-            />
-            <Table.Column
-              title="STOVE ID"
-              dataIndex="stoveSerialNo"
-              key="stoveSerialNo"
-            />
-            <Table.Column
-              title="SALES DATE"
-              dataIndex="salesDate"
-              key="salesDate"
-              render={(date) => new Date(date).toLocaleDateString()}
-            />
-            <Table.Column
-              title="SALES PARTNER"
-              dataIndex="salesPartner"
-              key="salesPartner"
-            />
-            <Table.Column title="SALES STATE" dataIndex="state" key="state" />
-            <Table.Column title="SALES LGA" dataIndex="lga" key="lga" />
-            <Table.Column
-              title="END USER NAME"
-              dataIndex="endUserName"
-              key="endUserName"
-            />
-            <Table.Column
-              title="END USER PHONE#"
-              dataIndex="contactPhone"
-              key="contactPhone"
-            />
-            <Table.Column
-              title="END USER ADDRESS"
-              dataIndex="address"
-              key="address"
-            />
-            <Table.Column
-              title="END USER SIGNATURE"
-              key="signature"
-              render={(text, record) => (
-                <div>
-                  <img
-                    src={`data:image/png;base64,${record.signature}`}
-                    alt="Signature"
-                    style={{ width: 50, height: 50 }}
-                  />
-                  <p>View Details</p>
-                </div>
-              )}
-            />
-          </Table>
-        </div>
-      )}
-
       <Modal
         title="Transaction Details"
         open={isModalOpen}
@@ -300,10 +187,34 @@ export default function Home() {
               <strong>Address:</strong> {selectedTransaction.address}
             </p>
             <p>
-              <strong>State:</strong> {selectedTransaction.state}
+              <strong>State:</strong>{" "}
+              {selectedTransaction.state || selectedTransaction.stateBackup}
             </p>
             <p>
-              <strong>LGA:</strong> {selectedTransaction.lga}
+              <strong>LGA:</strong>{" "}
+              {selectedTransaction.lga || selectedTransaction.lgaBackup}
+            </p>
+            <p>
+              <strong>Country:</strong>{" "}
+              {selectedTransaction.addressData.country}
+            </p>
+            <p>
+              <strong>City:</strong> {selectedTransaction.addressData.city}
+            </p>
+            <p>
+              <strong>Street:</strong> {selectedTransaction.addressData.street}
+            </p>
+            <p>
+              <strong>Full Address:</strong>{" "}
+              {selectedTransaction.addressData.fullAddress}
+            </p>
+            <p>
+              <strong>Latitude:</strong>{" "}
+              {selectedTransaction.addressData.latitude}
+            </p>
+            <p>
+              <strong>Longitude:</strong>{" "}
+              {selectedTransaction.addressData.longitude}
             </p>
             <div className="mt-4">
               <strong>Signature:</strong>
@@ -316,6 +227,137 @@ export default function Home() {
           </div>
         )}
       </Modal>
+
+      {loading ? (
+        <p className="text-blue-950">Loading transactions...</p>
+      ) : filteredTransactions.length === 0 ? (
+        <p className="text-blue-950">No transactions found.</p>
+      ) : viewType === "grid" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
+          {filteredTransactions.map((transaction) => (
+            <div
+              key={transaction._id}
+              className="border rounded-lg p-4 shadow-md border-blue-100 text-blue-950"
+            >
+              <img
+                src={transaction.stoveImage.url}
+                alt={transaction.stoveSerialNo}
+                width={300}
+                height={200}
+                className="rounded bg-blue-950 w-full md:h-[40dvh] h-[20dvh] object-cover"
+              />
+              <h2 className="font-bold text-lg mt-2 ">
+                {transaction.transactionId}
+              </h2>
+              <p>
+                <span className="font-[600]">End User: </span>
+                {transaction.endUserName}
+              </p>
+              <p>
+                <span className="font-[600]">Amount:</span> ₦
+                {transaction.amount.toLocaleString()}
+              </p>
+              <p>
+                <span className="font-[600]">Sales Date: </span>
+                {new Date(transaction.salesDate).toLocaleDateString()}
+              </p>
+              <p>
+                <span className="font-[600]">Contact: </span>
+                {transaction.contactPerson} ({transaction.contactPhone})
+              </p>
+              <p>
+                <span className="font-[600]">Address:</span>{" "}
+                {transaction.address}
+              </p>
+              <p>
+                <span className="font-[600]">State:</span>{" "}
+                {transaction.state || transaction.stateBackup}
+              </p>
+              <p>
+                <span className="font-[600]">LGA:</span>{" "}
+                {transaction.lga || transaction.lgaBackup}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <Table
+            dataSource={filteredTransactions}
+            rowKey="_id"
+            className="min-w-full mt-10 text-blue-950"
+            pagination={{ pageSize: 10 }}
+            onRow={(record) => {
+              return {
+                onClick: () => handleRowClick(record),
+              };
+            }}
+          >
+            <Table.Column
+              title="TRANSACTION ID"
+              dataIndex="transactionId"
+              key="transactionId"
+            />
+            <Table.Column
+              title="STOVE ID"
+              dataIndex="stoveSerialNo"
+              key="stoveSerialNo"
+            />
+            <Table.Column
+              title="SALES DATE"
+              dataIndex="salesDate"
+              key="salesDate"
+              render={(date) => new Date(date).toLocaleDateString()}
+            />
+            <Table.Column
+              title="SALES PARTNER"
+              dataIndex="partnerName"
+              key="partnerName"
+            />
+            <Table.Column
+              title="SALES STATE"
+              dataIndex="state"
+              key="state"
+              render={(text, record) => record.state || record.stateBackup}
+            />
+            <Table.Column
+              title="SALES LGA"
+              dataIndex="lga"
+              key="lga"
+              render={(text, record) => record.lga || record.lgaBackup}
+            />
+            <Table.Column
+              title="END USER NAME"
+              dataIndex="endUserName"
+              key="endUserName"
+            />
+            <Table.Column
+              title="END USER PHONE#"
+              dataIndex="contactPhone"
+              key="contactPhone"
+            />
+            <Table.Column
+              title="END USER ADDRESS"
+              dataIndex="address"
+              key="address"
+            />
+            <Table.Column
+              title="END USER SIGNATURE"
+              key="signature"
+              render={(text, record) => (
+                <div>
+                  <img
+                    src={`data:image/png;base64,${record.signature}`}
+                    alt="Signature"
+                    style={{ width: 50, height: 50 }}
+                  />
+                  <p>View Details</p>
+                </div>
+              )}
+            />
+          </Table>
+        </div>
+      )}
     </div>
   );
 }
