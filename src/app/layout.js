@@ -1,12 +1,13 @@
 import "./globals.css";
+import { AuthProvider } from "./contexts/AuthContext";
 
 export const metadata = {
-  title: "Stove Transaction Viewer",
+  title: "Atmosfair Sales Management System",
   description:
-    "An intuitive application for tracking and managing stove transactions efficiently.",
+    "An intuitive sales management application for tracking and managing Atmosfair sales transactions efficiently.",
   keywords:
-    "stove transactions, transaction management, financial tracking, stove sales",
-  author: "Your Name",
+    "atmosfair, sales management, transaction management, financial tracking, sales analytics",
+  author: "Atmosfair",
 };
 
 export default function RootLayout({ children }) {
@@ -23,7 +24,9 @@ export default function RootLayout({ children }) {
         <meta property="og:url" content="https://yourwebsite.com" />
         <meta property="og:image" content="https://yourwebsite.com/image.jpg" />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
