@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import DashboardLayout from "../components/DashboardLayout";
+import ProtectedRoute from "../components/ProtectedRoute";
 import SalesAdvancedFilterShadcn from "../components/SalesAdvancedFilterShadcn";
 import SalesDetailSidebar from "../components/SalesDetailSidebar";
 import { Button } from "@/components/ui/button";
@@ -338,262 +339,269 @@ const SalesPage = () => {
   );
 
   return (
-    <DashboardLayout currentRoute="sales">
-      <div className="h-full flex flex-col">
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col min-h-0">
-          {/* Header */}
-          <div className="bg-white border-b border-gray-200 p-3 sm:p-4 lg:p-6">
-            <div className="flex flex-col space-y-4 mb-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
-              <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">
-                  Atmosfair Sales Management
-                </h1>
-                <p className="text-sm sm:text-base text-gray-600 mt-1">
-                  Manage and track all your Atmosfair sales transactions
-                </p>
-              </div>
-
-              <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2 lg:space-x-3">
-                {/* Export */}
-                <Button
-                  variant="outline"
-                  onClick={() => handleExport("csv")}
-                  className="w-full sm:w-auto text-sm text-gray-800"
-                  size="sm"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
-                </Button>
-
-                {/* Filter Toggle */}
-                <Button
-                  variant="outline"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`w-full sm:w-auto text-sm ${
-                    showFilters ? "bg-blue-50 text-blue-600" : " text-gray-800"
-                  }`}
-                  size="sm"
-                >
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filters
-                </Button>
-
-                {/* View Toggle */}
-                <div className="flex border rounded-lg w-full sm:w-auto">
-                  <Button
-                    variant={viewMode === "list" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("list")}
-                    className={`rounded-r-none flex-1 sm:flex-none ${
-                      viewMode === "list" ? "text-white" : "text-gray-800"
-                    }`}
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === "grid" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("grid")}
-                    className={`rounded-l-none flex-1 sm:flex-none ${
-                      viewMode === "grid" ? "text-white" : "text-gray-800"
-                    }`}
-                  >
-                    <Grid3X3 className="h-4 w-4" />
-                  </Button>
+    <ProtectedRoute requireSuperAdmin={true}>
+      <DashboardLayout currentRoute="sales">
+        <div className="h-full flex flex-col">
+          {/* Main Content */}
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Header */}
+            <div className="bg-white border-b border-gray-200 p-3 sm:p-4 lg:p-6">
+              <div className="flex flex-col space-y-4 mb-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
+                <div className="min-w-0">
+                  <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">
+                    Atmosfair Sales Management
+                  </h1>
+                  <p className="text-sm sm:text-base text-gray-600 mt-1">
+                    Manage and track all your Atmosfair sales transactions
+                  </p>
                 </div>
-              </div>
-            </div>
 
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder="Search by customer, product, or location..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-sm border text-gray-800 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
+                <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2 lg:space-x-3">
+                  {/* Export */}
+                  <Button
+                    variant="outline"
+                    onClick={() => handleExport("csv")}
+                    className="w-full sm:w-auto text-sm text-gray-800"
+                    size="sm"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
 
-          {/* Content */}
-          <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6">
-            {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-2 text-gray-600">
-                  Loading sales data...
-                </span>
-              </div>
-            ) : error ? (
-              <div className="max-w-md mx-auto">
-                <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-                  <div className="w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-                    <svg
-                      className="w-6 h-6 text-red-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-semibold text-red-800 mb-2">
-                    Unable to Load Sales Data
-                  </h3>
-                  <p className="text-red-600 mb-4">{error}</p>
-                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  {/* Filter Toggle */}
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`w-full sm:w-auto text-sm ${
+                      showFilters
+                        ? "bg-blue-50 text-blue-600"
+                        : " text-gray-800"
+                    }`}
+                    size="sm"
+                  >
+                    <Filter className="h-4 w-4 mr-2" />
+                    Filters
+                  </Button>
+
+                  {/* View Toggle */}
+                  <div className="flex border rounded-lg w-full sm:w-auto">
                     <Button
-                      onClick={() => window.location.reload()}
-                      variant="outline"
-                      className="border-red-300 text-red-700 hover:bg-red-50"
+                      variant={viewMode === "list" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("list")}
+                      className={`rounded-r-none flex-1 sm:flex-none ${
+                        viewMode === "list" ? "text-white" : "text-gray-800"
+                      }`}
                     >
-                      Refresh Page
+                      <List className="h-4 w-4" />
                     </Button>
                     <Button
-                      onClick={fetchSales}
-                      className="bg-red-600 hover:bg-red-700 text-white"
+                      variant={viewMode === "grid" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("grid")}
+                      className={`rounded-l-none flex-1 sm:flex-none ${
+                        viewMode === "grid" ? "text-white" : "text-gray-800"
+                      }`}
                     >
-                      Try Again
+                      <Grid3X3 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
               </div>
-            ) : salesData.length === 0 ? (
-              <div className="text-center py-16">
+
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Search by customer, product, or location..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 text-sm border text-gray-800 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6">
+              {loading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-2 text-gray-600">
+                    Loading sales data...
+                  </span>
+                </div>
+              ) : error ? (
                 <div className="max-w-md mx-auto">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                    <svg
-                      className="w-8 h-8 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                    <div className="w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+                      <svg
+                        className="w-6 h-6 text-red-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-red-800 mb-2">
+                      Unable to Load Sales Data
+                    </h3>
+                    <p className="text-red-600 mb-4">{error}</p>
+                    <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                      <Button
+                        onClick={() => window.location.reload()}
+                        variant="outline"
+                        className="border-red-300 text-red-700 hover:bg-red-50"
+                      >
+                        Refresh Page
+                      </Button>
+                      <Button
+                        onClick={fetchSales}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        Try Again
+                      </Button>
+                    </div>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    No Sales Data Found
-                  </h3>
-                  <p className="text-gray-500 mb-4">
-                    {searchTerm
-                      ? `No sales match your search for "${searchTerm}"`
-                      : "No sales transactions have been recorded yet."}
-                  </p>
-                  {searchTerm && (
-                    <Button onClick={() => setSearchTerm("")} variant="outline">
-                      Clear Search
-                    </Button>
+                </div>
+              ) : salesData.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="max-w-md mx-auto">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                      <svg
+                        className="w-8 h-8 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      No Sales Data Found
+                    </h3>
+                    <p className="text-gray-500 mb-4">
+                      {searchTerm
+                        ? `No sales match your search for "${searchTerm}"`
+                        : "No sales transactions have been recorded yet."}
+                    </p>
+                    {searchTerm && (
+                      <Button
+                        onClick={() => setSearchTerm("")}
+                        variant="outline"
+                      >
+                        Clear Search
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Results Info */}
+                  <div className="flex flex-col space-y-2 mb-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 sm:mb-6">
+                    <p className="text-sm sm:text-base text-gray-600">
+                      Showing {filteredData.length} of{" "}
+                      {pagination?.total || salesData.length} results
+                    </p>
+                    {searchTerm && (
+                      <Badge variant="outline" className="w-fit">
+                        Filtered by: "{searchTerm}"
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* List View */}
+                  {viewMode === "list" && (
+                    <div className="space-y-1 sm:space-y-4">
+                      {filteredData.map((item, index) => (
+                        <ListItem key={item.id} item={item} index={index} />
+                      ))}
+                    </div>
                   )}
+
+                  {/* Grid View */}
+                  {viewMode === "grid" && (
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">
+                      {filteredData.map((item) => (
+                        <GridItem key={item.id} item={item} />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Filter Sidebar/Modal */}
+          {showFilters && (
+            <>
+              {/* Overlay for mobile */}
+              <div
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+                onClick={() => setShowFilters(false)}
+              />
+
+              {/* Filter Sidebar */}
+              <div
+                className={`fixed top-0 right-0 h-full bg-white shadow-2xl transform transition-all duration-300 ease-in-out z-50 ${
+                  showFilters ? "translate-x-0" : "translate-x-full"
+                } w-full sm:w-[85vw] md:w-[500px] lg:w-[550px] xl:w-[600px]`}
+              >
+                <div className="flex flex-col h-full">
+                  {/* Header */}
+                  <div className="flex items-center justify-between p-3 sm:p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900">
+                        Filters & Export
+                      </h2>
+                      <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                        Filter and export your sales data
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowFilters(false)}
+                      className=" flex-shrink-0 ml-2 sm:ml-4 text-gray-800 hover:bg-gray-400"
+                    >
+                      <X className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </Button>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
+                    <SalesAdvancedFilterShadcn
+                      onFilter={handleFilter}
+                      onExport={handleExport}
+                      loading={loading}
+                      className=""
+                    />
+                  </div>
                 </div>
               </div>
-            ) : (
-              <>
-                {/* Results Info */}
-                <div className="flex flex-col space-y-2 mb-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 sm:mb-6">
-                  <p className="text-sm sm:text-base text-gray-600">
-                    Showing {filteredData.length} of{" "}
-                    {pagination?.total || salesData.length} results
-                  </p>
-                  {searchTerm && (
-                    <Badge variant="outline" className="w-fit">
-                      Filtered by: "{searchTerm}"
-                    </Badge>
-                  )}
-                </div>
-
-                {/* List View */}
-                {viewMode === "list" && (
-                  <div className="space-y-1 sm:space-y-4">
-                    {filteredData.map((item, index) => (
-                      <ListItem key={item.id} item={item} index={index} />
-                    ))}
-                  </div>
-                )}
-
-                {/* Grid View */}
-                {viewMode === "grid" && (
-                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">
-                    {filteredData.map((item) => (
-                      <GridItem key={item.id} item={item} />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+            </>
+          )}
         </div>
 
-        {/* Filter Sidebar/Modal */}
-        {showFilters && (
-          <>
-            {/* Overlay for mobile */}
-            <div
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
-              onClick={() => setShowFilters(false)}
-            />
-
-            {/* Filter Sidebar */}
-            <div
-              className={`fixed top-0 right-0 h-full bg-white shadow-2xl transform transition-all duration-300 ease-in-out z-50 ${
-                showFilters ? "translate-x-0" : "translate-x-full"
-              } w-full sm:w-[85vw] md:w-[500px] lg:w-[550px] xl:w-[600px]`}
-            >
-              <div className="flex flex-col h-full">
-                {/* Header */}
-                <div className="flex items-center justify-between p-3 sm:p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-                  <div className="min-w-0 flex-1">
-                    <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900">
-                      Filters & Export
-                    </h2>
-                    <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                      Filter and export your sales data
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowFilters(false)}
-                    className="hover:bg-white/50 flex-shrink-0 ml-2 sm:ml-4"
-                  >
-                    <X className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </Button>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
-                  <SalesAdvancedFilterShadcn
-                    onFilter={handleFilter}
-                    onExport={handleExport}
-                    loading={loading}
-                    className=""
-                  />
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Sales Detail Sidebar */}
-      <SalesDetailSidebar
-        sale={selectedSale}
-        isOpen={showSaleDetail}
-        onClose={handleCloseSaleDetail}
-      />
-    </DashboardLayout>
+        {/* Sales Detail Sidebar */}
+        <SalesDetailSidebar
+          sale={selectedSale}
+          isOpen={showSaleDetail}
+          onClose={handleCloseSaleDetail}
+        />
+      </DashboardLayout>
+    </ProtectedRoute>
   );
 };
 

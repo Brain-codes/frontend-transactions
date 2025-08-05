@@ -53,8 +53,8 @@ const DashboardLayout = ({ children, currentRoute = "dashboard" }) => {
     {
       name: "Heat Map",
       icon: Map,
-      route: "",
-      href: "/",
+      route: "map",
+      href: "/map",
       badge: null,
     },
   ];

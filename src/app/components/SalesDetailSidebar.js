@@ -23,10 +23,25 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
+import {
+  generateReceiptPDF,
+  generateInvoicePDF,
+  generateReceiptHTML,
+  downloadFile,
+} from "@/lib/pdfUtils";
+import { sendReceiptEmail, composeReceiptEmail } from "@/lib/emailService";
 
 const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState("overview");
+  const [fullScreenImage, setFullScreenImage] = useState(null);
+  const [loadingStates, setLoadingStates] = useState({
+    downloadingReceipt: false,
+    emailingReceipt: false,
+    generatingInvoice: false,
+    exporting: false,
+  });
 
   if (!sale) return null;
 
@@ -80,14 +95,169 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
   const tabs = [
     { id: "overview", label: "Overview" },
     { id: "customer", label: "Customer" },
+    { id: "transaction", label: "Transaction" },
     { id: "product", label: "Product" },
-    { id: "payment", label: "Payment" },
+    { id: "location", label: "Location" },
+    { id: "attachments", label: "Attachments" },
   ];
 
   const copyToClipboard = (text, label) => {
     navigator.clipboard.writeText(text);
     // You could add a toast notification here
     console.log(`${label} copied to clipboard: ${text}`);
+  };
+
+  const handleDownloadReceipt = async () => {
+    try {
+      setLoadingStates((prev) => ({ ...prev, downloadingReceipt: true }));
+
+      // Try to generate PDF first
+      try {
+        const doc = await generateReceiptPDF(sale);
+        const pdfOutput = doc.output("blob");
+        const filename = `receipt-${sale.transaction_id || sale.id}-${
+          new Date().toISOString().split("T")[0]
+        }.pdf`;
+        downloadFile(pdfOutput, filename, "application/pdf");
+
+        // Show success message
+        alert("Receipt downloaded successfully!");
+      } catch (pdfError) {
+        console.warn("PDF generation failed, falling back to HTML:", pdfError);
+
+        // Fallback to HTML receipt
+        const htmlContent = generateReceiptHTML(sale);
+        const filename = `receipt-${sale.transaction_id || sale.id}-${
+          new Date().toISOString().split("T")[0]
+        }.html`;
+        downloadFile(htmlContent, filename, "text/html");
+
+        alert("Receipt downloaded as HTML file!");
+      }
+    } catch (error) {
+      console.error("Error downloading receipt:", error);
+      alert("Failed to download receipt. Please try again.");
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, downloadingReceipt: false }));
+    }
+  };
+
+  const handleEmailReceipt = async () => {
+    try {
+      setLoadingStates((prev) => ({ ...prev, emailingReceipt: true }));
+
+      const email = sale.email || sale.contact_email;
+      if (!email) {
+        alert("No email address available for this customer");
+        return;
+      }
+
+      // Try to send email via API first
+      try {
+        await sendReceiptEmail(sale, email);
+        alert(`Receipt sent successfully to ${email}`);
+      } catch (emailError) {
+        console.warn("Email API failed, falling back to mailto:", emailError);
+
+        // Fallback to mailto link
+        const { subject, body } = composeReceiptEmail(sale);
+        const mailtoLink = `mailto:${email}?subject=${subject}&body=${body}`;
+        window.open(mailtoLink, "_blank");
+
+        alert(`Opening email client to send receipt to ${email}`);
+      }
+    } catch (error) {
+      console.error("Error sending receipt email:", error);
+      alert("Failed to send receipt email. Please try again.");
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, emailingReceipt: false }));
+    }
+  };
+
+  const handleGenerateInvoice = async () => {
+    try {
+      setLoadingStates((prev) => ({ ...prev, generatingInvoice: true }));
+
+      // Try to generate PDF invoice
+      try {
+        const doc = await generateInvoicePDF(sale);
+        const pdfOutput = doc.output("blob");
+        const filename = `invoice-${sale.transaction_id || sale.id}-${
+          new Date().toISOString().split("T")[0]
+        }.pdf`;
+        downloadFile(pdfOutput, filename, "application/pdf");
+
+        alert("Invoice generated and downloaded successfully!");
+      } catch (pdfError) {
+        console.warn("PDF generation failed:", pdfError);
+        alert(
+          "PDF generation is not available. Please install the required dependencies or use the export feature instead."
+        );
+      }
+    } catch (error) {
+      console.error("Error generating invoice:", error);
+      alert("Failed to generate invoice. Please try again.");
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, generatingInvoice: false }));
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      setLoadingStates((prev) => ({ ...prev, exporting: true }));
+
+      const exportData = {
+        ...sale,
+        exportDate: new Date().toISOString(),
+        exportedBy: "Current User", // You'd get this from your auth context
+        metadata: {
+          exportVersion: "1.0",
+          systemInfo: {
+            userAgent: navigator.userAgent,
+            timestamp: Date.now(),
+          },
+        },
+      };
+
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const filename = `sale-${sale.transaction_id || sale.id}-export-${
+        new Date().toISOString().split("T")[0]
+      }.json`;
+      downloadFile(dataStr, filename, "application/json");
+
+      alert("Sale data exported successfully!");
+    } catch (error) {
+      console.error("Error exporting sale data:", error);
+      alert("Failed to export sale data. Please try again.");
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, exporting: false }));
+    }
+  };
+
+  const handleCopyId = () => {
+    const id = sale.transaction_id || sale.id;
+    copyToClipboard(id, "Transaction ID");
+    alert(`Transaction ID ${id} copied to clipboard`);
+  };
+
+  const handleExternal = () => {
+    // Store the sale data in localStorage so the detail page can access it
+    localStorage.setItem(
+      `sale_${sale.transaction_id || sale.id}`,
+      JSON.stringify(sale)
+    );
+
+    // Open in external page
+    const url = `/sales/${sale.transaction_id || sale.id}`;
+    window.open(url, "_blank");
+  };
+
+  const openFullScreenImage = (imageSrc, title) => {
+    setFullScreenImage({ src: imageSrc, title });
+  };
+
+  const closeFullScreenImage = () => {
+    setFullScreenImage(null);
   };
 
   return (
@@ -165,35 +335,41 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="grid grid-cols-2 gap-2">
-                      <Button size="sm" className="text-xs sm:text-sm">
-                        <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                        <span className="hidden xs:inline">Edit</span>
-                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         className="text-xs sm:text-sm"
+                        onClick={handleExport}
+                        disabled={loadingStates.exporting}
                       >
-                        <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                        <span className="hidden xs:inline">Export</span>
+                        {loadingStates.exporting ? (
+                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
+                        ) : (
+                          <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        )}
+                        <span className="hidden xs:inline">
+                          {loadingStates.exporting ? "Exporting..." : "Export"}
+                        </span>
                       </Button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
                       <Button
                         size="sm"
                         variant="outline"
                         className="text-xs sm:text-sm"
+                        onClick={handleCopyId}
                       >
                         <Copy className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                         <span className="hidden xs:inline">Copy ID</span>
                       </Button>
+                    </div>
+                    <div className="w-full">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-xs sm:text-sm"
+                        className="text-xs sm:text-sm w-full"
+                        onClick={handleExternal}
                       >
                         <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                        <span className="hidden xs:inline">External</span>
+                        <span className="hidden xs:inline">Open External</span>
                       </Button>
                     </div>
                   </CardContent>
@@ -202,7 +378,15 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                 {/* Product Image */}
                 <Card>
                   <CardContent className="p-3 sm:p-4">
-                    <div className="relative h-32 sm:h-48 w-full bg-gray-100 rounded-lg overflow-hidden">
+                    <div
+                      className="relative h-32 sm:h-48 w-full bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() =>
+                        openFullScreenImage(
+                          sale.stove_image.url,
+                          sale.stove_serial_no || "Atmosfair Product"
+                        )
+                      }
+                    >
                       {sale.stove_image?.url ? (
                         <Image
                           src={sale.stove_image.url}
@@ -279,26 +463,39 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
               <div className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">
-                      Customer Information
+                    <CardTitle className="text-lg flex items-center">
+                      <User className="h-5 w-5 mr-2 text-blue-600" />
+                      End-User Information
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <div>
                         <label className="text-sm font-medium text-gray-500">
                           Full Name
                         </label>
-                        <p className="text-sm text-gray-900 mt-1">
+                        <p className="text-sm text-gray-900 mt-1 font-medium">
                           {sale.end_user_name || sale.contact_person || "N/A"}
                         </p>
                       </div>
+
+                      {(sale.aka || sale.alias) && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">
+                            Also Known As
+                          </label>
+                          <p className="text-sm text-gray-900 mt-1">
+                            {sale.aka || sale.alias}
+                          </p>
+                        </div>
+                      )}
+
                       <div>
                         <label className="text-sm font-medium text-gray-500">
                           Phone Number
                         </label>
                         <div className="flex items-center justify-between mt-1">
-                          <p className="text-sm text-gray-900">
+                          <p className="text-sm text-gray-900 font-medium">
                             {sale.phone || sale.contact_phone || "N/A"}
                           </p>
                           {(sale.phone || sale.contact_phone) && (
@@ -311,12 +508,79 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                                   "Phone"
                                 )
                               }
+                              className="text-blue-600 hover:text-blue-800"
                             >
                               <Copy className="h-3 w-3" />
                             </Button>
                           )}
                         </div>
                       </div>
+
+                      {(sale.other_phone || sale.otherPhone) && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">
+                            Other Number
+                          </label>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-sm text-gray-900">
+                              {sale.other_phone || sale.otherPhone}
+                            </p>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                copyToClipboard(
+                                  sale.other_phone || sale.otherPhone,
+                                  "Other Phone"
+                                )
+                              }
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {sale.contact_person &&
+                        sale.contact_person !== sale.end_user_name && (
+                          <div>
+                            <label className="text-sm font-medium text-gray-500">
+                              Contact Person
+                            </label>
+                            <p className="text-sm text-gray-900 mt-1">
+                              {sale.contact_person}
+                            </p>
+                          </div>
+                        )}
+
+                      {sale.contact_phone &&
+                        sale.contact_phone !== sale.phone && (
+                          <div>
+                            <label className="text-sm font-medium text-gray-500">
+                              Contact Phone
+                            </label>
+                            <div className="flex items-center justify-between mt-1">
+                              <p className="text-sm text-gray-900">
+                                {sale.contact_phone}
+                              </p>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() =>
+                                  copyToClipboard(
+                                    sale.contact_phone,
+                                    "Contact Phone"
+                                  )
+                                }
+                                className="text-blue-600 hover:text-blue-800"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
                       <div>
                         <label className="text-sm font-medium text-gray-500">
                           Email
@@ -335,25 +599,12 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                                   "Email"
                                 )
                               }
+                              className="text-blue-600 hover:text-blue-800"
                             >
                               <Copy className="h-3 w-3" />
                             </Button>
                           )}
                         </div>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">
-                          Address
-                        </label>
-                        <p className="text-sm text-gray-900 mt-1">
-                          {sale.address?.full_address ||
-                            `${sale.address?.street || ""} ${
-                              sale.address?.city || ""
-                            } ${
-                              sale.address?.state || sale.state_backup || ""
-                            } ${sale.address?.country || "Nigeria"}`.trim() ||
-                            "N/A"}
-                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -361,117 +612,23 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
               </div>
             )}
 
-            {activeTab === "product" && (
+            {activeTab === "transaction" && (
               <div className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Product Details</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">
-                          Serial Number
-                        </label>
-                        <div className="flex items-center justify-between mt-1">
-                          <p className="text-sm font-mono text-gray-900">
-                            {sale.stove_serial_no || "N/A"}
-                          </p>
-                          {sale.stove_serial_no && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() =>
-                                copyToClipboard(
-                                  sale.stove_serial_no,
-                                  "Serial Number"
-                                )
-                              }
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">
-                          Product Type
-                        </label>
-                        <p className="text-sm text-gray-900 mt-1">
-                          {sale.product_type ||
-                            sale.stove_type ||
-                            "Atmosfair Stove"}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">
-                          Partner
-                        </label>
-                        <p className="text-sm text-gray-900 mt-1">
-                          {sale.partner_name || sale.partner || "N/A"}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">
-                          Description
-                        </label>
-                        <p className="text-sm text-gray-900 mt-1">
-                          {sale.description ||
-                            sale.notes ||
-                            "No description available"}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {activeTab === "payment" && (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">
-                      Payment Information
+                    <CardTitle className="text-lg flex items-center">
+                      <DollarSign className="h-5 w-5 mr-2 text-green-600" />
+                      Transaction Details
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">
-                          Total Amount
-                        </label>
-                        <p className="text-2xl font-bold text-green-600 mt-1">
-                          {formatCurrency(sale.amount || sale.price || 0)}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">
-                          Payment Method
-                        </label>
-                        <p className="text-sm text-gray-900 mt-1">
-                          {sale.payment_method || "N/A"}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">
-                          Payment Status
-                        </label>
-                        <Badge
-                          className={getStatusColor(
-                            sale.payment_status || sale.status || "pending"
-                          )}
-                          size="sm"
-                        >
-                          {sale.payment_status || sale.status || "Pending"}
-                        </Badge>
-                      </div>
+                    <div className="space-y-4">
                       <div>
                         <label className="text-sm font-medium text-gray-500">
                           Transaction ID
                         </label>
                         <div className="flex items-center justify-between mt-1">
-                          <p className="text-sm font-mono text-gray-900">
+                          <p className="text-sm font-mono text-gray-900 font-medium">
                             {sale.transaction_id || sale.id || "N/A"}
                           </p>
                           {(sale.transaction_id || sale.id) && (
@@ -484,46 +641,493 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                                   "Transaction ID"
                                 )
                               }
+                              className="text-blue-600 hover:text-blue-800"
                             >
                               <Copy className="h-3 w-3" />
                             </Button>
                           )}
                         </div>
                       </div>
+
                       <div>
                         <label className="text-sm font-medium text-gray-500">
-                          Payment Date
+                          Amount
+                        </label>
+                        <p className="text-2xl font-bold text-green-600 mt-1">
+                          {formatCurrency(sale.amount || sale.price || 0)}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          Sale Date
+                        </label>
+                        <p className="text-sm text-gray-900 mt-1 font-medium">
+                          {formatDate(sale.sales_date || sale.created_at)}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          Created By
                         </label>
                         <p className="text-sm text-gray-900 mt-1">
-                          {formatDate(
-                            sale.payment_date ||
-                              sale.sales_date ||
-                              sale.created_at
-                          )}
+                          {sale.created_by || sale.creator?.name || "N/A"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          Payment Method
+                        </label>
+                        <p className="text-sm text-gray-900 mt-1">
+                          {sale.payment_method || "Cash"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          Payment Status
+                        </label>
+                        <div className="mt-1">
+                          <Badge
+                            className={getStatusColor(
+                              sale.payment_status || sale.status || "pending"
+                            )}
+                          >
+                            {getStatusIcon(
+                              sale.payment_status || sale.status || "pending"
+                            )}
+                            <span className="ml-1">
+                              {sale.payment_status || sale.status || "Pending"}
+                            </span>
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          Created At
+                        </label>
+                        <p className="text-sm text-gray-900 mt-1">
+                          {formatDate(sale.created_at)}
                         </p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Payment Actions */}
+                {/* Transaction Actions */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Payment Actions</CardTitle>
+                    <CardTitle className="text-lg">Actions</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <Button className="w-full">
-                      <Download className="h-4 w-4 mr-2" />
-                      Download Receipt
+                    <Button
+                      className="w-full"
+                      onClick={handleDownloadReceipt}
+                      disabled={loadingStates.downloadingReceipt}
+                    >
+                      {loadingStates.downloadingReceipt ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4 mr-2" />
+                      )}
+                      {loadingStates.downloadingReceipt
+                        ? "Generating..."
+                        : "Download Receipt"}
                     </Button>
-                    <Button variant="outline" className="w-full">
-                      <Mail className="h-4 w-4 mr-2" />
-                      Email Receipt
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleEmailReceipt}
+                      disabled={loadingStates.emailingReceipt}
+                    >
+                      {loadingStates.emailingReceipt ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Mail className="h-4 w-4 mr-2" />
+                      )}
+                      {loadingStates.emailingReceipt
+                        ? "Sending..."
+                        : "Email Receipt"}
                     </Button>
-                    <Button variant="outline" className="w-full">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Generate Invoice
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleGenerateInvoice}
+                      disabled={loadingStates.generatingInvoice}
+                    >
+                      {loadingStates.generatingInvoice ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <FileText className="h-4 w-4 mr-2" />
+                      )}
+                      {loadingStates.generatingInvoice
+                        ? "Generating..."
+                        : "Generate Invoice"}
                     </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === "product" && (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center">
+                      <Package className="h-5 w-5 mr-2 text-purple-600" />
+                      Stove Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          Stove Serial Number
+                        </label>
+                        <div className="flex items-center justify-between mt-1">
+                          <p className="text-sm font-mono text-gray-900 font-medium">
+                            {sale.stove_serial_no || "N/A"}
+                          </p>
+                          {sale.stove_serial_no && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                copyToClipboard(
+                                  sale.stove_serial_no,
+                                  "Serial Number"
+                                )
+                              }
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          Product Type
+                        </label>
+                        <p className="text-sm text-gray-900 mt-1 font-medium">
+                          {sale.product_type ||
+                            sale.stove_type ||
+                            "Atmosfair Stove"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          Partner
+                        </label>
+                        <p className="text-sm text-gray-900 mt-1">
+                          {sale.partner_name || sale.partner || "N/A"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          Description
+                        </label>
+                        <p className="text-sm text-gray-900 mt-1">
+                          {sale.description ||
+                            sale.notes ||
+                            "High-efficiency Atmosfair cooking stove designed for clean cooking and reduced emissions."}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Product Image */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Product Image</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3 sm:p-4">
+                    <div
+                      className="relative h-48 w-full bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() =>
+                        sale.stove_image?.url &&
+                        openFullScreenImage(
+                          sale.stove_image.url,
+                          `Product Image - ${
+                            sale.stove_serial_no || "Atmosfair Product"
+                          }`
+                        )
+                      }
+                    >
+                      {sale.stove_image?.url ? (
+                        <Image
+                          src={sale.stove_image.url}
+                          alt={sale.stove_serial_no || "Atmosfair Product"}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 500px) 100vw"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+                          <Package className="h-16 w-16 text-blue-400" />
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === "location" && (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center">
+                      <MapPin className="h-5 w-5 mr-2 text-red-600" />
+                      Location Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          Full Address
+                        </label>
+                        <p className="text-sm text-gray-900 mt-1 font-medium">
+                          {sale.address?.full_address ||
+                            sale.address?.street ||
+                            `${sale.address?.city || ""} ${
+                              sale.address?.state || sale.state_backup || ""
+                            }`.trim() ||
+                            "N/A"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          City
+                        </label>
+                        <p className="text-sm text-gray-900 mt-1">
+                          {sale.address?.city || sale.city_backup || "N/A"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          State
+                        </label>
+                        <p className="text-sm text-gray-900 mt-1">
+                          {sale.address?.state || sale.state_backup || "N/A"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          Country
+                        </label>
+                        <p className="text-sm text-gray-900 mt-1">
+                          {sale.address?.country || "Nigeria"}
+                        </p>
+                      </div>
+
+                      {sale.address?.latitude && sale.address?.longitude && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">
+                            Coordinates
+                          </label>
+                          <p className="text-sm text-gray-900 mt-1 font-mono">
+                            Lat: {sale.address.latitude}, Lon:{" "}
+                            {sale.address.longitude}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Map Preview */}
+                {sale.address?.latitude && sale.address?.longitude && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="w-full">
+                        {/* Header matching Flutter style */}
+                        <div className="w-full text-right mb-2.5">
+                          <h4 className="text-xs font-medium text-gray-700 uppercase tracking-wide">
+                            MAP PREVIEW
+                          </h4>
+                        </div>
+
+                        {/* Map container matching Flutter dimensions and styling */}
+                        <div className="relative h-48 w-full bg-gray-100 border border-gray-300 overflow-hidden">
+                          {/* Static Map Image */}
+                          <Image
+                            src={`https://maps.googleapis.com/maps/api/staticmap?center=${sale.address.latitude},${sale.address.longitude}&zoom=16&size=600x200&markers=color:red%7C${sale.address.latitude},${sale.address.longitude}&maptype=roadmap&style=element:geometry%7Ccolor:0xf5f5f5&style=element:labels.icon%7Cvisibility:off&style=element:labels.text.fill%7Ccolor:0x616161&style=element:labels.text.stroke%7Ccolor:0xf5f5f5&style=feature:administrative.land_parcel%7Celement:labels.text.fill%7Ccolor:0xbdbdbd&style=feature:poi%7Celement:geometry%7Ccolor:0xeeeeee&style=feature:poi%7Celement:labels.text.fill%7Ccolor:0x757575&style=feature:poi.park%7Celement:geometry%7Ccolor:0xe5e5e5&style=feature:poi.park%7Celement:labels.text.fill%7Ccolor:0x9e9e9e&style=feature:road%7Celement:geometry%7Ccolor:0xffffff&style=feature:road.arterial%7Celement:labels.text.fill%7Ccolor:0x757575&style=feature:road.highway%7Celement:geometry%7Ccolor:0xdadada&style=feature:road.highway%7Celement:labels.text.fill%7Ccolor:0x616161&style=feature:road.local%7Celement:labels.text.fill%7Ccolor:0x9e9e9e&style=feature:transit.line%7Celement:geometry%7Ccolor:0xe5e5e5&style=feature:transit.station%7Celement:geometry%7Ccolor:0xeeeeee&style=feature:water%7Celement:geometry%7Ccolor:0xc9c9c9&style=feature:water%7Celement:labels.text.fill%7Ccolor:0x9e9e9e`}
+                            alt={`Map showing location at ${sale.address.latitude}, ${sale.address.longitude}`}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 600px) 100vw, 600px"
+                            onError={(e) => {
+                              // Fallback to simple map without styling if Google Maps API fails
+                              e.target.src = `https://maps.googleapis.com/maps/api/staticmap?center=${sale.address.latitude},${sale.address.longitude}&zoom=16&size=600x200&markers=color:red%7C${sale.address.latitude},${sale.address.longitude}&maptype=roadmap`;
+                            }}
+                          />
+
+                          {/* Overlay with location info and action button */}
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                            <div className="text-white">
+                              <p className="text-sm font-medium">
+                                Stove Location
+                              </p>
+                              <p className="text-xs opacity-90">
+                                {sale.address?.full_address ||
+                                  `${sale.address?.city || ""} ${
+                                    sale.address?.state ||
+                                    sale.state_backup ||
+                                    ""
+                                  }`.trim() ||
+                                  "Location address"}
+                              </p>
+                              <Button
+                                size="sm"
+                                className="mt-2 bg-white/20 hover:bg-white/30 text-white border-white/30"
+                                onClick={() => {
+                                  const url = `https://www.google.com/maps/search/?api=1&query=${sale.address.latitude},${sale.address.longitude}`;
+                                  window.open(url, "_blank");
+                                }}
+                              >
+                                <ExternalLink className="h-3 w-3 mr-1" />
+                                Open in Maps
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {activeTab === "attachments" && (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center">
+                      <FileText className="h-5 w-5 mr-2 text-orange-600" />
+                      Attachments
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      {/* Stove Image */}
+                      {sale.stove_image?.url ? (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                            Stove Image
+                          </h4>
+                          <div
+                            className="relative h-48 w-full bg-gray-100 rounded-lg overflow-hidden border cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() =>
+                              openFullScreenImage(
+                                sale.stove_image.url,
+                                "Stove Image"
+                              )
+                            }
+                          >
+                            <Image
+                              src={sale.stove_image.url}
+                              alt="Stove Image"
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 500px) 100vw"
+                            />
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* Agreement Document */}
+                      {sale.agreement_image?.url ? (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                            Agreement Document
+                          </h4>
+                          <div
+                            className="relative h-48 w-full bg-gray-100 rounded-lg overflow-hidden border cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() =>
+                              openFullScreenImage(
+                                sale.agreement_image.url,
+                                "Agreement Document"
+                              )
+                            }
+                          >
+                            <Image
+                              src={sale.agreement_image.url}
+                              alt="Agreement Document"
+                              fill
+                              className="object-contain"
+                              sizes="(max-width: 500px) 100vw"
+                            />
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* Signature */}
+                      {sale.signature ? (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                            Signature
+                          </h4>
+                          <div
+                            className="relative h-32 w-full bg-gray-100 rounded-lg overflow-hidden border cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => {
+                              const signatureSrc = sale.signature.startsWith(
+                                "data:"
+                              )
+                                ? sale.signature
+                                : `data:image/png;base64,${sale.signature}`;
+                              openFullScreenImage(
+                                signatureSrc,
+                                "Customer Signature"
+                              );
+                            }}
+                          >
+                            {typeof sale.signature === "string" ? (
+                              <Image
+                                src={
+                                  sale.signature.startsWith("data:")
+                                    ? sale.signature
+                                    : `data:image/png;base64,${sale.signature}`
+                                }
+                                alt="Customer Signature"
+                                fill
+                                className="object-contain"
+                                sizes="(max-width: 500px) 100vw"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <p className="text-sm text-gray-500">
+                                  Signature available
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* No attachments message */}
+                      {!sale.stove_image?.url &&
+                        !sale.agreement_image?.url &&
+                        !sale.signature && (
+                          <div className="text-center py-8">
+                            <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                            <p className="text-sm text-gray-500">
+                              No attachments available
+                            </p>
+                          </div>
+                        )}
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -531,6 +1135,40 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
           </div>
         </div>
       </div>
+
+      {/* Full Screen Image Modal */}
+      {fullScreenImage && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="relative w-full h-full max-w-7xl max-h-full flex items-center justify-center">
+            {/* Close Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={closeFullScreenImage}
+              className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full"
+            >
+              <X className="h-6 w-6" />
+            </Button>
+
+            {/* Image Title */}
+            <div className="absolute top-4 left-4 z-10 bg-black/50 text-white px-4 py-2 rounded-lg">
+              <h3 className="text-lg font-medium">{fullScreenImage.title}</h3>
+            </div>
+
+            {/* Image Container */}
+            <div className="relative w-full h-full flex items-center justify-center">
+              <Image
+                src={fullScreenImage.src}
+                alt={fullScreenImage.title}
+                fill
+                className="object-contain"
+                sizes="100vw"
+                priority
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

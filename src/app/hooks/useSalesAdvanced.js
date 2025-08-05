@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import salesAdvancedService from "../services/salesAdvancedAPIService";
 
@@ -26,6 +26,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
       includeAddress: true,
       includeCreator: true,
       includeImages: true,
+      includeOrganization: true,
       ...initialFilters,
     }),
     [initialFilters]
@@ -33,7 +34,25 @@ export const useSalesAdvanced = (initialFilters = {}) => {
 
   const [filters, setFilters] = useState(defaultFilters);
 
-  const fetchSales = useCallback(
+  // Use ref to store current filters to avoid infinite loops
+  const filtersRef = useRef(filters);
+  const defaultFiltersRef = useRef(defaultFilters);
+  const isLoadingRef = useRef(false); // Prevent concurrent API calls
+  const hasInitializedRef = useRef(false); // Prevent initial data from loading multiple times
+
+  // Keep refs in sync with state but prevent unnecessary updates
+  useEffect(() => {
+    defaultFiltersRef.current = defaultFilters;
+  }, [defaultFilters]);
+
+  useEffect(() => {
+    if (JSON.stringify(filtersRef.current) !== JSON.stringify(filters)) {
+      filtersRef.current = filters;
+    }
+  }, [filters]);
+
+  // Create a stable fetch function that doesn't depend on state
+  const fetchSalesStable = useCallback(
     async (newFilters = {}) => {
       // Check authentication first
       if (!isAuthenticated) {
@@ -42,11 +61,21 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         return;
       }
 
+      // Prevent concurrent calls
+      if (isLoadingRef.current) {
+        console.log("API call already in progress, skipping...");
+        return;
+      }
+
+      isLoadingRef.current = true;
       setLoading(true);
       setError(null);
 
       try {
-        const mergedFilters = { ...filters, ...newFilters };
+        // Use the ref to get current filters
+        const currentFilters = filtersRef.current;
+        const mergedFilters = { ...currentFilters, ...newFilters };
+
         console.log("Fetching sales with filters:", mergedFilters);
         console.log("User authenticated:", isAuthenticated, "User:", user);
 
@@ -65,7 +94,17 @@ export const useSalesAdvanced = (initialFilters = {}) => {
               ),
             }
           );
-          setFilters(mergedFilters);
+
+          // Update the ref with merged filters
+          filtersRef.current = mergedFilters;
+
+          // Update state with merged filters (only if different)
+          setFilters((prevFilters) => {
+            if (JSON.stringify(prevFilters) !== JSON.stringify(mergedFilters)) {
+              return mergedFilters;
+            }
+            return prevFilters;
+          });
 
           // Show success message if we have data
           if (response.data?.length > 0) {
@@ -108,10 +147,14 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         setPagination({ page: 1, limit: 100, total: 0, totalPages: 0 });
       } finally {
         setLoading(false);
+        isLoadingRef.current = false;
       }
     },
-    [isAuthenticated, user] // Removed 'filters' from dependencies to prevent infinite loop
+    [isAuthenticated, user] // Only depend on auth state
   );
+
+  // Keep the original fetchSales for backward compatibility but make it stable
+  const fetchSales = fetchSalesStable;
 
   // Fetch statistics
   const fetchStats = useCallback(async (statsFilters = {}) => {
@@ -131,20 +174,21 @@ export const useSalesAdvanced = (initialFilters = {}) => {
       setLoading(true);
 
       try {
+        const currentFilters = filtersRef.current;
         if (format === "csv") {
           await salesAdvancedService.exportAndDownloadCSV({
-            ...filters,
+            ...currentFilters,
             ...exportFilters,
           });
         } else if (format === "xlsx") {
           await salesAdvancedService.exportAndDownloadExcel({
-            ...filters,
+            ...currentFilters,
             ...exportFilters,
           });
         } else {
           // For JSON export
           const result = await salesAdvancedService.exportSalesData(
-            { ...filters, ...exportFilters },
+            { ...currentFilters, ...exportFilters },
             "json"
           );
           const filename = `sales-export-${
@@ -165,7 +209,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         setLoading(false);
       }
     },
-    [filters]
+    [] // No dependencies needed since we use ref
   );
 
   const handleTableChange = useCallback(
@@ -180,22 +224,24 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         newFilters.sortOrder = sorter.order === "ascend" ? "asc" : "desc";
       }
 
-      fetchSales(newFilters);
+      fetchSalesStable(newFilters);
     },
-    [fetchSales]
+    [fetchSalesStable]
   );
 
   const applyFilters = useCallback(
     (newFilters) => {
-      fetchSales({ ...newFilters, page: 1 }); // Reset to first page when applying new filters
+      fetchSalesStable({ ...newFilters, page: 1 }); // Reset to first page when applying new filters
     },
-    [fetchSales]
+    [fetchSalesStable]
   );
 
   const resetFilters = useCallback(() => {
-    setFilters(defaultFilters);
-    fetchSales(defaultFilters);
-  }, [fetchSales, defaultFilters]);
+    const currentDefaultFilters = defaultFiltersRef.current;
+    setFilters(currentDefaultFilters);
+    filtersRef.current = currentDefaultFilters;
+    fetchSalesStable(currentDefaultFilters);
+  }, [fetchSalesStable]);
 
   // Search functionality
   const searchSales = useCallback(
@@ -205,9 +251,9 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         ...(searchFields.length && { searchFields }),
         page: 1,
       };
-      await fetchSales(searchFilters);
+      await fetchSalesStable(searchFilters);
     },
-    [fetchSales]
+    [fetchSalesStable]
   );
 
   // Location-based search
@@ -219,9 +265,9 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         ...(lgas.length && { lgas }),
         page: 1,
       };
-      await fetchSales(locationFilters);
+      await fetchSalesStable(locationFilters);
     },
-    [fetchSales]
+    [fetchSalesStable]
   );
 
   // Amount-based search
@@ -232,9 +278,9 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         amountMax,
         page: 1,
       };
-      await fetchSales(amountFilters);
+      await fetchSalesStable(amountFilters);
     },
-    [fetchSales]
+    [fetchSalesStable]
   );
 
   // Date range search
@@ -245,22 +291,79 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         dateTo,
         page: 1,
       };
-      await fetchSales(dateFilters);
+      await fetchSalesStable(dateFilters);
     },
-    [fetchSales]
+    [fetchSalesStable]
   );
 
-  // Load initial data
+  // Load initial data - use a separate effect that doesn't depend on the main functions
   useEffect(() => {
-    const initialLoad = async () => {
-      await fetchSales(defaultFilters);
-      await fetchStats(defaultFilters);
+    if (!isAuthenticated || hasInitializedRef.current) return;
+
+    hasInitializedRef.current = true;
+
+    // Initial load function that doesn't cause dependency issues
+    const loadInitialData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const currentDefaultFilters = defaultFiltersRef.current;
+        console.log(
+          "Loading initial data with filters:",
+          currentDefaultFilters
+        );
+
+        // Load sales data
+        const salesResponse = await salesAdvancedService.getSalesData(
+          currentDefaultFilters
+        );
+        if (salesResponse.success) {
+          setData(salesResponse.data || []);
+          setPagination(
+            salesResponse.pagination || {
+              page: currentDefaultFilters.page || 1,
+              limit: currentDefaultFilters.limit || 100,
+              total: salesResponse.data?.length || 0,
+              totalPages: Math.ceil(
+                (salesResponse.data?.length || 0) /
+                  (currentDefaultFilters.limit || 100)
+              ),
+            }
+          );
+          setFilters(currentDefaultFilters);
+          filtersRef.current = currentDefaultFilters;
+        }
+
+        // Load stats data
+        try {
+          const statsData = await salesAdvancedService.getSalesStats(
+            currentDefaultFilters
+          );
+          setStats(statsData);
+        } catch (statsErr) {
+          console.error("Error fetching initial stats:", statsErr);
+          // Stats errors are non-critical
+        }
+      } catch (err) {
+        console.error("Error loading initial data:", err);
+        setError(`Failed to load initial data: ${err.message}`);
+        setData([]);
+        setPagination({ page: 1, limit: 100, total: 0, totalPages: 0 });
+      } finally {
+        setLoading(false);
+      }
     };
 
-    if (isAuthenticated) {
-      initialLoad();
+    loadInitialData();
+  }, [isAuthenticated]); // Only depend on authentication status
+
+  // Reset the initialization flag when authentication changes
+  useEffect(() => {
+    if (!isAuthenticated) {
+      hasInitializedRef.current = false;
     }
-  }, [isAuthenticated]); // Only depend on authentication status, not the functions
+  }, [isAuthenticated]);
 
   return {
     data,

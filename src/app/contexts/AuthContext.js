@@ -19,6 +19,9 @@ export const AuthProvider = ({ children }) => {
   const supabase = createClientComponentClient();
 
   const isAuthenticated = !!user;
+  const isSuperAdmin =
+    user?.app_metadata?.role === "super_admin" ||
+    user?.user_metadata?.role === "super_admin";
 
   useEffect(() => {
     const getSession = async () => {
@@ -58,6 +61,7 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     isAuthenticated,
+    isSuperAdmin,
     signIn,
     signOut,
     supabase,

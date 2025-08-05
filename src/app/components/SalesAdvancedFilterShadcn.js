@@ -404,7 +404,7 @@ const SalesAdvancedFilter = ({ onFilter, onExport, loading }) => {
           <Button
             variant="outline"
             onClick={clearFilters}
-            className="text-xs sm:text-sm"
+            className="text-xs sm:text-sm text-gray-800 hover:bg-gray-400 "
             size="sm"
           >
             <X className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
@@ -413,7 +413,7 @@ const SalesAdvancedFilter = ({ onFilter, onExport, loading }) => {
           <Button
             variant="outline"
             onClick={() => onExport && onExport()}
-            className="text-xs sm:text-sm"
+            className="text-xs sm:text-sm text-gray-800 hover:bg-gray-400"
             size="sm"
           >
             <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
