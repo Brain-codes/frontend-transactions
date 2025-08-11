@@ -63,18 +63,18 @@ const SalesStatsCards = ({ stats = {} }) => {
       value: formatNumber(totalSales),
       subValue: `Today: ${formatNumber(todaySales)}`,
       icon: <ShoppingCart className="w-6 h-6" />,
-      color: "from-blue-500 to-blue-600",
-      textColor: "text-blue-600",
-      bgColor: "bg-blue-50",
+      color: "from-brand-800 to-brand-900",
+      textColor: "text-brand-700",
+      bgColor: "bg-brand-50",
     },
     {
       title: "Total Revenue",
       value: formatCurrency(totalAmount),
       subValue: `Today: ${formatCurrency(todayAmount)}`,
       icon: <DollarSign className="w-6 h-6" />,
-      color: "from-green-500 to-green-600",
-      textColor: "text-green-600",
-      bgColor: "bg-green-50",
+      color: "from-brand-700 to-brand-800",
+      textColor: "text-brand-700",
+      bgColor: "bg-brand-50",
     },
     {
       title: "Total Customers",
@@ -83,9 +83,9 @@ const SalesStatsCards = ({ stats = {} }) => {
         totalCustomers / Math.max(totalSales, 1)
       ).toFixed(1)}`,
       icon: <Users className="w-6 h-6" />,
-      color: "from-purple-500 to-purple-600",
-      textColor: "text-purple-600",
-      bgColor: "bg-purple-50",
+      color: "from-gray-600 to-gray-700",
+      textColor: "text-gray-600",
+      bgColor: "bg-gray-50",
     },
     {
       title: "Average Sale",
@@ -94,9 +94,9 @@ const SalesStatsCards = ({ stats = {} }) => {
         1
       )}%`,
       icon: <BarChart3 className="w-6 h-6" />,
-      color: "from-orange-500 to-orange-600",
-      textColor: "text-orange-600",
-      bgColor: "bg-orange-50",
+      color: "from-slate-600 to-slate-700",
+      textColor: "text-slate-600",
+      bgColor: "bg-slate-50",
     },
   ];
 
@@ -149,7 +149,7 @@ const SalesStatsCards = ({ stats = {} }) => {
         <Card className="shadow-lg">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Target className="w-5 h-5 text-indigo-600" />
+              <Target className="w-5 h-5 text-brand-700" />
               Monthly Target
             </CardTitle>
           </CardHeader>
@@ -163,7 +163,7 @@ const SalesStatsCards = ({ stats = {} }) => {
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3">
                 <div
-                  className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-3 rounded-full transition-all duration-500"
+                  className="bg-gradient-to-r from-brand-700 to-brand-800 h-3 rounded-full transition-all duration-500"
                   style={{ width: `${progressPercentage}%` }}
                 ></div>
               </div>
@@ -201,7 +201,7 @@ const SalesStatsCards = ({ stats = {} }) => {
         <Card className="shadow-lg">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <BarChart3 className="w-5 h-5 text-emerald-600" />
+              <BarChart3 className="w-5 h-5 text-brand-700" />
               Top States
             </CardTitle>
           </CardHeader>
@@ -249,7 +249,7 @@ const SalesStatsCards = ({ stats = {} }) => {
         <Card className="shadow-lg">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Activity className="w-5 h-5 text-pink-600" />
+              <Activity className="w-5 h-5 text-brand-700" />
               Performance
             </CardTitle>
           </CardHeader>
@@ -265,7 +265,7 @@ const SalesStatsCards = ({ stats = {} }) => {
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
-                    className="bg-gradient-to-r from-pink-500 to-pink-600 h-2 rounded-full"
+                    className="bg-gradient-to-r from-brand-600 to-brand-700 h-2 rounded-full"
                     style={{ width: `${Math.min(conversionRate, 100)}%` }}
                   ></div>
                 </div>
@@ -283,7 +283,7 @@ const SalesStatsCards = ({ stats = {} }) => {
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
-                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-2 rounded-full"
+                    className="bg-gradient-to-r from-gray-600 to-gray-700 h-2 rounded-full"
                     style={{ width: `${Math.min(achievement, 100)}%` }}
                   ></div>
                 </div>

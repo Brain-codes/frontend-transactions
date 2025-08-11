@@ -28,36 +28,30 @@ const DashboardPage = () => {
 
   return (
     <ProtectedRoute requireSuperAdmin={true}>
-      <DashboardLayout>
+      <DashboardLayout
+        title={`Welcome back, ${
+          user?.full_name || user?.email?.split("@")[0] || "User"
+        }!`}
+        description="Welcome to your Atmosfair sales management overview"
+        rightButton={
+          <Button
+            onClick={handleNavigateToSales}
+            className="bg-brand-800 hover:bg-brand-900 text-white"
+          >
+            View Sales Data
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        }
+      >
         <div className="p-6 space-y-6">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Welcome back,{" "}
-                {user?.full_name || user?.email?.split("@")[0] || "User"}!
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Welcome to your Atmosfair sales management overview
-              </p>
-            </div>
-            <Button
-              onClick={handleNavigateToSales}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow-sm transition-colors"
-            >
-              View Sales Data
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-
           {/* Quick Action Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-blue-500">
+            <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-brand-700">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">
                   Sales Management
                 </CardTitle>
-                <ShoppingCart className="h-4 w-4 text-blue-600" />
+                <ShoppingCart className="h-4 w-4 text-brand-700" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900">

@@ -40,7 +40,7 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 flex items-center justify-center p-4">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]"></div>
 
@@ -48,7 +48,7 @@ const LoginPage = () => {
         {/* Logo/Brand Section */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 rounded-2xl">
+            <div className="bg-gradient-to-r from-brand-800 to-brand-900 p-3 rounded-2xl">
               <Building2 className="h-8 w-8 text-white" />
             </div>
           </div>
@@ -89,7 +89,7 @@ const LoginPage = () => {
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                    className="pl-10 h-11 border-gray-200 focus:border-brand-600 focus:ring-brand-500"
                     required
                   />
                 </div>
@@ -111,7 +111,7 @@ const LoginPage = () => {
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                    className="pl-10 pr-10 h-11 border-gray-200 focus:border-brand-600 focus:ring-brand-500"
                     required
                   />
                   <button
@@ -139,7 +139,7 @@ const LoginPage = () => {
               <Button
                 type="submit"
                 disabled={loading || !email || !password}
-                className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all duration-200 transform hover:scale-[1.02] disabled:transform-none"
+                className="w-full h-11 bg-gradient-to-r from-brand-800 to-brand-900 hover:from-brand-900 hover:to-brand-950 text-white font-medium transition-all duration-200 transform hover:scale-[1.02] disabled:transform-none"
               >
                 {loading ? (
                   <div className="flex items-center space-x-2">

@@ -47,9 +47,18 @@ export const generateReceiptPDF = (saleData) => {
 
     // Address
     const address =
+      saleData.addresses?.full_address ||
       saleData.address?.full_address ||
-      `${saleData.address?.city || ""} ${
-        saleData.address?.state || saleData.state_backup || ""
+      `${
+        saleData.lga_backup ||
+        saleData.addresses?.city ||
+        saleData.address?.city ||
+        ""
+      } ${
+        saleData.state_backup ||
+        saleData.addresses?.state ||
+        saleData.address?.state ||
+        ""
       }`.trim() ||
       "N/A";
     doc.text(`Address: ${address}`, 20, 115);
@@ -154,9 +163,18 @@ export const generateInvoicePDF = (saleData) => {
       const customerPhone = saleData.phone || saleData.contact_phone || "N/A";
       const customerEmail = saleData.email || saleData.contact_email || "N/A";
       const address =
+        saleData.addresses?.full_address ||
         saleData.address?.full_address ||
-        `${saleData.address?.city || ""} ${
-          saleData.address?.state || saleData.state_backup || ""
+        `${
+          saleData.lga_backup ||
+          saleData.addresses?.city ||
+          saleData.address?.city ||
+          ""
+        } ${
+          saleData.state_backup ||
+          saleData.addresses?.state ||
+          saleData.address?.state ||
+          ""
         }`.trim() ||
         "N/A";
 

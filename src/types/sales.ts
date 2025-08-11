@@ -133,6 +133,7 @@ export interface UserProfile {
 export interface Organization {
   id: string;
   name?: string;
+  partner_email?: string;
   type?: string;
   address?: string;
   contact_info?: any;
@@ -171,13 +172,19 @@ export interface Sale {
   agreement_image_id?: string;
   created_at?: string;
 
-  // Related data (when included)
-  address?: Address;
+  // Related data (when included) - Updated to match new response structure
+  addresses?: Address; // Changed from address to addresses
   stove_image?: ImageData;
   agreement_image?: ImageData;
   creator?: UserProfile;
-  organization?: Organization;
+  organizations?: Organization; // Changed from organization to organizations
+  profiles?: UserProfile; // Added profiles
   sales_history?: SalesHistory[];
+
+  // Legacy fields for backward compatibility
+  address?: Address;
+  organization?: Organization;
+  organization_name?: string;
 }
 
 export interface PaginationInfo {

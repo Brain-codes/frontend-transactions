@@ -17,6 +17,21 @@ const config = {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        // Brand colors for professional appearance
+        brand: {
+          DEFAULT: "#07376a",
+          50: "#f0f4ff",
+          100: "#e0eaff",
+          200: "#c7d7ff",
+          300: "#a5b8ff",
+          400: "#8091ff",
+          500: "#6366f1",
+          600: "#4f46e5",
+          700: "#4338ca",
+          800: "#3730a3",
+          900: "#07376a",
+          950: "#030f2e",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",

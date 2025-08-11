@@ -11,7 +11,7 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
+    --primary: 223 100% 17%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96%;
     --secondary-foreground: 222.2 84% 4.9%;
@@ -23,7 +23,7 @@
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --ring: 223 100% 17%;
     --radius: 0.5rem;
   }
 
@@ -34,8 +34,8 @@
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
+    --primary: 223 100% 17%;
+    --primary-foreground: 210 40% 98%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
@@ -107,15 +107,56 @@ body {
 .filter-input .ant-input-number:hover,
 .filter-input .ant-select:hover .ant-select-selector,
 .filter-input .ant-picker:hover {
-  border-color: #60a5fa;
+  border-color: #8094cf;
 }
 
 .filter-input .ant-input:focus,
 .filter-input .ant-input-number:focus,
 .filter-input .ant-select-focused .ant-select-selector,
 .filter-input .ant-picker-focused {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #051b52;
+  box-shadow: 0 0 0 3px rgba(5, 27, 82, 0.1);
+}
+
+/* Button Styles with Brand Color */
+.ant-btn {
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.ant-btn-primary {
+  background: linear-gradient(135deg, #051b52 0%, #032140 100%) !important;
+  border: none !important;
+  box-shadow: 0 2px 4px rgba(5, 27, 82, 0.2) !important;
+}
+
+.ant-btn-primary:hover {
+  background: linear-gradient(135deg, #0a2766 0%, #051b52 100%) !important;
+  box-shadow: 0 4px 8px rgba(5, 27, 82, 0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Input and Select Styles with Brand Color */
+.ant-input {
+  border-radius: 8px !important;
+  border: 1px solid #e8e8e8 !important;
+  transition: all 0.3s ease !important;
+}
+
+.ant-input:focus {
+  border-color: #051b52 !important;
+  box-shadow: 0 0 0 2px rgba(5, 27, 82, 0.2) !important;
+}
+
+.ant-select .ant-select-selector {
+  border-radius: 8px !important;
+  border: 1px solid #e8e8e8 !important;
+}
+
+.ant-select-focused .ant-select-selector {
+  border-color: #051b52 !important;
+  box-shadow: 0 0 0 2px rgba(5, 27, 82, 0.2) !important;
 }
 
 /* Custom Ant Design overrides for modern look */

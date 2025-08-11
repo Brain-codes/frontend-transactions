@@ -92,17 +92,23 @@ export default function HeatmapPage() {
         const processedData = response.data
           .filter((sale) => {
             // Only include sales with valid coordinates
-            const hasCoords = sale.address?.latitude && sale.address?.longitude;
+            const hasCoords =
+              (sale.addresses?.latitude && sale.addresses?.longitude) ||
+              (sale.address?.latitude && sale.address?.longitude);
             const validCoords =
               hasCoords &&
-              !isNaN(parseFloat(sale.address.latitude)) &&
-              !isNaN(parseFloat(sale.address.longitude));
+              !isNaN(
+                parseFloat(sale.addresses?.latitude || sale.address?.latitude)
+              ) &&
+              !isNaN(
+                parseFloat(sale.addresses?.longitude || sale.address?.longitude)
+              );
 
             if (!validCoords && hasCoords) {
               console.warn(
                 "Invalid coordinates for sale:",
                 sale.id,
-                sale.address
+                sale.addresses || sale.address
               );
             }
 
@@ -110,10 +116,20 @@ export default function HeatmapPage() {
           })
           .map((sale) => ({
             id: sale.id || sale.transaction_id,
-            lat: parseFloat(sale.address.latitude),
-            lng: parseFloat(sale.address.longitude),
-            state: sale.address?.state || sale.state_backup || "Unknown",
-            city: sale.address?.city || sale.city_backup || "Unknown",
+            lat: parseFloat(sale.addresses?.latitude || sale.address?.latitude),
+            lng: parseFloat(
+              sale.addresses?.longitude || sale.address?.longitude
+            ),
+            state:
+              sale.state_backup ||
+              sale.addresses?.state ||
+              sale.address?.state ||
+              "Unknown",
+            city:
+              sale.lga_backup ||
+              sale.addresses?.city ||
+              sale.address?.city ||
+              "Unknown",
             sales: 1, // Each sale counts as 1
             amount: parseFloat(sale.amount || sale.price || 0),
             date: sale.sales_date || sale.created_at,
@@ -123,15 +139,29 @@ export default function HeatmapPage() {
             region: sale.region || "Unknown",
             productCategory:
               sale.product_type || sale.stove_type || "Clean Cookstoves",
-            salesRep: sale.created_by || sale.creator?.name || "Unknown",
+            salesRep:
+              sale.created_by ||
+              sale.creator?.name ||
+              sale.profiles?.full_name ||
+              "Unknown",
             serialNumber: sale.stove_serial_no,
             phone: sale.phone || sale.contact_phone,
             email: sale.email || sale.contact_email,
-            partner: sale.partner_name || sale.partner,
+            partner:
+              sale.partner_name || sale.organizations?.name || sale.partner,
             fullAddress:
+              sale.addresses?.full_address ||
               sale.address?.full_address ||
-              `${sale.address?.city || sale.city_backup || ""} ${
-                sale.address?.state || sale.state_backup || ""
+              `${
+                sale.lga_backup ||
+                sale.addresses?.city ||
+                sale.address?.city ||
+                ""
+              } ${
+                sale.state_backup ||
+                sale.addresses?.state ||
+                sale.address?.state ||
+                ""
               }`.trim(),
           }));
 
@@ -320,73 +350,36 @@ export default function HeatmapPage() {
 
   return (
     <ProtectedRoute requireSuperAdmin={true}>
-      <DashboardLayout currentRoute="map">
-        <div className="h-full flex flex-col bg-gray-50">
-          {/* Enhanced Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg">
-            <div className="p-4 lg:p-6">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex items-center space-x-3 lg:space-x-4">
-                  <div className="bg-white/10 p-2 lg:p-3 rounded-xl">
-                    <MapIcon className="h-6 w-6 lg:h-8 lg:w-8" />
-                  </div>
-                  <div>
-                    <h1 className="text-xl lg:text-3xl font-bold">
-                      Sales Heatmap Analytics
-                    </h1>
-                    <p className="text-blue-100 mt-1 text-sm lg:text-base">
-                      Geographic visualization of sales distribution across
-                      Nigeria
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row flex-wrap gap-2 lg:gap-3 mt-4 lg:mt-0">
-                  <Button
-                    onClick={handleRefresh}
-                    variant="outline"
-                    disabled={loading}
-                    className="bg-white/10 border-white/20 text-white hover:bg-white/20 flex-1 sm:flex-none text-sm"
-                  >
-                    <RefreshCw
-                      className={`h-4 w-4 mr-2 ${
-                        loading ? "animate-spin" : ""
-                      }`}
-                    />
-                    <span className="hidden sm:inline">Refresh Data</span>
-                    <span className="sm:hidden">Refresh</span>
-                  </Button>
-                  <Button
-                    onClick={exportData}
-                    variant="outline"
-                    className="bg-white/10 border-white/20 text-white hover:bg-white/20 flex-1 sm:flex-none text-sm"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Export CSV</span>
-                    <span className="sm:hidden">Export</span>
-                  </Button>
-                  <Button
-                    onClick={() => setIsFullscreen(!isFullscreen)}
-                    variant="outline"
-                    className="bg-white/10 border-white/20 text-white hover:bg-white/20 flex-1 sm:flex-none text-sm"
-                  >
-                    {isFullscreen ? (
-                      <Minimize2 className="h-4 w-4 mr-2" />
-                    ) : (
-                      <Maximize2 className="h-4 w-4 mr-2" />
-                    )}
-                    <span className="hidden sm:inline">
-                      {isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}
-                    </span>
-                    <span className="sm:hidden">
-                      {isFullscreen ? "Exit" : "View Full Heatmap"}
-                    </span>
-                  </Button>
-                </div>
-              </div>
-            </div>
+      <DashboardLayout
+        currentRoute="map"
+        title="Sales Heatmap Analytics"
+        description="Geographic visualization of sales distribution across Nigeria"
+        rightButton={
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={exportData}
+              disabled={loading}
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+              disabled={loading}
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            >
+              <RefreshCw
+                className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </Button>
           </div>
-
+        }
+      >
+        <div className="h-full flex flex-col bg-gray-50">
           {/* Statistics Cards */}
           <div className="p-3 lg:p-6 bg-white border-b border-gray-200">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4">
@@ -401,7 +394,7 @@ export default function HeatmapPage() {
                         {stats.totalLocations.toLocaleString()}
                       </p>
                     </div>
-                    <MapPin className="h-6 w-6 lg:h-8 lg:w-8 text-blue-600 flex-shrink-0" />
+                    <MapPin className="h-6 w-6 lg:h-8 lg:w-8 text-brand-700 flex-shrink-0" />
                   </div>
                 </CardContent>
               </Card>
@@ -516,14 +509,14 @@ export default function HeatmapPage() {
 
           {/* Loading State */}
           {loading && (
-            <div className="mx-3 lg:mx-6 mt-4 p-4 lg:p-6 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="mx-3 lg:mx-6 mt-4 p-4 lg:p-6 bg-brand-50 border border-brand-200 rounded-lg">
               <div className="flex items-center justify-center">
-                <Loader2 className="h-6 w-6 text-blue-600 mr-3 animate-spin flex-shrink-0" />
+                <Loader2 className="h-6 w-6 text-brand-700 mr-3 animate-spin flex-shrink-0" />
                 <div className="min-w-0">
-                  <h3 className="text-sm font-medium text-blue-800">
+                  <h3 className="text-sm font-medium text-brand-900">
                     Loading Sales Data
                   </h3>
-                  <p className="text-sm text-blue-700 mt-1">
+                  <p className="text-sm text-brand-700 mt-1">
                     Fetching real-time sales data from the server...
                   </p>
                 </div>
@@ -582,7 +575,7 @@ export default function HeatmapPage() {
                 <div className="p-3 lg:p-4 border-b border-gray-200 bg-gray-50">
                   <div className="flex items-center justify-between mb-3 lg:mb-4">
                     <h3 className="text-base lg:text-lg font-semibold text-gray-900 flex items-center">
-                      <Filter className="h-4 w-4 lg:h-5 lg:w-5 mr-2 text-blue-600" />
+                      <Filter className="h-4 w-4 lg:h-5 lg:w-5 mr-2 text-brand-700" />
                       Filters & Controls
                     </h3>
                     <Button
@@ -839,7 +832,7 @@ export default function HeatmapPage() {
               {loading && (
                 <div className="absolute inset-0 bg-white/90 flex items-center justify-center z-20">
                   <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-brand-700 mx-auto"></div>
                     <p className="mt-4 text-gray-600 font-medium">
                       Loading heatmap data...
                     </p>
@@ -888,7 +881,7 @@ export default function HeatmapPage() {
                 <Card className="bg-white/95 backdrop-blur-sm shadow-lg border-0">
                   <CardContent className="p-2 lg:p-3">
                     <div className="flex items-center space-x-1 lg:space-x-2 text-xs lg:text-sm">
-                      <Info className="h-3 w-3 lg:h-4 lg:w-4 text-blue-600 flex-shrink-0" />
+                      <Info className="h-3 w-3 lg:h-4 lg:w-4 text-brand-700 flex-shrink-0" />
                       <span className="text-gray-700 truncate">
                         {filteredData.length} locations
                       </span>

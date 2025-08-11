@@ -7,12 +7,13 @@ import salesAdvancedService from "../services/salesAdvancedAPIService";
 export const useSalesAdvanced = (initialFilters = {}) => {
   const { user, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [tableLoading, setTableLoading] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState([]);
   const [stats, setStats] = useState({});
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 100,
+    limit: 10, // Changed from 100 to 10 for easier testing
     total: 0,
     totalPages: 0,
   });
@@ -20,7 +21,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
   const defaultFilters = useMemo(
     () => ({
       page: 1,
-      limit: 100,
+      limit: 10, // Changed from 100 to 10 for easier testing
       sortBy: "created_at",
       sortOrder: "desc",
       includeAddress: true,
@@ -53,11 +54,12 @@ export const useSalesAdvanced = (initialFilters = {}) => {
 
   // Create a stable fetch function that doesn't depend on state
   const fetchSalesStable = useCallback(
-    async (newFilters = {}) => {
+    async (newFilters = {}, isInitial = false) => {
       // Check authentication first
       if (!isAuthenticated) {
         setError("Please login to access sales data.");
         setLoading(false);
+        setTableLoading(false);
         return;
       }
 
@@ -68,7 +70,14 @@ export const useSalesAdvanced = (initialFilters = {}) => {
       }
 
       isLoadingRef.current = true;
-      setLoading(true);
+
+      // Use different loading states based on whether this is initial load or filter/pagination
+      if (isInitial) {
+        setLoading(true);
+      } else {
+        setTableLoading(true);
+      }
+
       setError(null);
 
       try {
@@ -147,6 +156,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         setPagination({ page: 1, limit: 100, total: 0, totalPages: 0 });
       } finally {
         setLoading(false);
+        setTableLoading(false);
         isLoadingRef.current = false;
       }
     },
@@ -224,14 +234,14 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         newFilters.sortOrder = sorter.order === "ascend" ? "asc" : "desc";
       }
 
-      fetchSalesStable(newFilters);
+      fetchSalesStable(newFilters, false); // false = not initial load
     },
     [fetchSalesStable]
   );
 
   const applyFilters = useCallback(
     (newFilters) => {
-      fetchSalesStable({ ...newFilters, page: 1 }); // Reset to first page when applying new filters
+      fetchSalesStable({ ...newFilters, page: 1 }, false); // false = not initial load, use table loading
     },
     [fetchSalesStable]
   );
@@ -240,7 +250,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
     const currentDefaultFilters = defaultFiltersRef.current;
     setFilters(currentDefaultFilters);
     filtersRef.current = currentDefaultFilters;
-    fetchSalesStable(currentDefaultFilters);
+    fetchSalesStable(currentDefaultFilters, false); // false = not initial load
   }, [fetchSalesStable]);
 
   // Search functionality
@@ -251,7 +261,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         ...(searchFields.length && { searchFields }),
         page: 1,
       };
-      await fetchSalesStable(searchFilters);
+      await fetchSalesStable(searchFilters, false); // false = not initial load
     },
     [fetchSalesStable]
   );
@@ -265,7 +275,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         ...(lgas.length && { lgas }),
         page: 1,
       };
-      await fetchSalesStable(locationFilters);
+      await fetchSalesStable(locationFilters, false); // false = not initial load
     },
     [fetchSalesStable]
   );
@@ -278,7 +288,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         amountMax,
         page: 1,
       };
-      await fetchSalesStable(amountFilters);
+      await fetchSalesStable(amountFilters, false); // false = not initial load
     },
     [fetchSalesStable]
   );
@@ -291,7 +301,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         dateTo,
         page: 1,
       };
-      await fetchSalesStable(dateFilters);
+      await fetchSalesStable(dateFilters, false); // false = not initial load
     },
     [fetchSalesStable]
   );
@@ -333,6 +343,10 @@ export const useSalesAdvanced = (initialFilters = {}) => {
           );
           setFilters(currentDefaultFilters);
           filtersRef.current = currentDefaultFilters;
+        } else {
+          throw new Error(
+            salesResponse.message || "Failed to fetch initial sales data"
+          );
         }
 
         // Load stats data
@@ -368,6 +382,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
   return {
     data,
     loading,
+    tableLoading,
     error,
     pagination,
     filters,

@@ -450,7 +450,7 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                           </span>
                         </div>
                         <span className="text-sm font-medium">
-                          {sale.address?.state || sale.state_backup || "N/A"}
+                          {sale.state_backup || sale.addresses?.state || sale.address?.state || "N/A"}
                         </span>
                       </div>
                     </div>
@@ -672,7 +672,7 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                           Created By
                         </label>
                         <p className="text-sm text-gray-900 mt-1">
-                          {sale.created_by || sale.creator?.name || "N/A"}
+                          {sale.created_by || sale.creator?.name || sale.profiles?.full_name || "N/A"}
                         </p>
                       </div>
 
@@ -825,7 +825,7 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                           Partner
                         </label>
                         <p className="text-sm text-gray-900 mt-1">
-                          {sale.partner_name || sale.partner || "N/A"}
+                          {sale.partner_name || sale.organizations?.name || sale.partner || "N/A"}
                         </p>
                       </div>
 
@@ -896,10 +896,15 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                           Full Address
                         </label>
                         <p className="text-sm text-gray-900 mt-1 font-medium">
-                          {sale.address?.full_address ||
+                          {sale.addresses?.full_address ||
+                            sale.addresses?.street ||
+                            `${sale.lga_backup || sale.addresses?.city || ""} ${
+                              sale.state_backup || sale.addresses?.state || ""
+                            }`.trim() ||
+                            sale.address?.full_address ||
                             sale.address?.street ||
-                            `${sale.address?.city || ""} ${
-                              sale.address?.state || sale.state_backup || ""
+                            `${sale.lga_backup || sale.address?.city || ""} ${
+                              sale.state_backup || sale.address?.state || ""
                             }`.trim() ||
                             "N/A"}
                         </p>
@@ -910,7 +915,7 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                           City
                         </label>
                         <p className="text-sm text-gray-900 mt-1">
-                          {sale.address?.city || sale.city_backup || "N/A"}
+                          {sale.lga_backup || sale.addresses?.city || sale.address?.city || "N/A"}
                         </p>
                       </div>
 
@@ -919,7 +924,7 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                           State
                         </label>
                         <p className="text-sm text-gray-900 mt-1">
-                          {sale.address?.state || sale.state_backup || "N/A"}
+                          {sale.state_backup || sale.addresses?.state || sale.address?.state || "N/A"}
                         </p>
                       </div>
 
@@ -928,18 +933,18 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                           Country
                         </label>
                         <p className="text-sm text-gray-900 mt-1">
-                          {sale.address?.country || "Nigeria"}
+                          {sale.addresses?.country || sale.address?.country || "Nigeria"}
                         </p>
                       </div>
 
-                      {sale.address?.latitude && sale.address?.longitude && (
+                      {(sale.addresses?.latitude && sale.addresses?.longitude) || (sale.address?.latitude && sale.address?.longitude) && (
                         <div>
                           <label className="text-sm font-medium text-gray-500">
                             Coordinates
                           </label>
                           <p className="text-sm text-gray-900 mt-1 font-mono">
-                            Lat: {sale.address.latitude}, Lon:{" "}
-                            {sale.address.longitude}
+                            Lat: {sale.addresses?.latitude || sale.address?.latitude}, Lon:{" "}
+                            {sale.addresses?.longitude || sale.address?.longitude}
                           </p>
                         </div>
                       )}
@@ -948,7 +953,7 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                 </Card>
 
                 {/* Map Preview */}
-                {sale.address?.latitude && sale.address?.longitude && (
+                {((sale.addresses?.latitude && sale.addresses?.longitude) || (sale.address?.latitude && sale.address?.longitude)) && (
                   <Card>
                     <CardContent className="p-4">
                       <div className="w-full">
@@ -963,14 +968,14 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                         <div className="relative h-48 w-full bg-gray-100 border border-gray-300 overflow-hidden">
                           {/* Static Map Image */}
                           <Image
-                            src={`https://maps.googleapis.com/maps/api/staticmap?center=${sale.address.latitude},${sale.address.longitude}&zoom=16&size=600x200&markers=color:red%7C${sale.address.latitude},${sale.address.longitude}&maptype=roadmap&style=element:geometry%7Ccolor:0xf5f5f5&style=element:labels.icon%7Cvisibility:off&style=element:labels.text.fill%7Ccolor:0x616161&style=element:labels.text.stroke%7Ccolor:0xf5f5f5&style=feature:administrative.land_parcel%7Celement:labels.text.fill%7Ccolor:0xbdbdbd&style=feature:poi%7Celement:geometry%7Ccolor:0xeeeeee&style=feature:poi%7Celement:labels.text.fill%7Ccolor:0x757575&style=feature:poi.park%7Celement:geometry%7Ccolor:0xe5e5e5&style=feature:poi.park%7Celement:labels.text.fill%7Ccolor:0x9e9e9e&style=feature:road%7Celement:geometry%7Ccolor:0xffffff&style=feature:road.arterial%7Celement:labels.text.fill%7Ccolor:0x757575&style=feature:road.highway%7Celement:geometry%7Ccolor:0xdadada&style=feature:road.highway%7Celement:labels.text.fill%7Ccolor:0x616161&style=feature:road.local%7Celement:labels.text.fill%7Ccolor:0x9e9e9e&style=feature:transit.line%7Celement:geometry%7Ccolor:0xe5e5e5&style=feature:transit.station%7Celement:geometry%7Ccolor:0xeeeeee&style=feature:water%7Celement:geometry%7Ccolor:0xc9c9c9&style=feature:water%7Celement:labels.text.fill%7Ccolor:0x9e9e9e`}
-                            alt={`Map showing location at ${sale.address.latitude}, ${sale.address.longitude}`}
+                            src={`https://maps.googleapis.com/maps/api/staticmap?center=${sale.addresses?.latitude || sale.address?.latitude},${sale.addresses?.longitude || sale.address?.longitude}&zoom=16&size=600x200&markers=color:red%7C${sale.addresses?.latitude || sale.address?.latitude},${sale.addresses?.longitude || sale.address?.longitude}&maptype=roadmap&style=element:geometry%7Ccolor:0xf5f5f5&style=element:labels.icon%7Cvisibility:off&style=element:labels.text.fill%7Ccolor:0x616161&style=element:labels.text.stroke%7Ccolor:0xf5f5f5&style=feature:administrative.land_parcel%7Celement:labels.text.fill%7Ccolor:0xbdbdbd&style=feature:poi%7Celement:geometry%7Ccolor:0xeeeeee&style=feature:poi%7Celement:labels.text.fill%7Ccolor:0x757575&style=feature:poi.park%7Celement:geometry%7Ccolor:0xe5e5e5&style=feature:poi.park%7Celement:labels.text.fill%7Ccolor:0x9e9e9e&style=feature:road%7Celement:geometry%7Ccolor:0xffffff&style=feature:road.arterial%7Celement:labels.text.fill%7Ccolor:0x757575&style=feature:road.highway%7Celement:geometry%7Ccolor:0xdadada&style=feature:road.highway%7Celement:labels.text.fill%7Ccolor:0x616161&style=feature:road.local%7Celement:labels.text.fill%7Ccolor:0x9e9e9e&style=feature:transit.line%7Celement:geometry%7Ccolor:0xe5e5e5&style=feature:transit.station%7Celement:geometry%7Ccolor:0xeeeeee&style=feature:water%7Celement:geometry%7Ccolor:0xc9c9c9&style=feature:water%7Celement:labels.text.fill%7Ccolor:0x9e9e9e`}
+                            alt={`Map showing location at ${sale.addresses?.latitude || sale.address?.latitude}, ${sale.addresses?.longitude || sale.address?.longitude}`}
                             fill
                             className="object-cover"
                             sizes="(max-width: 600px) 100vw, 600px"
                             onError={(e) => {
                               // Fallback to simple map without styling if Google Maps API fails
-                              e.target.src = `https://maps.googleapis.com/maps/api/staticmap?center=${sale.address.latitude},${sale.address.longitude}&zoom=16&size=600x200&markers=color:red%7C${sale.address.latitude},${sale.address.longitude}&maptype=roadmap`;
+                              e.target.src = `https://maps.googleapis.com/maps/api/staticmap?center=${sale.addresses?.latitude || sale.address?.latitude},${sale.addresses?.longitude || sale.address?.longitude}&zoom=16&size=600x200&markers=color:red%7C${sale.addresses?.latitude || sale.address?.latitude},${sale.addresses?.longitude || sale.address?.longitude}&maptype=roadmap`;
                             }}
                           />
 
@@ -981,10 +986,11 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                                 Stove Location
                               </p>
                               <p className="text-xs opacity-90">
-                                {sale.address?.full_address ||
-                                  `${sale.address?.city || ""} ${
-                                    sale.address?.state ||
+                                {sale.addresses?.full_address || sale.address?.full_address ||
+                                  `${sale.lga_backup || sale.addresses?.city || sale.address?.city || ""} ${
                                     sale.state_backup ||
+                                    sale.addresses?.state ||
+                                    sale.address?.state ||
                                     ""
                                   }`.trim() ||
                                   "Location address"}
@@ -993,7 +999,7 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                                 size="sm"
                                 className="mt-2 bg-white/20 hover:bg-white/30 text-white border-white/30"
                                 onClick={() => {
-                                  const url = `https://www.google.com/maps/search/?api=1&query=${sale.address.latitude},${sale.address.longitude}`;
+                                  const url = `https://www.google.com/maps/search/?api=1&query=${sale.addresses?.latitude || sale.address?.latitude},${sale.addresses?.longitude || sale.address?.longitude}`;
                                   window.open(url, "_blank");
                                 }}
                               >
