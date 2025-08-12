@@ -1,5 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "./contexts/AuthContext";
+import { SidebarProvider } from "./contexts/SidebarContext";
 
 export const metadata = {
   title: "Atmosfair Sales Management System",
@@ -25,7 +26,9 @@ export default function RootLayout({ children }) {
         <meta property="og:image" content="https://yourwebsite.com/image.jpg" />
       </head>
       <body className="antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <SidebarProvider>{children}</SidebarProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -4,7 +4,15 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, LogOut, X, Settings, Home, Map } from "lucide-react";
+import {
+  ShoppingCart,
+  LogOut,
+  X,
+  Settings,
+  Home,
+  Map,
+  Building2,
+} from "lucide-react";
 
 const Sidebar = ({ isOpen, onClose, currentRoute, user, onLogout }) => {
   const router = useRouter();
@@ -25,6 +33,13 @@ const Sidebar = ({ isOpen, onClose, currentRoute, user, onLogout }) => {
       badge: null,
     },
     {
+      name: "Partners",
+      icon: Building2,
+      route: "partners",
+      href: "/partners",
+      badge: null,
+    },
+    {
       name: "Heat Map",
       icon: Map,
       route: "map",
@@ -35,7 +50,15 @@ const Sidebar = ({ isOpen, onClose, currentRoute, user, onLogout }) => {
 
   const navigateToRoute = (href) => {
     router.push(href);
+    // Use the smart close function that only closes on mobile
     onClose();
+  };
+
+  // Force close for mobile overlay clicks (always close regardless of screen size)
+  const handleOverlayClick = () => {
+    if (window.innerWidth < 1024) {
+      onClose();
+    }
   };
 
   const getUserInitials = (email) => {
@@ -48,16 +71,19 @@ const Sidebar = ({ isOpen, onClose, currentRoute, user, onLogout }) => {
       {/* Mobile sidebar overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
-          onClick={onClose}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300 ease-in-out"
+          onClick={handleOverlayClick}
         />
       )}
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 h-screen z-50 w-72 bg-white border-r border-gray-200 shadow-xl transform transition-all duration-300 ease-in-out flex flex-col ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed top-0 left-0 h-screen z-50 w-72 bg-white border-r border-gray-200 flex flex-col
+          transition-all duration-300 ease-in-out
+          ${isOpen 
+            ? "translate-x-0 shadow-xl" 
+            : "-translate-x-full shadow-none"
+          }`}
       >
         {/* Sidebar Header */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-100 bg-gradient-to-r from-brand to-brand">
@@ -80,7 +106,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute, user, onLogout }) => {
             variant="ghost"
             size="icon"
             className="lg:hidden text-white hover:bg-white/20"
-            onClick={onClose}
+            onClick={handleOverlayClick}
           >
             <X className="h-5 w-5" />
           </Button>

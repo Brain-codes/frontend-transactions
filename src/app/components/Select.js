@@ -18,7 +18,7 @@ export const Select = ({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between"
       >
-        <span className={value ? "text-gray-900" : "text-gray-500"}>
+        <span className={value ? "text-gray-600" : "text-gray-400"}>
           {value || placeholder}
         </span>
         <ChevronDownIcon
@@ -42,7 +42,7 @@ export const SelectItem = ({ value, children, onSelect }) => {
     <button
       type="button"
       onClick={() => onSelect(value)}
-      className="w-full px-3 py-2 text-left hover:bg-gray-100 text-gray-900 first:rounded-t-lg last:rounded-b-lg"
+      className="w-full px-3 py-2 text-left hover:bg-gray-100 text-gray-600 first:rounded-t-lg last:rounded-b-lg"
     >
       {children}
     </button>
@@ -58,5 +58,5 @@ export const SelectTrigger = ({ children, className = "" }) => {
 };
 
 export const SelectValue = ({ placeholder }) => {
-  return <span className="text-gray-500">{placeholder}</span>;
+  return <span className="text-gray-400">{placeholder}</span>;
 };

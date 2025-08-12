@@ -2,7 +2,7 @@
 
 import { useAuth } from "../contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { useSidebar } from "../hooks/useSidebar";
+import { useSidebar } from "../contexts/SidebarContext";
 import Sidebar from "./Sidebar";
 import TopNavigation from "./TopNavigation";
 
@@ -34,9 +34,11 @@ const DashboardLayout = ({
 
       {/* Main content */}
       <div
-        className={`flex flex-col min-h-screen transition-all duration-300 ease-in-out ${
-          sidebarOpen ? "lg:ml-72" : "lg:ml-0"
-        }`}
+        className={`flex flex-col min-h-screen transition-all duration-300 ease-in-out
+          ${sidebarOpen 
+            ? "ml-0 lg:ml-72" 
+            : "ml-0 lg:ml-0"
+          }`}
       >
         <TopNavigation
           onToggleSidebar={toggleSidebar}
