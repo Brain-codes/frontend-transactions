@@ -421,29 +421,32 @@ const ImportCSVModal = ({
                   <ul className="space-y-0.5 text-blue-600 mb-2">
                     <li>• Include headers in the first row</li>
                     <li>
-                      • Required columns: customer_name, phone, serial_number,
-                      sales_date
+                      • Required columns (in order): Sales Reference, Sales
+                      Date, Customer, State, Branch, Quantity, Downloaded by,
+                      Stove IDs
                     </li>
-                    <li>• Optional: address, city, state, amount</li>
-                    <li>• Date format: YYYY-MM-DD</li>
+                    <li>
+                      • <b>Stove IDs</b> column should contain comma-separated
+                      stove IDs (e.g. 101052766, 101052811, ...)
+                    </li>
+                    <li>• Date format: MM/DD/YYYY or YYYY-MM-DD</li>
                   </ul>
                   <button
                     type="button"
                     onClick={() => {
-                      // Simple CSV template download
+                      // Download new CSV template
                       const headers = [
-                        "customer_name",
-                        "phone",
-                        "serial_number",
-                        "sales_date",
-                        "address",
-                        "city",
-                        "state",
-                        "amount",
+                        "Sales Reference",
+                        "Sales Date",
+                        "Customer",
+                        "State",
+                        "Branch",
+                        "Quantity",
+                        "Downloaded by",
+                        "Stove IDs",
                       ];
                       const sampleData = [
-                        "John Doe,08012345678,SN001,2024-01-15,123 Main St,Lagos,Lagos,15000",
-                        "Jane Smith,08087654321,SN002,2024-01-16,456 Oak Ave,Abuja,FCT,25000",
+                        'TR-F89E19,7/29/2025,LAPO MFB,Oyo,BODIJA 2,10,ACSL Admin,"101052766, 101052811, 101052813, 101052840, 101052767, 101052794, 101052800, 101052775, 101052765, 101052850"',
                       ];
                       const csvContent = [
                         headers.join(","),

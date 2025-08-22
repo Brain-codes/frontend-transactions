@@ -35,10 +35,7 @@ const DashboardLayout = ({
       {/* Main content */}
       <div
         className={`flex flex-col min-h-screen transition-all duration-300 ease-in-out
-          ${sidebarOpen 
-            ? "ml-0 lg:ml-72" 
-            : "ml-0 lg:ml-0"
-          }`}
+          ${sidebarOpen ? "ml-0 lg:ml-72" : "ml-0 lg:ml-0"}`}
       >
         <TopNavigation
           onToggleSidebar={toggleSidebar}

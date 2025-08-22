@@ -132,7 +132,7 @@ const config = {
         "accordion-up": "accordion-up 0.2s ease-out",
         // Sheet animations
         "slide-in-from-right": "slide-in-from-right 0.3s ease-out",
-        "slide-in-from-left": "slide-in-from-left 0.3s ease-out", 
+        "slide-in-from-left": "slide-in-from-left 0.3s ease-out",
         "slide-in-from-top": "slide-in-from-top 0.3s ease-out",
         "slide-in-from-bottom": "slide-in-from-bottom 0.3s ease-out",
         "slide-out-to-right": "slide-out-to-right 0.3s ease-out",

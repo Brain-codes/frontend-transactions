@@ -80,9 +80,8 @@ const Sidebar = ({ isOpen, onClose, currentRoute, user, onLogout }) => {
       <div
         className={`fixed top-0 left-0 h-screen z-50 w-72 bg-white border-r border-gray-200 flex flex-col
           transition-all duration-300 ease-in-out
-          ${isOpen 
-            ? "translate-x-0 shadow-xl" 
-            : "-translate-x-full shadow-none"
+          ${
+            isOpen ? "translate-x-0 shadow-xl" : "-translate-x-full shadow-none"
           }`}
       >
         {/* Sidebar Header */}

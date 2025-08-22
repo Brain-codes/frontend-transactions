@@ -135,7 +135,11 @@ const SheetTitle = React.forwardRef(({ className, ...props }, ref) => (
 SheetTitle.displayName = "SheetTitle";
 
 const SheetDescription = React.forwardRef(({ className, ...props }, ref) => (
-  <p ref={ref} className={cn("text-sm text-gray-600", className)} {...props} />
+  <p
+    ref={ref}
+    className={cn("text-sm text-gray-600 text-start", className)}
+    {...props}
+  />
 ));
 SheetDescription.displayName = "SheetDescription";
 

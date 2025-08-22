@@ -6,6 +6,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import OrganizationTable from "../components/OrganizationTable";
 import OrganizationFormModal from "../components/OrganizationFormModal";
 import OrganizationDetailSidebar from "../components/OrganizationDetailSidebar";
+import StoveIdsSidebar from "../components/StoveIdsSidebar";
 import OrganizationFilters from "../components/OrganizationFilters";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import ImportCSVModal from "../components/ImportCSVModal";
@@ -28,6 +29,7 @@ import {
 } from "@/components/ui/pagination";
 import useOrganizations from "../hooks/useOrganizations";
 import csvImportService from "../services/csvImportService";
+import { useAuth } from "../contexts/AuthContext";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import { lgaAndStates } from "../constants";
 import { Plus, Download, Search, X, Building2, Upload } from "lucide-react";
@@ -35,6 +37,8 @@ import { Plus, Download, Search, X, Building2, Upload } from "lucide-react";
 const PartnersPage = () => {
   // State management
   const [selectedOrganization, setSelectedOrganization] = useState(null);
+  const [showStoveIdsSidebar, setShowStoveIdsSidebar] = useState(false);
+  const [organizationForStoveIds, setOrganizationForStoveIds] = useState(null);
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingOrganization, setEditingOrganization] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -194,9 +198,17 @@ const PartnersPage = () => {
     setShowDeleteModal(false);
     setEditingOrganization(null);
     setOrganizationToDelete(null);
-    
+
     // Then open the details sidebar
     setSelectedOrganization(organization);
+    setShowStoveIdsSidebar(false);
+    setOrganizationForStoveIds(null);
+  };
+
+  const handleViewStoveIds = (organization) => {
+    setSelectedOrganization(null);
+    setShowStoveIdsSidebar(true);
+    setOrganizationForStoveIds(organization);
   };
 
   const handleEdit = (organization) => {
@@ -205,7 +217,7 @@ const PartnersPage = () => {
     setShowImportModal(false);
     setShowDeleteModal(false);
     setOrganizationToDelete(null);
-    
+
     // Then open the edit modal
     setEditingOrganization(organization);
     setShowFormModal(true);
@@ -217,7 +229,7 @@ const PartnersPage = () => {
     setShowFormModal(false);
     setShowImportModal(false);
     setEditingOrganization(null);
-    
+
     // Then open the delete modal
     setOrganizationToDelete(organization);
     setShowDeleteModal(true);
@@ -229,11 +241,14 @@ const PartnersPage = () => {
     setShowImportModal(false);
     setShowDeleteModal(false);
     setOrganizationToDelete(null);
-    
+
     // Then open the create modal
     setEditingOrganization(null);
     setShowFormModal(true);
   };
+
+  // Get supabase client from AuthContext
+  const { supabase } = useAuth();
 
   // CSV Import handlers
   const handleImportCSV = () => {
@@ -243,7 +258,7 @@ const PartnersPage = () => {
     setShowDeleteModal(false);
     setEditingOrganization(null);
     setOrganizationToDelete(null);
-    
+
     // Then open the import modal
     setShowImportModal(true);
   };
@@ -252,10 +267,10 @@ const PartnersPage = () => {
     setImportLoading(true);
     try {
       const response = await csvImportService.importSalesCSV(
+        supabase,
         importData.organizationId,
         importData.csvFile
       );
-
       if (response.success) {
         toast.success("Import Successful", response.message);
         setShowImportModal(false);
@@ -371,15 +386,6 @@ const PartnersPage = () => {
               Import CSV
             </Button>
             <Button
-              variant="outline"
-              onClick={() => handleExport("csv")}
-              className="text-gray-700"
-              disabled={tableLoading}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
-            </Button>
-            <Button
               onClick={handleCreateNew}
               className="bg-brand hover:bg-brand/50"
               disabled={tableLoading}
@@ -397,7 +403,7 @@ const PartnersPage = () => {
             <div className="sm:hidden mb-4 space-y-2">
               <Button
                 onClick={handleCreateNew}
-                className="w-full bg-brand-600 hover:bg-brand-700"
+                className="w-full bg-brand hover:bg-brand/50"
                 disabled={tableLoading}
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -410,16 +416,7 @@ const PartnersPage = () => {
                 disabled={tableLoading}
               >
                 <Upload className="w-4 h-4 mr-2" />
-                Import CSV
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleExport("csv")}
-                className="w-full text-gray-700"
-                disabled={tableLoading}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Export CSV
+                Import Stove ID CSV
               </Button>
             </div>
 
@@ -544,6 +541,7 @@ const PartnersPage = () => {
               data={organizationsData}
               loading={tableLoading}
               onView={handleViewDetails}
+              onViewStoveIds={handleViewStoveIds}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />
@@ -646,6 +644,7 @@ const PartnersPage = () => {
         />
 
         {/* Organization Detail Sidebar */}
+
         {selectedOrganization && (
           <OrganizationDetailSidebar
             organization={selectedOrganization}
@@ -653,6 +652,17 @@ const PartnersPage = () => {
             onClose={() => setSelectedOrganization(null)}
             onEdit={handleEdit}
             onDelete={handleDelete}
+          />
+        )}
+
+        {showStoveIdsSidebar && organizationForStoveIds && (
+          <StoveIdsSidebar
+            organization={organizationForStoveIds}
+            isOpen={showStoveIdsSidebar}
+            onClose={() => {
+              setShowStoveIdsSidebar(false);
+              setOrganizationForStoveIds(null);
+            }}
           />
         )}
 

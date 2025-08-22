@@ -88,55 +88,55 @@ body {
   .animate-in {
     animation-fill-mode: both;
   }
-  
+
   .animate-out {
     animation-fill-mode: both;
   }
-  
+
   .fade-in-0 {
     animation: fade-in 0.2s ease-out;
   }
-  
+
   .fade-out-0 {
     animation: fade-out 0.2s ease-out;
   }
-  
+
   .slide-in-from-right-0 {
     animation: slide-in-from-right 0.3s ease-out;
   }
-  
+
   .slide-in-from-left-0 {
     animation: slide-in-from-left 0.3s ease-out;
   }
-  
+
   .slide-in-from-top-0 {
     animation: slide-in-from-top 0.3s ease-out;
   }
-  
+
   .slide-in-from-bottom-0 {
     animation: slide-in-from-bottom 0.3s ease-out;
   }
-  
+
   .slide-out-to-right-0 {
     animation: slide-out-to-right 0.3s ease-out;
   }
-  
+
   .slide-out-to-left-0 {
     animation: slide-out-to-left 0.3s ease-out;
   }
-  
+
   .slide-out-to-top-0 {
     animation: slide-out-to-top 0.3s ease-out;
   }
-  
+
   .slide-out-to-bottom-0 {
     animation: slide-out-to-bottom 0.3s ease-out;
   }
-  
+
   .duration-200 {
     animation-duration: 200ms;
   }
-  
+
   .duration-300 {
     animation-duration: 300ms;
   }
@@ -144,53 +144,93 @@ body {
 
 /* Keyframes for animations */
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes fade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
 @keyframes slide-in-from-right {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 @keyframes slide-in-from-left {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 @keyframes slide-in-from-top {
-  from { transform: translateY(-100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 @keyframes slide-in-from-bottom {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 @keyframes slide-out-to-right {
-  from { transform: translateX(0); }
-  to { transform: translateX(100%); }
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
 }
 
 @keyframes slide-out-to-left {
-  from { transform: translateX(0); }
-  to { transform: translateX(-100%); }
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
 }
 
 @keyframes slide-out-to-top {
-  from { transform: translateY(0); }
-  to { transform: translateY(-100%); }
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-100%);
+  }
 }
 
 @keyframes slide-out-to-bottom {
-  from { transform: translateY(0); }
-  to { transform: translateY(100%); }
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
 }
 
 /* Modern Filter Component Styles */

@@ -16,9 +16,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, MoreVertical, Edit, Trash2, Building2 } from "lucide-react";
+import {
+  Eye,
+  MoreVertical,
+  Edit,
+  Trash2,
+  Building2,
+  FileText,
+} from "lucide-react";
 
-const OrganizationTable = ({ data, loading, onView, onEdit, onDelete }) => {
+const OrganizationTable = ({
+  data,
+  loading,
+  onView,
+  onViewStoveIds,
+  onEdit,
+  onDelete,
+}) => {
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     try {
@@ -164,19 +178,35 @@ const OrganizationTable = ({ data, loading, onView, onEdit, onDelete }) => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onView(organization)}>
-                        <Eye className="mr-2 h-4 w-4" />
+                      <DropdownMenuItem
+                        onClick={() => onView(organization)}
+                        className="py-2 px-3  rounded-md hover:!bg-primary hover:!text-white"
+                      >
+                        <Eye className="mr-5 h-4 w-4" />
                         View Details
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onEdit(organization)}>
-                        <Edit className="mr-2 h-4 w-4" />
+                      <hr className=" border-gray-200" />
+                      <DropdownMenuItem
+                        onClick={() => onViewStoveIds(organization)}
+                        className="py-2 px-3  rounded-md hover:!bg-primary hover:!text-white"
+                      >
+                        <FileText className="mr-5 h-4 w-4" strokeWidth={1.5} />
+                        View Stove ID&#39;s
+                      </DropdownMenuItem>
+                      <hr className=" border-gray-200" />
+                      <DropdownMenuItem
+                        onClick={() => onEdit(organization)}
+                        className="py-2 px-3  rounded-md hover:!bg-primary hover:!text-white"
+                      >
+                        <Edit className="mr-5 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
+                      <hr className=" border-gray-200" />
                       <DropdownMenuItem
                         onClick={() => onDelete(organization)}
-                        className="text-red-600"
+                        className="text-red-600 py-2 px-3  rounded-md hover:!bg-red-600 hover:!text-white"
                       >
-                        <Trash2 className="mr-2 h-4 w-4" />
+                        <Trash2 className="mr-5 h-4 w-4" />
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>

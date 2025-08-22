@@ -1,0 +1,193 @@
+"use client";
+
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useState, useEffect } from "react";
+import { Loader2, X, FileText } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+
+const StoveIdsSidebar = ({ organization, isOpen, onClose }) => {
+  const { supabase } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [stoveIds, setStoveIds] = useState([]);
+  const [totals, setTotals] = useState(null);
+  const [status, setStatus] = useState("all");
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (isOpen && organization) {
+      fetchStoveIds(status);
+    }
+    // eslint-disable-next-line
+  }, [isOpen, organization, status]);
+
+  const fetchStoveIds = async (statusFilter) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const functionUrl = `${baseUrl}/functions/v1/get-stove-ids`;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token)
+        throw new Error("No authentication token found");
+      const body = {
+        organization_id: organization.id,
+      };
+      if (statusFilter && statusFilter !== "all") {
+        body.status = statusFilter;
+      }
+      const response = await fetch(functionUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.message || "Failed to fetch stove IDs");
+      setStoveIds(data.data || []);
+      setTotals(data.totals || null);
+    } catch (err) {
+      setError(err.message);
+      setStoveIds([]);
+      setTotals(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    try {
+      return new Date(dateString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch (error) {
+      return "Invalid Date";
+    }
+  };
+
+  return (
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent
+        className="w-full sm:max-w-lg overflow-y-auto"
+        onClose={onClose}
+      >
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Stove IDs
+          </SheetTitle>
+          <SheetDescription className="text-start">
+            View all stove IDs for this organization
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="mt-6 space-y-4">
+          {/* Totals and Status Filter */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            {totals && (
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline">Total: {totals.total_stove_ids}</Badge>
+                <Badge className="bg-green-100 text-green-800 border-green-200">
+                  Available: {totals.total_stove_available}
+                </Badge>
+                <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                  Sold: {totals.total_stove_sold}
+                </Badge>
+              </div>
+            )}
+            <div className="flex gap-2 items-center">
+              <span className="text-xs text-gray-500">Status:</span>
+              <select
+                className="border rounded px-2 py-1 text-sm"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                <option value="all">All</option>
+                <option value="available">Available</option>
+                <option value="sold">Sold</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Table or Loading/Error */}
+          {loading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="animate-spin h-6 w-6 text-brand-600" />
+            </div>
+          ) : error ? (
+            <div className="text-center text-red-600 py-8">{error}</div>
+          ) : stoveIds.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">
+              No stove IDs found for this organization.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Stove ID</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {stoveIds.map((stove) => (
+                    <TableRow key={stove.id}>
+                      <TableCell>{stove.id}</TableCell>
+                      <TableCell>{stove.stove_id}</TableCell>
+                      <TableCell>
+                        <Badge
+                          className={
+                            stove.status === "sold"
+                              ? "bg-blue-100 text-blue-800 border-blue-200"
+                              : "bg-green-100 text-green-800 border-green-200"
+                          }
+                        >
+                          {stove.status.charAt(0).toUpperCase() +
+                            stove.status.slice(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{formatDate(stove.created_at)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {/* Close Button */}
+          <Button variant="ghost" onClick={onClose} className="w-full mt-6">
+            <X className="h-4 w-4 mr-2" />
+            Close
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};
+
+export default StoveIdsSidebar;

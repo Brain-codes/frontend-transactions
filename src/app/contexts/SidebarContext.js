@@ -11,7 +11,7 @@ export const SidebarProvider = ({ children }) => {
   useEffect(() => {
     const handleResize = () => {
       const isDesktop = window.innerWidth >= 1024;
-      setSidebarOpen(prev => {
+      setSidebarOpen((prev) => {
         // Only update state if it needs to change based on screen size
         if (isDesktop && !prev) {
           return true; // Open on desktop if closed
