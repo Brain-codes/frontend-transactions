@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
@@ -75,16 +74,22 @@ export const useOrganizations = (initialFilters = {}) => {
           offset: ((mergedFilters.page || 1) - 1) * (mergedFilters.limit || 10),
         };
         delete apiFilters.page;
-        const response = await organizationsAPIService.getAllOrganizations(apiFilters);
+        const response = await organizationsAPIService.getAllOrganizations(
+          apiFilters
+        );
         if (response.success) {
           setData(response.data || []);
           const apiPagination = response.pagination || {};
           setPagination({
             page:
-              Math.floor((apiPagination.offset || 0) / (apiPagination.limit || 10)) + 1,
+              Math.floor(
+                (apiPagination.offset || 0) / (apiPagination.limit || 10)
+              ) + 1,
             limit: apiPagination.limit || 10,
             total: apiPagination.total || 0,
-            totalPages: Math.ceil((apiPagination.total || 0) / (apiPagination.limit || 10)),
+            totalPages: Math.ceil(
+              (apiPagination.total || 0) / (apiPagination.limit || 10)
+            ),
           });
           filtersRef.current = mergedFilters;
           setFilters((prevFilters) => {
@@ -94,10 +99,15 @@ export const useOrganizations = (initialFilters = {}) => {
             return prevFilters;
           });
           if (response.data?.length > 0) {
-            toast.success("Loaded", `${response.data.length} organizations loaded successfully`);
+            toast.success(
+              "Loaded",
+              `${response.data.length} organizations loaded successfully`
+            );
           }
         } else {
-          throw new Error(response.error || "Failed to fetch organizations data");
+          throw new Error(
+            response.error || "Failed to fetch organizations data"
+          );
         }
       } catch (err) {
         toast.error("Error", err.message || "Error fetching organizations");
@@ -106,15 +116,21 @@ export const useOrganizations = (initialFilters = {}) => {
           err.message.includes("Unauthorized") ||
           err.message.includes("Missing authorization header")
         ) {
-          setError("Authentication required. Please login to access organizations data.");
+          setError(
+            "Authentication required. Please login to access organizations data."
+          );
         } else if (
           err.message.includes("403") ||
           err.message.includes("Access denied") ||
           err.message.includes("super admin")
         ) {
-          setError("Access denied. You need super admin privileges to view this data.");
+          setError(
+            "Access denied. You need super admin privileges to view this data."
+          );
         } else if (err.message.includes("404")) {
-          setError("Organizations data endpoint not found. Please check your configuration.");
+          setError(
+            "Organizations data endpoint not found. Please check your configuration."
+          );
         } else if (err.message.includes("500")) {
           setError("Server error. Please try again later.");
         } else {
@@ -122,7 +138,6 @@ export const useOrganizations = (initialFilters = {}) => {
         }
         setData([]);
         setPagination({ page: 1, limit: 10, total: 0, totalPages: 0 });
-
       } finally {
         setLoading(false);
         setTableLoading(false);
@@ -139,7 +154,9 @@ export const useOrganizations = (initialFilters = {}) => {
       setLoading(true);
       setError(null);
       try {
-        const response = await organizationsAPIService.createOrganization(organizationData);
+        const response = await organizationsAPIService.createOrganization(
+          organizationData
+        );
         if (response.success) {
           await fetchOrganizationsStable({}, false);
           return response;
@@ -147,7 +164,10 @@ export const useOrganizations = (initialFilters = {}) => {
           throw new Error(response.error || "Failed to create organization");
         }
       } catch (err) {
-        toast.error("Create Error", err.message || "Failed to create organization");
+        toast.error(
+          "Create Error",
+          err.message || "Failed to create organization"
+        );
         setError(`Failed to create organization: ${err.message}`);
         throw err;
       } finally {
@@ -162,7 +182,10 @@ export const useOrganizations = (initialFilters = {}) => {
       setLoading(true);
       setError(null);
       try {
-        const response = await organizationsAPIService.updateOrganization(id, organizationData);
+        const response = await organizationsAPIService.updateOrganization(
+          id,
+          organizationData
+        );
         if (response.success) {
           await fetchOrganizationsStable({}, false);
           return response;
@@ -170,7 +193,10 @@ export const useOrganizations = (initialFilters = {}) => {
           throw new Error(response.error || "Failed to update organization");
         }
       } catch (err) {
-        toast.error("Update Error", err.message || "Failed to update organization");
+        toast.error(
+          "Update Error",
+          err.message || "Failed to update organization"
+        );
         setError(`Failed to update organization: ${err.message}`);
         throw err;
       } finally {
@@ -193,7 +219,10 @@ export const useOrganizations = (initialFilters = {}) => {
           throw new Error(response.error || "Failed to delete organization");
         }
       } catch (err) {
-        toast.error("Delete Error", err.message || "Failed to delete organization");
+        toast.error(
+          "Delete Error",
+          err.message || "Failed to delete organization"
+        );
         setError(`Failed to delete organization: ${err.message}`);
         throw err;
       } finally {
@@ -218,7 +247,10 @@ export const useOrganizations = (initialFilters = {}) => {
           throw new Error(response.error || "Export failed");
         }
       } catch (err) {
-        toast.error("Export Error", err.message || "Error exporting organizations");
+        toast.error(
+          "Export Error",
+          err.message || "Error exporting organizations"
+        );
         setError(`Export failed: ${err.message}`);
       } finally {
         setLoading(false);
@@ -260,24 +292,35 @@ export const useOrganizations = (initialFilters = {}) => {
         setLoading(true);
         setError(null);
         const currentDefaultFilters = defaultFiltersRef.current;
-        const response = await organizationsAPIService.getAllOrganizations(currentDefaultFilters);
+        const response = await organizationsAPIService.getAllOrganizations(
+          currentDefaultFilters
+        );
         if (response.success) {
           setData(response.data || []);
           const apiPagination = response.pagination || {};
           setPagination({
             page:
-              Math.floor((apiPagination.offset || 0) / (apiPagination.limit || 10)) + 1,
+              Math.floor(
+                (apiPagination.offset || 0) / (apiPagination.limit || 10)
+              ) + 1,
             limit: apiPagination.limit || 10,
             total: apiPagination.total || 0,
-            totalPages: Math.ceil((apiPagination.total || 0) / (apiPagination.limit || 10)),
+            totalPages: Math.ceil(
+              (apiPagination.total || 0) / (apiPagination.limit || 10)
+            ),
           });
           setFilters(currentDefaultFilters);
           filtersRef.current = currentDefaultFilters;
         } else {
-          throw new Error(response.error || "Failed to fetch initial organizations data");
+          throw new Error(
+            response.error || "Failed to fetch initial organizations data"
+          );
         }
       } catch (err) {
-        toast.error("Load Error", err.message || "Error loading initial organizations data");
+        toast.error(
+          "Load Error",
+          err.message || "Error loading initial organizations data"
+        );
         setError(`Failed to load initial data: ${err.message}`);
         setData([]);
         setPagination({ page: 1, limit: 10, total: 0, totalPages: 0 });
@@ -315,4 +358,3 @@ export const useOrganizations = (initialFilters = {}) => {
 };
 
 export default useOrganizations;
-  
