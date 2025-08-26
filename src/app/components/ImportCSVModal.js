@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +34,7 @@ const ImportCSVModal = ({
   const [csvFile, setCsvFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [errors, setErrors] = useState({});
+  const { toast } = useToast();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -65,12 +67,15 @@ const ImportCSVModal = ({
 
     if (!selectedOrganization) {
       newErrors.organization = "Please select a partner organization";
+      toast.error("Validation Error", "Please select a partner organization");
     }
 
     if (!csvFile) {
       newErrors.file = "Please select a CSV file to upload";
+      toast.error("Validation Error", "Please select a CSV file to upload");
     } else if (!csvFile.name.toLowerCase().endsWith(".csv")) {
       newErrors.file = "Please select a valid CSV file";
+      toast.error("Validation Error", "Please select a valid CSV file");
     }
 
     setErrors(newErrors);
@@ -107,6 +112,14 @@ const ImportCSVModal = ({
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (!file.name.toLowerCase().endsWith(".csv")) {
+        toast.error("File Error", "Please select a valid CSV file");
+        setErrors((prev) => ({
+          ...prev,
+          file: "Please select a valid CSV file",
+        }));
+        return;
+      }
       setCsvFile(file);
       if (errors.file) {
         setErrors((prev) => ({ ...prev, file: undefined }));
@@ -138,6 +151,7 @@ const ImportCSVModal = ({
           setErrors((prev) => ({ ...prev, file: undefined }));
         }
       } else {
+        toast.error("File Error", "Please drop a valid CSV file");
         setErrors((prev) => ({
           ...prev,
           file: "Please drop a valid CSV file",

@@ -1,11 +1,14 @@
+
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "@/components/ui/toast";
 import organizationsAPIService from "../services/organizationsAPIService";
 
 export const useOrganizations = (initialFilters = {}) => {
   const { user, isAuthenticated } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -29,14 +32,11 @@ export const useOrganizations = (initialFilters = {}) => {
   );
 
   const [filters, setFilters] = useState(defaultFilters);
-
-  // Use ref to store current filters to avoid infinite loops
   const filtersRef = useRef(filters);
   const defaultFiltersRef = useRef(defaultFilters);
   const isLoadingRef = useRef(false);
   const hasInitializedRef = useRef(false);
 
-  // Keep refs in sync with state
   useEffect(() => {
     defaultFiltersRef.current = defaultFilters;
   }, [defaultFilters]);
@@ -47,249 +47,186 @@ export const useOrganizations = (initialFilters = {}) => {
     }
   }, [filters]);
 
-  // Create a stable fetch function
+  // Main fetch function
   const fetchOrganizationsStable = useCallback(
     async (newFilters = {}, isInitial = false) => {
-      // Check authentication first
       if (!isAuthenticated) {
         setError("Please login to access organizations data.");
         setLoading(false);
         setTableLoading(false);
         return;
       }
-
-      // Prevent concurrent calls
       if (isLoadingRef.current) {
-        console.log("API call already in progress, skipping...");
+        // Optionally: toast.info("API call already in progress, skipping...");
         return;
       }
-
       isLoadingRef.current = true;
-
-      // Use different loading states based on whether this is initial load or filter/pagination
       if (isInitial) {
         setLoading(true);
       } else {
         setTableLoading(true);
       }
-
       setError(null);
-
       try {
-        // Use the ref to get current filters
         const currentFilters = filtersRef.current;
         const mergedFilters = { ...currentFilters, ...newFilters };
-
-        // Convert page to offset for API
         const apiFilters = {
           ...mergedFilters,
           offset: ((mergedFilters.page || 1) - 1) * (mergedFilters.limit || 10),
         };
-        delete apiFilters.page; // Remove page as API uses offset
-
-        console.log("Fetching organizations with filters:", apiFilters);
-        console.log("User authenticated:", isAuthenticated, "User:", user);
-
-        const response = await organizationsAPIService.getAllOrganizations(
-          apiFilters
-        );
-        console.log("API Response:", response);
-
+        delete apiFilters.page;
+        const response = await organizationsAPIService.getAllOrganizations(apiFilters);
         if (response.success) {
           setData(response.data || []);
-
-          // Convert API pagination to our format
           const apiPagination = response.pagination || {};
           setPagination({
             page:
-              Math.floor(
-                (apiPagination.offset || 0) / (apiPagination.limit || 10)
-              ) + 1,
+              Math.floor((apiPagination.offset || 0) / (apiPagination.limit || 10)) + 1,
             limit: apiPagination.limit || 10,
             total: apiPagination.total || 0,
-            totalPages: Math.ceil(
-              (apiPagination.total || 0) / (apiPagination.limit || 10)
-            ),
+            totalPages: Math.ceil((apiPagination.total || 0) / (apiPagination.limit || 10)),
           });
-
-          // Update the ref with merged filters
           filtersRef.current = mergedFilters;
-
-          // Update state with merged filters (only if different)
           setFilters((prevFilters) => {
             if (JSON.stringify(prevFilters) !== JSON.stringify(mergedFilters)) {
               return mergedFilters;
             }
             return prevFilters;
           });
-
-          // Show success message if we have data
           if (response.data?.length > 0) {
-            console.log(`Loaded ${response.data.length} organizations`);
+            toast.success("Loaded", `${response.data.length} organizations loaded successfully`);
           }
         } else {
-          throw new Error(
-            response.error || "Failed to fetch organizations data"
-          );
+          throw new Error(response.error || "Failed to fetch organizations data");
         }
       } catch (err) {
-        console.error("Error fetching organizations:", err);
-
-        // Show user-friendly error message based on error type
+        toast.error("Error", err.message || "Error fetching organizations");
         if (
           err.message.includes("401") ||
           err.message.includes("Unauthorized") ||
           err.message.includes("Missing authorization header")
         ) {
-          setError(
-            "Authentication required. Please login to access organizations data."
-          );
+          setError("Authentication required. Please login to access organizations data.");
         } else if (
           err.message.includes("403") ||
           err.message.includes("Access denied") ||
           err.message.includes("super admin")
         ) {
-          setError(
-            "Access denied. You need super admin privileges to view this data."
-          );
+          setError("Access denied. You need super admin privileges to view this data.");
         } else if (err.message.includes("404")) {
-          setError(
-            "Organizations data endpoint not found. Please check your configuration."
-          );
+          setError("Organizations data endpoint not found. Please check your configuration.");
         } else if (err.message.includes("500")) {
           setError("Server error. Please try again later.");
         } else {
           setError(`Failed to load organizations data: ${err.message}`);
         }
-
         setData([]);
         setPagination({ page: 1, limit: 10, total: 0, totalPages: 0 });
+
       } finally {
         setLoading(false);
         setTableLoading(false);
         isLoadingRef.current = false;
       }
     },
-    [isAuthenticated, user]
+    [isAuthenticated, toast]
   );
 
-  // Keep the original fetchOrganizations for backward compatibility
   const fetchOrganizations = fetchOrganizationsStable;
 
-  // Create organization
   const createOrganization = useCallback(
     async (organizationData) => {
       setLoading(true);
       setError(null);
-
       try {
-        const response = await organizationsAPIService.createOrganization(
-          organizationData
-        );
-
+        const response = await organizationsAPIService.createOrganization(organizationData);
         if (response.success) {
-          // Refresh the data after creation
           await fetchOrganizationsStable({}, false);
           return response;
         } else {
           throw new Error(response.error || "Failed to create organization");
         }
       } catch (err) {
-        console.error("Error creating organization:", err);
+        toast.error("Create Error", err.message || "Failed to create organization");
         setError(`Failed to create organization: ${err.message}`);
         throw err;
       } finally {
         setLoading(false);
       }
     },
-    [fetchOrganizationsStable]
+    [fetchOrganizationsStable, toast]
   );
 
-  // Update organization
   const updateOrganization = useCallback(
     async (id, organizationData) => {
       setLoading(true);
       setError(null);
-
       try {
-        const response = await organizationsAPIService.updateOrganization(
-          id,
-          organizationData
-        );
-
+        const response = await organizationsAPIService.updateOrganization(id, organizationData);
         if (response.success) {
-          // Refresh the data after update
           await fetchOrganizationsStable({}, false);
           return response;
         } else {
           throw new Error(response.error || "Failed to update organization");
         }
       } catch (err) {
-        console.error("Error updating organization:", err);
+        toast.error("Update Error", err.message || "Failed to update organization");
         setError(`Failed to update organization: ${err.message}`);
         throw err;
       } finally {
         setLoading(false);
       }
     },
-    [fetchOrganizationsStable]
+    [fetchOrganizationsStable, toast]
   );
 
-  // Delete organization
   const deleteOrganization = useCallback(
     async (id) => {
       setLoading(true);
       setError(null);
-
       try {
         const response = await organizationsAPIService.deleteOrganization(id);
-
         if (response.success) {
-          // Refresh the data after deletion
           await fetchOrganizationsStable({}, false);
           return response;
         } else {
           throw new Error(response.error || "Failed to delete organization");
         }
       } catch (err) {
-        console.error("Error deleting organization:", err);
+        toast.error("Delete Error", err.message || "Failed to delete organization");
         setError(`Failed to delete organization: ${err.message}`);
         throw err;
       } finally {
         setLoading(false);
       }
     },
-    [fetchOrganizationsStable]
+    [fetchOrganizationsStable, toast]
   );
 
-  // Export organizations
   const exportOrganizations = useCallback(
     async (exportFilters = {}, format = "csv") => {
       setLoading(true);
-
       try {
         const currentFilters = filtersRef.current;
         const response = await organizationsAPIService.exportOrganizations(
           { ...currentFilters, ...exportFilters },
           format
         );
-
         if (response.success) {
-          console.log(`Successfully exported data as ${format.toUpperCase()}`);
+          toast.success("Exported", `Data exported as ${format.toUpperCase()}`);
         } else {
           throw new Error(response.error || "Export failed");
         }
       } catch (err) {
-        console.error("Error exporting organizations:", err);
+        toast.error("Export Error", err.message || "Error exporting organizations");
         setError(`Export failed: ${err.message}`);
       } finally {
         setLoading(false);
       }
     },
-    []
+    [toast]
   );
 
-  // Apply filters
   const applyFilters = useCallback(
     (newFilters) => {
       fetchOrganizationsStable({ ...newFilters, page: 1 }, false);
@@ -297,7 +234,6 @@ export const useOrganizations = (initialFilters = {}) => {
     [fetchOrganizationsStable]
   );
 
-  // Reset filters
   const resetFilters = useCallback(() => {
     const currentDefaultFilters = defaultFiltersRef.current;
     setFilters(currentDefaultFilters);
@@ -305,7 +241,6 @@ export const useOrganizations = (initialFilters = {}) => {
     fetchOrganizationsStable(currentDefaultFilters, false);
   }, [fetchOrganizationsStable]);
 
-  // Search functionality
   const searchOrganizations = useCallback(
     async (searchTerm) => {
       const searchFilters = {
@@ -317,52 +252,32 @@ export const useOrganizations = (initialFilters = {}) => {
     [fetchOrganizationsStable]
   );
 
-  // Load initial data
   useEffect(() => {
     if (!isAuthenticated || hasInitializedRef.current) return;
-
     hasInitializedRef.current = true;
-
     const loadInitialData = async () => {
       try {
         setLoading(true);
         setError(null);
-
         const currentDefaultFilters = defaultFiltersRef.current;
-        console.log(
-          "Loading initial organizations data with filters:",
-          currentDefaultFilters
-        );
-
-        const response = await organizationsAPIService.getAllOrganizations(
-          currentDefaultFilters
-        );
-
+        const response = await organizationsAPIService.getAllOrganizations(currentDefaultFilters);
         if (response.success) {
           setData(response.data || []);
-
           const apiPagination = response.pagination || {};
           setPagination({
             page:
-              Math.floor(
-                (apiPagination.offset || 0) / (apiPagination.limit || 10)
-              ) + 1,
+              Math.floor((apiPagination.offset || 0) / (apiPagination.limit || 10)) + 1,
             limit: apiPagination.limit || 10,
             total: apiPagination.total || 0,
-            totalPages: Math.ceil(
-              (apiPagination.total || 0) / (apiPagination.limit || 10)
-            ),
+            totalPages: Math.ceil((apiPagination.total || 0) / (apiPagination.limit || 10)),
           });
-
           setFilters(currentDefaultFilters);
           filtersRef.current = currentDefaultFilters;
         } else {
-          throw new Error(
-            response.error || "Failed to fetch initial organizations data"
-          );
+          throw new Error(response.error || "Failed to fetch initial organizations data");
         }
       } catch (err) {
-        console.error("Error loading initial organizations data:", err);
+        toast.error("Load Error", err.message || "Error loading initial organizations data");
         setError(`Failed to load initial data: ${err.message}`);
         setData([]);
         setPagination({ page: 1, limit: 10, total: 0, totalPages: 0 });
@@ -370,11 +285,9 @@ export const useOrganizations = (initialFilters = {}) => {
         setLoading(false);
       }
     };
-
     loadInitialData();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, toast]);
 
-  // Reset the initialization flag when authentication changes
   useEffect(() => {
     if (!isAuthenticated) {
       hasInitializedRef.current = false;
@@ -388,24 +301,18 @@ export const useOrganizations = (initialFilters = {}) => {
     error,
     pagination,
     filters,
-
-    // Core functions
     fetchOrganizations,
     createOrganization,
     updateOrganization,
     deleteOrganization,
     exportOrganizations,
-
-    // Event handlers
     applyFilters,
     resetFilters,
 
-    // Search functions
     searchOrganizations,
-
-    // Direct access to service for advanced use cases
     service: organizationsAPIService,
   };
 };
 
 export default useOrganizations;
+  

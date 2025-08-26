@@ -32,6 +32,7 @@ import {
   downloadFile,
 } from "@/lib/pdfUtils";
 import { sendReceiptEmail, composeReceiptEmail } from "@/lib/emailService";
+import { useToast } from "@/components/ui/toast";
 
 const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -42,6 +43,7 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
     generatingInvoice: false,
     exporting: false,
   });
+  const { toast } = useToast();
 
   if (!sale) return null;
 
@@ -103,8 +105,7 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
 
   const copyToClipboard = (text, label) => {
     navigator.clipboard.writeText(text);
-    // You could add a toast notification here
-    console.log(`${label} copied to clipboard: ${text}`);
+    toast.success(`${label} copied`, text);
   };
 
   const handleDownloadReceipt = async () => {
@@ -121,9 +122,12 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
         downloadFile(pdfOutput, filename, "application/pdf");
 
         // Show success message
-        alert("Receipt downloaded successfully!");
+        toast.success(
+          "Receipt downloaded",
+          "The receipt was downloaded successfully."
+        );
       } catch (pdfError) {
-        console.warn("PDF generation failed, falling back to HTML:", pdfError);
+        toast.info("PDF generation failed", "Falling back to HTML receipt.");
 
         // Fallback to HTML receipt
         const htmlContent = generateReceiptHTML(sale);
@@ -132,11 +136,16 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
         }.html`;
         downloadFile(htmlContent, filename, "text/html");
 
-        alert("Receipt downloaded as HTML file!");
+        toast.success(
+          "Receipt downloaded as HTML",
+          "The receipt was downloaded as an HTML file."
+        );
       }
     } catch (error) {
-      console.error("Error downloading receipt:", error);
-      alert("Failed to download receipt. Please try again.");
+      toast.error(
+        "Download failed",
+        "Failed to download receipt. Please try again."
+      );
     } finally {
       setLoadingStates((prev) => ({ ...prev, downloadingReceipt: false }));
     }
@@ -148,27 +157,32 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
 
       const email = sale.email || sale.contact_email;
       if (!email) {
-        alert("No email address available for this customer");
+        toast.error("No email", "No email address available for this customer");
         return;
       }
 
       // Try to send email via API first
       try {
         await sendReceiptEmail(sale, email);
-        alert(`Receipt sent successfully to ${email}`);
+        toast.success("Receipt sent", `Receipt sent successfully to ${email}`);
       } catch (emailError) {
-        console.warn("Email API failed, falling back to mailto:", emailError);
+        toast.info("Email API failed", "Falling back to mailto link.");
 
         // Fallback to mailto link
         const { subject, body } = composeReceiptEmail(sale);
         const mailtoLink = `mailto:${email}?subject=${subject}&body=${body}`;
         window.open(mailtoLink, "_blank");
 
-        alert(`Opening email client to send receipt to ${email}`);
+        toast.info(
+          "Email client opened",
+          `Opening email client to send receipt to ${email}`
+        );
       }
     } catch (error) {
-      console.error("Error sending receipt email:", error);
-      alert("Failed to send receipt email. Please try again.");
+      toast.error(
+        "Send failed",
+        "Failed to send receipt email. Please try again."
+      );
     } finally {
       setLoadingStates((prev) => ({ ...prev, emailingReceipt: false }));
     }
@@ -187,16 +201,21 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
         }.pdf`;
         downloadFile(pdfOutput, filename, "application/pdf");
 
-        alert("Invoice generated and downloaded successfully!");
+        toast.success(
+          "Invoice downloaded",
+          "Invoice generated and downloaded successfully!"
+        );
       } catch (pdfError) {
-        console.warn("PDF generation failed:", pdfError);
-        alert(
+        toast.error(
+          "PDF generation failed",
           "PDF generation is not available. Please install the required dependencies or use the export feature instead."
         );
       }
     } catch (error) {
-      console.error("Error generating invoice:", error);
-      alert("Failed to generate invoice. Please try again.");
+      toast.error(
+        "Invoice failed",
+        "Failed to generate invoice. Please try again."
+      );
     } finally {
       setLoadingStates((prev) => ({ ...prev, generatingInvoice: false }));
     }
@@ -225,10 +244,12 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
       }.json`;
       downloadFile(dataStr, filename, "application/json");
 
-      alert("Sale data exported successfully!");
+      toast.success("Exported", "Sale data exported successfully!");
     } catch (error) {
-      console.error("Error exporting sale data:", error);
-      alert("Failed to export sale data. Please try again.");
+      toast.error(
+        "Export failed",
+        "Failed to export sale data. Please try again."
+      );
     } finally {
       setLoadingStates((prev) => ({ ...prev, exporting: false }));
     }
@@ -237,7 +258,10 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
   const handleCopyId = () => {
     const id = sale.transaction_id || sale.id;
     copyToClipboard(id, "Transaction ID");
-    alert(`Transaction ID ${id} copied to clipboard`);
+    toast.success(
+      "Transaction ID copied",
+      `Transaction ID ${id} copied to clipboard`
+    );
   };
 
   const handleExternal = () => {

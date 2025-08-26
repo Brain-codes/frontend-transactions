@@ -47,7 +47,7 @@ class OrganizationsAPIService {
       const headers = await this.getAuthHeaders();
       const url = this.buildUrl(params);
 
-      console.log("Fetching organizations from:", url);
+      // Dev log: console.log("Fetching organizations from:", url);
       const response = await fetch(url, {
         method: "GET",
         headers,
@@ -73,7 +73,7 @@ class OrganizationsAPIService {
         message: data.message || "Organizations retrieved successfully",
       };
     } catch (error) {
-      console.error("Error fetching organizations:", error);
+      // Error handled by UI with toast
       return {
         success: false,
         error: error.message,
@@ -108,7 +108,7 @@ class OrganizationsAPIService {
         message: data.message || "Organization retrieved successfully",
       };
     } catch (error) {
-      console.error("Error fetching organization:", error);
+      // Error handled by UI with toast
       return {
         success: false,
         error: error.message,
@@ -143,7 +143,7 @@ class OrganizationsAPIService {
         message: data.message || "Organization created successfully",
       };
     } catch (error) {
-      console.error("Error creating organization:", error);
+      // Error handled by UI with toast
       return {
         success: false,
         error: error.message,
@@ -178,7 +178,7 @@ class OrganizationsAPIService {
         message: data.message || "Organization updated successfully",
       };
     } catch (error) {
-      console.error("Error updating organization:", error);
+      // Error handled by UI with toast
       return {
         success: false,
         error: error.message,
@@ -213,7 +213,7 @@ class OrganizationsAPIService {
         warnings: data.warnings || [],
       };
     } catch (error) {
-      console.error("Error deleting organization:", error);
+      // Error handled by UI with toast
       return {
         success: false,
         error: error.message,
@@ -257,7 +257,7 @@ class OrganizationsAPIService {
         message: `Organizations exported as ${format.toUpperCase()} successfully`,
       };
     } catch (error) {
-      console.error("Error exporting organizations:", error);
+      // Error handled by UI with toast
       return {
         success: false,
         error: error.message,

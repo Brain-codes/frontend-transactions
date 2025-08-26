@@ -20,7 +20,6 @@ class SalesAdvancedService {
       } = await this.supabase.auth.getSession();
       return session?.access_token || null;
     } catch (error) {
-      console.error("Error getting auth token:", error);
       return null;
     }
   }
@@ -69,12 +68,7 @@ class SalesAdvancedService {
         options.body = JSON.stringify(filters);
       }
 
-      console.log("API Request:", {
-        method,
-        url,
-        filters,
-        headers: options.headers,
-      });
+      // Dev log: console.log("API Request:", { method, url, filters, headers: options.headers });
 
       const response = await fetch(url, options);
 
@@ -99,7 +93,6 @@ class SalesAdvancedService {
 
       return await response.json();
     } catch (error) {
-      console.error("API Error:", error);
       throw new Error(`Failed to fetch sales data: ${error.message}`);
     }
   }
@@ -287,7 +280,6 @@ class SalesAdvancedService {
       this.downloadFile(csvContent, downloadFilename, "text/csv");
       return true;
     } catch (error) {
-      console.error("Export failed:", error);
       throw error;
     }
   }
@@ -306,7 +298,6 @@ class SalesAdvancedService {
       );
       return true;
     } catch (error) {
-      console.error("Export failed:", error);
       throw error;
     }
   }

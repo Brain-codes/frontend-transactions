@@ -2,10 +2,12 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "@/components/ui/toast";
 import salesAdvancedService from "../services/salesAdvancedAPIService";
 
 export const useSalesAdvanced = (initialFilters = {}) => {
   const { user, isAuthenticated } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -13,7 +15,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
   const [stats, setStats] = useState({});
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 10, // Changed from 100 to 10 for easier testing
+    limit: 10,
     total: 0,
     totalPages: 0,
   });
@@ -21,7 +23,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
   const defaultFilters = useMemo(
     () => ({
       page: 1,
-      limit: 10, // Changed from 100 to 10 for easier testing
+      limit: 10,
       sortBy: "created_at",
       sortOrder: "desc",
       includeAddress: true,
@@ -34,14 +36,11 @@ export const useSalesAdvanced = (initialFilters = {}) => {
   );
 
   const [filters, setFilters] = useState(defaultFilters);
-
-  // Use ref to store current filters to avoid infinite loops
   const filtersRef = useRef(filters);
   const defaultFiltersRef = useRef(defaultFilters);
-  const isLoadingRef = useRef(false); // Prevent concurrent API calls
-  const hasInitializedRef = useRef(false); // Prevent initial data from loading multiple times
+  const isLoadingRef = useRef(false);
+  const hasInitializedRef = useRef(false);
 
-  // Keep refs in sync with state but prevent unnecessary updates
   useEffect(() => {
     defaultFiltersRef.current = defaultFilters;
   }, [defaultFilters]);
@@ -52,45 +51,30 @@ export const useSalesAdvanced = (initialFilters = {}) => {
     }
   }, [filters]);
 
-  // Create a stable fetch function that doesn't depend on state
+  // Main fetch function
   const fetchSalesStable = useCallback(
     async (newFilters = {}, isInitial = false) => {
-      // Check authentication first
       if (!isAuthenticated) {
         setError("Please login to access sales data.");
         setLoading(false);
         setTableLoading(false);
         return;
       }
-
-      // Prevent concurrent calls
       if (isLoadingRef.current) {
-        console.log("API call already in progress, skipping...");
+        // Optionally: toast.info("API call already in progress, skipping...");
         return;
       }
-
       isLoadingRef.current = true;
-
-      // Use different loading states based on whether this is initial load or filter/pagination
       if (isInitial) {
         setLoading(true);
       } else {
         setTableLoading(true);
       }
-
       setError(null);
-
       try {
-        // Use the ref to get current filters
         const currentFilters = filtersRef.current;
         const mergedFilters = { ...currentFilters, ...newFilters };
-
-        console.log("Fetching sales with filters:", mergedFilters);
-        console.log("User authenticated:", isAuthenticated, "User:", user);
-
         const response = await salesAdvancedService.getSalesData(mergedFilters);
-        console.log("API Response:", response);
-
         if (response.success) {
           setData(response.data || []);
           setPagination(
@@ -103,29 +87,24 @@ export const useSalesAdvanced = (initialFilters = {}) => {
               ),
             }
           );
-
-          // Update the ref with merged filters
           filtersRef.current = mergedFilters;
-
-          // Update state with merged filters (only if different)
           setFilters((prevFilters) => {
             if (JSON.stringify(prevFilters) !== JSON.stringify(mergedFilters)) {
               return mergedFilters;
             }
             return prevFilters;
           });
-
-          // Show success message if we have data
           if (response.data?.length > 0) {
-            console.log(`Loaded ${response.data.length} transactions`);
+            toast.success(
+              "Loaded",
+              `${response.data.length} transactions loaded successfully`
+            );
           }
         } else {
           throw new Error(response.message || "Failed to fetch sales data");
         }
       } catch (err) {
-        console.error("Error fetching sales:", err);
-
-        // Show user-friendly error message based on error type
+        toast.error("Error", err.message || "Error fetching sales");
         if (
           err.message.includes("401") ||
           err.message.includes("Unauthorized") ||
@@ -151,7 +130,6 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         } else {
           setError(`Failed to load sales data: ${err.message}`);
         }
-
         setData([]);
         setPagination({ page: 1, limit: 100, total: 0, totalPages: 0 });
       } finally {
@@ -160,29 +138,30 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         isLoadingRef.current = false;
       }
     },
-    [isAuthenticated, user] // Only depend on auth state
+    [isAuthenticated, user, toast]
   );
 
-  // Keep the original fetchSales for backward compatibility but make it stable
   const fetchSales = fetchSalesStable;
 
-  // Fetch statistics
-  const fetchStats = useCallback(async (statsFilters = {}) => {
-    try {
-      const statsData = await salesAdvancedService.getSalesStats(statsFilters);
-      setStats(statsData);
-      return statsData;
-    } catch (err) {
-      console.error("Error fetching stats:", err);
-      // Don't show error for stats as it's secondary data
-      return {};
-    }
-  }, []);
+  const fetchStats = useCallback(
+    async (statsFilters = {}) => {
+      try {
+        const statsData = await salesAdvancedService.getSalesStats(
+          statsFilters
+        );
+        setStats(statsData);
+        return statsData;
+      } catch (err) {
+        toast.error("Stats Error", err.message || "Error fetching stats");
+        return {};
+      }
+    },
+    [toast]
+  );
 
   const exportSales = useCallback(
     async (exportFilters = {}, format = "csv") => {
       setLoading(true);
-
       try {
         const currentFilters = filtersRef.current;
         if (format === "csv") {
@@ -196,7 +175,6 @@ export const useSalesAdvanced = (initialFilters = {}) => {
             ...exportFilters,
           });
         } else {
-          // For JSON export
           const result = await salesAdvancedService.exportSalesData(
             { ...currentFilters, ...exportFilters },
             "json"
@@ -210,16 +188,15 @@ export const useSalesAdvanced = (initialFilters = {}) => {
             "application/json"
           );
         }
-
-        console.log(`Successfully exported data as ${format.toUpperCase()}`);
+        toast.success("Exported", `Data exported as ${format.toUpperCase()}`);
       } catch (err) {
-        console.error("Error exporting sales:", err);
+        toast.error("Export Error", err.message || "Error exporting sales");
         setError(`Export failed: ${err.message}`);
       } finally {
         setLoading(false);
       }
     },
-    [] // No dependencies needed since we use ref
+    [toast]
   );
 
   const handleTableChange = useCallback(
@@ -228,20 +205,18 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         page: pagination.current,
         limit: pagination.pageSize,
       };
-
       if (sorter.field) {
         newFilters.sortBy = sorter.field;
         newFilters.sortOrder = sorter.order === "ascend" ? "asc" : "desc";
       }
-
-      fetchSalesStable(newFilters, false); // false = not initial load
+      fetchSalesStable(newFilters, false);
     },
     [fetchSalesStable]
   );
 
   const applyFilters = useCallback(
     (newFilters) => {
-      fetchSalesStable({ ...newFilters, page: 1 }, false); // false = not initial load, use table loading
+      fetchSalesStable({ ...newFilters, page: 1 }, false);
     },
     [fetchSalesStable]
   );
@@ -250,10 +225,9 @@ export const useSalesAdvanced = (initialFilters = {}) => {
     const currentDefaultFilters = defaultFiltersRef.current;
     setFilters(currentDefaultFilters);
     filtersRef.current = currentDefaultFilters;
-    fetchSalesStable(currentDefaultFilters, false); // false = not initial load
+    fetchSalesStable(currentDefaultFilters, false);
   }, [fetchSalesStable]);
 
-  // Search functionality
   const searchSales = useCallback(
     async (searchTerm, searchFields = []) => {
       const searchFilters = {
@@ -261,12 +235,11 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         ...(searchFields.length && { searchFields }),
         page: 1,
       };
-      await fetchSalesStable(searchFilters, false); // false = not initial load
+      await fetchSalesStable(searchFilters, false);
     },
     [fetchSalesStable]
   );
 
-  // Location-based search
   const searchByLocation = useCallback(
     async (states = [], cities = [], lgas = []) => {
       const locationFilters = {
@@ -275,12 +248,11 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         ...(lgas.length && { lgas }),
         page: 1,
       };
-      await fetchSalesStable(locationFilters, false); // false = not initial load
+      await fetchSalesStable(locationFilters, false);
     },
     [fetchSalesStable]
   );
 
-  // Amount-based search
   const searchByAmount = useCallback(
     async (amountMin, amountMax) => {
       const amountFilters = {
@@ -288,12 +260,11 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         amountMax,
         page: 1,
       };
-      await fetchSalesStable(amountFilters, false); // false = not initial load
+      await fetchSalesStable(amountFilters, false);
     },
     [fetchSalesStable]
   );
 
-  // Date range search
   const searchByDateRange = useCallback(
     async (dateFrom, dateTo) => {
       const dateFilters = {
@@ -301,30 +272,19 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         dateTo,
         page: 1,
       };
-      await fetchSalesStable(dateFilters, false); // false = not initial load
+      await fetchSalesStable(dateFilters, false);
     },
     [fetchSalesStable]
   );
 
-  // Load initial data - use a separate effect that doesn't depend on the main functions
   useEffect(() => {
     if (!isAuthenticated || hasInitializedRef.current) return;
-
     hasInitializedRef.current = true;
-
-    // Initial load function that doesn't cause dependency issues
     const loadInitialData = async () => {
       try {
         setLoading(true);
         setError(null);
-
         const currentDefaultFilters = defaultFiltersRef.current;
-        console.log(
-          "Loading initial data with filters:",
-          currentDefaultFilters
-        );
-
-        // Load sales data
         const salesResponse = await salesAdvancedService.getSalesData(
           currentDefaultFilters
         );
@@ -348,19 +308,19 @@ export const useSalesAdvanced = (initialFilters = {}) => {
             salesResponse.message || "Failed to fetch initial sales data"
           );
         }
-
-        // Load stats data
         try {
           const statsData = await salesAdvancedService.getSalesStats(
             currentDefaultFilters
           );
           setStats(statsData);
         } catch (statsErr) {
-          console.error("Error fetching initial stats:", statsErr);
-          // Stats errors are non-critical
+          toast.error(
+            "Stats Error",
+            statsErr.message || "Error fetching initial stats"
+          );
         }
       } catch (err) {
-        console.error("Error loading initial data:", err);
+        toast.error("Load Error", err.message || "Error loading initial data");
         setError(`Failed to load initial data: ${err.message}`);
         setData([]);
         setPagination({ page: 1, limit: 100, total: 0, totalPages: 0 });
@@ -368,11 +328,9 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         setLoading(false);
       }
     };
-
     loadInitialData();
-  }, [isAuthenticated]); // Only depend on authentication status
+  }, [isAuthenticated, toast]);
 
-  // Reset the initialization flag when authentication changes
   useEffect(() => {
     if (!isAuthenticated) {
       hasInitializedRef.current = false;
@@ -387,24 +345,16 @@ export const useSalesAdvanced = (initialFilters = {}) => {
     pagination,
     filters,
     stats,
-
-    // Core functions
     fetchSales,
     fetchStats,
     exportSales,
-
-    // Event handlers
     handleTableChange,
     applyFilters,
     resetFilters,
-
-    // Search functions
     searchSales,
     searchByLocation,
     searchByAmount,
     searchByDateRange,
-
-    // Direct access to service for advanced use cases
     service: salesAdvancedService,
   };
 };

@@ -1,4 +1,5 @@
 // Get auth headers using Supabase session (same as other services)
+"use client";
 async function getAuthHeaders(supabase) {
   const {
     data: { session },
@@ -18,7 +19,7 @@ async function importSalesCSV(supabase, organizationId, csvFile) {
     const headers = await getAuthHeaders(supabase);
     const formData = new FormData();
     formData.append("organization_id", organizationId);
-    formData.append("file", csvFile);
+    formData.append("csv_file", csvFile);
     const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const functionUrl = `${baseUrl}/functions/v1/upload-stove-ids-csv`;
     const response = await fetch(functionUrl, {
@@ -36,7 +37,6 @@ async function importSalesCSV(supabase, organizationId, csvFile) {
       message: data.message || "CSV import completed successfully",
     };
   } catch (error) {
-    console.error("CSV import error:", error);
     throw new Error(error.message || "Failed to import CSV data");
   }
 }
@@ -65,7 +65,6 @@ async function getImportHistory(supabase, page = 1, limit = 20) {
       pagination: data.pagination || {},
     };
   } catch (error) {
-    console.error("Import history error:", error);
     throw new Error(error.message || "Failed to fetch import history");
   }
 }
@@ -93,7 +92,6 @@ async function getImportDetails(supabase, importId) {
       data: data,
     };
   } catch (error) {
-    console.error("Import details error:", error);
     throw new Error(error.message || "Failed to fetch import details");
   }
 }

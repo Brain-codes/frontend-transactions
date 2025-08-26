@@ -15,8 +15,11 @@ class OrganizationsService {
         .order("name", { ascending: true });
 
       if (error) {
-        console.error("Error fetching organizations:", error);
-        throw new Error(`Failed to fetch organizations: ${error.message}`);
+        return {
+          success: false,
+          error: `Failed to fetch organizations: ${error.message}`,
+          data: [],
+        };
       }
 
       // Normalize the data to ensure we have a consistent name field
@@ -32,7 +35,6 @@ class OrganizationsService {
         count: normalizedData.length,
       };
     } catch (error) {
-      console.error("Service error:", error);
       return {
         success: false,
         error: error.message,
@@ -48,7 +50,6 @@ class OrganizationsService {
       // You can modify this later if you add a status field to your table
       return await this.getAllOrganizations();
     } catch (error) {
-      console.error("Service error:", error);
       return {
         success: false,
         error: error.message,
@@ -67,8 +68,11 @@ class OrganizationsService {
         .single();
 
       if (error) {
-        console.error("Error fetching organization:", error);
-        throw new Error(`Failed to fetch organization: ${error.message}`);
+        return {
+          success: false,
+          error: `Failed to fetch organization: ${error.message}`,
+          data: null,
+        };
       }
 
       return {
@@ -82,7 +86,6 @@ class OrganizationsService {
         },
       };
     } catch (error) {
-      console.error("Service error:", error);
       return {
         success: false,
         error: error.message,
@@ -101,8 +104,11 @@ class OrganizationsService {
         .order("name", { ascending: true });
 
       if (error) {
-        console.error("Error searching organizations:", error);
-        throw new Error(`Failed to search organizations: ${error.message}`);
+        return {
+          success: false,
+          error: `Failed to search organizations: ${error.message}`,
+          data: [],
+        };
       }
 
       // Normalize the data
@@ -118,7 +124,6 @@ class OrganizationsService {
         count: normalizedData.length,
       };
     } catch (error) {
-      console.error("Service error:", error);
       return {
         success: false,
         error: error.message,
