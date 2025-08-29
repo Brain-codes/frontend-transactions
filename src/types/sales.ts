@@ -181,10 +181,10 @@ export interface Sale {
   profiles?: UserProfile; // Added profiles
   sales_history?: SalesHistory[];
 
-  // Legacy fields for backward compatibility
-  address?: Address;
-  organization?: Organization;
-  organization_name?: string;
+  // // Legacy fields for backward compatibility
+  // addresses?: Address;
+  // organization?: Organization;
+  // organization_name?: string;
 }
 
 export interface PaginationInfo {

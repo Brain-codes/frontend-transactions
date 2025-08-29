@@ -4,23 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import SalesAdvancedFilterShadcn from "../components/SalesAdvancedFilterShadcn";
-import SalesDetailSidebar from "../components/SalesDetailSidebar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import ActiveFiltersBar from "./components/ActiveFiltersBar";
+import SalesTable from "./components/SalesTable";
 import {
   Pagination,
   PaginationContent,
@@ -39,21 +25,28 @@ import {
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import useSalesAdvanced from "../hooks/useSalesAdvanced";
+// @ts-ignore
+import { Sale } from "@/types/sales";
 import organizationsService from "../services/organizationsService";
 import { lgaAndStates } from "../constants";
+import ReceiptModal from "./components/ReceiptModal";
+import AttachmentsModal from "./components/AttachmentsModal";
 import {
-  Eye,
-  Filter,
   Download,
   Search,
   X,
-  MoreVertical,
-  Edit,
-  Trash2,
-  Calendar,
+
 } from "lucide-react";
 
+import { useState as useModalState } from "react";
+
 const SalesPage = () => {
+  const [selectedState, setSelectedState] = useState("");
+  // Modal state for receipts and attachments
+  const [showReceiptModal, setShowReceiptModal] = useModalState(false);
+  const [showAttachmentsModal, setShowAttachmentsModal] = useModalState(false);
+  const [modalSale, setModalSale] = useModalState(null);
+  const [selectedLGA, setSelectedLGA] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedSale, setSelectedSale] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -67,6 +60,18 @@ const SalesPage = () => {
   const isManualSearchClear = useRef(false);
   const searchTimeoutRef = useRef(null);
 
+  /**
+   * @type {{
+   *   data: import("@/types/sales").Sale[],
+   *   loading: boolean,
+   *   tableLoading: boolean,
+   *   error: string | null,
+   *   pagination: any,
+   *   applyFilters: (filters: any) => void,
+   *   exportSales: (filters: any, format: string) => void,
+   *   fetchSales: () => void,
+   * }}
+   */
   const {
     data: salesData,
     loading,
@@ -187,8 +192,39 @@ const SalesPage = () => {
     }
   };
 
-  const handleViewDetails = (sale) => {
-    setSelectedSale(sale);
+  // Calculate stove age in years, months, days
+  const getStoveAge = (salesDate) => {
+    if (!salesDate) return "N/A";
+    const soldDate = new Date(salesDate);
+    const now = new Date();
+    let years = now.getFullYear() - soldDate.getFullYear();
+    let months = now.getMonth() - soldDate.getMonth();
+    let days = now.getDate() - soldDate.getDate();
+    if (days < 0) {
+      months--;
+      days += new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+    }
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+    let result = [];
+    if (years > 0) result.push(`${years}y`);
+    if (months > 0) result.push(`${months}m`);
+    if (days > 0) result.push(`${days}d`);
+    return result.length ? result.join(" ") : "0d";
+  };
+
+  // Show receipt modal
+  const handleShowReceipt = (sale) => {
+    setModalSale(sale);
+    setShowReceiptModal(true);
+  };
+
+  // Show attachments modal
+  const handleShowAttachments = (sale) => {
+    setModalSale(sale);
+    setShowAttachmentsModal(true);
   };
 
   const handleEdit = (sale) => {
@@ -309,8 +345,10 @@ const SalesPage = () => {
 
   const handleStateFilter = (value) => {
     if (value === "all") {
+      setSelectedState("");
+      setSelectedLGA("");
       setActiveQuickFilters((prev) => ({ ...prev, state: "" }));
-      applyFilters({ state: "", page: 1 });
+      applyFilters({ state: "", lga: "", page: 1 });
     } else {
       // Find the proper state name from constants
       const stateName = nigerianStates.find(
@@ -318,9 +356,20 @@ const SalesPage = () => {
       );
       const stateLabel =
         stateName || value.charAt(0).toUpperCase() + value.slice(1);
-
+      setSelectedState(stateLabel);
+      setSelectedLGA("");
       setActiveQuickFilters((prev) => ({ ...prev, state: stateLabel }));
-      applyFilters({ state: value, page: 1 });
+      applyFilters({ state: stateLabel, lga: "", page: 1 });
+    }
+  };
+
+  const handleLGAFilter = (value) => {
+    if (value === "all") {
+      setSelectedLGA("");
+      applyFilters({ lga: "", page: 1 });
+    } else {
+      setSelectedLGA(value);
+      applyFilters({ lga: value, page: 1 });
     }
   };
 
@@ -356,6 +405,8 @@ const SalesPage = () => {
     // Clear all filter states
     setActiveQuickFilters({ dateRange: "", state: "", partner: "" });
     setCustomDateRange({ startDate: "", endDate: "" });
+    setSelectedState("");
+    setSelectedLGA("");
 
     // Apply cleared filters including search
     applyFilters({
@@ -363,6 +414,7 @@ const SalesPage = () => {
       dateFrom: "",
       dateTo: "",
       state: "",
+      lga: "",
       partner: "",
       organization_id: "",
       page: 1,
@@ -407,23 +459,12 @@ const SalesPage = () => {
         currentRoute="sales"
         title="Atmosfair Sales Management"
         description="Manage and track all your Atmosfair sales transactions"
-        rightButton={
-          <Button
-            variant="outline"
-            onClick={() => handleExport("csv")}
-            className="text-gray-700"
-            disabled={tableLoading}
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
-        }
       >
         <div className="h-full flex flex-col">
           {/* Header section removed - now in topbar */}
           <div className="bg-white border-b border-gray-200 p-4 lg:p-6">
             {/* Mobile Export Button - Only visible on mobile */}
-            <div className="sm:hidden mb-4">
+            {/* <div className="sm:hidden mb-4">
               <Button
                 variant="outline"
                 onClick={() => handleExport("csv")}
@@ -433,7 +474,7 @@ const SalesPage = () => {
                 <Download className="w-4 h-4 mr-2" />
                 Export CSV
               </Button>
-            </div>
+            </div> */}
 
             {/* Search and All Filters - Mobile Responsive but Desktop Horizontal */}
             <div
@@ -479,25 +520,63 @@ const SalesPage = () => {
                     State
                   </label>
                   <Select
-                    onValueChange={(value) => handleStateFilter(value)}
+                    value={
+                      selectedState ? selectedState.toLowerCase() : undefined
+                    }
+                    onValueChange={handleStateFilter}
                     disabled={tableLoading}
                   >
                     <SelectTrigger className="w-full sm:w-40 !py-2.5">
-                      <SelectValue placeholder="All states" />
+                      <SelectValue placeholder="All states">
+                        {selectedState || "All states"}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All states</SelectItem>
                       {nigerianStates.map((state) => (
-                        <SelectItem key={state} value={state.toLowerCase()}>
+                        <SelectItem
+                          key={state}
+                          value={state.toLowerCase()}
+                          className="text-gray-700"
+                        >
                           {state}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+                {/* LGA Filter */}
+                <div className="space-y-1 w-full sm:w-auto">
+                  <label className="text-sm font-medium text-gray-700">
+                    LGA
+                  </label>
+                  <Select
+                    value={selectedLGA ? selectedLGA : undefined}
+                    onValueChange={handleLGAFilter}
+                    disabled={tableLoading || !selectedState}
+                  >
+                    <SelectTrigger className="w-full sm:w-40 !py-2.5">
+                      <SelectValue
+                        placeholder={
+                          selectedState ? "All LGAs" : "Select state first"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All LGAs</SelectItem>
+                      {selectedState &&
+                        lgaAndStates[selectedState] &&
+                        lgaAndStates[selectedState].map((lga) => (
+                          <SelectItem key={lga} value={lga}>
+                            {lga}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 {/* Partner Filter */}
-                <div className="space-y-1 w-full sm:w-auto">
+                {/* <div className="space-y-1 w-full sm:w-auto">
                   <label className="text-sm font-medium text-gray-700">
                     Partner
                   </label>
@@ -531,23 +610,23 @@ const SalesPage = () => {
                       )}
                     </SelectContent>
                   </Select>
-                </div>
+                </div> */}
               </div>
 
               {/* Date Container - Compact for Desktop Inline */}
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-3 w-full xl:w-auto xl:min-w-[280px]">
-                <div className="flex items-center gap-2">
+              <div className=" rounded-lg pt-2 space-y-3 w-full xl:w-auto xl:min-w-[280px]">
+                {/* <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-gray-600" />
                   <span className="text-sm font-medium text-gray-700">
                     Date Range
                   </span>
-                </div>
+                </div> */}
 
                 {/* Date Inputs Row - Always side by side on larger screens */}
                 <div className="flex flex-col sm:flex-row gap-2">
                   <div className="flex-1">
                     <label className="text-xs text-gray-600 mb-1 block">
-                      Start Date
+                      End Date Range
                     </label>
                     <DatePicker
                       value={customDateRange.startDate}
@@ -561,7 +640,7 @@ const SalesPage = () => {
                   </div>
                   <div className="flex-1">
                     <label className="text-xs text-gray-600 mb-1 block">
-                      End Date
+                      Start Date Range
                     </label>
                     <DatePicker
                       value={customDateRange.endDate}
@@ -576,7 +655,7 @@ const SalesPage = () => {
                 </div>
 
                 {/* Quick Select Row */}
-                <div>
+                {/* <div>
                   <label className="text-xs text-gray-600 mb-1 block">
                     Quick Select
                   </label>
@@ -597,112 +676,9 @@ const SalesPage = () => {
                       <SelectItem value="all">Clear dates</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </div> */}
               </div>
-            </div>
-
-            {/* Active Filters Display */}
-            {(activeQuickFilters.dateRange ||
-              activeQuickFilters.state ||
-              activeQuickFilters.partner ||
-              searchTerm) && (
-              <div className="flex flex-wrap gap-2 items-center md:mt-5 mt-0">
-                <span className="text-xs font-medium text-gray-600">
-                  Active filters:
-                </span>
-                {searchTerm && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-brand-100 text-brand-800 border-brand-200"
-                  >
-                    Search: &ldquo;{searchTerm}&rdquo;
-                    <button
-                      onClick={() => {
-                        // Cancel any pending search timeout
-                        if (searchTimeoutRef.current) {
-                          clearTimeout(searchTimeoutRef.current);
-                          searchTimeoutRef.current = null;
-                        }
-                        isManualSearchClear.current = true;
-                        setSearchTerm("");
-                        // Immediately fetch data without search parameter
-                        applyFilters({ search: "", page: 1 });
-                      }}
-                      className="ml-1 hover:text-brand-900"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                )}
-                {activeQuickFilters.dateRange && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-brand-100 text-brand-800 border-brand-200"
-                  >
-                    Date: {activeQuickFilters.dateRange}
-                    <button
-                      onClick={() => {
-                        setCustomDateRange({ startDate: "", endDate: "" });
-                        handleQuickDateFilter("all");
-                      }}
-                      className="ml-1 hover:text-brand-900"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                )}
-                {activeQuickFilters.state && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-brand-100 text-brand-800 border-brand-200"
-                  >
-                    State: {activeQuickFilters.state}
-                    <button
-                      onClick={() => handleStateFilter("all")}
-                      className="ml-1 hover:text-brand-900"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                )}
-                {activeQuickFilters.partner && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-brand-100 text-brand-800 border-brand-200"
-                  >
-                    Partner: {activeQuickFilters.partner}
-                    <button
-                      onClick={() => handlePartnerFilter("all")}
-                      className="ml-1 hover:text-brand-900"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                )}
-
-                {/* Clear Filters Button */}
-                <div className="space-y-1 flex flex-col justify-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearQuickFilters}
-                    className="text-xs h-10 whitespace-nowrap text-gray-700"
-                    disabled={tableLoading}
-                  >
-                    <X className="h-3 w-3 mr-1" />
-                    Clear All
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Stats */}
-            <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div className="text-sm text-gray-600">
-                Showing {displayData.length} of {pagination.total} sales (Page{" "}
-                {pagination.page} of {pagination.totalPages})
-              </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col items-center gap-2">
                 <span className="text-sm text-gray-600">Items per page:</span>
                 <Select
                   value={pagination.limit.toString()}
@@ -723,9 +699,46 @@ const SalesPage = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <Button
+                variant="outline"
+                onClick={() => handleExport("csv")}
+                className="text-white bg-brand mt-7"
+                disabled={tableLoading}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
+            </div>
+
+            {/* Active Filters Display */}
+            <ActiveFiltersBar
+              activeQuickFilters={activeQuickFilters}
+              selectedLGA={selectedLGA}
+              searchTerm={searchTerm}
+              tableLoading={tableLoading}
+              clearQuickFilters={clearQuickFilters}
+              handleStateFilter={handleStateFilter}
+              handleLGAFilter={handleLGAFilter}
+              handlePartnerFilter={handlePartnerFilter}
+              setCustomDateRange={setCustomDateRange}
+              handleQuickDateFilter={handleQuickDateFilter}
+              applyFilters={applyFilters}
+              setSearchTerm={setSearchTerm}
+              searchTimeoutRef={searchTimeoutRef}
+              isManualSearchClear={isManualSearchClear}
+            />
+
+            {/* Stats */}
+            <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="text-sm text-gray-600">
+                Showing {displayData.length} of {pagination.total} sales (Page{" "}
+                {pagination.page} of {pagination.totalPages})
+              </div>
             </div>
           </div>
-
+          <h1 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 truncate pl-6 pr-6 pt-4">
+            Sales Management Table
+          </h1>
           {/* Table */}
           <div className="flex-1 overflow-auto p-4 lg:p-6">
             <div className="bg-white rounded-lg border border-gray-200 relative">
@@ -739,115 +752,17 @@ const SalesPage = () => {
                 </div>
               )}
 
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Transaction ID</TableHead>
-                    <TableHead>Stove ID</TableHead>
-                    <TableHead>Sales Date</TableHead>
-                    <TableHead>Sales Partner</TableHead>
-                    <TableHead>Sales State</TableHead>
-                    <TableHead>Sales LGA</TableHead>
-                    <TableHead>End User Name</TableHead>
-                    <TableHead>End User Phone</TableHead>
-                    <TableHead>End User Address</TableHead>
-                    <TableHead className="text-center">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className={tableLoading ? "opacity-40" : ""}>
-                  {displayData.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8">
-                        <div className="text-gray-900">
-                          {searchTerm
-                            ? "No sales found matching your search."
-                            : "No sales data available."}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    displayData.map((sale, index) => (
-                      <TableRow
-                        key={sale.id || index}
-                        className="hover:bg-gray-50 text-gray-700"
-                      >
-                        <TableCell className="font-medium">
-                          {sale.transaction_id || sale.id || `TXN-${index + 1}`}
-                        </TableCell>
-                        <TableCell>{sale.stove_serial_no || "N/A"}</TableCell>
-                        <TableCell>
-                          {formatDate(sale.sales_date || sale.created_at)}
-                        </TableCell>
-                        <TableCell>
-                          {sale.partner_name ||
-                            sale.organizations?.name ||
-                            sale.organization_name ||
-                            "N/A"}
-                        </TableCell>
-                        <TableCell>
-                          {sale.state_backup ||
-                            sale.addresses?.state ||
-                            sale.address?.state ||
-                            "N/A"}
-                        </TableCell>
-                        <TableCell>
-                          {sale.lga_backup ||
-                            sale.addresses?.city ||
-                            sale.address?.city ||
-                            "N/A"}
-                        </TableCell>
-                        <TableCell>
-                          {sale.end_user_name || sale.contact_person || "N/A"}
-                        </TableCell>
-                        <TableCell>
-                          {sale.phone || sale.contact_phone || "N/A"}
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate">
-                          {sale.addresses?.full_address ||
-                            sale.addresses?.street ||
-                            sale.address?.street ||
-                            "N/A"}
-                        </TableCell>
-                        <TableCell
-                          className="cursor-pointer text-center"
-                          onClick={() => handleViewDetails(sale)}
-                        >
-                          <Eye className="h-4 w-4" />
-
-                          {/* <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => handleViewDetails(sale)}
-                              >
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleEdit(sale)}
-                              >
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(sale)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu> */}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+              <SalesTable
+                displayData={displayData}
+                tableLoading={tableLoading}
+                searchTerm={searchTerm}
+                formatDate={formatDate}
+                getStoveAge={getStoveAge}
+                exportSales={exportSales}
+                handleShowReceipt={handleShowReceipt}
+                handleShowAttachments={handleShowAttachments}
+                handleDelete={handleDelete}
+              />
             </div>
 
             {/* Pagination */}
@@ -884,9 +799,7 @@ const SalesPage = () => {
                         page === pagination.totalPages ||
                         (page >= pagination.page - 2 &&
                           page <= pagination.page + 2);
-
                       if (!showPage) {
-                        // Show ellipsis for skipped pages
                         if (
                           page === pagination.page - 3 ||
                           page === pagination.page + 3
@@ -899,7 +812,6 @@ const SalesPage = () => {
                         }
                         return null;
                       }
-
                       return (
                         <PaginationItem key={page}>
                           <PaginationLink
@@ -916,18 +828,6 @@ const SalesPage = () => {
                         </PaginationItem>
                       );
                     })}
-
-                    <PaginationItem>
-                      <PaginationNext
-                        onClick={() => handlePageChange(pagination.page + 1)}
-                        className={
-                          pagination.page >= pagination.totalPages ||
-                          tableLoading
-                            ? "pointer-events-none opacity-50"
-                            : "cursor-pointer"
-                        }
-                      />
-                    </PaginationItem>
                   </PaginationContent>
                 </Pagination>
               </div>
@@ -944,12 +844,21 @@ const SalesPage = () => {
           salesData={salesData}
         />
 
-        {/* Sale Detail Sidebar */}
-        {selectedSale && (
-          <SalesDetailSidebar
-            sale={selectedSale}
-            isOpen={!!selectedSale}
-            onClose={() => setSelectedSale(null)}
+        {/* Receipt Modal */}
+        {showReceiptModal && (
+          <ReceiptModal
+            isOpen={showReceiptModal}
+            onClose={() => setShowReceiptModal(false)}
+            modalSale={modalSale}
+          />
+        )}
+
+        {/* Attachments Modal */}
+        {showAttachmentsModal && (
+          <AttachmentsModal
+            open={showAttachmentsModal}
+            onOpenChange={() => setShowAttachmentsModal(false)}
+            modalSale={modalSale}
           />
         )}
       </DashboardLayout>

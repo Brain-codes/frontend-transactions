@@ -39,13 +39,13 @@ const Sidebar = ({ isOpen, onClose, currentRoute, user, onLogout }) => {
       href: "/partners",
       badge: null,
     },
-    {
-      name: "Heat Map",
-      icon: Map,
-      route: "map",
-      href: "/map",
-      badge: null,
-    },
+    // {
+    //   name: "Heat Map",
+    //   icon: Map,
+    //   route: "map",
+    //   href: "/map",
+    //   badge: null,
+    // },
   ];
 
   const navigateToRoute = (href) => {
@@ -150,7 +150,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute, user, onLogout }) => {
         </nav>
 
         {/* User Profile Section */}
-        <div className="border-t border-gray-100 bg-gray-50/50 p-4 flex-shrink-0">
+        {/* <div className="border-t border-gray-100 bg-gray-50/50 p-4 flex-shrink-0">
           <div className="flex items-center space-x-3 p-3 rounded-xl bg-white border border-gray-200 shadow-sm">
             <div className="bg-gradient-to-br from-brand-800 to-brand-900 w-10 h-10 rounded-full flex items-center justify-center">
               <span className="text-white font-semibold text-sm">
@@ -163,6 +163,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute, user, onLogout }) => {
               </p>
               <p className="text-xs text-gray-500 truncate">
                 {user?.email || "user@example.com"}
+                
               </p>
             </div>
             <div className="flex space-x-1">
@@ -183,7 +184,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute, user, onLogout }) => {
               </Button>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </>
   );

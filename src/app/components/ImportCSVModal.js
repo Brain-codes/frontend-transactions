@@ -5,13 +5,7 @@ import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import Modal from "@/components/ui/modal";
 import {
   Upload,
   X,
@@ -173,345 +167,338 @@ const ImportCSVModal = ({
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={handleClose}>
-      <SheetContent
-        className="w-full sm:max-w-lg overflow-y-auto"
-        onClose={handleClose}
-      >
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5" />
-            Import CSV Sales Data
-          </SheetTitle>
-          <SheetDescription>
-            Select a partner and upload their sales data via CSV file.
-          </SheetDescription>
-        </SheetHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-6 mt-6">
-          {/* Partner Selection */}
-          <div className="space-y-4">
-            <div className="border-b"></div>
-            {/* Searchable Partner Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="organization" className="text-gray-700">
-                Select Partner/Organization{" "}
-                <span className="text-red-500">*</span>
-              </Label>
-              <div className="relative" ref={dropdownRef}>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 z-10" />
-                  <Input
-                    value={searchTerm}
-                    onFocus={() => setDropdownOpen(true)}
-                    onChange={(e) => {
-                      setSearchTerm(e.target.value);
-                      setDropdownOpen(true);
-                      // Clear selection when searching
-                      if (selectedOrganization && e.target.value) {
-                        const selectedOrg = organizations.find(
-                          (org) => org.id === selectedOrganization
-                        );
-                        if (
-                          selectedOrg &&
-                          !selectedOrg.name
-                            .toLowerCase()
-                            .includes(e.target.value.toLowerCase()) &&
-                          !selectedOrg.partner_email
-                            .toLowerCase()
-                            .includes(e.target.value.toLowerCase())
-                        ) {
-                          setSelectedOrganization("");
-                        }
-                      }
-                      if (errors.organization) {
-                        setErrors((prev) => ({
-                          ...prev,
-                          organization: undefined,
-                        }));
-                      }
-                    }}
-                    placeholder="Search and select a partner organization..."
-                    className={`text-sm text-gray-600 pl-10 pr-4 ${
-                      errors.organization ? "border-red-500" : ""
-                    }`}
-                  />
-                  {searchTerm && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchTerm("");
+    <Modal
+      open={isOpen}
+      onOpenChange={handleClose}
+      title={
+        <span className="flex items-center gap-2">
+          <Upload className="h-5 w-5" /> Import CSV Sales Data
+        </span>
+      }
+      description="Select a partner and upload their sales data via CSV file."
+      className="max-w-lg"
+    >
+      <form onSubmit={handleSubmit} className="space-y-6 mt-6">
+        {/* Partner Selection */}
+        <div className="space-y-4">
+          <div className="border-b"></div>
+          {/* Searchable Partner Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="organization" className="text-gray-700">
+              Select Partner/Organization{" "}
+              <span className="text-red-500">*</span>
+            </Label>
+            <div className="relative" ref={dropdownRef}>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 z-10" />
+                <Input
+                  value={searchTerm}
+                  onFocus={() => setDropdownOpen(true)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setDropdownOpen(true);
+                    // Clear selection when searching
+                    if (selectedOrganization && e.target.value) {
+                      const selectedOrg = organizations.find(
+                        (org) => org.id === selectedOrganization
+                      );
+                      if (
+                        selectedOrg &&
+                        !selectedOrg.name
+                          .toLowerCase()
+                          .includes(e.target.value.toLowerCase()) &&
+                        !selectedOrg.partner_email
+                          .toLowerCase()
+                          .includes(e.target.value.toLowerCase())
+                      ) {
                         setSelectedOrganization("");
-                        setDropdownOpen(false);
-                      }}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Dropdown Results */}
-                {dropdownOpen && (searchTerm || !selectedOrganization) && (
-                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                    {filteredOrganizations.length === 0 ? (
-                      <div className="p-3 text-sm text-gray-500 text-center">
-                        {searchTerm
-                          ? "No partners match your search"
-                          : "No partners available"}
-                      </div>
-                    ) : (
-                      <div className="py-1">
-                        {filteredOrganizations.map((org) => (
-                          <button
-                            key={org.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedOrganization(org.id);
-                              setSearchTerm(org.name);
-                              setDropdownOpen(false);
-                              if (errors.organization) {
-                                setErrors((prev) => ({
-                                  ...prev,
-                                  organization: undefined,
-                                }));
-                              }
-                            }}
-                            className={`w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none ${
-                              selectedOrganization === org.id
-                                ? "bg-blue-50 text-blue-700"
-                                : ""
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <Building2 className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                              <div className="min-w-0 flex-1">
-                                <div className="font-medium text-gray-900 truncate">
-                                  {org.name}
-                                </div>
-                                <div className="text-xs text-gray-500 truncate">
-                                  {org.partner_email}
-                                </div>
-                                <div className="text-xs text-gray-400">
-                                  {org.city}, {org.state} • {org.status}
-                                </div>
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Selected Organization Display */}
-                {selectedOrganization && !dropdownOpen && (
-                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-blue-600" />
-                        <div>
-                          <div className="font-medium text-blue-900">
-                            {
-                              organizations.find(
-                                (org) => org.id === selectedOrganization
-                              )?.name
-                            }
-                          </div>
-                          <div className="text-xs text-blue-700">
-                            {
-                              organizations.find(
-                                (org) => org.id === selectedOrganization
-                              )?.partner_email
-                            }
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedOrganization("");
-                          setSearchTerm("");
-                        }}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-              {errors.organization && (
-                <p className="text-xs text-red-500 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {errors.organization}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* File Upload */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-900 border-b pb-2">
-              Upload CSV File
-            </h3>
-
-            {/* Drag & Drop Zone */}
-            <div
-              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                dragActive
-                  ? "border-brand-500 bg-brand-50"
-                  : errors.file
-                  ? "border-red-300 bg-red-50"
-                  : "border-gray-300 hover:border-gray-400"
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
-              {csvFile ? (
-                <div className="space-y-3">
-                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      File Ready
-                    </p>
-                    <div className="flex items-center justify-center gap-2 mt-2">
-                      <FileText className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm text-gray-600">
-                        {csvFile.name}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        ({getFileSize(csvFile.size)})
-                      </span>
-                      <button
-                        type="button"
-                        onClick={removeFile}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <Upload className="h-12 w-12 text-gray-400 mx-auto" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      Drop your CSV file here, or{" "}
-                      <label className="text-brand-600 hover:text-brand-700 cursor-pointer">
-                        browse
-                        <input
-                          type="file"
-                          accept=".csv"
-                          onChange={handleFileChange}
-                          className="sr-only"
-                        />
-                      </label>
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Only CSV files are supported
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {errors.file && (
-              <p className="text-xs text-red-500 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {errors.file}
-              </p>
-            )}
-
-            {/* CSV Format Info */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-blue-700 flex-1">
-                  <p className="font-medium mb-1">CSV Format Requirements:</p>
-                  <ul className="space-y-0.5 text-blue-600 mb-2">
-                    <li>• Include headers in the first row</li>
-                    <li>
-                      • Required columns (in order): Sales Reference, Sales
-                      Date, Customer, State, Branch, Quantity, Downloaded by,
-                      Stove IDs
-                    </li>
-                    <li>
-                      • <b>Stove IDs</b> column should contain comma-separated
-                      stove IDs (e.g. 101052766, 101052811, ...)
-                    </li>
-                    <li>• Date format: MM/DD/YYYY or YYYY-MM-DD</li>
-                  </ul>
+                      }
+                    }
+                    if (errors.organization) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        organization: undefined,
+                      }));
+                    }
+                  }}
+                  placeholder="Search and select a partner organization..."
+                  className={`text-sm text-gray-600 pl-10 pr-4 ${
+                    errors.organization ? "border-red-500" : ""
+                  }`}
+                />
+                {searchTerm && (
                   <button
                     type="button"
                     onClick={() => {
-                      // Download new CSV template
-                      const headers = [
-                        "Sales Reference",
-                        "Sales Date",
-                        "Customer",
-                        "State",
-                        "Branch",
-                        "Quantity",
-                        "Downloaded by",
-                        "Stove IDs",
-                      ];
-                      const sampleData = [
-                        'TR-F89E19,7/29/2025,LAPO MFB,Oyo,BODIJA 2,10,ACSL Admin,"101052766, 101052811, 101052813, 101052840, 101052767, 101052794, 101052800, 101052775, 101052765, 101052850"',
-                      ];
-                      const csvContent = [
-                        headers.join(","),
-                        ...sampleData,
-                      ].join("\n");
-                      const blob = new Blob([csvContent], { type: "text/csv" });
-                      const url = window.URL.createObjectURL(blob);
-                      const link = document.createElement("a");
-                      link.href = url;
-                      link.download = "sales_import_template.csv";
-                      link.click();
-                      window.URL.revokeObjectURL(url);
+                      setSearchTerm("");
+                      setSelectedOrganization("");
+                      setDropdownOpen(false);
                     }}
-                    className="text-blue-600 hover:text-blue-800 underline text-xs font-medium"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
                   >
-                    Download CSV Template
+                    <X className="h-4 w-4" />
                   </button>
+                )}
+              </div>
+
+              {/* Dropdown Results */}
+              {dropdownOpen && (searchTerm || !selectedOrganization) && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                  {filteredOrganizations.length === 0 ? (
+                    <div className="p-3 text-sm text-gray-500 text-center">
+                      {searchTerm
+                        ? "No partners match your search"
+                        : "No partners available"}
+                    </div>
+                  ) : (
+                    <div className="py-1">
+                      {filteredOrganizations.map((org) => (
+                        <button
+                          key={org.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedOrganization(org.id);
+                            setSearchTerm(org.name);
+                            setDropdownOpen(false);
+                            if (errors.organization) {
+                              setErrors((prev) => ({
+                                ...prev,
+                                organization: undefined,
+                              }));
+                            }
+                          }}
+                          className={`w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none ${
+                            selectedOrganization === org.id
+                              ? "bg-blue-50 text-blue-700"
+                              : ""
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-gray-900 truncate">
+                                {org.name}
+                              </div>
+                              <div className="text-xs text-gray-500 truncate">
+                                {org.partner_email}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {org.city}, {org.state} • {org.status}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
+              )}
+
+              {/* Selected Organization Display */}
+              {selectedOrganization && !dropdownOpen && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-blue-600" />
+                      <div>
+                        <div className="font-medium text-blue-900">
+                          {
+                            organizations.find(
+                              (org) => org.id === selectedOrganization
+                            )?.name
+                          }
+                        </div>
+                        <div className="text-xs text-blue-700">
+                          {
+                            organizations.find(
+                              (org) => org.id === selectedOrganization
+                            )?.partner_email
+                          }
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedOrganization("");
+                        setSearchTerm("");
+                      }}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            {errors.organization && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {errors.organization}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* File Upload */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-gray-900 border-b pb-2">
+            Upload CSV File
+          </h3>
+
+          {/* Drag & Drop Zone */}
+          <div
+            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+              dragActive
+                ? "border-brand-500 bg-brand-50"
+                : errors.file
+                ? "border-red-300 bg-red-50"
+                : "border-gray-300 hover:border-gray-400"
+            }`}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+          >
+            {csvFile ? (
+              <div className="space-y-3">
+                <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    File Ready
+                  </p>
+                  <div className="flex items-center justify-center gap-2 mt-2">
+                    <FileText className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm text-gray-600">
+                      {csvFile.name}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      ({getFileSize(csvFile.size)})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={removeFile}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <Upload className="h-12 w-12 text-gray-400 mx-auto" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    Drop your CSV file here, or{" "}
+                    <label className="text-brand-600 hover:text-brand-700 cursor-pointer">
+                      browse
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleFileChange}
+                        className="sr-only"
+                      />
+                    </label>
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Only CSV files are supported
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {errors.file && (
+            <p className="text-xs text-red-500 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {errors.file}
+            </p>
+          )}
+
+          {/* CSV Format Info */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+              <div className="text-xs text-blue-700 flex-1">
+                <p className="font-medium mb-1">CSV Format Requirements:</p>
+                <ul className="space-y-0.5 text-blue-600 mb-2">
+                  <li>• Include headers in the first row</li>
+                  <li>
+                    • Required columns (in order): Sales Reference, Sales Date,
+                    Customer, State, Branch, Quantity, Downloaded by, Stove IDs
+                  </li>
+                  <li>
+                    • <b>Stove IDs</b> column should contain comma-separated
+                    stove IDs (e.g. 101052766, 101052811, ...)
+                  </li>
+                  <li>• Date format: MM/DD/YYYY or YYYY-MM-DD</li>
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Download new CSV template
+                    const headers = [
+                      "Sales Reference",
+                      "Sales Date",
+                      "Customer",
+                      "State",
+                      "Branch",
+                      "Quantity",
+                      "Downloaded by",
+                      "Stove IDs",
+                    ];
+                    const sampleData = [
+                      'TR-F89E19,7/29/2025,LAPO MFB,Oyo,BODIJA 2,10,ACSL Admin,"101052766, 101052811, 101052813, 101052840, 101052767, 101052794, 101052800, 101052775, 101052765, 101052850"',
+                    ];
+                    const csvContent = [headers.join(","), ...sampleData].join(
+                      "\n"
+                    );
+                    const blob = new Blob([csvContent], { type: "text/csv" });
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = "sales_import_template.csv";
+                    link.click();
+                    window.URL.revokeObjectURL(url);
+                  }}
+                  className="text-blue-600 hover:text-blue-800 underline text-xs font-medium"
+                >
+                  Download CSV Template
+                </button>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Form Actions */}
-          <div className="flex gap-3 pt-6 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              className="flex-1 text-gray-700"
-              disabled={loading}
-            >
-              <X className="h-4 w-4 mr-2" />
-              Cancel
-            </Button>
-            <Button type="submit" className="flex-1" disabled={loading}>
-              {loading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Importing...
-                </div>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import CSV
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
-      </SheetContent>
-    </Sheet>
+        {/* Form Actions */}
+        <div className="flex gap-3 pt-6 border-t">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+            className="flex-1 text-gray-700"
+            disabled={loading}
+          >
+            <X className="h-4 w-4 mr-2" />
+            Cancel
+          </Button>
+          <Button type="submit" className="flex-1" disabled={loading}>
+            {loading ? (
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Importing...
+              </div>
+            ) : (
+              <>
+                <Upload className="h-4 w-4 mr-2" />
+                Import CSV
+              </>
+            )}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 };
 
