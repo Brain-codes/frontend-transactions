@@ -18,13 +18,27 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 
 const DashboardPage = () => {
-  const { user } = useAuth();
+  const { user, isSuperAdmin, isAdmin } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleNavigateToSales = () => {
-    router.push("/sales");
+    if (isSuperAdmin) {
+      router.push("/sales");
+    } else if (isAdmin) {
+      router.push("/admin/sales");
+    }
   };
+
+  const handleNavigateToAdmin = () => {
+    router.push("/admin");
+  };
+
+  // Show admin dashboard for admin users
+  if (isAdmin && !isSuperAdmin) {
+    router.push("/admin");
+    return null;
+  }
 
   return (
     <ProtectedRoute requireSuperAdmin={true}>
@@ -34,13 +48,23 @@ const DashboardPage = () => {
         }!`}
         description="Welcome to your Atmosfair sales management overview"
         rightButton={
-          <Button
-            onClick={handleNavigateToSales}
-            className="bg-brand-800 hover:bg-brand-900 text-white"
-          >
-            View Sales Data
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+          isSuperAdmin ? (
+            <Button
+              onClick={handleNavigateToSales}
+              className="bg-brand-800 hover:bg-brand-900 text-white"
+            >
+              View Sales Data
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              onClick={handleNavigateToAdmin}
+              className="bg-brand-800 hover:bg-brand-900 text-white"
+            >
+              Go to Admin
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          )
         }
       >
         <div className="p-6 space-y-6">

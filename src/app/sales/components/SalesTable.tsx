@@ -15,18 +15,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Download, Eye, Trash2 } from "lucide-react";
-import { Sale } from "@/types/sales";
+import { SuperAdminSale } from "@/types/superAdminSales";
 
 type SalesTableProps = {
-  displayData: Sale[];
+  displayData: SuperAdminSale[];
   tableLoading: boolean;
   searchTerm: string;
   formatDate: (dateString: string) => string;
   getStoveAge: (salesDate: string) => string;
   exportSales: (filters: any, format: string) => void;
-  handleShowReceipt: (sale: any) => void;
-  handleShowAttachments: (sale: any) => void;
-  handleDelete: (sale: any) => void;
+  handleDownloadReceipt: (sale: SuperAdminSale) => void;
+  handleShowAttachments: (sale: SuperAdminSale) => void;
+  handleDelete: (sale: SuperAdminSale) => void;
 };
 
 const SalesTable = ({
@@ -36,7 +36,7 @@ const SalesTable = ({
   formatDate,
   getStoveAge,
   exportSales,
-  handleShowReceipt,
+  handleDownloadReceipt,
   handleShowAttachments,
   handleDelete,
 }: SalesTableProps) => (
@@ -71,7 +71,7 @@ const SalesTable = ({
           </TableCell>
         </TableRow>
       ) : (
-        displayData.map((sale: Sale) => (
+        displayData.map((sale: SuperAdminSale) => (
           <TableRow key={sale.id} className="hover:bg-gray-50 text-gray-700">
             <TableCell>
               {sale.partner_name ?? sale.organizations?.name ?? "N/A"}
@@ -120,7 +120,7 @@ const SalesTable = ({
                     {" "}
                     <Download className="mr-2 h-4 w-4" /> Export CSV{" "}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleShowReceipt(sale)}>
+                  <DropdownMenuItem onClick={() => handleDownloadReceipt(sale)}>
                     {" "}
                     <Download className="mr-2 h-4 w-4" /> Download Receipt{" "}
                   </DropdownMenuItem>

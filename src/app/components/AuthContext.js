@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import authService from "../services/authService";
 
 const AuthContext = createContext({});
 
@@ -16,6 +17,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
   const [supabase] = useState(() =>
     createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -25,41 +27,63 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const getUser = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
+      // Use authService to check auth and profile
+      const authResult = await authService.checkAuthAndProfile();
+      setUser(authResult.user);
+      setProfile(authResult.profile);
       setLoading(false);
     };
 
     getUser();
 
+    // Use authService for auth state changes to handle profile automatically
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = authService.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
+      if (event === "SIGNED_OUT") {
+        setProfile(null);
+      }
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase.auth]);
+  }, []);
 
   const signIn = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    // Use authService which handles profile fetching automatically
+    const result = await authService.signInWithEmailAndPassword(
       email,
-      password,
-    });
-    return { data, error };
+      password
+    );
+
+    if (result.success && result.profile) {
+      setProfile(result.profile);
+    }
+
+    // Return in the expected format for backward compatibility
+    return {
+      data: result.data,
+      error: result.error ? { message: result.error } : null,
+    };
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    return { error };
+    // Use authService which handles profile clearing automatically
+    const result = await authService.signOut();
+
+    if (result.success) {
+      setProfile(null);
+    }
+
+    // Return in the expected format for backward compatibility
+    return { error: result.error ? { message: result.error } : null };
   };
 
   const value = {
     user,
     loading,
+    profile,
     signIn,
     signOut,
   };

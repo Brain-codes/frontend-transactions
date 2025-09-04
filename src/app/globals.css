@@ -77,7 +77,7 @@
 
 /* Remove the media query that respects system dark mode */
 body {
-  color: #0f172a !important;
+  color: #252a0f !important;
   background-color: rgb(244, 248, 253) !important;
   font-family: "DM Sans", sans-serif;
   font-optical-sizing: auto;

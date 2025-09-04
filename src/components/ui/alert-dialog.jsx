@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button.jsx";
 
 const AlertDialog = ({ children, open, onOpenChange }) => {
   return (

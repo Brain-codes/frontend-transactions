@@ -10,6 +10,7 @@ import {
   DialogClose,
 } from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 type ModalProps = {
   open: boolean;
@@ -33,7 +34,10 @@ export function Modal({
     <Dialog open={open} onOpenChange={onOpenChange} {...props}>
       <DialogOverlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity" />
       <DialogContent
-        className={`fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg bg-white p-6 shadow-lg focus:outline-none ${className}`}
+        className={twMerge(
+          "fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg bg-white p-6 shadow-lg focus:outline-none",
+          className
+        )}
       >
         {title && (
           <DialogTitle className="text-lg font-semibold mb-2">
