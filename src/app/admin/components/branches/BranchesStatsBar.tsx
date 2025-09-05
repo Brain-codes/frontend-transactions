@@ -61,14 +61,14 @@ const BranchesStatsBar: React.FC<BranchesStatsBarProps> = ({
           />
         )} */}
 
-        {topState && (
+        {/* {topState && (
           <StatCard
             icon={MapPin}
             label="Top State"
             value={`${topState[0]} (${topState[1]})`}
             color="text-green-600"
           />
-        )}
+        )} */}
 
         {stats.recentlyCreated > 0 && (
           <StatCard

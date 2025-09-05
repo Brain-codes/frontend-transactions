@@ -63,7 +63,7 @@ const ViewAgentModal: React.FC<ViewAgentModalProps> = ({
       setLoading(true);
       setStatsError("");
 
-      const response = await adminAgentService.getAgentStats(agent.id);
+      const response = await adminAgentService.getAgentStats(agent.id as any);
 
       if (response.success) {
         setStats(response.data);

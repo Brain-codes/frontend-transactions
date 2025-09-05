@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // Example API route for sending emails
 // This is a template - replace with your actual email service
 

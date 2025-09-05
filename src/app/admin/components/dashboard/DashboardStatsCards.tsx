@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingCart, Users, CheckCircle2, DollarSign } from "lucide-react";
+import { ShoppingCart, Users, CheckCircle2, Banknote } from "lucide-react";
 import type { DashboardStats } from "@/types/dashboard";
 
 interface DashboardStatsCardsProps {
@@ -62,7 +62,7 @@ const DashboardStatsCards: React.FC<DashboardStatsCardsProps> = ({
         <CardTitle className="text-sm font-medium text-gray-600">
           Total Revenue
         </CardTitle>
-        <DollarSign className="h-4 w-4 text-green-600" />
+        <Banknote className="h-4 w-4 text-green-600" />
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold text-gray-900">

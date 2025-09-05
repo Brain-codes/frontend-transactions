@@ -23,6 +23,7 @@ import {
   Trash2,
   Building2,
   FileText,
+  MapPin,
 } from "lucide-react";
 
 const OrganizationTable = ({
@@ -30,6 +31,7 @@ const OrganizationTable = ({
   loading,
   onView,
   onViewStoveIds,
+  onViewBranches,
   onEdit,
   onDelete,
 }) => {
@@ -194,6 +196,21 @@ const OrganizationTable = ({
                         View Stove ID&#39;s
                       </DropdownMenuItem>
                       <hr className=" border-gray-200" />
+                      {onViewBranches && (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() => onViewBranches(organization)}
+                            className="py-2 px-3  rounded-md hover:!bg-primary hover:!text-white"
+                          >
+                            <MapPin
+                              className="mr-5 h-4 w-4"
+                              strokeWidth={1.5}
+                            />
+                            View Branches
+                          </DropdownMenuItem>
+                          <hr className=" border-gray-200" />
+                        </>
+                      )}
                       <DropdownMenuItem
                         onClick={() => onEdit(organization)}
                         className="py-2 px-3  rounded-md hover:!bg-primary hover:!text-white"

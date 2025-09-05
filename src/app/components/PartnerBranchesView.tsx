@@ -1,37 +1,37 @@
-"use client";
-
-import { useState, useEffect, useRef } from "react";
-import type { FC } from "react";
-import DashboardLayout from "../../components/DashboardLayout";
-import ProtectedRoute from "../../components/ProtectedRoute";
-import BranchesTable from "../components/branches/BranchesTable";
-import BranchesFilters from "../components/branches/BranchesFilters";
-import BranchesStatsBar from "../components/branches/BranchesStatsBar";
-import BranchesErrorAlert from "../components/branches/BranchesErrorAlert";
-import BranchesPagination from "../components/branches/BranchesPagination";
-import BranchDetailModal from "../components/branches/BranchDetailModal";
-import BranchFormModal from "../components/branches/BranchFormModal";
-import BranchDeleteConfirmationModal from "../components/branches/BranchDeleteConfirmationModal";
-import { useRouter } from "next/navigation";
-import adminBranchesService from "../../services/adminBranchesService";
-import { useAuth } from "../../contexts/AuthContext.jsx";
-import { getOrganizationId } from "../../utils/profileUtils";
+import React, { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Plus, Download } from "lucide-react";
+import BranchFormModal from "../admin/components/branches/BranchFormModal";
+import BranchDetailModal from "../admin/components/branches/BranchDetailModal";
+import BranchDeleteConfirmationModal from "../admin/components/branches/BranchDeleteConfirmationModal";
+import superAdminBranchesService from "../services/superAdminBranchesService";
 import type { Branch } from "@/types/branches";
+import { useToast, ToastContainer } from "@/components/ui/toast";
+import PartnerBranchesFilters from "./PartnerBranchesFilters";
+import PartnerBranchesStats from "./PartnerBranchesStats";
+import PartnerBranchesTable from "./PartnerBranchesTable";
 
-const AdminBranchesPage: FC = () => {
-  const router = useRouter();
-  const { user } = useAuth();
+interface PartnerBranchesViewProps {
+  organization: any;
+  onBack: () => void;
+}
+
+interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+const PartnerBranchesView: React.FC<PartnerBranchesViewProps> = ({
+  organization,
+  onBack,
+}) => {
+  const { toast, toasts, removeToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(false);
-
-  interface Pagination {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  }
 
   const [branchesData, setBranchesData] = useState<Branch[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
@@ -64,7 +64,7 @@ const AdminBranchesPage: FC = () => {
 
   useEffect(() => {
     fetchBranchesData();
-  }, []);
+  }, [organization.id]);
 
   // Handle search term changes with debouncing
   useEffect(() => {
@@ -118,20 +118,10 @@ const AdminBranchesPage: FC = () => {
         ...(currentState && currentState !== "" && { state: currentState }),
       };
 
-      let response;
-      const organizationId = getOrganizationId();
-      console.log("Organization ID from localStorage:", organizationId);
-
-      if (organizationId) {
-        response = await adminBranchesService.getBranchesByOrganization(
-          organizationId,
-          filters
-        );
-      } else {
-        throw new Error(
-          "No organization access available - please ensure you are logged in properly"
-        );
-      }
+      const response = await superAdminBranchesService.getPartnerBranches(
+        organization.id,
+        filters
+      );
 
       if (response.success) {
         setBranchesData(response.data || []);
@@ -219,8 +209,25 @@ const AdminBranchesPage: FC = () => {
   const handleExport = async (format = "csv") => {
     try {
       setTableLoading(true);
-      // Export functionality can be implemented based on API support
-      console.log(`Exporting branches as ${format}`);
+      const response = await superAdminBranchesService.exportPartnerBranches(
+        organization.id,
+        { search: searchTerm, state: selectedState, country: selectedCountry },
+        format
+      );
+
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "Export completed successfully",
+          variant: "success",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: response.error || "Export failed",
+          variant: "error",
+        });
+      }
     } catch (err) {
       console.error("Export error:", err);
       setError("An error occurred while exporting data");
@@ -260,25 +267,40 @@ const AdminBranchesPage: FC = () => {
   const handleCreateBranchSuccess = (branchData: Branch) => {
     fetchBranchesData();
     setShowCreateModal(false);
+    toast({
+      title: "Success",
+      description: "Branch created successfully",
+      variant: "success",
+    });
   };
 
   const handleEditBranchSuccess = (branchData: Branch) => {
     fetchBranchesData();
     setShowEditModal(false);
     setEditingBranch(null);
+    toast({
+      title: "Success",
+      description: "Branch updated successfully",
+      variant: "success",
+    });
   };
 
   const handleDeleteBranchConfirm = async () => {
     if (!deletingBranch) return;
 
     try {
-      const response = await adminBranchesService.deleteBranch(
+      const response = await superAdminBranchesService.deletePartnerBranch(
         deletingBranch.id
       );
       if (response.success) {
         fetchBranchesData();
         setShowDeleteModal(false);
         setDeletingBranch(null);
+        toast({
+          title: "Success",
+          description: "Branch deleted successfully",
+          variant: "success",
+        });
       } else {
         setError(response.error || "Failed to delete branch");
       }
@@ -290,127 +312,153 @@ const AdminBranchesPage: FC = () => {
 
   if (loading) {
     return (
-      <ProtectedRoute requireAdminAccess={true}>
-        <DashboardLayout currentRoute="admin-branches">
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading branches data...</p>
-            </div>
-          </div>
-        </DashboardLayout>
-      </ProtectedRoute>
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading branches data...</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <ProtectedRoute requireAdminAccess={true}>
-      <DashboardLayout
-        currentRoute="admin-branches"
-        title="Branches Management"
-        description="Manage and track your organization branches"
-      >
-        <div className="h-full flex flex-col">
-          {/* Filters Section */}
-          <BranchesFilters
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            selectedState={selectedState}
-            setSelectedState={setSelectedState}
-            selectedCountry={selectedCountry}
-            setSelectedCountry={setSelectedCountry}
-            handleStateFilter={handleStateFilter}
-            handleCountryFilter={handleCountryFilter}
-            handleExport={handleExport}
-            tableLoading={tableLoading}
-            fetchBranches={fetchBranchesData}
-            clearFilters={clearFilters}
-            onCreateBranch={() => setShowCreateModal(true)}
-            searchTimeoutRef={searchTimeoutRef}
-            isManualSearchClear={isManualSearchClear}
-          />
-
-          <BranchesStatsBar
-            branchesData={branchesData}
-            pagination={pagination}
-          />
-
-          {/* Table Section */}
-          <div className="flex-1 overflow-auto p-4 lg:p-6">
-            {error && (
-              <BranchesErrorAlert error={error} onRetry={fetchBranchesData} />
-            )}
-            <div className="bg-white rounded-lg border border-gray-200 relative">
-              {tableLoading && (
-                <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600 mx-auto mb-2"></div>
-                    <p className="text-sm text-gray-600">Loading data...</p>
-                  </div>
-                </div>
-              )}
-
-              <BranchesTable
-                branchesData={branchesData}
-                formatDate={formatDate}
-                viewBranchDetails={viewBranchDetails}
-                editBranch={editBranch}
-                deleteBranch={deleteBranch}
-                loading={tableLoading}
-              />
-
-              {pagination.totalPages > 1 && (
-                <BranchesPagination
-                  pagination={pagination}
-                  handlePageChange={handlePageChange}
-                  handlePageSizeChange={handlePageSizeChange}
-                  tableLoading={tableLoading}
-                />
-              )}
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 p-4 lg:p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              onClick={onBack}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Partners
+            </Button>
+            <div className="h-6 w-px bg-gray-300" />
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">
+                {organization.name} - Branches
+              </h1>
+              <p className="text-sm text-gray-600">
+                Manage branches for {organization.name}
+              </p>
             </div>
           </div>
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-brand hover:bg-brand-700 text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create Branch
+          </Button>
         </div>
+      </div>
 
-        {/* Modals */}
-        <BranchDetailModal
-          open={showDetailModal}
-          branch={selectedBranch}
-          onClose={() => {
-            setShowDetailModal(false);
-            setSelectedBranch(null);
-          }}
-        />
+      {/* Filters Section */}
+      <PartnerBranchesFilters
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        selectedState={selectedState}
+        setSelectedState={setSelectedState}
+        selectedCountry={selectedCountry}
+        setSelectedCountry={setSelectedCountry}
+        handleStateFilter={handleStateFilter}
+        handleCountryFilter={handleCountryFilter}
+        handleExport={handleExport}
+        tableLoading={tableLoading}
+        fetchBranches={fetchBranchesData}
+        clearFilters={clearFilters}
+        onCreateBranch={() => setShowCreateModal(true)}
+        searchTimeoutRef={searchTimeoutRef}
+        isManualSearchClear={isManualSearchClear}
+      />
 
-        <BranchFormModal
-          open={showCreateModal}
-          onOpenChange={setShowCreateModal}
-          onSuccess={handleCreateBranchSuccess}
-          mode="create"
-          organizationId={getOrganizationId() || undefined}
-        />
+      {/* Stats */}
+      <PartnerBranchesStats
+        branchesData={branchesData}
+        pagination={pagination}
+        organization={organization}
+      />
 
-        {editingBranch && (
-          <BranchFormModal
-            open={showEditModal}
-            onOpenChange={setShowEditModal}
-            onSuccess={handleEditBranchSuccess}
-            mode="edit"
-            branchData={editingBranch}
-          />
+      {/* Table Section */}
+      <div className="flex-1 overflow-auto p-4 lg:p-6">
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <p className="text-red-600">{error}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setError(null);
+                  fetchBranchesData();
+                }}
+              >
+                Retry
+              </Button>
+            </div>
+          </div>
         )}
 
-        <BranchDeleteConfirmationModal
-          open={showDeleteModal}
-          branch={deletingBranch}
-          onConfirm={handleDeleteBranchConfirm}
-          onCancel={() => {
-            setShowDeleteModal(false);
-            setDeletingBranch(null);
-          }}
+        <PartnerBranchesTable
+          branchesData={branchesData}
+          formatDate={formatDate}
+          viewBranchDetails={viewBranchDetails}
+          editBranch={editBranch}
+          deleteBranch={deleteBranch}
+          loading={tableLoading}
+          pagination={pagination}
+          handlePageChange={handlePageChange}
+          handlePageSizeChange={handlePageSizeChange}
         />
-      </DashboardLayout>
-    </ProtectedRoute>
+      </div>
+
+      {/* Modals */}
+      <BranchDetailModal
+        open={showDetailModal}
+        branch={selectedBranch}
+        onClose={() => {
+          setShowDetailModal(false);
+          setSelectedBranch(null);
+        }}
+      />
+
+      <BranchFormModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
+        onSuccess={handleCreateBranchSuccess}
+        mode="create"
+        organizationId={organization.id}
+        organizationName={organization.name}
+        isSuperAdmin={true}
+      />
+
+      {editingBranch && (
+        <BranchFormModal
+          open={showEditModal}
+          onOpenChange={setShowEditModal}
+          onSuccess={handleEditBranchSuccess}
+          mode="edit"
+          branchData={editingBranch}
+          isSuperAdmin={true}
+        />
+      )}
+
+      <BranchDeleteConfirmationModal
+        open={showDeleteModal}
+        branch={deletingBranch}
+        onConfirm={handleDeleteBranchConfirm}
+        onCancel={() => {
+          setShowDeleteModal(false);
+          setDeletingBranch(null);
+        }}
+      />
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+    </div>
   );
 };
 
-export default AdminBranchesPage;
+export default PartnerBranchesView;

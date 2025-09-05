@@ -8,9 +8,9 @@ import {
   SelectValue,
   SelectContent,
 } from "@/components/ui/select";
-import { Search, X, Plus, Download } from "lucide-react";
+import { Search, X, Download } from "lucide-react";
 
-interface BranchesFiltersProps {
+interface PartnerBranchesFiltersProps {
   searchTerm: string;
   setSearchTerm: (val: string) => void;
   selectedState: string;
@@ -28,7 +28,7 @@ interface BranchesFiltersProps {
   isManualSearchClear: any;
 }
 
-const BranchesFilters: React.FC<BranchesFiltersProps> = ({
+const PartnerBranchesFilters: React.FC<PartnerBranchesFiltersProps> = ({
   searchTerm,
   setSearchTerm,
   selectedState,
@@ -46,7 +46,6 @@ const BranchesFilters: React.FC<BranchesFiltersProps> = ({
   isManualSearchClear,
 }) => {
   const nigerianStates = Object.keys(lgaAndStates).sort();
-  const countries = ["Nigeria", "Ghana", "Kenya", "South Africa"]; // Can be made dynamic
 
   const onSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -57,10 +56,6 @@ const BranchesFilters: React.FC<BranchesFiltersProps> = ({
       fetchBranches();
       searchTimeoutRef.current = null;
     }, 300);
-  };
-
-  const onCountryChange = (val: string) => {
-    handleCountryFilter(val);
   };
 
   const onStateChange = (val: string) => {
@@ -98,41 +93,13 @@ const BranchesFilters: React.FC<BranchesFiltersProps> = ({
           )}
         </div>
 
-        {/* Country Filter */}
-        {/* <div className="space-y-1 w-full sm:w-auto">
-          <label className="text-sm font-medium text-gray-700">Country</label>
-          <Select
-            value={selectedCountry || "all"}
-            onValueChange={onCountryChange}
-            disabled={tableLoading}
-          >
-            <SelectTrigger className="w-full sm:w-40 !py-2.5">
-              <SelectValue placeholder="All countries">
-                {selectedCountry || "All countries"}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All countries</SelectItem>
-              {countries.map((country) => (
-                <SelectItem
-                  key={country}
-                  value={country}
-                  className="text-gray-700"
-                >
-                  {country}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div> */}
-
         {/* State Filter */}
         <div className="space-y-1 w-full sm:w-auto">
           <label className="text-sm font-medium text-gray-700">State</label>
           <Select
             value={selectedState || "all"}
             onValueChange={onStateChange}
-            // disabled={tableLoading || selectedCountry !== "Nigeria"}
+            disabled={tableLoading}
           >
             <SelectTrigger className="w-full sm:w-40 !py-2.5">
               <SelectValue placeholder="All states">
@@ -141,7 +108,6 @@ const BranchesFilters: React.FC<BranchesFiltersProps> = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All states</SelectItem>
-              {/* selectedCountry === "Nigeria" && */}
               {nigerianStates.map((state) => (
                 <SelectItem key={state} value={state} className="text-gray-700">
                   {state}
@@ -151,28 +117,8 @@ const BranchesFilters: React.FC<BranchesFiltersProps> = ({
           </Select>
         </div>
 
-        {(searchTerm || selectedState || selectedCountry) && (
-          <Button
-            variant="outline"
-            onClick={clearFilters}
-            className="md:mt-7 mt-3"
-            disabled={tableLoading}
-          >
-            <X className="w-4 h-4 mr-2" />
-            Clear
-          </Button>
-        )}
-
         {/* Action Buttons */}
-        <div className="flex items-center gap-3  w-full md:justify-end justify-start">
-          <Button
-            onClick={onCreateBranch}
-            className="bg-brand hover:bg-brand-700 text-white md:mt-7 mt-3"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create Branch
-          </Button>
-
+        <div className="flex items-center gap-3 w-full md:justify-end justify-start">
           {handleExport && (
             <Button
               variant="outline"
@@ -184,10 +130,22 @@ const BranchesFilters: React.FC<BranchesFiltersProps> = ({
               Export
             </Button>
           )}
+
+          {(searchTerm || selectedState) && (
+            <Button
+              variant="outline"
+              onClick={clearFilters}
+              className="md:mt-7 mt-3"
+              disabled={tableLoading}
+            >
+              <X className="w-4 h-4 mr-2" />
+              Clear
+            </Button>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-export default BranchesFilters;
+export default PartnerBranchesFilters;

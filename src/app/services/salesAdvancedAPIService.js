@@ -19,7 +19,7 @@ class SalesAdvancedService {
         data: { session },
       } = await this.supabase.auth.getSession();
       return session?.access_token || null;
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -49,7 +49,7 @@ class SalesAdvancedService {
 
       if (method === "GET") {
         // For GET requests, append filters as query parameters
-        const queryParams = new URLSearchParams();
+        const queryParams = new window.URLSearchParams();
         Object.entries(filters).forEach(([key, value]) => {
           if (value !== null && value !== undefined && value !== "") {
             if (Array.isArray(value)) {
@@ -257,9 +257,9 @@ class SalesAdvancedService {
     if (typeof window === "undefined") return;
 
     const blob =
-      content instanceof Blob
+      content instanceof window.Blob
         ? content
-        : new Blob([content], { type: contentType });
+        : new window.Blob([content], { type: contentType });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -272,34 +272,24 @@ class SalesAdvancedService {
 
   // Method to handle CSV export download
   async exportAndDownloadCSV(filters = {}, filename = null) {
-    try {
-      const csvContent = await this.exportSalesData(filters, "csv");
-      const downloadFilename =
-        filename ||
-        `sales-export-${new Date().toISOString().split("T")[0]}.csv`;
-      this.downloadFile(csvContent, downloadFilename, "text/csv");
-      return true;
-    } catch (error) {
-      throw error;
-    }
+    const csvContent = await this.exportSalesData(filters, "csv");
+    const downloadFilename =
+      filename || `sales-export-${new Date().toISOString().split("T")[0]}.csv`;
+    this.downloadFile(csvContent, downloadFilename, "text/csv");
+    return true;
   }
 
   // Method to handle Excel export download
   async exportAndDownloadExcel(filters = {}, filename = null) {
-    try {
-      const excelBlob = await this.exportSalesData(filters, "xlsx");
-      const downloadFilename =
-        filename ||
-        `sales-export-${new Date().toISOString().split("T")[0]}.xlsx`;
-      this.downloadFile(
-        excelBlob,
-        downloadFilename,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      );
-      return true;
-    } catch (error) {
-      throw error;
-    }
+    const excelBlob = await this.exportSalesData(filters, "xlsx");
+    const downloadFilename =
+      filename || `sales-export-${new Date().toISOString().split("T")[0]}.xlsx`;
+    this.downloadFile(
+      excelBlob,
+      downloadFilename,
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    return true;
   }
 }
 

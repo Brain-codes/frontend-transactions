@@ -31,7 +31,7 @@ import {
   Eye,
   EyeOff,
   Calendar,
-  DollarSign,
+  Banknote,
   Target,
   Map as MapIcon,
   Layers,
@@ -426,7 +426,7 @@ export default function HeatmapPage() {
                         {formatCurrency(stats.totalAmount)}
                       </p>
                     </div>
-                    <DollarSign className="h-6 w-6 lg:h-8 lg:w-8 text-purple-600 flex-shrink-0" />
+                    <Banknote className="h-6 w-6 lg:h-8 lg:w-8 text-purple-600 flex-shrink-0" />
                   </div>
                 </CardContent>
               </Card>

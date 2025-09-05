@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   X,
   Calendar,
-  DollarSign,
+  Banknote,
   MapPin,
   User,
   Phone,
@@ -448,7 +448,7 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                       </div>
                       <div className="flex items-center justify-between py-2 border-b border-gray-100">
                         <div className="flex items-center">
-                          <DollarSign className="h-4 w-4 mr-3 text-gray-400" />
+                          <Banknote className="h-4 w-4 mr-3 text-gray-400" />
                           <span className="text-sm text-gray-600">Amount</span>
                         </div>
                         <span className="text-lg font-bold text-green-600">
@@ -641,7 +641,7 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center">
-                      <DollarSign className="h-5 w-5 mr-2 text-green-600" />
+                      <Banknote className="h-5 w-5 mr-2 text-green-600" />
                       Transaction Details
                     </CardTitle>
                   </CardHeader>

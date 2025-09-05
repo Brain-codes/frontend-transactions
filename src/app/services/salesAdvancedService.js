@@ -32,7 +32,7 @@ class SalesAdvancedService {
         options.body = JSON.stringify(filters);
       } else {
         // For GET requests, convert filters to URL parameters
-        const params = new URLSearchParams();
+        const params = new window.URLSearchParams();
         Object.entries(filters).forEach(([key, value]) => {
           if (value !== null && value !== undefined && value !== "") {
             if (Array.isArray(value)) {
@@ -188,7 +188,7 @@ class SalesAdvancedService {
       if (validated[field] && !(validated[field] instanceof Date)) {
         try {
           validated[field] = new Date(validated[field]).toISOString();
-        } catch (error) {
+        } catch {
           console.warn(`Invalid date format for ${field}:`, validated[field]);
           delete validated[field];
         }

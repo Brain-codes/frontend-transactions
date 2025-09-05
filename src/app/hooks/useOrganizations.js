@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/toast";
 import organizationsAPIService from "../services/organizationsAPIService";
 
 export const useOrganizations = (initialFilters = {}) => {
-  const { user, isAuthenticated } = useAuth();
+  const {isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);

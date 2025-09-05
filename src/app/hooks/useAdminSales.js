@@ -1,5 +1,5 @@
 // Custom hook for admin sales functionality
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import adminSalesService from "../services/adminSalesService";
 
 export const useAdminSales = () => {
@@ -72,7 +72,7 @@ export const useAdminSales = () => {
         const filename = `admin-sales-export-${
           new Date().toISOString().split("T")[0]
         }.${format}`;
-        const blob = new Blob([response.data], {
+        const blob = new window.Blob([response.data], {
           type: format === "csv" ? "text/csv" : "application/json",
         });
         const url = window.URL.createObjectURL(blob);

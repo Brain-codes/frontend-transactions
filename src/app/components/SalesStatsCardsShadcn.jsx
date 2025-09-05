@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   TrendingUp,
   TrendingDown,
-  DollarSign,
+  Banknote,
   ShoppingCart,
   Users,
   Target,
@@ -71,7 +71,7 @@ const SalesStatsCards = ({ stats = {} }) => {
       title: "Total Revenue",
       value: formatCurrency(totalAmount),
       subValue: `Today: ${formatCurrency(todayAmount)}`,
-      icon: <DollarSign className="w-6 h-6" />,
+      icon: <Banknote className="w-6 h-6" />,
       color: "from-brand-700 to-brand-800",
       textColor: "text-brand-700",
       bgColor: "bg-brand-50",

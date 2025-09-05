@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import OrganizationTable from "../components/OrganizationTable";
+import PartnerBranchesView from "../components/PartnerBranchesView";
 import OrganizationFormModal from "../components/OrganizationFormModal";
 import OrganizationDetailSidebar from "../components/OrganizationDetailSidebar";
 import StoveIdsSidebar from "../components/StoveIdsSidebar";
@@ -46,6 +47,11 @@ const PartnersPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const isManualSearchClear = useRef(false);
   const searchTimeoutRef = useRef(null);
+
+  // View state management
+  const [currentView, setCurrentView] = useState("partners"); // "partners" | "branches"
+  const [selectedPartnerForBranches, setSelectedPartnerForBranches] =
+    useState(null);
 
   // CSV Import state
   const [showImportModal, setShowImportModal] = useState(false);
@@ -191,6 +197,26 @@ const PartnersPage = () => {
   };
 
   // Organization action handlers
+  const handleViewBranches = (organization) => {
+    // Close any open modals first
+    setSelectedOrganization(null);
+    setShowStoveIdsSidebar(false);
+    setOrganizationForStoveIds(null);
+    setShowFormModal(false);
+    setShowDeleteModal(false);
+    setEditingOrganization(null);
+    setOrganizationToDelete(null);
+
+    // Switch to branches view
+    setSelectedPartnerForBranches(organization);
+    setCurrentView("branches");
+  };
+
+  const handleBackToPartners = () => {
+    setCurrentView("partners");
+    setSelectedPartnerForBranches(null);
+  };
+
   const handleViewDetails = (organization) => {
     // Close any open modals first
     setShowFormModal(false);
@@ -368,6 +394,22 @@ const PartnersPage = () => {
     );
   }
 
+  // Render branches view
+  if (currentView === "branches" && selectedPartnerForBranches) {
+    return (
+      <ProtectedRoute requireSuperAdmin={true}>
+        <DashboardLayout currentRoute="partners">
+          <PartnerBranchesView
+            organization={selectedPartnerForBranches}
+            onBack={handleBackToPartners}
+          />
+        </DashboardLayout>
+      </ProtectedRoute>
+    );
+  }
+
+  // Render partners list view
+
   return (
     <ProtectedRoute requireSuperAdmin={true}>
       <DashboardLayout
@@ -542,6 +584,7 @@ const PartnersPage = () => {
               loading={tableLoading}
               onView={handleViewDetails}
               onViewStoveIds={handleViewStoveIds}
+              onViewBranches={handleViewBranches}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />

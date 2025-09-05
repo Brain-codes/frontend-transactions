@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ArrowLeft,
   Calendar,
-  DollarSign,
+  Banknote,
   MapPin,
   User,
   Phone,
@@ -284,7 +284,7 @@ export default function SaleDetailPage() {
                       </div>
                       <div className="flex items-center justify-between py-3 border-b border-gray-100">
                         <div className="flex items-center">
-                          <DollarSign className="h-5 w-5 mr-3 text-gray-400" />
+                          <Banknote className="h-5 w-5 mr-3 text-gray-400" />
                           <span className="text-sm font-medium text-gray-700">
                             Amount
                           </span>

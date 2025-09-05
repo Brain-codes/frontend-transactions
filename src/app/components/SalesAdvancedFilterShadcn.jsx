@@ -29,7 +29,7 @@ import {
   Calendar,
   MapPin,
   User,
-  DollarSign,
+  Banknote,
   Settings,
   FileDown,
   RotateCcw,
@@ -1201,7 +1201,7 @@ const SalesAdvancedFilter = ({
                 <AccordionItem value="amount">
                   <AccordionTrigger className="text-lg font-semibold">
                     <div className="flex items-center gap-2 text-gray-800">
-                      <DollarSign className="w-5 h-5" />
+                      <Banknote className="w-5 h-5" />
                       Amount & Status Filters
                     </div>
                   </AccordionTrigger>

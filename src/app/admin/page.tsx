@@ -11,9 +11,10 @@ import StoveInventoryCard from "./components/dashboard/StoveInventoryCard";
 import QuickActions from "./components/dashboard/QuickActions";
 import SalesOverview from "./components/dashboard/SalesOverview";
 import { useAuth } from "../contexts/AuthContext";
-import adminDashboardService from "../services/adminDashboardService";
+// import adminDashboardService from "../services/adminDashboardService";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import adminDashboardService from "../services/adminDashboardService";
 
 const AdminDashboardPage = () => {
   const { user } = useAuth();

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { lgaAndStates } from "@/app/constants";
 import adminBranchesService from "@/app/services/adminBranchesService";
+import superAdminBranchesService from "@/app/services/superAdminBranchesService";
 import type {
   Branch,
   CreateBranchData,
@@ -32,6 +33,8 @@ interface BranchFormModalProps {
   mode: "create" | "edit";
   branchData?: Branch | null;
   organizationId?: string;
+  organizationName?: string;
+  isSuperAdmin?: boolean;
 }
 
 const BranchFormModal: React.FC<BranchFormModalProps> = ({
@@ -41,6 +44,8 @@ const BranchFormModal: React.FC<BranchFormModalProps> = ({
   mode,
   branchData,
   organizationId,
+  organizationName,
+  isSuperAdmin = false,
 }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -109,8 +114,13 @@ const BranchFormModal: React.FC<BranchFormModalProps> = ({
     setErrors([]);
 
     try {
+      // Choose service based on admin type
+      const service = isSuperAdmin
+        ? superAdminBranchesService
+        : adminBranchesService;
+
       // Validate form data
-      const validation = adminBranchesService.validateBranchData(formData);
+      const validation = service.validateBranchData(formData);
       if (!validation.isValid) {
         setErrors(validation.errors);
         return;
@@ -122,19 +132,33 @@ const BranchFormModal: React.FC<BranchFormModalProps> = ({
           setErrors(["Organization ID is required for creating branches"]);
           return;
         }
-        response = await adminBranchesService.createBranch(
-          organizationId,
-          formData as CreateBranchData
-        );
+        if (isSuperAdmin) {
+          response = await superAdminBranchesService.createPartnerBranch(
+            organizationId,
+            formData as CreateBranchData
+          );
+        } else {
+          response = await adminBranchesService.createBranch(
+            organizationId,
+            formData as CreateBranchData
+          );
+        }
       } else {
         if (!branchData?.id) {
           setErrors(["Branch ID is required for updating"]);
           return;
         }
-        response = await adminBranchesService.updateBranch(
-          branchData.id,
-          formData as UpdateBranchData
-        );
+        if (isSuperAdmin) {
+          response = await superAdminBranchesService.updatePartnerBranch(
+            branchData.id,
+            formData as UpdateBranchData
+          );
+        } else {
+          response = await adminBranchesService.updateBranch(
+            branchData.id,
+            formData as UpdateBranchData
+          );
+        }
       }
 
       if (response.success && response.data) {
@@ -157,6 +181,11 @@ const BranchFormModal: React.FC<BranchFormModalProps> = ({
         <DialogHeader>
           <DialogTitle>
             {mode === "create" ? "Create New Branch" : "Edit Branch"}
+            {organizationName && (
+              <span className="text-sm font-normal text-gray-600 block mt-1">
+                for {organizationName}
+              </span>
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -186,7 +215,7 @@ const BranchFormModal: React.FC<BranchFormModalProps> = ({
           </div>
 
           {/* Country */}
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label htmlFor="country">Country</Label>
             <Select
               value={formData.country}
@@ -203,7 +232,7 @@ const BranchFormModal: React.FC<BranchFormModalProps> = ({
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
 
           {/* State (Nigeria only) */}
           {formData.country === "Nigeria" && (

@@ -116,15 +116,15 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
       const updates: UpdateAgentData = {};
 
       if (updateForm.full_name?.trim() !== agent.full_name) {
-        updates.full_name = updateForm.full_name.trim();
+        updates.full_name = updateForm.full_name?.trim();
       }
 
       if (updateForm.email?.trim() !== agent.email) {
-        updates.email = updateForm.email.trim();
+        updates.email = updateForm.email?.trim();
       }
 
       if (updateForm.phone?.trim() !== (agent.phone || "")) {
-        updates.phone = updateForm.phone?.trim() || null;
+        updates.phone = updateForm.phone?.trim() || undefined;
       }
 
       // Check if there are any changes

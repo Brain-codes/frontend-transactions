@@ -28,7 +28,7 @@ class OrganizationsAPIService {
   // Build URL with query parameters
   buildUrl(params = {}) {
     const baseUrl = `${this.baseUrl}/functions/v1/${this.functionName}`;
-    const queryString = new URLSearchParams();
+    const queryString = new window.URLSearchParams();
 
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== "") {
@@ -267,7 +267,7 @@ class OrganizationsAPIService {
 
   // Download file utility
   downloadFile(content, filename, contentType) {
-    const blob = new Blob([content], { type: contentType });
+    const blob = new window.Blob([content], { type: contentType });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;

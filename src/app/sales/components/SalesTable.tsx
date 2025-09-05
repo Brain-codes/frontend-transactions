@@ -80,10 +80,10 @@ const SalesTable = ({
               {sale.transaction_id ?? sale.id}
             </TableCell>
             <TableCell>{sale.stove_serial_no ?? "N/A"}</TableCell>
-            <TableCell>{sale.addresses.latitude ?? "N/A"}</TableCell>
-            <TableCell>{sale.addresses.longitude ?? "N/A"}</TableCell>
-            <TableCell>{formatDate(sale.sales_date)}</TableCell>
-            <TableCell>{getStoveAge(sale.sales_date)}</TableCell>
+            <TableCell>{sale.addresses?.latitude ?? "N/A"}</TableCell>
+            <TableCell>{sale.addresses?.longitude ?? "N/A"}</TableCell>
+            <TableCell>{formatDate(sale.sales_date ?? "")}</TableCell>
+            <TableCell>{getStoveAge(sale.sales_date ?? "")}</TableCell>
             <TableCell>
               {sale.signature ? (
                 <img
