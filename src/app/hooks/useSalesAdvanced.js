@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/toast";
 import salesAdvancedService from "../services/salesAdvancedAPIService";
 
 export const useSalesAdvanced = (initialFilters = {}) => {
-  const { user, isAuthenticated, authError, loading: authLoading } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
@@ -40,7 +40,6 @@ export const useSalesAdvanced = (initialFilters = {}) => {
   const defaultFiltersRef = useRef(defaultFilters);
   const isLoadingRef = useRef(false);
   const hasInitializedRef = useRef(false);
-  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     defaultFiltersRef.current = defaultFilters;
@@ -52,95 +51,39 @@ export const useSalesAdvanced = (initialFilters = {}) => {
     }
   }, [filters]);
 
-  // Reset when auth state changes to unauthenticated
-  useEffect(() => {
-    if (!isAuthenticated && !authLoading) {
-      setData([]);
-      setPagination({ page: 1, limit: 10, total: 0, totalPages: 0 });
-      setError("Please login to access sales data.");
-      hasInitializedRef.current = false;
-      
-      // Cancel any ongoing requests
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-    }
-  }, [isAuthenticated, authLoading]);
-
-  // Handle auth errors
-  useEffect(() => {
-    if (authError && !authLoading) {
-      setError(`Authentication error: ${authError}`);
-      setData([]);
-      setPagination({ page: 1, limit: 10, total: 0, totalPages: 0 });
-    }
-  }, [authError, authLoading]);
-
-  // Main fetch function with better error handling
+  // Main fetch function
   const fetchSalesStable = useCallback(
     async (newFilters = {}, isInitial = false) => {
-      // Don't make requests if not authenticated or auth is loading
-      if (!isAuthenticated || authLoading) {
-        if (!authLoading) {
-          setError("Please login to access sales data.");
-        }
+      if (!isAuthenticated) {
+        setError("Please login to access sales data.");
         setLoading(false);
         setTableLoading(false);
         return;
       }
-
-      // Check for auth errors
-      if (authError) {
-        setError(`Authentication error: ${authError}`);
-        setLoading(false);
-        setTableLoading(false);
-        return;
-      }
-
       if (isLoadingRef.current) {
+        // Optionally: toast.info("API call already in progress, skipping...");
         return;
       }
-
       isLoadingRef.current = true;
-      
-      // Cancel any previous request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      
-      // Create new abort controller for this request (if available)
-      if (typeof window !== 'undefined' && window.AbortController) {
-        abortControllerRef.current = new window.AbortController();
-      }
-
       if (isInitial) {
         setLoading(true);
       } else {
         setTableLoading(true);
       }
       setError(null);
-
       try {
         const currentFilters = filtersRef.current;
         const mergedFilters = { ...currentFilters, ...newFilters };
-        
         const response = await salesAdvancedService.getSalesData(mergedFilters);
-        
-        // Check if request was aborted
-        if (abortControllerRef.current?.signal.aborted) {
-          return;
-        }
-
         if (response.success) {
           setData(response.data || []);
           setPagination(
             response.pagination || {
               page: mergedFilters.page || 1,
-              limit: mergedFilters.limit || 10,
+              limit: mergedFilters.limit || 100,
               total: response.data?.length || 0,
               totalPages: Math.ceil(
-                (response.data?.length || 0) / (mergedFilters.limit || 10)
+                (response.data?.length || 0) / (mergedFilters.limit || 100)
               ),
             }
           );
@@ -151,7 +94,6 @@ export const useSalesAdvanced = (initialFilters = {}) => {
             }
             return prevFilters;
           });
-          
           if (response.data?.length > 0) {
             toast.success(
               "Loaded",
@@ -162,53 +104,41 @@ export const useSalesAdvanced = (initialFilters = {}) => {
           throw new Error(response.message || "Failed to fetch sales data");
         }
       } catch (err) {
-        // Don't show errors for aborted requests
-        if (err.name === 'AbortError' || abortControllerRef.current?.signal.aborted) {
-          return;
-        }
-
-        console.error("Sales fetch error:", err);
-        
-        // Handle specific error types
-        if (err.message.includes("Invalid Refresh Token") || 
-            err.message.includes("refresh_token_not_found")) {
-          setError("Session expired. Please refresh the page and login again.");
-          toast.error("Session Error", "Your session has expired. Please login again.");
-        } else if (
+        toast.error("Error", err.message || "Error fetching sales");
+        if (
           err.message.includes("401") ||
           err.message.includes("Unauthorized") ||
           err.message.includes("Missing authorization header")
         ) {
-          setError("Authentication required. Please login to access sales data.");
-          toast.error("Auth Error", "Please login to access sales data.");
+          setError(
+            "Authentication required. Please login to access sales data."
+          );
         } else if (
           err.message.includes("403") ||
           err.message.includes("Access denied") ||
           err.message.includes("super admin")
         ) {
-          setError("Access denied. You need super admin privileges to view this data.");
-          toast.error("Access Error", "Super admin privileges required.");
+          setError(
+            "Access denied. You need super admin privileges to view this data."
+          );
         } else if (err.message.includes("404")) {
-          setError("Sales data endpoint not found. Please check your configuration.");
-          toast.error("Config Error", "API endpoint not found.");
+          setError(
+            "Sales data endpoint not found. Please check your configuration."
+          );
         } else if (err.message.includes("500")) {
           setError("Server error. Please try again later.");
-          toast.error("Server Error", "Please try again later.");
         } else {
           setError(`Failed to load sales data: ${err.message}`);
-          toast.error("Error", err.message || "Error fetching sales");
         }
-        
         setData([]);
-        setPagination({ page: 1, limit: 10, total: 0, totalPages: 0 });
+        setPagination({ page: 1, limit: 100, total: 0, totalPages: 0 });
       } finally {
         setLoading(false);
         setTableLoading(false);
         isLoadingRef.current = false;
-        abortControllerRef.current = null;
       }
     },
-    [isAuthenticated, authLoading, authError, user, toast]
+    [isAuthenticated, user, toast]
   );
 
   const fetchSales = fetchSalesStable;

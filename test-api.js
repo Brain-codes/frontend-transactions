@@ -36,7 +36,7 @@ const testAPI = async () => {
 };
 
 // Run test if in Node.js environment
-if (typeof module !== "undefined" && module.exports) {
+if (import.meta.url === `file://${process.cwd()}/${process.argv[1]}`) {
   testAPI();
 }
 

@@ -1,7 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SidebarProvider } from "./contexts/SidebarContext";
-import ErrorBoundary from "./components/ErrorBoundary";
 import NextTopLoader from "nextjs-toploader";
 
 export const metadata = {
@@ -29,11 +28,9 @@ export default function RootLayout({ children }) {
       </head>
       <body className="antialiased">
         <NextTopLoader color="#b6de04" spin={true} />
-        <ErrorBoundary>
-          <AuthProvider>
-            <SidebarProvider>{children}</SidebarProvider>
-          </AuthProvider>
-        </ErrorBoundary>
+        <AuthProvider>
+          <SidebarProvider>{children}</SidebarProvider>
+        </AuthProvider>
       </body>
     </html>
   );

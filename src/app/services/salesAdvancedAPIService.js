@@ -12,56 +12,30 @@ class SalesAdvancedService {
     this.supabase = createClientComponentClient();
   }
 
-  // Get token from Supabase session with better error handling
+  // Get token from Supabase session
   async getToken() {
     try {
       const {
         data: { session },
-        error,
       } = await this.supabase.auth.getSession();
-      
-      if (error) {
-        console.error("Session error:", error);
-        
-        // Handle specific auth errors
-        if (error.message?.includes("refresh_token_not_found") || 
-            error.message?.includes("Invalid Refresh Token")) {
-          throw new Error("Session expired. Please login again.");
-        }
-        
-        throw new Error(`Authentication error: ${error.message}`);
-      }
-      
       return session?.access_token || null;
-    } catch (err) {
-      if (err.message.includes("Session expired") || 
-          err.message.includes("Authentication error")) {
-        throw err;
-      }
-      console.error("Token fetch error:", err);
+    } catch {
       return null;
     }
   }
 
-  // Helper method to build headers with better error handling
+  // Helper method to build headers
   async getHeaders() {
-    try {
-      const token = await this.getToken();
-      const headers = {
-        "Content-Type": "application/json",
-      };
+    const token = await this.getToken();
+    const headers = {
+      "Content-Type": "application/json",
+    };
 
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      } else {
-        throw new Error("No authentication token available. Please login again.");
-      }
-
-      return headers;
-    } catch (err) {
-      console.error("Headers error:", err);
-      throw err;
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
     }
+
+    return headers;
   }
 
   // Main method to fetch sales data with filters
