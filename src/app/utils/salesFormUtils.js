@@ -1,7 +1,10 @@
 /**
  * Sales Form Data Utilities
  * Handles data transformation between API and form formats
+ * Base64 is the universal format for signature data
  */
+
+import { extractBase64FromSignature, base64ToDataURL } from "./signatureUtils";
 
 /**
  * Creates initial form data structure
@@ -97,7 +100,9 @@ export const populateFormDataForEdit = (saleData) => {
         saleData.address?.longitude ||
         null,
     },
-    signature: saleData.signature || "",
+    // For edit mode: API returns base64, convert to data URL for canvas display
+    // For create mode: this will be empty string initially
+    signature: saleData.signature ? base64ToDataURL(saleData.signature) : "",
     stoveImageId:
       saleData.stoveImageId ||
       saleData.stove_image_id?.id ||
@@ -120,6 +125,10 @@ export const populateFormDataForEdit = (saleData) => {
  * @returns {Object} Data formatted for API submission
  */
 export const transformFormDataForAPI = (formData, isEdit = false) => {
+  // Convert signature to pure base64 format for API (universal format)
+  // Handles both new signatures (base64) and edited signatures (data URL)
+  const processedSignature = extractBase64FromSignature(formData.signature);
+
   const baseData = {
     transactionId: formData.transactionId,
     salesDate: formData.salesDate,
@@ -135,7 +144,7 @@ export const transformFormDataForAPI = (formData, isEdit = false) => {
     stateBackup: formData.stateBackup,
     lgaBackup: formData.lgaBackup,
     addressData: formData.addressData,
-    signature: formData.signature,
+    signature: processedSignature, // Always send pure base64 to API
     stoveImageId: formData.stoveImageId,
     agreementImageId: formData.agreementImageId,
   };

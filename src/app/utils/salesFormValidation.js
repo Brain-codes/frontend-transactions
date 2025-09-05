@@ -1,7 +1,10 @@
 /**
  * Sales Form Validation Utilities
  * Contains validation functions for sales form data
+ * Uses consistent base64 signature validation
  */
+
+import { isValidSignature } from "./signatureUtils";
 
 /**
  * Validates the sales form data
@@ -81,8 +84,8 @@ export const validateSalesForm = (formData) => {
     errors.agreementImage = "Agreement document is required";
   }
 
-  // Signature validation
-  if (!formData.signature) {
+  // Signature validation - uses enhanced validation for both base64 and data URL formats
+  if (!isValidSignature(formData.signature)) {
     errors.signature = "Customer signature is required";
   }
 
@@ -202,7 +205,7 @@ export const fieldValidators = {
   },
 
   signature: (signature) => {
-    if (!signature) {
+    if (!isValidSignature(signature)) {
       return "Customer signature is required";
     }
     return null;
