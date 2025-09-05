@@ -15,7 +15,7 @@ interface DateRangePickerProps {
 }
 
 // Date picker with manual apply button - no automatic API calls
-export const DateRangePicker: React.FC<DateRangePickerProps> = ({
+const DateRangePicker: React.FC<DateRangePickerProps> = ({
   value,
   onChange,
   maxDate,

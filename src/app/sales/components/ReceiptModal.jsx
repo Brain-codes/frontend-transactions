@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Modal } from "@/components/ui/modal";
+import Modal from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Download, Eye, Loader2 } from "lucide-react";
 import Receipt from "./Receipt";

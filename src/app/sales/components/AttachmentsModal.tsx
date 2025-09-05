@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Modal } from "@/components/ui/modal";
+import Modal from "@/components/ui/modal";
 import Image from "next/image";
 import { SuperAdminSale } from "@/types/superAdminSales";
 

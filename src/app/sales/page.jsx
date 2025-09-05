@@ -5,7 +5,7 @@ import DashboardLayout from "../components/DashboardLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import SalesAdvancedFilterShadcn from "../components/SalesAdvancedFilterShadcn";
 import { Button } from "@/components/ui/button";
-import ActiveFiltersBar from "./components/ActiveFiltersBar";
+import ActiveFiltersBar from "./components/ActiveFiltersBar.jsx";
 import SalesTable from "./components/SalesTable";
 import {
   Pagination,
@@ -28,7 +28,7 @@ import DateRangePicker from "@/app/components/ui/date-range-picker";
 import useSalesAdvanced from "../hooks/useSalesAdvanced";
 import organizationsService from "../services/organizationsService";
 import { lgaAndStates } from "../constants";
-import ReceiptModal from "./components/ReceiptModal";
+import ReceiptModal from "./components/ReceiptModal.jsx";
 import AttachmentsModal from "./components/AttachmentsModal";
 import { Download, Search, X } from "lucide-react";
 
