@@ -31,6 +31,7 @@ import { lgaAndStates } from "../constants";
 import ReceiptModal from "./components/ReceiptModal";
 import AttachmentsModal from "./components/AttachmentsModal";
 import { Download, Search, X } from "lucide-react";
+import AuthDebugComponent from "../components/AuthDebugComponent";
 
 const SalesPage = () => {
   const [selectedState, setSelectedState] = useState("");
@@ -86,11 +87,19 @@ const SalesPage = () => {
 
   // For paginated data, we use server-side filtering, so display salesData directly
   // Client-side filtering is only used as a fallback for immediate visual feedback
-  const displayData = salesData;
+  const displayData = Array.isArray(salesData) ? salesData : [];
 
   // Debug pagination
   console.log("Pagination state:", pagination);
   console.log("Sales data length:", salesData.length);
+
+  // Safety check for pagination object to prevent React Error #130
+  const safePagination = {
+    page: Number(pagination?.page) || 1,
+    limit: Number(pagination?.limit) || 10,
+    total: Number(pagination?.total) || 0,
+    totalPages: Number(pagination?.totalPages) || 0,
+  };
 
   // Track active quick filters for badges
   const [activeQuickFilters, setActiveQuickFilters] = useState({
@@ -453,6 +462,13 @@ const SalesPage = () => {
         description="Manage and track all your Atmosfair sales transactions"
       >
         <div className="h-full flex flex-col">
+          {/* Temporary Debug Component - Remove in production */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="p-4">
+              <AuthDebugComponent />
+            </div>
+          )}
+          
           {/* Header section removed - now in topbar */}
           <div className="bg-white border-b border-gray-200 p-4 lg:p-6">
             {/* Mobile Export Button - Only visible on mobile */}
@@ -620,7 +636,7 @@ const SalesPage = () => {
               <div className="flex flex-col items-center gap-2">
                 <span className="text-sm text-gray-600">Items per page:</span>
                 <Select
-                  value={pagination.limit.toString()}
+                  value={safePagination.limit.toString()}
                   onValueChange={(value) =>
                     handlePageSizeChange(parseInt(value))
                   }
@@ -670,8 +686,8 @@ const SalesPage = () => {
             {/* Stats */}
             <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="text-sm text-gray-600">
-                Showing {displayData.length} of {pagination.total} sales (Page{" "}
-                {pagination.page} of {pagination.totalPages})
+                Showing {displayData.length} of {safePagination.total} sales (Page{" "}
+                {safePagination.page} of {safePagination.totalPages})
               </div>
             </div>
           </div>
@@ -705,24 +721,24 @@ const SalesPage = () => {
             </div>
 
             {/* Pagination */}
-            {pagination.totalPages > 1 && (
+            {safePagination.totalPages > 1 && (
               <div
                 className={`mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 ${
                   tableLoading ? "opacity-50 pointer-events-none" : ""
                 }`}
               >
                 <div className="text-sm text-gray-600">
-                  Page {pagination.page} of {pagination.totalPages}(
-                  {pagination.total} total items)
+                  Page {safePagination.page} of {safePagination.totalPages}(
+                  {safePagination.total} total items)
                 </div>
 
                 <Pagination>
                   <PaginationContent>
                     <PaginationItem>
                       <PaginationPrevious
-                        onClick={() => handlePageChange(pagination.page - 1)}
+                        onClick={() => handlePageChange(safePagination.page - 1)}
                         className={
-                          pagination.page <= 1 || tableLoading
+                          safePagination.page <= 1 || tableLoading
                             ? "pointer-events-none opacity-50"
                             : "cursor-pointer"
                         }
@@ -730,18 +746,18 @@ const SalesPage = () => {
                     </PaginationItem>
 
                     {/* Page Numbers */}
-                    {[...Array(pagination.totalPages)].map((_, index) => {
+                    {[...Array(safePagination.totalPages)].map((_, index) => {
                       const page = index + 1;
-                      const isCurrentPage = page === pagination.page;
+                      const isCurrentPage = page === safePagination.page;
                       const showPage =
                         page === 1 ||
-                        page === pagination.totalPages ||
-                        (page >= pagination.page - 2 &&
-                          page <= pagination.page + 2);
+                        page === safePagination.totalPages ||
+                        (page >= safePagination.page - 2 &&
+                          page <= safePagination.page + 2);
                       if (!showPage) {
                         if (
-                          page === pagination.page - 3 ||
-                          page === pagination.page + 3
+                          page === safePagination.page - 3 ||
+                          page === safePagination.page + 3
                         ) {
                           return (
                             <PaginationItem key={page}>
