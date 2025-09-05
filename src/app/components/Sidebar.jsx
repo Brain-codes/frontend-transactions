@@ -2,24 +2,22 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ShoppingCart,
-  LogOut,
   X,
-  Settings,
   Home,
   Map,
   Building2,
   Users,
   Plus,
+  Settings,
   BarChart3,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import Link from "next/link";
 
-const Sidebar = ({ isOpen, onClose, currentRoute, user, onLogout }) => {
+const Sidebar = ({ isOpen, onClose, currentRoute }) => {
   const router = useRouter();
   const { isSuperAdmin, isAdmin, hasAdminAccess } = useAuth();
 
@@ -136,8 +134,10 @@ const Sidebar = ({ isOpen, onClose, currentRoute, user, onLogout }) => {
 
   const navigateToRoute = (href) => {
     router.push(href);
-    // Use the smart close function that only closes on mobile
-    onClose();
+    // Auto-close sidebar on mobile when clicking nav items
+    if (window.innerWidth < 1024) {
+      onClose();
+    }
   };
 
   // Force close for mobile overlay clicks (always close regardless of screen size)
@@ -145,11 +145,6 @@ const Sidebar = ({ isOpen, onClose, currentRoute, user, onLogout }) => {
     if (window.innerWidth < 1024) {
       onClose();
     }
-  };
-
-  const getUserInitials = (email) => {
-    if (!email) return "U";
-    return email.charAt(0).toUpperCase();
   };
 
   return (
@@ -187,14 +182,12 @@ const Sidebar = ({ isOpen, onClose, currentRoute, user, onLogout }) => {
               <p className="text-xs text-white/70">Sales Management</p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden text-white hover:bg-white/20"
+          <button
+            className="lg:hidden p-2 text-white hover:bg-white/20 rounded-lg transition-colors"
             onClick={handleOverlayClick}
           >
             <X className="h-5 w-5" />
-          </Button>
+          </button>
         </div>
 
         {/* Navigation */}
@@ -207,7 +200,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute, user, onLogout }) => {
               <Link
                 key={item.route}
                 href={item.href}
-                // onClick={() => navigateToRoute(item.href)}
+                onClick={() => navigateToRoute(item.href)}
                 className={`group flex items-center justify-between w-full px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
                   currentRoute === item.route
                     ? "bg-brand/10 text-brand border border-brand/20 shadow-sm"
@@ -235,42 +228,6 @@ const Sidebar = ({ isOpen, onClose, currentRoute, user, onLogout }) => {
             ))}
           </div>
         </nav>
-
-        {/* User Profile Section */}
-        <div className="border-t border-gray-100 bg-gray-50/50 p-4 flex-shrink-0">
-          <div className="flex items-center space-x-3 p-3 rounded-xl bg-white border border-gray-200 shadow-sm">
-            <div className="bg-gradient-to-br from-brand-800 to-brand-900 w-10 h-10 rounded-full flex items-center justify-center">
-              <span className="text-white font-semibold text-sm">
-                {getUserInitials(user?.email)}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {user?.full_name || user?.email?.split("@")[0] || "User"}
-              </p>
-              <p className="text-xs text-gray-500 truncate">
-                {user?.email || "user@example.com"}
-              </p>
-            </div>
-            <div className="flex space-x-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onLogout}
-                className="h-8 w-8 p-0 text-gray-400 hover:text-red-600"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
       </div>
     </>
   );

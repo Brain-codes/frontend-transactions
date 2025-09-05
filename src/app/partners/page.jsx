@@ -56,6 +56,9 @@ const PartnersPage = () => {
   // CSV Import state
   const [showImportModal, setShowImportModal] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
+  const [preselectedOrganizationId, setPreselectedOrganizationId] =
+    useState(null);
+  const [formSubmitLoading, setFormSubmitLoading] = useState(false);
 
   // Toast notifications
   const { toast, toasts, removeToast } = useToast();
@@ -277,13 +280,20 @@ const PartnersPage = () => {
   const { supabase } = useAuth();
 
   // CSV Import handlers
-  const handleImportCSV = () => {
+  const handleImportCSV = (organization = null) => {
     // Close any open modals first
     setSelectedOrganization(null);
     setShowFormModal(false);
     setShowDeleteModal(false);
     setEditingOrganization(null);
     setOrganizationToDelete(null);
+
+    // Set preselected organization if called from row action
+    if (organization) {
+      setPreselectedOrganizationId(organization.id);
+    } else {
+      setPreselectedOrganizationId(null);
+    }
 
     // Then open the import modal
     setShowImportModal(true);
@@ -300,6 +310,7 @@ const PartnersPage = () => {
       if (response.success) {
         toast.success("Import Successful", response.message);
         setShowImportModal(false);
+        setPreselectedOrganizationId(null); // Clear preselection after successful import
       }
     } catch (error) {
       console.error("CSV import error:", error);
@@ -311,6 +322,7 @@ const PartnersPage = () => {
 
   // Form submission handlers
   const handleFormSubmit = async (formData) => {
+    setFormSubmitLoading(true);
     try {
       if (editingOrganization) {
         // Update existing organization
@@ -320,23 +332,28 @@ const PartnersPage = () => {
         );
         if (response.success) {
           toast.success("Success", "Organization updated successfully");
-          // Close form modal and clear editing state
+          // Close form modal and clear editing state only on success
           setShowFormModal(false);
           setEditingOrganization(null);
+          setFormSubmitLoading(false);
+          // Data will be automatically refreshed by the hook
         }
       } else {
         // Create new organization
         const response = await createOrganization(formData);
         if (response.success) {
           toast.success("Success", "Organization created successfully");
-          // Close form modal
+          // Close form modal only on success
           setShowFormModal(false);
+          setFormSubmitLoading(false);
+          // Data will be automatically refreshed by the hook
         }
       }
     } catch (error) {
       console.error("Form submission error:", error);
-      toast.error("Error", error.message || "Failed to save organization");
-      // Error is already handled by the hook
+      // Error toast is already handled by the hook
+      // Keep modal open and just clear loading state
+      setFormSubmitLoading(false);
     }
   };
 
@@ -416,33 +433,12 @@ const PartnersPage = () => {
         currentRoute="partners"
         title="Partner Organizations"
         description="Manage and track your partner organizations"
-        rightButton={
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleImportCSV}
-              className="text-gray-700"
-              disabled={tableLoading}
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Import CSV
-            </Button>
-            <Button
-              onClick={handleCreateNew}
-              className="bg-brand hover:bg-brand/50"
-              disabled={tableLoading}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Partner
-            </Button>
-          </div>
-        }
       >
         <div className="h-full flex flex-col">
           {/* Filters Section */}
           <div className="bg-white border-b border-gray-200 p-4 lg:p-6">
             {/* Mobile Action Buttons - Only visible on mobile */}
-            <div className="sm:hidden mb-4 space-y-2">
+            {/* <div className="sm:hidden mb-4 space-y-2">
               <Button
                 onClick={handleCreateNew}
                 className="w-full bg-brand hover:bg-brand/50"
@@ -460,7 +456,7 @@ const PartnersPage = () => {
                 <Upload className="w-4 h-4 mr-2" />
                 Import Stove ID CSV
               </Button>
-            </div>
+            </div> */}
 
             {/* Search and Filters - Mobile Responsive but Desktop Horizontal */}
             <div
@@ -469,7 +465,7 @@ const PartnersPage = () => {
               }`}
             >
               {/* Search Bar */}
-              <div className="flex-1 relative min-w-0 md:mt-6 mt-0">
+              <div className="md:w-1/3 w-full relative min-w-0 md:mt-6 mt-0">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 z-10" />
                 <input
                   type="text"
@@ -534,6 +530,27 @@ const PartnersPage = () => {
                   </Select>
                 </div>
               </div>
+
+              {/* Action Buttons */}
+              <div className="flex md:w-1/2 w-full md:justify-end justify-start gap-2 md:mt-7 mt-0">
+                <Button
+                  variant="outline"
+                  onClick={handleImportCSV}
+                  className="text-gray-700"
+                  disabled={tableLoading}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Import Stove ID's CSV
+                </Button>
+                <Button
+                  onClick={handleCreateNew}
+                  className="bg-brand hover:bg-brand/50"
+                  disabled={tableLoading}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Partner
+                </Button>
+              </div>
             </div>
 
             {/* Active Filters Display */}
@@ -587,6 +604,7 @@ const PartnersPage = () => {
               onViewBranches={handleViewBranches}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onImportCSV={handleImportCSV}
             />
 
             {/* Pagination */}
@@ -680,10 +698,12 @@ const PartnersPage = () => {
           onClose={() => {
             setShowFormModal(false);
             setEditingOrganization(null);
+            setFormSubmitLoading(false); // Clear loading state when modal is closed
           }}
           onSubmit={handleFormSubmit}
           initialData={editingOrganization}
           loading={loading}
+          submitLoading={formSubmitLoading}
         />
 
         {/* Organization Detail Sidebar */}
@@ -724,10 +744,14 @@ const PartnersPage = () => {
         {/* CSV Import Modal */}
         <ImportCSVModal
           isOpen={showImportModal}
-          onClose={() => setShowImportModal(false)}
+          onClose={() => {
+            setShowImportModal(false);
+            setPreselectedOrganizationId(null); // Clear preselection when modal is closed
+          }}
           onImport={handleImportSubmit}
           organizations={organizationsData}
           loading={importLoading}
+          preselectedOrganizationId={preselectedOrganizationId}
         />
 
         {/* Toast Notifications */}

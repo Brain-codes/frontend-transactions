@@ -24,6 +24,7 @@ import {
   Building2,
   FileText,
   MapPin,
+  Upload,
 } from "lucide-react";
 
 const OrganizationTable = ({
@@ -34,6 +35,7 @@ const OrganizationTable = ({
   onViewBranches,
   onEdit,
   onDelete,
+  onImportCSV,
 }) => {
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -196,6 +198,21 @@ const OrganizationTable = ({
                         View Stove ID&#39;s
                       </DropdownMenuItem>
                       <hr className=" border-gray-200" />
+                      {onImportCSV && (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() => onImportCSV(organization)}
+                            className="py-2 px-3  rounded-md hover:!bg-primary hover:!text-white"
+                          >
+                            <Upload
+                              className="mr-5 h-4 w-4"
+                              strokeWidth={1.5}
+                            />
+                            Import CSV
+                          </DropdownMenuItem>
+                          <hr className=" border-gray-200" />
+                        </>
+                      )}
                       {onViewBranches && (
                         <>
                           <DropdownMenuItem

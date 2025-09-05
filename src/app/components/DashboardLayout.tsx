@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react"
+import React from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useSidebar } from "../contexts/SidebarContext";
@@ -21,7 +21,7 @@ const DashboardLayout = ({
   title = "Dashboard",
   description = "Welcome to your dashboard",
   rightButton = null,
-} : DashboardLayoutProps) => {
+}: DashboardLayoutProps) => {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const { sidebarOpen, toggleSidebar, closeSidebar } = useSidebar();
@@ -37,8 +37,6 @@ const DashboardLayout = ({
         isOpen={sidebarOpen}
         onClose={closeSidebar}
         currentRoute={currentRoute}
-        user={user}
-        onLogout={handleLogout}
       />
 
       {/* Main content */}

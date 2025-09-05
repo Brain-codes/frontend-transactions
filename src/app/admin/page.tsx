@@ -17,7 +17,8 @@ import { Button } from "@/components/ui/button";
 import adminDashboardService from "../services/adminDashboardService";
 
 const AdminDashboardPage = () => {
-  const { user } = useAuth();
+  const { user, getStoredProfile } = useAuth();
+    const storedProfile = getStoredProfile();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<DashboardStats | null>(
@@ -108,7 +109,7 @@ const AdminDashboardPage = () => {
       <DashboardLayout
         currentRoute="admin"
         title={`Welcome back, ${
-          user?.full_name || user?.email?.split("@")[0] || "Admin"
+          storedProfile?.full_name || user?.email?.split("@")[0] || "Admin"
         }!`}
         description="Manage your sales operations and team"
       >

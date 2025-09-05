@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import profileService from "../services/profileService";
 
 const AuthContext = createContext();
 
@@ -38,6 +39,28 @@ export const AuthProvider = ({ children }) => {
         data: { session },
       } = await supabase.auth.getSession();
       setUser(session?.user || null);
+
+      // If user is already logged in, ensure profile data is available
+      if (session?.user) {
+        const storedProfile = profileService.getStoredProfileData();
+        if (!storedProfile) {
+          try {
+            const profileResponse = await profileService.fetchAndStoreProfile();
+            if (!profileResponse.success) {
+              console.warn(
+                "Failed to fetch user profile on session restore:",
+                profileResponse.error
+              );
+            }
+          } catch (profileError) {
+            console.error(
+              "Error fetching profile on session restore:",
+              profileError
+            );
+          }
+        }
+      }
+
       setLoading(false);
     };
 
@@ -47,6 +70,26 @@ export const AuthProvider = ({ children }) => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user || null);
+
+      // Handle auth state changes
+      if (event === "SIGNED_IN" && session?.user) {
+        // Fetch profile on sign in
+        try {
+          const profileResponse = await profileService.fetchAndStoreProfile();
+          if (!profileResponse.success) {
+            console.warn(
+              "Failed to fetch user profile on sign in:",
+              profileResponse.error
+            );
+          }
+        } catch (profileError) {
+          console.error("Error fetching profile on sign in:", profileError);
+        }
+      } else if (event === "SIGNED_OUT") {
+        // Clear profile on sign out
+        profileService.clearStoredProfileData();
+      }
+
       setLoading(false);
     });
 
@@ -58,10 +101,26 @@ export const AuthProvider = ({ children }) => {
       email,
       password,
     });
+
+    // If login is successful, fetch and store user profile
+    if (data?.user && !error) {
+      try {
+        const profileResponse = await profileService.fetchAndStoreProfile();
+        if (!profileResponse.success) {
+          console.warn("Failed to fetch user profile:", profileResponse.error);
+        }
+      } catch (profileError) {
+        console.error("Error fetching profile after login:", profileError);
+      }
+    }
+
     return { data, error };
   };
 
   const signOut = async () => {
+    // Clear stored profile data before signing out
+    profileService.clearStoredProfileData();
+
     const { error } = await supabase.auth.signOut();
     return { error };
   };
@@ -77,6 +136,10 @@ export const AuthProvider = ({ children }) => {
     signIn,
     signOut,
     supabase,
+    // Profile-related methods
+    getStoredProfile: () => profileService.getStoredProfileData(),
+    getOrganizationId: () => profileService.getOrganizationId(),
+    getUserDetails: () => profileService.getUserDetails(),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

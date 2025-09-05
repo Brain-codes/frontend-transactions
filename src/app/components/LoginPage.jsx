@@ -139,7 +139,7 @@ const LoginPage = () => {
               <Button
                 type="submit"
                 disabled={loading || !email || !password}
-                className="w-full h-11 bg-gradient-to-r from-brand-800 to-brand-900 hover:from-brand-900 hover:to-brand-950 text-white font-medium transition-all duration-200 transform hover:scale-[1.02] disabled:transform-none"
+                className="w-full h-11 bg-gradient-to-r from-brand to-brand/80 hover:from-brand/20 hover:to-brand/50 text-white font-medium transition-all duration-200 transform hover:scale-[1.02] disabled:transform-none"
               >
                 {loading ? (
                   <div className="flex items-center space-x-2">

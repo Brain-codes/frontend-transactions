@@ -22,6 +22,7 @@ const OrganizationFormModal = ({
   onSubmit,
   initialData = null,
   loading = false,
+  submitLoading = false, // Add separate prop for submit loading
 }) => {
   const [formData, setFormData] = useState({
     name: "",
@@ -140,6 +141,7 @@ const OrganizationFormModal = ({
       return acc;
     }, {});
 
+    // Call onSubmit but don't close modal - parent will handle success/error
     onSubmit(cleanedData);
   };
 
@@ -361,13 +363,13 @@ const OrganizationFormModal = ({
             variant="outline"
             onClick={handleClose}
             className="flex-1"
-            disabled={loading}
+            disabled={submitLoading} // Disable cancel button when submitting
           >
             <X className="h-4 w-4 mr-2" />
             Cancel
           </Button>
-          <Button type="submit" className="flex-1" disabled={loading}>
-            {loading ? (
+          <Button type="submit" className="flex-1" disabled={submitLoading}>
+            {submitLoading ? (
               <div className="flex items-center">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                 {isEditing ? "Updating..." : "Creating..."}

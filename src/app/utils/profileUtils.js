@@ -3,17 +3,19 @@
  * Handles loading and processing user profile data
  */
 
+import profileService from "../services/profileService";
+
 /**
  * Loads profile data from localStorage and extracts partner name
  * @returns {Promise<Object>} Object containing partnerName and organizationId
  */
 export const loadProfileData = async () => {
   try {
-    const profileData = localStorage.getItem("user_profile");
-    if (profileData) {
-      const profile = JSON.parse(profileData);
+    const profile = profileService.getStoredProfileData();
+    if (profile) {
       return {
-        partnerName: profile.organizations?.name || "",
+        partnerName:
+          profile.organizations?.name || profile.organization?.name || "",
         organizationId: profile.organization_id || "",
         success: true,
       };
@@ -40,15 +42,5 @@ export const loadProfileData = async () => {
  * @returns {string|null} Organization ID or null if not found
  */
 export const getOrganizationId = () => {
-  try {
-    const profileData = localStorage.getItem("user_profile");
-    if (profileData) {
-      const profile = JSON.parse(profileData);
-      return profile.organization_id || null;
-    }
-    return null;
-  } catch (error) {
-    console.error("Error getting organization ID:", error);
-    return null;
-  }
+  return profileService.getOrganizationId();
 };
