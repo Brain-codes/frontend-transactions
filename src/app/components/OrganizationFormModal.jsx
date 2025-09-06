@@ -308,7 +308,7 @@ const OrganizationFormModal = ({
           </div>
 
           {/* Country */}
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label htmlFor="country" className="text-gray-700">
               Country
             </Label>
@@ -320,12 +320,12 @@ const OrganizationFormModal = ({
               placeholder="Nigeria"
               maxLength={100}
             />
-          </div>
+          </div> */}
         </div>
 
         {/* Additional Information */}
-        <div className="space-y-4">
           {/* Description */}
+        {/* <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="description" className="text-gray-700">
               Description
@@ -354,7 +354,7 @@ const OrganizationFormModal = ({
               </span>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Form Actions */}
         <div className="flex gap-3 pt-6 border-t">

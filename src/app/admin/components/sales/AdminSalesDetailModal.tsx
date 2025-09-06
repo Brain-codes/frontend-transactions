@@ -5,7 +5,8 @@ import type { SuperAdminSale } from "@/types/superAdminSales";
 interface AdminSalesDetailModalProps {
   open: boolean;
   onClose: () => void;
-  sale?: AdminSales | null | undefined;
+  viewFrom: "admin" | "superAdmin";
+  sale?: AdminSales | SuperAdminSale | null | undefined;
 }
 
 const InfoRow = ({
@@ -40,6 +41,7 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
   open,
   onClose,
   sale,
+  viewFrom,
 }) => {
   if (!sale) return null;
   return (
@@ -84,15 +86,32 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
             <InfoRow
               label="Stove Image"
               value={
-                sale.stove_image_id?.url ? (
-                  <a
-                    href={sale.stove_image_id.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline"
-                  >
-                    View
-                  </a>
+                viewFrom === "superAdmin" ? (
+                  (sale as SuperAdminSale).stove_image?.url ? (
+                    <a
+                      href={(sale as SuperAdminSale).stove_image!.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline"
+                    >
+                      View
+                    </a>
+                  ) : (
+                    "N/A"
+                  )
+                ) : viewFrom === "admin" ? (
+                  (sale as AdminSales).stove_image_id?.url ? (
+                    <a
+                      href={(sale as AdminSales).stove_image_id.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline"
+                    >
+                      View
+                    </a>
+                  ) : (
+                    "N/A"
+                  )
                 ) : (
                   "N/A"
                 )
@@ -101,15 +120,32 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
             <InfoRow
               label="Agreement Image"
               value={
-                sale.agreement_image_id?.url ? (
-                  <a
-                    href={sale.agreement_image_id.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline"
-                  >
-                    View
-                  </a>
+                viewFrom === "superAdmin" ? (
+                  (sale as SuperAdminSale).agreement_image?.url ? (
+                    <a
+                      href={(sale as SuperAdminSale).agreement_image!.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline"
+                    >
+                      View
+                    </a>
+                  ) : (
+                    "N/A"
+                  )
+                ) : viewFrom === "admin" ? (
+                  (sale as AdminSales).agreement_image_id?.url ? (
+                    <a
+                      href={(sale as AdminSales).agreement_image_id.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline"
+                    >
+                      View
+                    </a>
+                  ) : (
+                    "N/A"
+                  )
                 ) : (
                   "N/A"
                 )
@@ -142,12 +178,46 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
             <InfoRow label="LGA" value={sale.lga_backup} />
             <InfoRow
               label="Address"
-              value={sale.address?.full_address || sale.address?.street}
+              value={
+                viewFrom === "superAdmin"
+                  ? (sale as SuperAdminSale).addresses?.full_address ||
+                    (sale as SuperAdminSale).addresses?.street
+                  : (sale as AdminSales).address?.full_address ||
+                    (sale as AdminSales).address?.street
+              }
             />
-            <InfoRow label="City" value={sale.address?.city} />
-            <InfoRow label="Country" value={sale.address?.country} />
-            <InfoRow label="Latitude" value={sale.address?.latitude} />
-            <InfoRow label="Longitude" value={sale.address?.longitude} />
+            <InfoRow
+              label="City"
+              value={
+                viewFrom === "superAdmin"
+                  ? (sale as SuperAdminSale).addresses?.city
+                  : (sale as AdminSales).address?.city
+              }
+            />
+            <InfoRow
+              label="Country"
+              value={
+                viewFrom === "superAdmin"
+                  ? (sale as SuperAdminSale).addresses?.country
+                  : (sale as AdminSales).address?.country
+              }
+            />
+            <InfoRow
+              label="Latitude"
+              value={
+                viewFrom === "superAdmin"
+                  ? (sale as SuperAdminSale).addresses?.latitude
+                  : (sale as AdminSales).address?.latitude
+              }
+            />
+            <InfoRow
+              label="Longitude"
+              value={
+                viewFrom === "superAdmin"
+                  ? (sale as SuperAdminSale).addresses?.longitude
+                  : (sale as AdminSales).address?.longitude
+              }
+            />
           </Section>
         </div>
         {/* <Section title="Organization">

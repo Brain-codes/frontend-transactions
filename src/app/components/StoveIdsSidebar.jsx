@@ -14,7 +14,7 @@ import {
 import { useState, useEffect } from "react";
 import { Loader2, X, FileText, Eye } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import SalesDetailSidebar from "./SalesDetailSidebar";
+import AdminSalesDetailModal from "../admin/components/sales/AdminSalesDetailModal";
 import { useToast } from "@/components/ui/toast";
 
 const StoveIdsSidebar = ({ organization, isOpen, onClose }) => {
@@ -26,7 +26,7 @@ const StoveIdsSidebar = ({ organization, isOpen, onClose }) => {
   const [status, setStatus] = useState("all");
   const [error, setError] = useState(null);
   const [selectedSale, setSelectedSale] = useState(null);
-  const [showSaleSidebar, setShowSaleSidebar] = useState(false);
+  const [showSaleModal, setShowSaleModal] = useState(false);
   const [saleLoading, setSaleLoading] = useState(false);
   const [loadingSaleId, setLoadingSaleId] = useState(null);
 
@@ -110,7 +110,7 @@ const StoveIdsSidebar = ({ organization, isOpen, onClose }) => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Failed to fetch sale");
       setSelectedSale(data.data || null);
-      setShowSaleSidebar(true);
+      setShowSaleModal(true);
     } catch (err) {
       toast.error(
         "Failed to fetch sale",
@@ -242,15 +242,16 @@ const StoveIdsSidebar = ({ organization, isOpen, onClose }) => {
           </div>
         )}
 
-        {/* Sale Detail Sidebar */}
-        {showSaleSidebar && selectedSale && (
-          <SalesDetailSidebar
-            sale={selectedSale}
-            isOpen={showSaleSidebar}
+        {/* Sale Detail Modal */}
+        {showSaleModal && selectedSale && (
+          <AdminSalesDetailModal
+            open={showSaleModal}
             onClose={() => {
-              setShowSaleSidebar(false);
+              setShowSaleModal(false);
               setSelectedSale(null);
             }}
+            sale={selectedSale}
+            viewFrom="superAdmin"
           />
         )}
 

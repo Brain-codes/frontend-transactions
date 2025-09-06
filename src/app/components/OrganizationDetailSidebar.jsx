@@ -180,7 +180,7 @@ const OrganizationDetailSidebar = ({
         )}
 
         {/* Description */}
-        {organization.description && (
+        {/* {organization.description && (
           <>
             <div className="space-y-4">
               <h3 className="text-sm font-medium text-gray-900 flex items-center gap-2">
@@ -197,7 +197,7 @@ const OrganizationDetailSidebar = ({
 
             <Separator />
           </>
-        )}
+        )} */}
 
         {/* System Information */}
         <div className="space-y-4">
@@ -207,12 +207,12 @@ const OrganizationDetailSidebar = ({
           </h3>
 
           <div className="space-y-3 pl-6">
-            <div>
+            {/* <div>
               <p className="text-xs text-gray-500">Organization ID</p>
               <p className="text-xs text-gray-900 font-mono">
                 {organization.id}
               </p>
-            </div>
+            </div> */}
 
             <div className="grid grid-cols-1 gap-3">
               <div>
@@ -230,14 +230,14 @@ const OrganizationDetailSidebar = ({
               </div>
             </div>
 
-            {organization.created_by && (
+            {/* {organization.created_by && (
               <div>
                 <p className="text-xs text-gray-500">Created By</p>
                 <p className="text-xs text-gray-900 font-mono">
                   {organization.created_by}
                 </p>
               </div>
-            )}
+            )} */}
           </div>
         </div>
 

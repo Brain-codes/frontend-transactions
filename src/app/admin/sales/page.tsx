@@ -454,6 +454,7 @@ const AdminSalesPage = () => {
               <AdminSalesDetailModal
                 open={showDetailModal}
                 sale={selectedSale}
+                viewFrom="admin"
                 onClose={() => {
                   setShowDetailModal(false);
                   setSelectedSale(null);
