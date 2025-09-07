@@ -1,5 +1,6 @@
 // Admin Sales Service for sales management operations
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import tokenManager from "../../utils/tokenManager";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const API_FUNCTIONS_URL = `${API_BASE_URL}/functions/v1`;
@@ -12,14 +13,12 @@ class AdminSalesService {
     this.getStovesURL = `${API_BASE_URL}/functions/v1/get-stove-ids`; // Updated to match Flutter
   }
 
-  // Get token from Supabase session
+  // Get token using tokenManager
   async getToken() {
     try {
-      const {
-        data: { session },
-      } = await this.supabase.auth.getSession();
-      return session?.access_token || null;
+      return await tokenManager.getValidToken();
     } catch (error) {
+      console.error("💼 [AdminSales] Token error:", error);
       return null;
     }
   }

@@ -1,5 +1,6 @@
 // Admin Dashboard Service for fetching dashboard statistics
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import tokenManager from "../../utils/tokenManager";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const API_FUNCTIONS_URL = `${API_BASE_URL}/functions/v1`;
@@ -9,14 +10,12 @@ class AdminDashboardService {
     this.supabase = createClientComponentClient();
   }
 
-  // Get token from Supabase session
+  // Get token using tokenManager
   async getToken() {
     try {
-      const {
-        data: { session },
-      } = await this.supabase.auth.getSession();
-      return session?.access_token || null;
+      return await tokenManager.getValidToken();
     } catch (error) {
+      console.error("🏢 [AdminDashboard] Token error:", error);
       return null;
     }
   }

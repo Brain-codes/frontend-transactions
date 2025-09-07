@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import profileService from "../services/profileService";
+import tokenManager from "../../utils/tokenManager";
 
 const AuthContext = createContext();
 
@@ -42,6 +43,12 @@ export const AuthProvider = ({ children }) => {
 
       // If user is already logged in, ensure profile data is available
       if (session?.user) {
+        // Store session data in tokenManager
+        if (session) {
+          console.log('🔐 [AuthContext] Storing session data in tokenManager');
+          tokenManager.setLoginData(session);
+        }
+
         const storedProfile = profileService.getStoredProfileData();
         if (!storedProfile) {
           try {
@@ -73,6 +80,10 @@ export const AuthProvider = ({ children }) => {
 
       // Handle auth state changes
       if (event === "SIGNED_IN" && session?.user) {
+        // Store session data in tokenManager
+        console.log('🔐 [AuthContext] Storing login session in tokenManager');
+        tokenManager.setLoginData(session);
+
         // Fetch profile on sign in
         try {
           const profileResponse = await profileService.fetchAndStoreProfile();
@@ -86,8 +97,9 @@ export const AuthProvider = ({ children }) => {
           console.error("Error fetching profile on sign in:", profileError);
         }
       } else if (event === "SIGNED_OUT") {
-        // Clear profile on sign out
+        // Clear profile and token data on sign out
         profileService.clearStoredProfileData();
+        tokenManager.clearToken();
       }
 
       setLoading(false);
@@ -104,6 +116,12 @@ export const AuthProvider = ({ children }) => {
 
     // If login is successful, fetch and store user profile
     if (data?.user && !error) {
+      // Store session data in tokenManager
+      if (data.session) {
+        console.log('🔐 [AuthContext] Storing login response in tokenManager');
+        tokenManager.setLoginData(data.session);
+      }
+
       try {
         const profileResponse = await profileService.fetchAndStoreProfile();
         if (!profileResponse.success) {
@@ -118,8 +136,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signOut = async () => {
-    // Clear stored profile data before signing out
+    // Clear stored profile data and token before signing out
     profileService.clearStoredProfileData();
+    tokenManager.clearToken();
 
     const { error } = await supabase.auth.signOut();
     return { error };

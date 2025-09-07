@@ -7,6 +7,7 @@ import SalesAdvancedFilterShadcn from "../components/SalesAdvancedFilterShadcn";
 import { Button } from "@/components/ui/button";
 import ActiveFiltersBar from "./components/ActiveFiltersBar.jsx";
 import SalesTable from "./components/SalesTable";
+import BulkActionsToolbar from "./components/BulkActionsToolbar";
 import {
   Pagination,
   PaginationContent,
@@ -42,6 +43,8 @@ const SalesPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedSale, setSelectedSale] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  // Bulk actions state
+  const [selectedItems, setSelectedItems] = useState(new Set());
   const [organizations, setOrganizations] = useState([]);
   const [organizationsLoading, setOrganizationsLoading] = useState(false);
   const [customDateRange, setCustomDateRange] = useState({
@@ -52,18 +55,6 @@ const SalesPage = () => {
   const isManualSearchClear = useRef(false);
   const searchTimeoutRef = useRef(null);
 
-  /**
-   * @type {{
-   *   data: import("@/types/superAdminSales").SuperAdminSale[],
-   *   loading: boolean,
-   *   tableLoading: boolean,
-   *   error: string | null,
-   *   pagination: any,
-   *   applyFilters: (filters: any) => void,
-   *   exportSales: (filters: any, format: string) => void,
-   *   fetchSales: () => void,
-   * }}
-   */
   const {
     data: salesData,
     loading,
@@ -75,7 +66,7 @@ const SalesPage = () => {
     fetchSales,
   } = useSalesAdvanced();
 
-  // Handle pagination changes
+  // Get states from constants
   const handlePageChange = (page) => {
     applyFilters({ page });
   };
@@ -228,6 +219,55 @@ const SalesPage = () => {
     console.log("Delete sale:", sale);
     // Add delete functionality here
   };
+
+  // Bulk action handlers
+  const handleSelectItem = (itemId, checked) => {
+    const newSelected = new Set(selectedItems);
+    if (checked) {
+      newSelected.add(itemId);
+    } else {
+      newSelected.delete(itemId);
+    }
+    setSelectedItems(newSelected);
+  };
+
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      const allIds = new Set(displayData.map((sale) => sale.id.toString()));
+      setSelectedItems(allIds);
+    } else {
+      setSelectedItems(new Set());
+    }
+  };
+
+  const handleExportSelected = () => {
+    const selectedIds = Array.from(selectedItems);
+    if (selectedIds.length === 0) return;
+
+    console.log("Exporting selected items:", selectedIds);
+    // Create filters for selected items
+    const filters = { ids: selectedIds };
+    exportSales(filters, "csv");
+  };
+
+  const handleDeleteSelected = () => {
+    const selectedIds = Array.from(selectedItems);
+    if (selectedIds.length === 0) return;
+
+    console.log("Deleting selected items:", selectedIds);
+    // Add bulk delete functionality here
+    // For now, just clear the selection
+    setSelectedItems(new Set());
+  };
+
+  const handleClearSelection = () => {
+    setSelectedItems(new Set());
+  };
+
+  // Clear selection when data changes (e.g., page change, filters)
+  useEffect(() => {
+    setSelectedItems(new Set());
+  }, [salesData]);
 
   // Quick filter handlers
   const handleQuickDateFilter = (value) => {
@@ -691,6 +731,17 @@ const SalesPage = () => {
                 </div>
               )}
 
+              {/* Bulk Actions Toolbar */}
+              <div className="p-4 pb-0">
+                <BulkActionsToolbar
+                  selectedCount={selectedItems.size}
+                  onExportSelected={handleExportSelected}
+                  onDeleteSelected={handleDeleteSelected}
+                  onClearSelection={handleClearSelection}
+                  disabled={tableLoading}
+                />
+              </div>
+
               <SalesTable
                 displayData={displayData}
                 tableLoading={tableLoading}
@@ -701,6 +752,9 @@ const SalesPage = () => {
                 handleDownloadReceipt={handleDownloadReceipt}
                 handleShowAttachments={handleShowAttachments}
                 handleDelete={handleDelete}
+                selectedItems={selectedItems}
+                onSelectItem={handleSelectItem}
+                onSelectAll={handleSelectAll}
               />
             </div>
 

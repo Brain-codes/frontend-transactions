@@ -4,9 +4,10 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import organizationsAPIService from "../services/organizationsAPIService";
+import { safeFetchManager } from "../../utils/safeFetch";
 
 export const useOrganizations = (initialFilters = {}) => {
-  const {isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
@@ -18,6 +19,63 @@ export const useOrganizations = (initialFilters = {}) => {
     total: 0,
     totalPages: 0,
   });
+
+  // Component lifecycle management
+  const isMountedRef = useRef(true);
+  const componentName = "Organizations";
+  const isLoadingRef = useRef(false);
+  const hasInitializedRef = useRef(false);
+  const lastNavigationRef = useRef(Date.now());
+
+  // Reset initialization when auth changes or component remounts
+  useEffect(() => {
+    isMountedRef.current = true;
+    lastNavigationRef.current = Date.now();
+
+    console.log(`🔍 [${componentName}] Component mounted/remounted`, {
+      isAuthenticated,
+      timestamp: new Date().toISOString(),
+    });
+
+    return () => {
+      isMountedRef.current = false;
+      console.log(
+        `🔍 [${componentName}] Component unmounting - aborting requests`
+      );
+      safeFetchManager.abortComponentRequests(componentName);
+    };
+  }, [isAuthenticated]);
+
+  // Handle visibility changes (tab switching)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const isVisible = typeof window !== "undefined" ? !document.hidden : true;
+      if (isVisible && isMountedRef.current) {
+        console.log(
+          `🔍 [${componentName}] Tab became visible - checking state`
+        );
+
+        // If we were loading when tab was hidden, reset state
+        if (isLoadingRef.current) {
+          console.warn(
+            `🔍 [${componentName}] Was loading when tab hidden - resetting state`
+          );
+          isLoadingRef.current = false;
+          setLoading(false);
+          setTableLoading(false);
+        }
+      }
+    };
+
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+      return () =>
+        document.removeEventListener(
+          "visibilitychange",
+          handleVisibilityChange
+        );
+    }
+  }, []);
 
   const defaultFilters = useMemo(
     () => ({
@@ -33,8 +91,6 @@ export const useOrganizations = (initialFilters = {}) => {
   const [filters, setFilters] = useState(defaultFilters);
   const filtersRef = useRef(filters);
   const defaultFiltersRef = useRef(defaultFilters);
-  const isLoadingRef = useRef(false);
-  const hasInitializedRef = useRef(false);
 
   useEffect(() => {
     defaultFiltersRef.current = defaultFilters;
@@ -46,27 +102,71 @@ export const useOrganizations = (initialFilters = {}) => {
     }
   }, [filters]);
 
-  // Main fetch function
+  // Safe state update helper
+  const safeSetState = useCallback((updater) => {
+    if (isMountedRef.current) {
+      if (typeof updater === "function") {
+        return updater();
+      } else {
+        return updater;
+      }
+    }
+    console.log(
+      `🔍 [${componentName}] Skipped state update - component unmounted`
+    );
+  }, []);
+
+  // Main fetch function with enhanced error handling and lifecycle management
   const fetchOrganizationsStable = useCallback(
     async (newFilters = {}, isInitial = false) => {
+      console.log(`🔍 [${componentName}] fetchOrganizationsStable called:`, {
+        newFilters,
+        isInitial,
+        isAuthenticated,
+        isLoading: isLoadingRef.current,
+        isMounted: isMountedRef.current,
+      });
+
       if (!isAuthenticated) {
-        setError("Please login to access organizations data.");
-        setLoading(false);
-        setTableLoading(false);
+        console.log(
+          `🔍 [${componentName}] Not authenticated - setting error state`
+        );
+        safeSetState(() => {
+          setError("Please login to access organizations data.");
+          setLoading(false);
+          setTableLoading(false);
+        });
         return;
       }
+
+      if (!isMountedRef.current) {
+        console.log(
+          `🔍 [${componentName}] Component unmounted - aborting fetch`
+        );
+        return;
+      }
+
       if (isLoadingRef.current) {
-        // Optionally: toast.info("API call already in progress, skipping...");
+        console.log(
+          `🔍 [${componentName}] Request already in progress - skipping`
+        );
         return;
       }
+
       isLoadingRef.current = true;
-      if (isInitial) {
-        setLoading(true);
-      } else {
-        setTableLoading(true);
-      }
-      setError(null);
+
       try {
+        console.log(`🔍 [${componentName}] Starting fetch...`);
+
+        safeSetState(() => {
+          if (isInitial) {
+            setLoading(true);
+          } else {
+            setTableLoading(true);
+          }
+          setError(null);
+        });
+
         const currentFilters = filtersRef.current;
         const mergedFilters = { ...currentFilters, ...newFilters };
         const apiFilters = {
@@ -74,30 +174,55 @@ export const useOrganizations = (initialFilters = {}) => {
           offset: ((mergedFilters.page || 1) - 1) * (mergedFilters.limit || 10),
         };
         delete apiFilters.page;
-        const response = await organizationsAPIService.getAllOrganizations(
+
+        console.log(
+          `🔍 [${componentName}] Calling API with filters:`,
           apiFilters
         );
+
+        const response = await organizationsAPIService.getAllOrganizations(
+          apiFilters,
+          componentName
+        );
+
+        if (!isMountedRef.current) {
+          console.log(
+            `🔍 [${componentName}] Component unmounted during fetch - ignoring response`
+          );
+          return;
+        }
+
+        console.log(`🔍 [${componentName}] API response received:`, {
+          success: response?.success,
+          dataLength: response?.data?.length || 0,
+        });
+
         if (response.success) {
-          setData(response.data || []);
-          const apiPagination = response.pagination || {};
-          setPagination({
-            page:
-              Math.floor(
-                (apiPagination.offset || 0) / (apiPagination.limit || 10)
-              ) + 1,
-            limit: apiPagination.limit || 10,
-            total: apiPagination.total || 0,
-            totalPages: Math.ceil(
-              (apiPagination.total || 0) / (apiPagination.limit || 10)
-            ),
+          safeSetState(() => {
+            setData(response.data || []);
+            const apiPagination = response.pagination || {};
+            setPagination({
+              page:
+                Math.floor(
+                  (apiPagination.offset || 0) / (apiPagination.limit || 10)
+                ) + 1,
+              limit: apiPagination.limit || 10,
+              total: apiPagination.total || 0,
+              totalPages: Math.ceil(
+                (apiPagination.total || 0) / (apiPagination.limit || 10)
+              ),
+            });
+            filtersRef.current = mergedFilters;
+            setFilters((prevFilters) => {
+              if (
+                JSON.stringify(prevFilters) !== JSON.stringify(mergedFilters)
+              ) {
+                return mergedFilters;
+              }
+              return prevFilters;
+            });
           });
-          filtersRef.current = mergedFilters;
-          setFilters((prevFilters) => {
-            if (JSON.stringify(prevFilters) !== JSON.stringify(mergedFilters)) {
-              return mergedFilters;
-            }
-            return prevFilters;
-          });
+
           if (response.data?.length > 0) {
             toast.success(
               "Loaded",
@@ -110,41 +235,72 @@ export const useOrganizations = (initialFilters = {}) => {
           );
         }
       } catch (err) {
-        toast.error("Error", err.message || "Error fetching organizations");
-        if (
-          err.message.includes("401") ||
-          err.message.includes("Unauthorized") ||
-          err.message.includes("Missing authorization header")
-        ) {
-          setError(
-            "Authentication required. Please login to access organizations data."
+        console.error(`🔍 [${componentName}] Fetch error:`, err.message);
+
+        if (!isMountedRef.current) {
+          console.log(
+            `🔍 [${componentName}] Component unmounted during error handling - ignoring`
           );
-        } else if (
-          err.message.includes("403") ||
-          err.message.includes("Access denied") ||
-          err.message.includes("super admin")
-        ) {
-          setError(
-            "Access denied. You need super admin privileges to view this data."
-          );
-        } else if (err.message.includes("404")) {
-          setError(
-            "Organizations data endpoint not found. Please check your configuration."
-          );
-        } else if (err.message.includes("500")) {
-          setError("Server error. Please try again later.");
-        } else {
-          setError(`Failed to load organizations data: ${err.message}`);
+          return;
         }
-        setData([]);
-        setPagination({ page: 1, limit: 10, total: 0, totalPages: 0 });
+
+        toast.error("Error", err.message || "Error fetching organizations");
+
+        safeSetState(() => {
+          if (
+            err.message.includes("401") ||
+            err.message.includes("Unauthorized") ||
+            err.message.includes("Missing authorization header") ||
+            err.message.includes("Authentication required")
+          ) {
+            setError(
+              "Authentication required. Please login to access organizations data."
+            );
+          } else if (
+            err.message.includes("403") ||
+            err.message.includes("Access denied") ||
+            err.message.includes("super admin")
+          ) {
+            setError(
+              "Access denied. You need super admin privileges to view this data."
+            );
+          } else if (err.message.includes("404")) {
+            setError(
+              "Organizations data endpoint not found. Please check your configuration."
+            );
+          } else if (err.message.includes("500")) {
+            setError("Server error. Please try again later.");
+          } else if (
+            err.message.includes("cancelled") ||
+            err.message.includes("aborted")
+          ) {
+            console.log(
+              `🔍 [${componentName}] Request was cancelled - not setting error`
+            );
+            // Don't set error for cancelled requests
+            return;
+          } else {
+            setError(`Failed to load organizations data: ${err.message}`);
+          }
+          setData([]);
+          setPagination({ page: 1, limit: 10, total: 0, totalPages: 0 });
+        });
       } finally {
-        setLoading(false);
-        setTableLoading(false);
+        console.log(
+          `🔍 [${componentName}] Fetch completed - resetting loading states`
+        );
+
         isLoadingRef.current = false;
+
+        if (isMountedRef.current) {
+          safeSetState(() => {
+            setLoading(false);
+            setTableLoading(false);
+          });
+        }
       }
     },
-    [isAuthenticated, toast]
+    [isAuthenticated, toast, safeSetState]
   );
 
   const fetchOrganizations = fetchOrganizationsStable;
@@ -273,6 +429,36 @@ export const useOrganizations = (initialFilters = {}) => {
     fetchOrganizationsStable(currentDefaultFilters, false);
   }, [fetchOrganizationsStable]);
 
+  // Emergency reset method (callable from console)
+  const emergencyReset = useCallback(() => {
+    console.log(`🔍 [${componentName}] EMERGENCY RESET TRIGGERED`);
+
+    // Clear all stuck states
+    safeFetchManager.clearTokenRefresh();
+    safeFetchManager.abortComponentRequests(componentName);
+    isLoadingRef.current = false;
+    hasInitializedRef.current = false;
+
+    // Reset component state
+    setLoading(false);
+    setTableLoading(false);
+    setError(null);
+
+    // Trigger fresh initialization
+    const currentDefaultFilters = defaultFiltersRef.current;
+    fetchOrganizationsStable(currentDefaultFilters, true);
+  }, [fetchOrganizationsStable]);
+
+  // Expose emergency reset globally for debugging
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.emergencyResetOrganizations = emergencyReset;
+      return () => {
+        delete window.emergencyResetOrganizations;
+      };
+    }
+  }, [emergencyReset]);
+
   const searchOrganizations = useCallback(
     async (searchTerm) => {
       const searchFilters = {
@@ -284,56 +470,133 @@ export const useOrganizations = (initialFilters = {}) => {
     [fetchOrganizationsStable]
   );
 
+  // Enhanced initialization effect with proper cleanup and navigation handling
   useEffect(() => {
-    if (!isAuthenticated || hasInitializedRef.current) return;
-    hasInitializedRef.current = true;
-    const loadInitialData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const currentDefaultFilters = defaultFiltersRef.current;
-        const response = await organizationsAPIService.getAllOrganizations(
-          currentDefaultFilters
-        );
-        if (response.success) {
-          setData(response.data || []);
-          const apiPagination = response.pagination || {};
-          setPagination({
-            page:
-              Math.floor(
-                (apiPagination.offset || 0) / (apiPagination.limit || 10)
-              ) + 1,
-            limit: apiPagination.limit || 10,
-            total: apiPagination.total || 0,
-            totalPages: Math.ceil(
-              (apiPagination.total || 0) / (apiPagination.limit || 10)
-            ),
-          });
-          setFilters(currentDefaultFilters);
-          filtersRef.current = currentDefaultFilters;
-        } else {
-          throw new Error(
-            response.error || "Failed to fetch initial organizations data"
+    console.log(`🔍 [${componentName}] Init effect triggered:`, {
+      isAuthenticated,
+      hasInitialized: hasInitializedRef.current,
+      isMounted: isMountedRef.current,
+      lastNavigation: lastNavigationRef.current,
+    });
+
+    // Reset initialization flag if auth changes or we navigate back
+    if (!isAuthenticated) {
+      hasInitializedRef.current = false;
+      console.log(
+        `🔍 [${componentName}] Auth lost - reset initialization flag`
+      );
+      return;
+    }
+
+    // Check if we should reinitialize (navigation back to component)
+    const now = Date.now();
+    const timeSinceLastNav = now - lastNavigationRef.current;
+    const shouldReinitialize = timeSinceLastNav < 1000; // If less than 1 second, likely a navigation
+
+    if (!hasInitializedRef.current || shouldReinitialize) {
+      hasInitializedRef.current = true;
+      lastNavigationRef.current = now;
+
+      console.log(`🔍 [${componentName}] Starting initialization...`, {
+        shouldReinitialize,
+      });
+
+      const loadInitialData = async () => {
+        try {
+          if (!isMountedRef.current) {
+            console.log(
+              `🔍 [${componentName}] Component unmounted during init - aborting`
+            );
+            return;
+          }
+
+          console.log(`🔍 [${componentName}] Loading initial data...`);
+          setLoading(true);
+          setError(null);
+
+          const currentDefaultFilters = defaultFiltersRef.current;
+
+          const response = await organizationsAPIService.getAllOrganizations(
+            currentDefaultFilters,
+            componentName
           );
+
+          if (!isMountedRef.current) {
+            console.log(
+              `🔍 [${componentName}] Component unmounted during initial load - ignoring response`
+            );
+            return;
+          }
+
+          if (response.success) {
+            console.log(
+              `🔍 [${componentName}] Initial data loaded successfully`
+            );
+
+            setData(response.data || []);
+            const apiPagination = response.pagination || {};
+            setPagination({
+              page:
+                Math.floor(
+                  (apiPagination.offset || 0) / (apiPagination.limit || 10)
+                ) + 1,
+              limit: apiPagination.limit || 10,
+              total: apiPagination.total || 0,
+              totalPages: Math.ceil(
+                (apiPagination.total || 0) / (apiPagination.limit || 10)
+              ),
+            });
+            setFilters(currentDefaultFilters);
+            filtersRef.current = currentDefaultFilters;
+          } else {
+            throw new Error(
+              response.error || "Failed to fetch initial organizations data"
+            );
+          }
+        } catch (err) {
+          console.error(
+            `🔍 [${componentName}] Initial load failed:`,
+            err.message
+          );
+
+          if (!isMountedRef.current) {
+            console.log(
+              `🔍 [${componentName}] Component unmounted during error handling - ignoring`
+            );
+            return;
+          }
+
+          if (
+            !err.message.includes("cancelled") &&
+            !err.message.includes("aborted")
+          ) {
+            toast.error(
+              "Load Error",
+              err.message || "Error loading initial organizations data"
+            );
+            setError(`Failed to load initial data: ${err.message}`);
+          }
+
+          setData([]);
+          setPagination({ page: 1, limit: 10, total: 0, totalPages: 0 });
+        } finally {
+          if (isMountedRef.current) {
+            setLoading(false);
+          }
         }
-      } catch (err) {
-        toast.error(
-          "Load Error",
-          err.message || "Error loading initial organizations data"
-        );
-        setError(`Failed to load initial data: ${err.message}`);
-        setData([]);
-        setPagination({ page: 1, limit: 10, total: 0, totalPages: 0 });
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadInitialData();
+      };
+
+      loadInitialData();
+    }
   }, [isAuthenticated, toast]);
 
+  // Reset initialization when auth state changes
   useEffect(() => {
     if (!isAuthenticated) {
       hasInitializedRef.current = false;
+      console.log(
+        `🔍 [${componentName}] Auth state changed - reset initialization`
+      );
     }
   }, [isAuthenticated]);
 

@@ -1,5 +1,6 @@
 // API configuration and service for advanced sales data
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { safeFetchManager } from "../../utils/safeFetch";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -39,12 +40,18 @@ class SalesAdvancedService {
   }
 
   // Main method to fetch sales data with filters
-  async getSalesData(filters = {}, method = "POST") {
+  async getSalesData(
+    filters = {},
+    method = "POST",
+    componentName = "SalesService"
+  ) {
     try {
       let url = this.baseURL;
       let options = {
         method,
-        headers: await this.getHeaders(),
+        headers: {
+          "Content-Type": "application/json",
+        },
       };
 
       if (method === "GET") {
@@ -68,31 +75,27 @@ class SalesAdvancedService {
         options.body = JSON.stringify(filters);
       }
 
-      // Dev log: console.log("API Request:", { method, url, filters, headers: options.headers });
+      console.log(`🔍 [SalesService] Making request:`, {
+        method,
+        url,
+        filters,
+      });
 
-      const response = await fetch(url, options);
+      // Use safe fetch manager
+      const response = await safeFetchManager.safeFetch(url, options, {
+        componentName,
+        timeout: 45000, // 45 second timeout for sales data
+        retryCount: 1, // Only retry once for sales data
+      });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || `HTTP ${response.status}: ${response.statusText}`
-        );
-      }
+      console.log(`🔍 [SalesService] Response received:`, {
+        success: response?.success,
+        dataLength: response?.data?.length || 0,
+      });
 
-      // Handle different response types based on export format
-      if (filters.export) {
-        switch (filters.export) {
-          case "csv":
-            return await response.text();
-          case "xlsx":
-            return await response.blob();
-          default:
-            return await response.json();
-        }
-      }
-
-      return await response.json();
+      return response;
     } catch (error) {
+      console.error(`🔍 [SalesService] Request failed:`, error.message);
       throw new Error(`Failed to fetch sales data: ${error.message}`);
     }
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { safeFetchManager } from "../../utils/safeFetch";
 
 class OrganizationsAPIService {
   constructor() {
@@ -42,37 +43,50 @@ class OrganizationsAPIService {
   }
 
   // Get all organizations with pagination and filters
-  async getAllOrganizations(params = {}) {
+  async getAllOrganizations(
+    params = {},
+    componentName = "OrganizationsService"
+  ) {
     try {
-      const headers = await this.getAuthHeaders();
       const url = this.buildUrl(params);
 
-      // Dev log: console.log("Fetching organizations from:", url);
-      const response = await fetch(url, {
-        method: "GET",
-        headers,
+      console.log(`🔍 [OrgsService] Making request:`, { url, params });
+
+      // Use safe fetch manager
+      const response = await safeFetchManager.safeFetch(
+        url,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+        {
+          componentName,
+          timeout: 30000,
+          retryCount: 1,
+        }
+      );
+
+      console.log(`🔍 [OrgsService] Response received:`, {
+        success: response?.success || true,
+        dataLength: response?.data?.length || 0,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || `HTTP ${response.status}: ${response.statusText}`
-        );
-      }
 
       return {
         success: true,
-        data: data.data || [],
-        pagination: data.pagination || {
+        data: response.data || [],
+        pagination: response.pagination || {
           limit: params.limit || 50,
           offset: params.offset || 0,
           total: 0,
           totalPages: 0,
         },
-        message: data.message || "Organizations retrieved successfully",
+        message: response.message || "Organizations retrieved successfully",
       };
     } catch (error) {
+      console.error(`🔍 [OrgsService] Request failed:`, error.message);
+
       // Error handled by UI with toast
       return {
         success: false,

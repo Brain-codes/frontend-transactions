@@ -1,22 +1,27 @@
-// Get auth headers using Supabase session (same as other services)
+// Get auth headers using tokenManager
 "use client";
-async function getAuthHeaders(supabase) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session?.access_token) {
-    throw new Error("No authentication token found. Please login again.");
+import tokenManager from "../../utils/tokenManager";
+
+async function getAuthHeaders() {
+  try {
+    const token = await tokenManager.getValidToken();
+    if (!token) {
+      throw new Error("No authentication token found. Please login again.");
+    }
+    return {
+      Authorization: `Bearer ${token}`,
+      // Do NOT set Content-Type here, let browser set it for FormData
+    };
+  } catch (error) {
+    console.error("📄 [CSVImport] Token error:", error);
+    throw new Error("Authentication failed. Please login again.");
   }
-  return {
-    Authorization: `Bearer ${session.access_token}`,
-    // Do NOT set Content-Type here, let browser set it for FormData
-  };
 }
 
 // Import CSV sales data for a specific organization (Supabase Edge Function)
 async function importSalesCSV(supabase, organizationId, csvFile) {
   try {
-    const headers = await getAuthHeaders(supabase);
+    const headers = await getAuthHeaders();
     const formData = new FormData();
     formData.append("organization_id", organizationId);
     formData.append("file", csvFile);

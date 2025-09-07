@@ -72,7 +72,9 @@ const AdminSalesPage = () => {
   const nigerianStates: string[] = Object.keys(lgaAndStates).sort();
 
   useEffect(() => {
+    console.log("FIRST TO FETCH SALES");
     fetchSalesData();
+    console.log("SECOND TO FETCH SALES");
   }, []);
 
   // Update activeQuickFilters whenever dateRange changes

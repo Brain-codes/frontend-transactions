@@ -195,7 +195,6 @@ const PartnersPage = () => {
 
   // Export handler
   const handleExport = (format) => {
-    console.log("Exporting as:", format);
     exportOrganizations({}, format);
   };
 
