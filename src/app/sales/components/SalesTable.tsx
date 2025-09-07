@@ -159,7 +159,20 @@ const SalesTable = ({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
-                        onClick={() => exportSales({ id: sale.id }, "csv")}
+                        onClick={async () => {
+                          // Export single sale using our custom format
+                          try {
+                            const { formatSalesDataToCSV, downloadCSV } =
+                              await import("../../../utils/csvExportUtils");
+                            const csvContent = formatSalesDataToCSV([sale]);
+                            const filename = `sale-${
+                              sale.transaction_id || sale.id
+                            }-${new Date().toISOString().split("T")[0]}.csv`;
+                            downloadCSV(csvContent, filename);
+                          } catch (error) {
+                            console.error("Export error:", error);
+                          }
+                        }}
                       >
                         {" "}
                         <Download className="mr-2 h-4 w-4" /> Export CSV{" "}

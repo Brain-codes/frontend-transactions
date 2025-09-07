@@ -286,6 +286,42 @@ export const useSalesAdvanced = (initialFilters = {}) => {
       setLoading(true);
       try {
         const currentFilters = filtersRef.current;
+
+        // If we have specific IDs to export (for selected items)
+        if (
+          exportFilters.ids &&
+          Array.isArray(exportFilters.ids) &&
+          exportFilters.ids.length > 0
+        ) {
+          // For selected items, we need to get the current data and filter by IDs
+          const selectedData = data.filter(
+            (sale) =>
+              exportFilters.ids.includes(sale.id.toString()) ||
+              exportFilters.ids.includes(sale.id)
+          );
+
+          if (selectedData.length === 0) {
+            throw new Error("No selected items found to export");
+          }
+
+          // Use our custom CSV formatter directly
+          const { formatSalesDataToCSV, downloadCSV } = await import(
+            "../../utils/csvExportUtils"
+          );
+          const csvContent = formatSalesDataToCSV(selectedData);
+          const filename = `sales-export-selected-${
+            new Date().toISOString().split("T")[0]
+          }.csv`;
+          downloadCSV(csvContent, filename);
+
+          toast.success(
+            "Exported",
+            `${selectedData.length} selected items exported as CSV`
+          );
+          return;
+        }
+
+        // For normal export (all data with filters)
         if (format === "csv") {
           await salesAdvancedService.exportAndDownloadCSV({
             ...currentFilters,
@@ -318,7 +354,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
         setLoading(false);
       }
     },
-    [toast]
+    [toast, data]
   );
 
   const handleTableChange = useCallback(
@@ -338,7 +374,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
 
   const applyFilters = useCallback(
     (newFilters) => {
-      fetchSalesStable({ ...newFilters, page: 1 }, false);
+      fetchSalesStable(newFilters, false);
     },
     [fetchSalesStable]
   );

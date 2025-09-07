@@ -821,6 +821,18 @@ const SalesPage = () => {
                         </PaginationItem>
                       );
                     })}
+
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => handlePageChange(pagination.page + 1)}
+                        className={
+                          pagination.page >= pagination.totalPages ||
+                          tableLoading
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
+                      />
+                    </PaginationItem>
                   </PaginationContent>
                 </Pagination>
               </div>

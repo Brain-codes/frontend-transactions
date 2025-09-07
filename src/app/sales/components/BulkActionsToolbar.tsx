@@ -36,7 +36,7 @@ const BulkActionsToolbar = ({
               <Download className="w-4 h-4 mr-2" />
               Export Selected
             </Button>
-            <Button
+            {/* <Button
               variant="outline"
               size="sm"
               onClick={onDeleteSelected}
@@ -45,7 +45,7 @@ const BulkActionsToolbar = ({
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Delete Selected
-            </Button>
+            </Button> */}
           </div>
         </div>
         <Button

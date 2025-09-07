@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -23,9 +23,22 @@ const TopNavigation = ({
   user,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const { signOut, getStoredProfile, isSuperAdmin, isAdmin, isAgent } =
-    useAuth();
+  const {
+    signOut,
+    getStoredProfile,
+    isSuperAdmin,
+    isAdmin,
+    isAgent,
+    isAuthenticated,
+  } = useAuth();
   const router = useRouter();
+
+  // Navigate to login when user becomes unauthenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, router]);
 
   const getUserInitials = (email) => {
     if (!email) return "U";
@@ -34,7 +47,7 @@ const TopNavigation = ({
 
   const handleLogout = async () => {
     await signOut();
-    router.push("/login");
+    // Navigation will be handled by useEffect when isAuthenticated becomes false
   };
 
   const getUserRole = () => {

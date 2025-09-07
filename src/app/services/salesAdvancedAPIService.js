@@ -1,6 +1,7 @@
 // API configuration and service for advanced sales data
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { safeFetchManager } from "../../utils/safeFetch";
+import { formatSalesDataToCSV, downloadCSV } from "../../utils/csvExportUtils";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -273,26 +274,45 @@ class SalesAdvancedService {
     window.URL.revokeObjectURL(url);
   }
 
-  // Method to handle CSV export download
+  // Method to handle CSV export download with custom formatting
   async exportAndDownloadCSV(filters = {}, filename = null) {
-    const csvContent = await this.exportSalesData(filters, "csv");
-    const downloadFilename =
-      filename || `sales-export-${new Date().toISOString().split("T")[0]}.csv`;
-    this.downloadFile(csvContent, downloadFilename, "text/csv");
-    return true;
+    try {
+      // Get the sales data instead of requesting CSV from backend
+      const response = await this.getSalesData({
+        ...filters,
+        // Remove pagination for export to get all matching data
+        limit: 10000, // Large limit to get all data
+        page: 1,
+      });
+
+      if (!response.success || !response.data) {
+        throw new Error(
+          response.message || "Failed to fetch sales data for export"
+        );
+      }
+
+      // Use our custom CSV formatter
+      const csvContent = formatSalesDataToCSV(response.data);
+      const downloadFilename =
+        filename ||
+        `sales-export-${new Date().toISOString().split("T")[0]}.csv`;
+
+      downloadCSV(csvContent, downloadFilename);
+      return true;
+    } catch (error) {
+      console.error("CSV export error:", error);
+      throw new Error(`CSV export failed: ${error.message}`);
+    }
   }
 
   // Method to handle Excel export download
   async exportAndDownloadExcel(filters = {}, filename = null) {
-    const excelBlob = await this.exportSalesData(filters, "xlsx");
-    const downloadFilename =
-      filename || `sales-export-${new Date().toISOString().split("T")[0]}.xlsx`;
-    this.downloadFile(
-      excelBlob,
-      downloadFilename,
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    // For now, fallback to CSV export since we're focusing on CSV format
+    // You can implement Excel export later if needed
+    return this.exportAndDownloadCSV(
+      filters,
+      filename?.replace(".xlsx", ".csv")
     );
-    return true;
   }
 }
 

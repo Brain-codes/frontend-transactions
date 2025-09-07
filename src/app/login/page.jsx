@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../contexts/AuthContext";
@@ -17,8 +17,15 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const { signIn } = useAuth();
+  const { signIn, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
+
+  // Navigate to dashboard when user becomes authenticated
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      router.push("/dashboard");
+    }
+  }, [isAuthenticated, authLoading, router]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -33,12 +40,11 @@ const LoginPage = () => {
 
       if (authError) {
         setError(authError.message);
-      } else if (data?.user) {
-        router.push("/dashboard");
+        setLoading(false);
       }
+      // Don't navigate here - let the useEffect handle it when isAuthenticated becomes true
     } catch (err) {
       setError("Login failed. Please try again.");
-    } finally {
       setLoading(false);
     }
   };
@@ -107,9 +113,13 @@ const LoginPage = () => {
               type="submit"
               className="w-full h-12 text-white font-medium rounded-md transition-colors"
               style={{ backgroundColor: "#07376A" }}
-              disabled={loading}
+              disabled={loading || authLoading}
             >
-              {loading ? "Logging in..." : "Login"}
+              {loading
+                ? "Logging in..."
+                : authLoading
+                ? "Redirecting..."
+                : "Login"}
             </Button>
           </form>
         </CardContent>

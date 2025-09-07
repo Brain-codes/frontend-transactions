@@ -417,7 +417,7 @@ export const useOrganizations = (initialFilters = {}) => {
 
   const applyFilters = useCallback(
     (newFilters) => {
-      fetchOrganizationsStable({ ...newFilters, page: 1 }, false);
+      fetchOrganizationsStable(newFilters, false);
     },
     [fetchOrganizationsStable]
   );
