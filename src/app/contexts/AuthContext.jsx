@@ -205,9 +205,9 @@ export const AuthProvider = ({ children }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const currentUserId = session?.user?.id || null;
+      const sessionUserId = session?.user?.id || null;
       const lastUserId = lastUserRef.current?.id || null;
-      const isNewUser = currentUserId !== lastUserId;
+      const isNewUser = sessionUserId !== lastUserId;
 
       // Only log significant events, not session validation noise
       if (isNewUser || event === "SIGNED_OUT" || event === "TOKEN_REFRESHED") {
@@ -221,8 +221,33 @@ export const AuthProvider = ({ children }) => {
         console.log("🔐 [AuthContext] Session validation:", { event });
       }
 
-      // Update user state
-      setUser(session?.user || null);
+      // Update user state only if actually different OR if this is a significant event
+      const newUser = session?.user || null;
+      const oldUserId = user?.id || null;
+      const newUserId = newUser?.id || null;
+
+      const hasUserChanged =
+        oldUserId !== newUserId || (!user && newUser) || (user && !newUser);
+
+      const isSignificantEvent =
+        isNewUser || event === "SIGNED_OUT" || event === "INITIAL_SESSION";
+
+      if (hasUserChanged && isSignificantEvent) {
+        console.log("🔐 [AuthContext] User state actually changed, updating", {
+          oldId: oldUserId,
+          newId: newUserId,
+          event,
+          isSignificantEvent,
+        });
+        setUser(newUser);
+      } else {
+        console.log("🔐 [AuthContext] Skipping state update", {
+          userId: oldUserId,
+          event,
+          hasUserChanged,
+          isSignificantEvent,
+        });
+      }
 
       // Update last user reference
       lastUserRef.current = session?.user || null;

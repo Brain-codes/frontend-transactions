@@ -27,6 +27,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
   const isLoadingRef = useRef(false);
   const hasInitializedRef = useRef(false);
   const lastNavigationRef = useRef(Date.now());
+  const lastUserIdRef = useRef(null); // Track stable user ID
 
   // Reset initialization when auth changes or component remounts
   useEffect(() => {
@@ -38,6 +39,37 @@ export const useSalesAdvanced = (initialFilters = {}) => {
       safeFetchManager.abortComponentRequests(componentName);
     };
   }, [user?.id]); // Only depend on user ID, not auth state changes
+
+  // Handle visibility changes (tab switching) - prevent unnecessary re-fetching
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const isVisible = typeof window !== "undefined" ? !document.hidden : true;
+      if (isVisible && isMountedRef.current) {
+        console.log(
+          `🔍 [${componentName}] Tab became visible - checking state`
+        );
+
+        // If we were loading when tab was hidden, reset state without re-fetching
+        if (isLoadingRef.current) {
+          console.warn(
+            `🔍 [${componentName}] Was loading when tab hidden - resetting state without refetch`
+          );
+          isLoadingRef.current = false;
+          setLoading(false);
+          setTableLoading(false);
+        }
+      }
+    };
+
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+      return () =>
+        document.removeEventListener(
+          "visibilitychange",
+          handleVisibilityChange
+        );
+    }
+  }, []); // No dependencies - just set up once
 
   const defaultFilters = useMemo(
     () => ({
@@ -450,14 +482,22 @@ export const useSalesAdvanced = (initialFilters = {}) => {
 
   // Enhanced initialization effect with proper cleanup and navigation handling
   useEffect(() => {
+    const currentUserId = user?.id || null;
+    const hasUserIdChanged = currentUserId !== lastUserIdRef.current;
+
     console.log(`🔍 [${componentName}] Init effect triggered:`, {
       isAuthenticated,
       hasInitialized: hasInitializedRef.current,
       isMounted: isMountedRef.current,
       lastNavigation: lastNavigationRef.current,
-      userId: user?.id,
+      currentUserId,
+      lastUserId: lastUserIdRef.current,
+      hasUserIdChanged,
       stackTrace: new Error().stack?.split("\n")[1]?.trim() || "unknown",
     });
+
+    // Update the last user ID reference
+    lastUserIdRef.current = currentUserId;
 
     // Reset initialization flag if auth changes or we navigate back
     if (!isAuthenticated) {
@@ -468,21 +508,25 @@ export const useSalesAdvanced = (initialFilters = {}) => {
       return;
     }
 
-    // Only initialize once per user session, not on every auth state change
-    if (hasInitializedRef.current && user?.id) {
+    // Only initialize if user ID actually changed or first time
+    if (!hasUserIdChanged && hasInitializedRef.current) {
       console.log(
-        `🔍 [${componentName}] Already initialized for user ${user.id} - skipping`
+        `🔍 [${componentName}] Same user ID (${currentUserId}) - skipping initialization`
       );
       return;
     }
 
-    // Check if we should reinitialize (first time for this user)
-    if (isAuthenticated && user?.id && !hasInitializedRef.current) {
+    // Check if we should initialize (first time for this user or user changed)
+    if (
+      isAuthenticated &&
+      currentUserId &&
+      (hasUserIdChanged || !hasInitializedRef.current)
+    ) {
       hasInitializedRef.current = true;
       lastNavigationRef.current = Date.now();
 
       console.log(
-        `🔍 [${componentName}] Starting initialization for user ${user.id}...`
+        `🔍 [${componentName}] Starting initialization for user ${currentUserId}...`
       );
 
       const loadInitialData = async () => {

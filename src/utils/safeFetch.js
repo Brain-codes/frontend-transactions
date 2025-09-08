@@ -11,13 +11,16 @@ class SafeFetchManager {
     this.supabase = createClientComponentClient();
     this.activeRequests = new Map();
 
-    // Listen for visibility changes to handle tab switching
+    // TEMPORARILY DISABLED: Listen for visibility changes to handle tab switching
+    // This might be interfering with component-level visibility handlers
+    /*
     if (typeof window !== "undefined") {
       document.addEventListener(
         "visibilitychange",
         this.handleVisibilityChange.bind(this)
       );
     }
+    */
   }
 
   /**
@@ -25,6 +28,11 @@ class SafeFetchManager {
    */
   handleVisibilityChange() {
     const isHidden = typeof window !== "undefined" ? document.hidden : false;
+    console.log(`🔍 [SafeFetch] Tab visibility changed:`, {
+      isHidden,
+      activeRequests: this.activeRequests.size,
+    });
+
     if (!isHidden) {
       this.cleanupStaleRequests();
     }
