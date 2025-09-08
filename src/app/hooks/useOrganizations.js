@@ -7,7 +7,7 @@ import organizationsAPIService from "../services/organizationsAPIService";
 import { safeFetchManager } from "../../utils/safeFetch";
 
 export const useOrganizations = (initialFilters = {}) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
@@ -588,17 +588,17 @@ export const useOrganizations = (initialFilters = {}) => {
 
       loadInitialData();
     }
-  }, [isAuthenticated, toast]);
+  }, [user?.id, toast]); // Only re-initialize when user actually changes
 
-  // Reset initialization when auth state changes
+  // Reset initialization when user changes (not just auth state)
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user?.id) {
       hasInitializedRef.current = false;
       console.log(
-        `🔍 [${componentName}] Auth state changed - reset initialization`
+        `🔍 [${componentName}] User changed or logged out - reset initialization`
       );
     }
-  }, [isAuthenticated]);
+  }, [user?.id, isAuthenticated]);
 
   return {
     data,

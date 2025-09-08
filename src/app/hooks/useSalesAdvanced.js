@@ -37,31 +37,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
       isMountedRef.current = false;
       safeFetchManager.abortComponentRequests(componentName);
     };
-  }, [user?.id, isAuthenticated]);
-
-  // Handle visibility changes (tab switching)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      const isVisible = typeof window !== "undefined" ? !document.hidden : true;
-      if (isVisible && isMountedRef.current) {
-        // If we were loading when tab was hidden, reset state
-        if (isLoadingRef.current) {
-          isLoadingRef.current = false;
-          setLoading(false);
-          setTableLoading(false);
-        }
-      }
-    };
-
-    if (typeof document !== "undefined") {
-      document.addEventListener("visibilitychange", handleVisibilityChange);
-      return () =>
-        document.removeEventListener(
-          "visibilitychange",
-          handleVisibilityChange
-        );
-    }
-  }, []);
+  }, [user?.id]); // Only depend on user ID, not auth state changes
 
   const defaultFilters = useMemo(
     () => ({
@@ -410,11 +386,18 @@ export const useSalesAdvanced = (initialFilters = {}) => {
   useEffect(() => {
     if (typeof window !== "undefined") {
       window.emergencyResetSales = emergencyReset;
+      window.testTabSwitch = () => {
+        console.log("🧪 Testing tab switch behavior...");
+        console.log("Current hasInitialized:", hasInitializedRef.current);
+        console.log("Current user ID:", user?.id);
+        console.log("Current isAuthenticated:", isAuthenticated);
+      };
       return () => {
         delete window.emergencyResetSales;
+        delete window.testTabSwitch;
       };
     }
-  }, [emergencyReset]);
+  }, [emergencyReset, user?.id, isAuthenticated]);
 
   const searchSales = useCallback(
     async (searchTerm, searchFields = []) => {
@@ -472,6 +455,8 @@ export const useSalesAdvanced = (initialFilters = {}) => {
       hasInitialized: hasInitializedRef.current,
       isMounted: isMountedRef.current,
       lastNavigation: lastNavigationRef.current,
+      userId: user?.id,
+      stackTrace: new Error().stack?.split("\n")[1]?.trim() || "unknown",
     });
 
     // Reset initialization flag if auth changes or we navigate back
@@ -483,24 +468,22 @@ export const useSalesAdvanced = (initialFilters = {}) => {
       return;
     }
 
-    // Check if we should reinitialize (navigation back to component)
-    const now = Date.now();
-    const timeSinceLastNav = now - lastNavigationRef.current;
+    // Only initialize once per user session, not on every auth state change
+    if (hasInitializedRef.current && user?.id) {
+      console.log(
+        `🔍 [${componentName}] Already initialized for user ${user.id} - skipping`
+      );
+      return;
+    }
 
-    // Be more aggressive about reinitializing - if less than 5 seconds, likely a navigation
-    const shouldReinitialize =
-      timeSinceLastNav < 5000 || !hasInitializedRef.current;
-
-    if (shouldReinitialize) {
+    // Check if we should reinitialize (first time for this user)
+    if (isAuthenticated && user?.id && !hasInitializedRef.current) {
       hasInitializedRef.current = true;
-      lastNavigationRef.current = now;
+      lastNavigationRef.current = Date.now();
 
-      console.log(`🔍 [${componentName}] Starting initialization...`, {
-        shouldReinitialize,
-        timeSinceLastNav,
-        reason:
-          timeSinceLastNav < 5000 ? "recent_navigation" : "not_initialized",
-      });
+      console.log(
+        `🔍 [${componentName}] Starting initialization for user ${user.id}...`
+      );
 
       const loadInitialData = async () => {
         try {
@@ -615,17 +598,17 @@ export const useSalesAdvanced = (initialFilters = {}) => {
 
       loadInitialData();
     }
-  }, [isAuthenticated, toast]);
+  }, [user?.id, toast]); // Only depend on user ID changes, not auth state
 
-  // Reset initialization when auth state changes
+  // Reset initialization when user changes (not just auth state)
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user?.id) {
       hasInitializedRef.current = false;
       console.log(
-        `🔍 [${componentName}] Auth state changed - reset initialization`
+        `🔍 [${componentName}] User changed or logged out - reset initialization`
       );
     }
-  }, [isAuthenticated]);
+  }, [user?.id, isAuthenticated]);
 
   return {
     data,
