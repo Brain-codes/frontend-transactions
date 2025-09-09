@@ -10,11 +10,35 @@
  */
 export const formatSalesDataToCSV = (salesData) => {
   if (!salesData || !Array.isArray(salesData) || salesData.length === 0) {
+    console.warn("CSV Export: No sales data provided or empty array");
     return getCSVHeaders().join(",") + "\n"; // Return headers only if no data
   }
 
+  console.log(`CSV Export: Processing ${salesData.length} sales records`);
+
+  // Log first record structure for debugging
+  if (salesData.length > 0) {
+    console.log("CSV Export: First record structure:", {
+      id: salesData[0].id,
+      hasAddresses: !!salesData[0].addresses,
+      addressesType: typeof salesData[0].addresses,
+      hasOrganizations: !!salesData[0].organizations,
+      organizationsType: typeof salesData[0].organizations,
+      hasPartnerName: !!salesData[0].partner_name,
+      partnerNameType: typeof salesData[0].partner_name,
+    });
+  }
+
   const headers = getCSVHeaders();
-  const rows = salesData.map((sale) => formatSaleToCSVRow(sale));
+  const rows = salesData.map((sale, index) => {
+    try {
+      return formatSaleToCSVRow(sale);
+    } catch (error) {
+      console.error(`CSV Export: Error formatting row ${index}:`, error, sale);
+      // Return empty row with same number of columns to maintain CSV structure
+      return new Array(headers.length).fill("").join(",");
+    }
+  });
 
   return [headers.join(","), ...rows].join("\n");
 };
@@ -48,24 +72,59 @@ const getCSVHeaders = () => {
  * @returns {string} CSV formatted row
  */
 const formatSaleToCSVRow = (sale) => {
+  // Safe helper to extract string values
+  const safeExtract = (value, fallback = "") => {
+    if (!value) return fallback;
+    if (typeof value === "string") return value;
+    if (typeof value === "number") return value.toString();
+    if (typeof value === "object") {
+      // If it's an array, try the first element
+      if (Array.isArray(value)) {
+        return safeExtract(value[0], fallback);
+      }
+      // Try common object properties
+      if (value.name) return value.name;
+      if (value.full_name) return value.full_name;
+      if (value.value) return value.value;
+      if (value.toString && typeof value.toString === "function") {
+        const stringVal = value.toString();
+        if (stringVal !== "[object Object]") return stringVal;
+      }
+    }
+    return fallback;
+  };
+
   // Extract user name parts
   const { firstName, lastName } = extractUserName(
-    sale.end_user_name || sale.contact_person || ""
+    safeExtract(sale.end_user_name) || safeExtract(sale.contact_person)
   );
+
+  // Handle potential object values in addresses
+  const addresses = sale.addresses || sale.address || {};
+  const addressLatitude = safeExtract(addresses.latitude);
+  const addressLongitude = safeExtract(addresses.longitude);
+  const addressState = safeExtract(addresses.state);
+  const addressCity = safeExtract(addresses.city);
 
   // Format the row data
   const rowData = [
-    cleanCSVValue(sale.stove_serial_no || ""),
+    cleanCSVValue(safeExtract(sale.stove_serial_no)),
     formatDateForCSV(sale.sales_date),
     formatDateTimeForCSV(new Date()), // Created date is when sheet was downloaded
-    cleanCSVValue(sale.state_backup || sale.addresses?.state || ""),
-    cleanCSVValue(sale.lga_backup || sale.addresses?.city || ""),
-    cleanCSVValue(getFullAddress(sale.addresses)),
-    cleanCSVValue(sale.addresses?.latitude || ""),
-    cleanCSVValue(sale.addresses?.longitude || ""),
-    cleanCSVValue(formatPhoneNumber(sale.phone || sale.contact_phone || "")),
-    cleanCSVValue(sale.contact_person || sale.end_user_name || ""),
-    cleanCSVValue(formatPhoneNumber(sale.other_phone || "")),
+    cleanCSVValue(safeExtract(sale.state_backup) || addressState),
+    cleanCSVValue(safeExtract(sale.lga_backup) || addressCity),
+    cleanCSVValue(getFullAddress(addresses)),
+    cleanCSVValue(addressLatitude),
+    cleanCSVValue(addressLongitude),
+    cleanCSVValue(
+      formatPhoneNumber(
+        safeExtract(sale.phone) || safeExtract(sale.contact_phone)
+      )
+    ),
+    cleanCSVValue(
+      safeExtract(sale.contact_person) || safeExtract(sale.end_user_name)
+    ),
+    cleanCSVValue(formatPhoneNumber(safeExtract(sale.other_phone))),
     cleanCSVValue(getSalesPartner(sale)),
     cleanCSVValue(firstName),
     cleanCSVValue(lastName),
@@ -111,6 +170,11 @@ const getFullAddress = (address) => {
     return "";
   }
 
+  // Handle the case where address itself might be an array or nested object
+  if (Array.isArray(address)) {
+    address = address[0] || {};
+  }
+
   // If there's a full_address field, use it
   if (address.full_address && typeof address.full_address === "string") {
     return address.full_address;
@@ -119,17 +183,47 @@ const getFullAddress = (address) => {
   // Otherwise, construct address from parts
   const addressParts = [];
 
-  if (address.street && typeof address.street === "string") {
-    addressParts.push(address.street);
+  // Try different possible field names
+  const possibleStreetFields = [
+    "street",
+    "address_line_1",
+    "line1",
+    "street_address",
+  ];
+  const possibleCityFields = ["city", "town", "municipality"];
+  const possibleStateFields = ["state", "province", "region"];
+  const possibleCountryFields = ["country", "nation"];
+
+  // Extract street
+  for (const field of possibleStreetFields) {
+    if (address[field] && typeof address[field] === "string") {
+      addressParts.push(address[field]);
+      break;
+    }
   }
-  if (address.city && typeof address.city === "string") {
-    addressParts.push(address.city);
+
+  // Extract city
+  for (const field of possibleCityFields) {
+    if (address[field] && typeof address[field] === "string") {
+      addressParts.push(address[field]);
+      break;
+    }
   }
-  if (address.state && typeof address.state === "string") {
-    addressParts.push(address.state);
+
+  // Extract state
+  for (const field of possibleStateFields) {
+    if (address[field] && typeof address[field] === "string") {
+      addressParts.push(address[field]);
+      break;
+    }
   }
-  if (address.country && typeof address.country === "string") {
-    addressParts.push(address.country);
+
+  // Extract country
+  for (const field of possibleCountryFields) {
+    if (address[field] && typeof address[field] === "string") {
+      addressParts.push(address[field]);
+      break;
+    }
   }
 
   return addressParts.join(", ");
@@ -141,29 +235,53 @@ const getFullAddress = (address) => {
  * @returns {string} Sales partner name
  */
 const getSalesPartner = (sale) => {
+  // Handle cases where these fields might be objects or arrays
+  const extractName = (value) => {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "object") {
+      if (Array.isArray(value)) {
+        value = value[0] || {};
+      }
+      // Try different name fields
+      if (value.name) return value.name;
+      if (value.full_name) return value.full_name;
+      if (value.display_name) return value.display_name;
+      if (value.title) return value.title;
+      if (value.label) return value.label;
+    }
+    return "";
+  };
+
   // Try different possible fields for sales partner
-  if (sale.partner_name && typeof sale.partner_name === "string") {
-    return sale.partner_name;
+  if (sale.partner_name) {
+    const name = extractName(sale.partner_name);
+    if (name) return name;
   }
 
-  if (sale.organizations?.name && typeof sale.organizations.name === "string") {
-    return sale.organizations.name;
+  if (sale.organizations) {
+    const name = extractName(sale.organizations);
+    if (name) return name;
   }
 
-  if (sale.organization?.name && typeof sale.organization.name === "string") {
-    return sale.organization.name;
+  if (sale.organization) {
+    const name = extractName(sale.organization);
+    if (name) return name;
   }
 
-  if (sale.organization_name && typeof sale.organization_name === "string") {
-    return sale.organization_name;
+  if (sale.organization_name) {
+    const name = extractName(sale.organization_name);
+    if (name) return name;
   }
 
-  if (sale.creator?.full_name && typeof sale.creator.full_name === "string") {
-    return sale.creator.full_name;
+  if (sale.creator) {
+    const name = extractName(sale.creator);
+    if (name) return name;
   }
 
-  if (sale.profiles?.full_name && typeof sale.profiles.full_name === "string") {
-    return sale.profiles.full_name;
+  if (sale.profiles) {
+    const name = extractName(sale.profiles);
+    if (name) return name;
   }
 
   return "";
@@ -273,10 +391,47 @@ const cleanCSVValue = (value) => {
     return "";
   }
 
+  // Handle objects and arrays properly
+  if (typeof value === "object") {
+    if (Array.isArray(value)) {
+      // For arrays, join with semicolon or return empty if no valid string items
+      const stringItems = value
+        .map((item) => {
+          if (typeof item === "string") return item;
+          if (typeof item === "number") return item.toString();
+          if (typeof item === "object" && item !== null) {
+            // Try to extract meaningful string from object
+            if (item.name) return item.name;
+            if (item.title) return item.title;
+            if (item.value) return item.value;
+            if (item.label) return item.label;
+            return "";
+          }
+          return String(item);
+        })
+        .filter((item) => item.length > 0);
+
+      return stringItems.join("; ");
+    } else {
+      // For objects, try to extract meaningful string value
+      if (value.name) return cleanCSVValue(value.name);
+      if (value.title) return cleanCSVValue(value.title);
+      if (value.full_name) return cleanCSVValue(value.full_name);
+      if (value.email) return cleanCSVValue(value.email);
+      if (value.phone) return cleanCSVValue(value.phone);
+      if (value.value) return cleanCSVValue(value.value);
+      if (value.label) return cleanCSVValue(value.label);
+      if (value.full_address) return cleanCSVValue(value.full_address);
+
+      // If no meaningful field found, return empty string instead of [object Object]
+      return "";
+    }
+  }
+
   // Convert to string
   let stringValue = String(value);
 
-  // Handle potential [Object Object] issues
+  // Handle potential [Object Object] issues (fallback)
   if (stringValue === "[object Object]") {
     return "";
   }
