@@ -30,7 +30,18 @@ const LoginPage = () => {
       if (error) {
         setError(error.message);
       } else if (data?.user) {
-        router.push("/dashboard");
+        // FIXME: TEMPORARY - Remove this atmosfair.com email routing logic when implementing proper role-based navigation
+        // Check if user is super admin and has atmosfair.com email
+        const isSuperAdmin = 
+          data.user?.app_metadata?.role === "super_admin" ||
+          data.user?.user_metadata?.role === "super_admin";
+        const isAtmosfairUser = data.user?.email?.includes("atmosfair.com");
+        
+        if (isSuperAdmin && isAtmosfairUser) {
+          router.push("/sales");
+        } else {
+          router.push("/dashboard");
+        }
       }
     } catch (err) {
       setError("An unexpected error occurred");

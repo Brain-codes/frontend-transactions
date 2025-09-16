@@ -121,6 +121,10 @@ export const AuthProvider = ({ children }) => {
   // Helper function to check if user has admin level access (admin or super_admin)
   const hasAdminAccess = isSuperAdmin || isAdmin;
 
+  // TODO: TEMPORARY - Remove this atmosfair.com email check when implementing proper role-based navigation
+  // Helper function to check if user email contains atmosfair.com
+  const isAtmosfairUser = user?.email?.includes("atmosfair.com") || false;
+
   useEffect(() => {
     const getSession = async () => {
       try {
@@ -354,6 +358,7 @@ export const AuthProvider = ({ children }) => {
     isAdmin,
     isAgent,
     hasAdminAccess,
+    isAtmosfairUser, // TODO: TEMPORARY - Remove when implementing proper role-based navigation
     signIn,
     signOut,
     supabase,

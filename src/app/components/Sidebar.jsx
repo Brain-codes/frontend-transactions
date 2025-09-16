@@ -19,7 +19,7 @@ import Link from "next/link";
 
 const Sidebar = ({ isOpen, onClose, currentRoute }) => {
   const router = useRouter();
-  const { isSuperAdmin, isAdmin, hasAdminAccess } = useAuth();
+  const { isSuperAdmin, isAdmin, hasAdminAccess, isAtmosfairUser } = useAuth();
 
   // Navigation items based on user role
   const getNavItems = () => {
@@ -36,6 +36,22 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
 
     // Super Admin gets access to everything
     if (isSuperAdmin) {
+      // TODO: TEMPORARY - Remove this atmosfair.com email navigation restriction when implementing proper role-based navigation
+      // Check if this is an atmosfair.com user (special case)
+      if (isAtmosfairUser) {
+        return [
+          {
+            name: "Sales",
+            icon: ShoppingCart,
+            route: "sales",
+            href: "/sales",
+            badge: null,
+            requiresAuth: true,
+          },
+        ];
+      }
+
+      // Regular super admin navigation
       return [
         {
           name: "Dashboard",
