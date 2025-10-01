@@ -25,12 +25,17 @@ const OrganizationFormModal = ({
   submitLoading = false, // Add separate prop for submit loading
 }) => {
   const [formData, setFormData] = useState({
-    name: "",
+    organization_name: "",
+    partner_name: "",
     partner_email: "",
-    contact_phone: "",
+    branch: "", // Required
+    contact_phone: "", // Required
+    state: "", // Required
+    contact_person: "", // Optional
+    alternative_phone: "", // Optional
+    email: "", // Optional
     address: "",
     city: "",
-    state: "",
     country: "Nigeria",
     description: "",
     status: "active",
@@ -40,12 +45,18 @@ const OrganizationFormModal = ({
   useEffect(() => {
     if (initialData) {
       setFormData({
-        name: initialData.name || "",
+        organization_name:
+          initialData.organization_name || initialData.name || "",
+        partner_name: initialData.partner_name || "",
         partner_email: initialData.partner_email || "",
+        branch: initialData.branch || "",
         contact_phone: initialData.contact_phone || "",
+        state: initialData.state || "",
+        contact_person: initialData.contact_person || "",
+        alternative_phone: initialData.alternative_phone || "",
+        email: initialData.email || "",
         address: initialData.address || "",
         city: initialData.city || "",
-        state: initialData.state || "",
         country: initialData.country || "Nigeria",
         description: initialData.description || "",
         status: initialData.status || "active",
@@ -53,12 +64,17 @@ const OrganizationFormModal = ({
     } else {
       // Reset form for new organization
       setFormData({
-        name: "",
+        organization_name: "",
+        partner_name: "",
         partner_email: "",
+        branch: "",
         contact_phone: "",
+        state: "",
+        contact_person: "",
+        alternative_phone: "",
+        email: "",
         address: "",
         city: "",
-        state: "",
         country: "Nigeria",
         description: "",
         status: "active",
@@ -76,8 +92,12 @@ const OrganizationFormModal = ({
     const newErrors = {};
 
     // Required fields
-    if (!formData.name.trim()) {
-      newErrors.name = "Organization name is required";
+    if (!formData.organization_name.trim()) {
+      newErrors.organization_name = "Organization name is required";
+    }
+
+    if (!formData.partner_name.trim()) {
+      newErrors.partner_name = "Partner name is required";
     }
 
     if (!formData.partner_email.trim()) {
@@ -86,24 +106,59 @@ const OrganizationFormModal = ({
       newErrors.partner_email = "Please enter a valid email address";
     }
 
-    // Optional field validations
+    if (!formData.branch.trim()) {
+      newErrors.branch = "Branch is required";
+    }
+
+    if (!formData.contact_phone.trim()) {
+      newErrors.contact_phone = "Contact phone is required";
+    }
+
+    if (!formData.state.trim()) {
+      newErrors.state = "State is required";
+    }
+
+    // Field length validations
+    if (formData.organization_name.length > 100) {
+      newErrors.organization_name =
+        "Organization name must be 100 characters or less";
+    }
+
+    if (formData.partner_name.length > 100) {
+      newErrors.partner_name = "Partner name must be 100 characters or less";
+    }
+
+    if (formData.branch.length > 100) {
+      newErrors.branch = "Branch must be 100 characters or less";
+    }
+
     if (formData.contact_phone && formData.contact_phone.length > 20) {
       newErrors.contact_phone = "Contact phone must be 20 characters or less";
     }
 
-    if (formData.name.length > 100) {
-      newErrors.name = "Organization name must be 100 characters or less";
+    if (formData.contact_person && formData.contact_person.length > 100) {
+      newErrors.contact_person =
+        "Contact person must be 100 characters or less";
     }
 
-    if (formData.address.length > 255) {
+    if (formData.alternative_phone && formData.alternative_phone.length > 20) {
+      newErrors.alternative_phone =
+        "Alternative phone must be 20 characters or less";
+    }
+
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+
+    if (formData.address && formData.address.length > 255) {
       newErrors.address = "Address must be 255 characters or less";
     }
 
-    if (formData.city.length > 100) {
+    if (formData.city && formData.city.length > 100) {
       newErrors.city = "City must be 100 characters or less";
     }
 
-    if (formData.description.length > 500) {
+    if (formData.description && formData.description.length > 500) {
       newErrors.description = "Description must be 500 characters or less";
     }
 
@@ -179,21 +234,45 @@ const OrganizationFormModal = ({
         <div className="space-y-4">
           {/* Organization Name */}
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-gray-700">
+            <Label htmlFor="organization_name" className="text-gray-700">
               Organization Name <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => handleInputChange("name", e.target.value)}
+              id="organization_name"
+              value={formData.organization_name}
+              onChange={(e) =>
+                handleInputChange("organization_name", e.target.value)
+              }
               placeholder="Enter organization name"
               maxLength={100}
               className={`text-sm text-gray-600 ${
-                errors.name ? "border-red-500" : ""
+                errors.organization_name ? "border-red-500" : ""
               }`}
             />
-            {errors.name && (
-              <p className="text-xs text-red-500">{errors.name}</p>
+            {errors.organization_name && (
+              <p className="text-xs text-red-500">{errors.organization_name}</p>
+            )}
+          </div>
+
+          {/* Partner Name */}
+          <div className="space-y-2">
+            <Label htmlFor="partner_name" className="text-gray-700">
+              Partner Name <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="partner_name"
+              value={formData.partner_name}
+              onChange={(e) =>
+                handleInputChange("partner_name", e.target.value)
+              }
+              placeholder="Enter partner name"
+              maxLength={100}
+              className={`text-sm text-gray-600 ${
+                errors.partner_name ? "border-red-500" : ""
+              }`}
+            />
+            {errors.partner_name && (
+              <p className="text-xs text-red-500">{errors.partner_name}</p>
             )}
           </div>
 
@@ -218,14 +297,31 @@ const OrganizationFormModal = ({
               <p className="text-xs text-red-500">{errors.partner_email}</p>
             )}
           </div>
-        </div>
 
-        {/* Contact Information */}
-        <div className="space-y-4">
+          {/* Branch */}
+          <div className="space-y-2">
+            <Label htmlFor="branch" className="text-gray-700">
+              Branch <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="branch"
+              value={formData.branch}
+              onChange={(e) => handleInputChange("branch", e.target.value)}
+              placeholder="Enter branch name"
+              maxLength={100}
+              className={`text-sm text-gray-600 ${
+                errors.branch ? "border-red-500" : ""
+              }`}
+            />
+            {errors.branch && (
+              <p className="text-xs text-red-500">{errors.branch}</p>
+            )}
+          </div>
+
           {/* Contact Phone */}
           <div className="space-y-2">
             <Label htmlFor="contact_phone" className="text-gray-700">
-              Contact Phone
+              Contact Phone <span className="text-red-500">*</span>
             </Label>
             <Input
               id="contact_phone"
@@ -241,6 +337,102 @@ const OrganizationFormModal = ({
             />
             {errors.contact_phone && (
               <p className="text-xs text-red-500">{errors.contact_phone}</p>
+            )}
+          </div>
+
+          {/* State */}
+          <div className="space-y-2">
+            <Label htmlFor="state" className="text-gray-700">
+              State <span className="text-red-500">*</span>
+            </Label>
+            <Select
+              value={formData.state}
+              onValueChange={(value) => handleInputChange("state", value)}
+            >
+              <SelectTrigger
+                className={`text-sm text-gray-600 ${
+                  errors.state ? "border-red-500" : ""
+                }`}
+              >
+                <SelectValue placeholder="Select state" />
+              </SelectTrigger>
+              <SelectContent>
+                {nigerianStates.map((state) => (
+                  <SelectItem key={state} value={state}>
+                    {state}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.state && (
+              <p className="text-xs text-red-500">{errors.state}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Additional Contact Information */}
+        <div className="space-y-4">
+          {/* Contact Person */}
+          <div className="space-y-2">
+            <Label htmlFor="contact_person" className="text-gray-700">
+              Contact Person
+            </Label>
+            <Input
+              id="contact_person"
+              value={formData.contact_person}
+              onChange={(e) =>
+                handleInputChange("contact_person", e.target.value)
+              }
+              placeholder="John Doe"
+              maxLength={100}
+              className={`text-sm text-gray-600 ${
+                errors.contact_person ? "border-red-500" : ""
+              }`}
+            />
+            {errors.contact_person && (
+              <p className="text-xs text-red-500">{errors.contact_person}</p>
+            )}
+          </div>
+
+          {/* Alternative Phone */}
+          <div className="space-y-2">
+            <Label htmlFor="alternative_phone" className="text-gray-700">
+              Alternative Phone
+            </Label>
+            <Input
+              id="alternative_phone"
+              value={formData.alternative_phone}
+              onChange={(e) =>
+                handleInputChange("alternative_phone", e.target.value)
+              }
+              placeholder="+234987654321"
+              maxLength={20}
+              className={`text-sm text-gray-600 ${
+                errors.alternative_phone ? "border-red-500" : ""
+              }`}
+            />
+            {errors.alternative_phone && (
+              <p className="text-xs text-red-500">{errors.alternative_phone}</p>
+            )}
+          </div>
+
+          {/* Email */}
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-gray-700">
+              Contact Email
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => handleInputChange("email", e.target.value)}
+              placeholder="contact@branch.com"
+              className={`text-sm text-gray-600 ${
+                errors.email ? "border-red-500" : ""
+              }`}
+            />
+            {errors.email && (
+              <p className="text-xs text-red-500">{errors.email}</p>
             )}
           </div>
 
@@ -264,67 +456,29 @@ const OrganizationFormModal = ({
             )}
           </div>
 
-          {/* City and State */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="city" className="text-gray-700">
-                City
-              </Label>
-              <Input
-                id="city"
-                value={formData.city}
-                onChange={(e) => handleInputChange("city", e.target.value)}
-                placeholder="Lagos"
-                maxLength={100}
-                className={`text-sm text-gray-600 ${
-                  errors.city ? "border-red-500" : ""
-                }`}
-              />
-              {errors.city && (
-                <p className="text-xs text-red-500">{errors.city}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="state" className="text-gray-700">
-                State
-              </Label>
-              <Select
-                value={formData.state}
-                onValueChange={(value) => handleInputChange("state", value)}
-              >
-                <SelectTrigger className="text-sm text-gray-600">
-                  <SelectValue placeholder="Select state" />
-                </SelectTrigger>
-                <SelectContent>
-                  {nigerianStates.map((state) => (
-                    <SelectItem key={state} value={state}>
-                      {state}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Country */}
-          {/* <div className="space-y-2">
-            <Label htmlFor="country" className="text-gray-700">
-              Country
+          {/* City */}
+          <div className="space-y-2">
+            <Label htmlFor="city" className="text-gray-700">
+              City
             </Label>
             <Input
-              id="country"
-              value={formData.country}
-              className="text-sm text-gray-600"
-              onChange={(e) => handleInputChange("country", e.target.value)}
-              placeholder="Nigeria"
+              id="city"
+              value={formData.city}
+              onChange={(e) => handleInputChange("city", e.target.value)}
+              placeholder="Lagos"
               maxLength={100}
+              className={`text-sm text-gray-600 ${
+                errors.city ? "border-red-500" : ""
+              }`}
             />
-          </div> */}
+            {errors.city && (
+              <p className="text-xs text-red-500">{errors.city}</p>
+            )}
+          </div>
         </div>
 
         {/* Additional Information */}
-          {/* Description */}
+        {/* Description */}
         {/* <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="description" className="text-gray-700">

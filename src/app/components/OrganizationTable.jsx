@@ -32,7 +32,6 @@ const OrganizationTable = ({
   loading,
   onView,
   onViewStoveIds,
-  onViewBranches,
   onEdit,
   onDelete,
   onImportCSV,
@@ -84,8 +83,8 @@ const OrganizationTable = ({
         <TableHeader>
           <TableRow>
             <TableHead>Organization</TableHead>
-            <TableHead>Contact Email</TableHead>
-            <TableHead>Phone</TableHead>
+            <TableHead>Branch</TableHead>
+            <TableHead>Contact Info</TableHead>
             <TableHead>Location</TableHead>
             {/* <TableHead>Status</TableHead> */}
             <TableHead>Created</TableHead>
@@ -95,7 +94,7 @@ const OrganizationTable = ({
         <TableBody className={loading ? "opacity-40" : ""}>
           {data.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-8">
+              <TableCell colSpan={6} className="text-center py-8">
                 <div className="flex flex-col items-center gap-3 text-gray-500">
                   <Building2 className="h-12 w-12 text-gray-300" />
                   <div>
@@ -123,10 +122,15 @@ const OrganizationTable = ({
                     </div>
                     <div className="min-w-0">
                       <p className="font-medium text-gray-900 truncate">
-                        {organization.name || "N/A"}
+                        {organization.organization_name ||
+                          organization.name ||
+                          "N/A"}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {organization.partner_name || "N/A"}
                       </p>
                       {organization.description && (
-                        <p className="text-xs text-gray-500 truncate max-w-[200px]">
+                        <p className="text-xs text-gray-400 truncate max-w-[200px]">
                           {organization.description}
                         </p>
                       )}
@@ -134,31 +138,47 @@ const OrganizationTable = ({
                   </div>
                 </TableCell>
 
-                {/* Contact Email */}
+                {/* Branch */}
                 <TableCell>
-                  <div className="max-w-[200px]">
-                    <p className="text-sm truncate">
-                      {organization.partner_email || "N/A"}
+                  <div className="max-w-[150px]">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {organization.branch || "N/A"}
                     </p>
                   </div>
                 </TableCell>
 
-                {/* Phone */}
-                <TableCell>{organization.contact_phone || "N/A"}</TableCell>
+                {/* Contact Info */}
+                <TableCell>
+                  <div className="space-y-0.5 max-w-[200px]">
+                    <p className="text-sm truncate">
+                      {organization.partner_email || "N/A"}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {organization.contact_phone || "N/A"}
+                    </p>
+                    {organization.contact_person && (
+                      <p className="text-xs text-gray-400 truncate">
+                        {organization.contact_person}
+                      </p>
+                    )}
+                  </div>
+                </TableCell>
 
                 {/* Location */}
                 <TableCell>
                   <div className="space-y-0.5">
+                    <p className="text-sm font-medium text-gray-900">
+                      {organization.state || "N/A"}
+                    </p>
                     {organization.city && (
-                      <p className="text-sm">{organization.city}</p>
-                    )}
-                    {organization.state && (
                       <p className="text-xs text-gray-500">
-                        {organization.state}
+                        {organization.city}
                       </p>
                     )}
-                    {!organization.city && !organization.state && (
-                      <span className="text-gray-500">N/A</span>
+                    {organization.address && (
+                      <p className="text-xs text-gray-400 truncate max-w-[150px]">
+                        {organization.address}
+                      </p>
                     )}
                   </div>
                 </TableCell>
@@ -209,21 +229,6 @@ const OrganizationTable = ({
                               strokeWidth={1.5}
                             />
                             Import CSV
-                          </DropdownMenuItem>
-                          <hr className=" border-gray-200" />
-                        </>
-                      )}
-                      {onViewBranches && (
-                        <>
-                          <DropdownMenuItem
-                            onClick={() => onViewBranches(organization)}
-                            className="py-2 px-3  rounded-md hover:!bg-primary hover:!text-white"
-                          >
-                            <MapPin
-                              className="mr-5 h-4 w-4"
-                              strokeWidth={1.5}
-                            />
-                            View Branches
                           </DropdownMenuItem>
                           <hr className=" border-gray-200" />
                         </>

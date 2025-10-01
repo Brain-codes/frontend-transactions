@@ -79,8 +79,16 @@ const OrganizationDetailSidebar = ({
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900">
-                {organization.name}
+                {organization.organization_name || organization.name}
               </h2>
+              <p className="text-sm text-gray-600">
+                {organization.partner_name}
+              </p>
+              {organization.branch && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Branch: {organization.branch}
+                </p>
+              )}
               <Badge className={`${getStatusColor(organization.status)} mt-1`}>
                 {formatStatus(organization.status)}
               </Badge>
@@ -99,20 +107,54 @@ const OrganizationDetailSidebar = ({
             <div className="flex items-start gap-3">
               <Mail className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="text-xs text-gray-500">Email</p>
+                <p className="text-xs text-gray-500">Partner Email</p>
                 <p className="text-sm text-gray-900 break-all">
                   {organization.partner_email || "N/A"}
                 </p>
               </div>
             </div>
 
-            {organization.contact_phone && (
+            {organization.email && (
+              <div className="flex items-start gap-3">
+                <Mail className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-gray-500">Contact Email</p>
+                  <p className="text-sm text-gray-900 break-all">
+                    {organization.email}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-start gap-3">
+              <Phone className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-gray-500">Contact Phone</p>
+                <p className="text-sm text-gray-900">
+                  {organization.contact_phone || "N/A"}
+                </p>
+              </div>
+            </div>
+
+            {organization.alternative_phone && (
               <div className="flex items-start gap-3">
                 <Phone className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-gray-500">Phone</p>
+                  <p className="text-xs text-gray-500">Alternative Phone</p>
                   <p className="text-sm text-gray-900">
-                    {organization.contact_phone}
+                    {organization.alternative_phone}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {organization.contact_person && (
+              <div className="flex items-start gap-3">
+                <User className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-gray-500">Contact Person</p>
+                  <p className="text-sm text-gray-900">
+                    {organization.contact_person}
                   </p>
                 </div>
               </div>
