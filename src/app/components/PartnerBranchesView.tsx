@@ -338,10 +338,10 @@ const PartnerBranchesView: React.FC<PartnerBranchesViewProps> = ({
             <div className="h-6 w-px bg-gray-300" />
             <div>
               <h1 className="text-xl font-semibold text-gray-900">
-                {organization.name} - Branches
+                {organization.partner_name} - Branches
               </h1>
               <p className="text-sm text-gray-600">
-                Manage branches for {organization.name}
+                Manage branches for {organization.partner_name}
               </p>
             </div>
           </div>
@@ -430,7 +430,7 @@ const PartnerBranchesView: React.FC<PartnerBranchesViewProps> = ({
         onSuccess={handleCreateBranchSuccess}
         mode="create"
         organizationId={organization.id}
-        organizationName={organization.name}
+        organizationName={organization.partner_name}
         isSuperAdmin={true}
       />
 

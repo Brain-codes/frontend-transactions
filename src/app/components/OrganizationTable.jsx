@@ -82,11 +82,9 @@ const OrganizationTable = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Organization</TableHead>
-            <TableHead>Branch</TableHead>
+            <TableHead>Partner & Branch</TableHead>
             <TableHead>Contact Info</TableHead>
             <TableHead>Location</TableHead>
-            {/* <TableHead>Status</TableHead> */}
             <TableHead>Created</TableHead>
             <TableHead className="text-center">Actions</TableHead>
           </TableRow>
@@ -94,7 +92,7 @@ const OrganizationTable = ({
         <TableBody className={loading ? "opacity-40" : ""}>
           {data.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-center py-8">
+              <TableCell colSpan={5} className="text-center py-8">
                 <div className="flex flex-col items-center gap-3 text-gray-500">
                   <Building2 className="h-12 w-12 text-gray-300" />
                   <div>
@@ -114,7 +112,7 @@ const OrganizationTable = ({
                 key={organization.id || index}
                 className="hover:bg-gray-50 text-gray-700"
               >
-                {/* Organization Name */}
+                {/* Partner & Branch */}
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -122,45 +120,38 @@ const OrganizationTable = ({
                     </div>
                     <div className="min-w-0">
                       <p className="font-medium text-gray-900 truncate">
-                        {organization.organization_name ||
-                          organization.name ||
-                          "N/A"}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">
                         {organization.partner_name || "N/A"}
                       </p>
-                      {organization.description && (
-                        <p className="text-xs text-gray-400 truncate max-w-[200px]">
-                          {organization.description}
-                        </p>
-                      )}
+                      <p className="text-xs text-gray-500 truncate">
+                        {organization.branch || "N/A"}
+                      </p>
                     </div>
-                  </div>
-                </TableCell>
-
-                {/* Branch */}
-                <TableCell>
-                  <div className="max-w-[150px]">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {organization.branch || "N/A"}
-                    </p>
                   </div>
                 </TableCell>
 
                 {/* Contact Info */}
                 <TableCell>
                   <div className="space-y-0.5 max-w-[200px]">
-                    <p className="text-sm truncate">
-                      {organization.partner_email || "N/A"}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      {organization.contact_phone || "N/A"}
-                    </p>
+                    {organization.contact_phone && (
+                      <p className="text-sm truncate">
+                        {organization.contact_phone}
+                      </p>
+                    )}
+                    {organization.email && (
+                      <p className="text-xs text-gray-500 truncate">
+                        {organization.email}
+                      </p>
+                    )}
                     {organization.contact_person && (
                       <p className="text-xs text-gray-400 truncate">
                         {organization.contact_person}
                       </p>
                     )}
+                    {!organization.contact_phone &&
+                      !organization.email &&
+                      !organization.contact_person && (
+                        <span className="text-gray-500 text-sm">N/A</span>
+                      )}
                   </div>
                 </TableCell>
 
@@ -170,11 +161,6 @@ const OrganizationTable = ({
                     <p className="text-sm font-medium text-gray-900">
                       {organization.state || "N/A"}
                     </p>
-                    {organization.city && (
-                      <p className="text-xs text-gray-500">
-                        {organization.city}
-                      </p>
-                    )}
                     {organization.address && (
                       <p className="text-xs text-gray-400 truncate max-w-[150px]">
                         {organization.address}

@@ -118,7 +118,9 @@ const SalesTable = ({
                   />
                 </TableCell>
                 <TableCell>
-                  {sale.partner_name ?? sale.organizations?.name ?? "N/A"}
+                  {sale.partner_name ??
+                    sale.organizations?.name ??
+                    "N/A"}
                 </TableCell>
                 <TableCell className="font-medium">
                   {sale.transaction_id ?? sale.id}

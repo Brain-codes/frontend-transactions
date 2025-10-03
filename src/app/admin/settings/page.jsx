@@ -81,9 +81,9 @@ const AdminSettingsPage = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await adminDashboardService.getUserProfile();
-      
+
       if (response.success) {
         setUserProfile(response.data);
         setProfileForm({
@@ -105,13 +105,13 @@ const AdminSettingsPage = () => {
     try {
       setEditLoading(true);
       setError(null);
-      
+
       // Use Supabase Auth to update user profile
       const { error: updateError } = await supabase.auth.updateUser({
         data: {
           full_name: profileForm.full_name,
           phone: profileForm.phone,
-        }
+        },
       });
 
       if (updateError) {
@@ -122,7 +122,7 @@ const AdminSettingsPage = () => {
       setSuccess("Profile updated successfully!");
       setEditMode(false);
       fetchUserProfile(); // Refresh profile data
-      
+
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error("Error updating profile:", err);
@@ -157,16 +157,16 @@ const AdminSettingsPage = () => {
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
-    
+
     if (!validatePasswordForm()) return;
 
     try {
       setPasswordLoading(true);
       setPasswordErrors({});
-      
+
       // Use Supabase Auth to update password
       const { error: updateError } = await supabase.auth.updateUser({
-        password: passwordForm.newPassword
+        password: passwordForm.newPassword,
       });
 
       if (updateError) {
@@ -181,11 +181,13 @@ const AdminSettingsPage = () => {
         newPassword: "",
         confirmPassword: "",
       });
-      
+
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error("Error changing password:", err);
-      setPasswordErrors({ general: "An error occurred while changing your password" });
+      setPasswordErrors({
+        general: "An error occurred while changing your password",
+      });
     } finally {
       setPasswordLoading(false);
     }
@@ -225,7 +227,7 @@ const AdminSettingsPage = () => {
 
     return (
       <Badge className={roleStyles[role] || "bg-gray-100 text-gray-800"}>
-        {role?.replace('_', ' ').toUpperCase() || "USER"}
+        {role?.replace("_", " ").toUpperCase() || "USER"}
       </Badge>
     );
   };
@@ -280,7 +282,9 @@ const AdminSettingsPage = () => {
               <div className="flex items-center space-x-4">
                 <div className="bg-gradient-to-br from-brand-800 to-brand-900 w-16 h-16 rounded-full flex items-center justify-center">
                   <span className="text-white font-bold text-xl">
-                    {userProfile?.full_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "A"}
+                    {userProfile?.full_name?.charAt(0)?.toUpperCase() ||
+                      user?.email?.charAt(0)?.toUpperCase() ||
+                      "A"}
                   </span>
                 </div>
                 <div className="space-y-1">
@@ -310,7 +314,12 @@ const AdminSettingsPage = () => {
                       <Input
                         id="fullName"
                         value={profileForm.full_name}
-                        onChange={(e) => setProfileForm(prev => ({ ...prev, full_name: e.target.value }))}
+                        onChange={(e) =>
+                          setProfileForm((prev) => ({
+                            ...prev,
+                            full_name: e.target.value,
+                          }))
+                        }
                         placeholder="Enter your full name"
                       />
                     ) : (
@@ -326,7 +335,12 @@ const AdminSettingsPage = () => {
                       <Input
                         id="phone"
                         value={profileForm.phone}
-                        onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
+                        onChange={(e) =>
+                          setProfileForm((prev) => ({
+                            ...prev,
+                            phone: e.target.value,
+                          }))
+                        }
                         placeholder="Enter your phone number"
                       />
                     ) : (
@@ -413,14 +427,14 @@ const AdminSettingsPage = () => {
                   <div className="space-y-2">
                     <Label>Organization Name</Label>
                     <p className="text-gray-900 font-medium">
-                      {userProfile.organization.name}
+                      {userProfile.organization.partner_name}
                     </p>
                   </div>
                   <div className="space-y-2">
                     <Label>Partner Email</Label>
                     <p className="text-gray-900 font-medium flex items-center gap-2">
                       <Mail className="h-4 w-4 text-gray-500" />
-                      {userProfile.organization.partner_email}
+                      {userProfile.organization.email}
                     </p>
                   </div>
                 </div>
@@ -441,10 +455,16 @@ const AdminSettingsPage = () => {
                 <div className="space-y-1">
                   <h4 className="font-medium text-gray-900">Password</h4>
                   <p className="text-sm text-gray-600">
-                    Last updated: {userProfile?.has_changed_password ? "Custom password set" : "Using default password"}
+                    Last updated:{" "}
+                    {userProfile?.has_changed_password
+                      ? "Custom password set"
+                      : "Using default password"}
                   </p>
                 </div>
-                <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>
+                <Dialog
+                  open={showPasswordModal}
+                  onOpenChange={setShowPasswordModal}
+                >
                   <DialogTrigger asChild>
                     <Button variant="outline">
                       <Key className="h-4 w-4 mr-2" />
@@ -462,32 +482,56 @@ const AdminSettingsPage = () => {
                       {passwordErrors.general && (
                         <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
                           <AlertCircle className="h-4 w-4 text-red-600" />
-                          <span className="text-red-700 text-sm">{passwordErrors.general}</span>
+                          <span className="text-red-700 text-sm">
+                            {passwordErrors.general}
+                          </span>
                         </div>
                       )}
 
                       <div className="space-y-2">
-                        <Label htmlFor="currentPassword">Current Password</Label>
+                        <Label htmlFor="currentPassword">
+                          Current Password
+                        </Label>
                         <div className="relative">
                           <Input
                             id="currentPassword"
                             type={showPasswords.current ? "text" : "password"}
                             value={passwordForm.currentPassword}
-                            onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
-                            className={passwordErrors.currentPassword ? "border-red-500" : ""}
+                            onChange={(e) =>
+                              setPasswordForm((prev) => ({
+                                ...prev,
+                                currentPassword: e.target.value,
+                              }))
+                            }
+                            className={
+                              passwordErrors.currentPassword
+                                ? "border-red-500"
+                                : ""
+                            }
                           />
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
                             className="absolute right-1 top-1/2 transform -translate-y-1/2"
-                            onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
+                            onClick={() =>
+                              setShowPasswords((prev) => ({
+                                ...prev,
+                                current: !prev.current,
+                              }))
+                            }
                           >
-                            {showPasswords.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            {showPasswords.current ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
                           </Button>
                         </div>
                         {passwordErrors.currentPassword && (
-                          <p className="text-sm text-red-600">{passwordErrors.currentPassword}</p>
+                          <p className="text-sm text-red-600">
+                            {passwordErrors.currentPassword}
+                          </p>
                         )}
                       </div>
 
@@ -498,46 +542,86 @@ const AdminSettingsPage = () => {
                             id="newPassword"
                             type={showPasswords.new ? "text" : "password"}
                             value={passwordForm.newPassword}
-                            onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                            className={passwordErrors.newPassword ? "border-red-500" : ""}
+                            onChange={(e) =>
+                              setPasswordForm((prev) => ({
+                                ...prev,
+                                newPassword: e.target.value,
+                              }))
+                            }
+                            className={
+                              passwordErrors.newPassword ? "border-red-500" : ""
+                            }
                           />
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
                             className="absolute right-1 top-1/2 transform -translate-y-1/2"
-                            onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
+                            onClick={() =>
+                              setShowPasswords((prev) => ({
+                                ...prev,
+                                new: !prev.new,
+                              }))
+                            }
                           >
-                            {showPasswords.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            {showPasswords.new ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
                           </Button>
                         </div>
                         {passwordErrors.newPassword && (
-                          <p className="text-sm text-red-600">{passwordErrors.newPassword}</p>
+                          <p className="text-sm text-red-600">
+                            {passwordErrors.newPassword}
+                          </p>
                         )}
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                        <Label htmlFor="confirmPassword">
+                          Confirm New Password
+                        </Label>
                         <div className="relative">
                           <Input
                             id="confirmPassword"
                             type={showPasswords.confirm ? "text" : "password"}
                             value={passwordForm.confirmPassword}
-                            onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                            className={passwordErrors.confirmPassword ? "border-red-500" : ""}
+                            onChange={(e) =>
+                              setPasswordForm((prev) => ({
+                                ...prev,
+                                confirmPassword: e.target.value,
+                              }))
+                            }
+                            className={
+                              passwordErrors.confirmPassword
+                                ? "border-red-500"
+                                : ""
+                            }
                           />
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
                             className="absolute right-1 top-1/2 transform -translate-y-1/2"
-                            onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
+                            onClick={() =>
+                              setShowPasswords((prev) => ({
+                                ...prev,
+                                confirm: !prev.confirm,
+                              }))
+                            }
                           >
-                            {showPasswords.confirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            {showPasswords.confirm ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
                           </Button>
                         </div>
                         {passwordErrors.confirmPassword && (
-                          <p className="text-sm text-red-600">{passwordErrors.confirmPassword}</p>
+                          <p className="text-sm text-red-600">
+                            {passwordErrors.confirmPassword}
+                          </p>
                         )}
                       </div>
 
@@ -597,7 +681,9 @@ const AdminSettingsPage = () => {
                 </div>
                 <div className="p-4 border border-gray-200 rounded-lg text-center">
                   <MessageCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                  <h4 className="font-medium text-gray-900 mb-1">Chat Support</h4>
+                  <h4 className="font-medium text-gray-900 mb-1">
+                    Chat Support
+                  </h4>
                   <p className="text-sm text-gray-600 mb-3">
                     Get help from our support team
                   </p>
@@ -626,9 +712,15 @@ const AdminSettingsPage = () => {
                       Sign out of your account on this device
                     </p>
                   </div>
-                  <Dialog open={showLogoutModal} onOpenChange={setShowLogoutModal}>
+                  <Dialog
+                    open={showLogoutModal}
+                    onOpenChange={setShowLogoutModal}
+                  >
                     <DialogTrigger asChild>
-                      <Button variant="outline" className="border-red-300 text-red-600 hover:bg-red-50">
+                      <Button
+                        variant="outline"
+                        className="border-red-300 text-red-600 hover:bg-red-50"
+                      >
                         <LogOut className="h-4 w-4 mr-2" />
                         Sign Out
                       </Button>
@@ -637,11 +729,15 @@ const AdminSettingsPage = () => {
                       <DialogHeader>
                         <DialogTitle>Confirm Sign Out</DialogTitle>
                         <DialogDescription>
-                          Are you sure you want to sign out? You&apos;ll need to log in again to access your account.
+                          Are you sure you want to sign out? You&apos;ll need to
+                          log in again to access your account.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="flex justify-end space-x-3 pt-4">
-                        <Button variant="outline" onClick={() => setShowLogoutModal(false)}>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowLogoutModal(false)}
+                        >
                           Cancel
                         </Button>
                         <Button

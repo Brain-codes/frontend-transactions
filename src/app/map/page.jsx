@@ -148,7 +148,9 @@ export default function HeatmapPage() {
             phone: sale.phone || sale.contact_phone,
             email: sale.email || sale.contact_email,
             partner:
-              sale.partner_name || sale.organizations?.name || sale.partner,
+              sale.partner_name ||
+              sale.organizations?.partner_name ||
+              sale.partner,
             fullAddress:
               sale.addresses?.full_address ||
               sale.address?.full_address ||

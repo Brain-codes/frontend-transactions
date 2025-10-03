@@ -67,7 +67,8 @@ const TopNavigation = ({
   // Get additional profile data
   const storedProfile = getStoredProfile();
   const organizationName =
-    storedProfile?.organizations?.name || storedProfile?.organization?.name;
+    storedProfile?.organizations?.partner_name ||
+    storedProfile?.organization?.partner_name;
 
   return (
     <div className="bg-white shadow-sm border-b border-gray-200 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 relative z-30 flex-shrink-0">

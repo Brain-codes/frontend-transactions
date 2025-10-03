@@ -10,6 +10,7 @@ import StoveIdsSidebar from "../components/StoveIdsSidebar";
 import OrganizationFilters from "../components/OrganizationFilters";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import ImportCSVModal from "../components/ImportCSVModal";
+import OrganizationCSVImportModal from "../components/OrganizationCSVImportModal";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -49,12 +50,16 @@ const PartnersPage = () => {
 
   // View state management - simplified since we no longer have separate branch views
 
-  // CSV Import state
+  // CSV Import state (Sales data import)
   const [showImportModal, setShowImportModal] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [preselectedOrganizationId, setPreselectedOrganizationId] =
     useState(null);
   const [formSubmitLoading, setFormSubmitLoading] = useState(false);
+
+  // Organization CSV Import state (Bulk organization import)
+  const [showOrgImportModal, setShowOrgImportModal] = useState(false);
+  const [orgImportLoading, setOrgImportLoading] = useState(false);
 
   // Toast notifications
   const { toast, toasts, removeToast } = useToast();
@@ -255,7 +260,30 @@ const PartnersPage = () => {
   // Get supabase client from AuthContext
   const { supabase } = useAuth();
 
-  // CSV Import handlers
+  // Organization CSV Import handlers
+  const handleImportOrganizations = () => {
+    // Close any open modals first
+    setSelectedOrganization(null);
+    setShowFormModal(false);
+    setShowDeleteModal(false);
+    setShowImportModal(false);
+    setEditingOrganization(null);
+    setOrganizationToDelete(null);
+    setPreselectedOrganizationId(null);
+
+    // Then open the organization import modal
+    setShowOrgImportModal(true);
+  };
+
+  const handleOrgImportComplete = (importResults) => {
+    // Refresh organizations data after import
+    fetchOrganizations();
+
+    // Optionally close modal - but let user review results first
+    // setShowOrgImportModal(false);
+  };
+
+  // CSV Import handlers (for sales data)
   const handleImportCSV = (organization = null) => {
     // Close any open modals first
     setSelectedOrganization(null);
@@ -497,6 +525,15 @@ const PartnersPage = () => {
               <div className="flex md:w-1/2 w-full md:justify-end justify-start gap-2 md:mt-7 mt-0">
                 <Button
                   variant="outline"
+                  onClick={handleImportOrganizations}
+                  className="text-blue-700 border-blue-300 hover:bg-blue-50"
+                  disabled={tableLoading}
+                >
+                  <Building2 className="w-4 h-4 mr-2" />
+                  Import Organizations
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={handleImportCSV}
                   className="text-gray-700"
                   disabled={tableLoading}
@@ -698,11 +735,23 @@ const PartnersPage = () => {
             setOrganizationToDelete(null);
           }}
           onConfirm={handleDeleteConfirm}
-          organizationName={organizationToDelete?.name}
+          organizationName={organizationToDelete?.partner_name}
           loading={loading}
         />
 
-        {/* CSV Import Modal */}
+        {/* Organization CSV Import Modal */}
+        <OrganizationCSVImportModal
+          isOpen={showOrgImportModal}
+          onClose={() => {
+            setShowOrgImportModal(false);
+            setOrgImportLoading(false);
+          }}
+          onImportComplete={handleOrgImportComplete}
+          loading={orgImportLoading}
+          supabase={supabase}
+        />
+
+        {/* CSV Import Modal (Sales Data) */}
         <ImportCSVModal
           isOpen={showImportModal}
           onClose={() => {

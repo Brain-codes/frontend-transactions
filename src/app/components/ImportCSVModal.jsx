@@ -41,7 +41,7 @@ const ImportCSVModal = ({
       );
       if (preselectedOrg) {
         setSelectedOrganization(preselectedOrganizationId);
-        setSearchTerm(preselectedOrg.name);
+        setSearchTerm(preselectedOrg.partner_name);
         setDropdownOpen(false);
       }
     } else if (!preselectedOrganizationId) {
@@ -70,8 +70,9 @@ const ImportCSVModal = ({
     if (!searchTerm) return organizations;
     return organizations.filter(
       (org) =>
-        org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        org.partner_email.toLowerCase().includes(searchTerm.toLowerCase())
+        org.partner_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (org.email &&
+          org.email.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [organizations, searchTerm]);
 
@@ -107,7 +108,7 @@ const ImportCSVModal = ({
     );
     onImport({
       organizationId: selectedOrganization,
-      organizationName: selectedOrg?.name,
+      organizationName: selectedOrg?.partner_name,
       csvFile: csvFile,
     });
   };
@@ -227,12 +228,15 @@ const ImportCSVModal = ({
                       );
                       if (
                         selectedOrg &&
-                        !selectedOrg.name
+                        !selectedOrg.partner_name
                           .toLowerCase()
                           .includes(e.target.value.toLowerCase()) &&
-                        !selectedOrg.partner_email
-                          .toLowerCase()
-                          .includes(e.target.value.toLowerCase())
+                        !(
+                          selectedOrg.email &&
+                          selectedOrg.email
+                            .toLowerCase()
+                            .includes(e.target.value.toLowerCase())
+                        )
                       ) {
                         setSelectedOrganization("");
                       }
@@ -293,7 +297,7 @@ const ImportCSVModal = ({
                             type="button"
                             onClick={() => {
                               setSelectedOrganization(org.id);
-                              setSearchTerm(org.name);
+                              setSearchTerm(org.partner_name);
                               setDropdownOpen(false);
                               if (errors.organization) {
                                 setErrors((prev) => ({
@@ -312,13 +316,13 @@ const ImportCSVModal = ({
                               <Building2 className="h-4 w-4 text-gray-400 flex-shrink-0" />
                               <div className="min-w-0 flex-1">
                                 <div className="font-medium text-gray-900 truncate">
-                                  {org.name}
+                                  {org.partner_name}
                                 </div>
                                 <div className="text-xs text-gray-500 truncate">
-                                  {org.partner_email}
+                                  {org.email || "No email"}
                                 </div>
                                 <div className="text-xs text-gray-400">
-                                  {org.city}, {org.state} • {org.status}
+                                  {org.branch}, {org.state}
                                 </div>
                               </div>
                             </div>
@@ -358,7 +362,7 @@ const ImportCSVModal = ({
                           {
                             organizations.find(
                               (org) => org.id === selectedOrganization
-                            )?.name
+                            )?.partner_name
                           }
                           {preselectedOrganizationId && (
                             <span className="ml-2 text-xs font-normal text-green-700">
@@ -373,11 +377,9 @@ const ImportCSVModal = ({
                               : "text-blue-700"
                           }`}
                         >
-                          {
-                            organizations.find(
-                              (org) => org.id === selectedOrganization
-                            )?.partner_email
-                          }
+                          {organizations.find(
+                            (org) => org.id === selectedOrganization
+                          )?.email || "No email"}
                         </div>
                       </div>
                     </div>

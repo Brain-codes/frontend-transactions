@@ -118,13 +118,13 @@ const BranchDetailModal: React.FC<BranchDetailModalProps> = ({
               <InfoItem
                 icon={Building2}
                 label="Organization Name"
-                value={branch.organizations.name}
+                value={branch.organizations.partner_name}
               />
 
               <InfoItem
                 icon={Mail}
                 label="Partner Email"
-                value={branch.organizations.partner_email}
+                value={branch.organizations.email}
               />
 
               <InfoItem

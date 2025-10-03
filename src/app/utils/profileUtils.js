@@ -15,7 +15,9 @@ export const loadProfileData = async () => {
     if (profile) {
       return {
         partnerName:
-          profile.organizations?.name || profile.organization?.name || "",
+          profile.organizations?.partner_name ||
+          profile.organization?.partner_name ||
+          "",
         organizationId: profile.organization_id || "",
         success: true,
       };

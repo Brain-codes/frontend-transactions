@@ -221,7 +221,7 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
           </Section>
         </div>
         {/* <Section title="Organization">
-          <InfoRow label="Organization Name" value={sale.organizations?.name} />
+          <InfoRow label="Organization Name" value={sale.organizations?.partner_name} />
           <InfoRow label="Organization ID" value={sale.organization_id} />
         </Section>
         <Section title="Meta">

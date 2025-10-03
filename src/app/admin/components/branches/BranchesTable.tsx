@@ -109,10 +109,10 @@ const BranchesTable: React.FC<BranchesTableProps> = ({
                 {/* <TableCell>
                   <div className="max-w-[200px]">
                     <p className="text-sm font-medium text-gray-900 truncate">
-                      {branch.organizations?.name || "N/A"}
+                      {branch.organizations?.partner_name || "N/A"}
                     </p>
                     <p className="text-xs text-gray-500 truncate">
-                      {branch.organizations?.partner_email || "N/A"}
+                      {branch.organizations?.email || "N/A"}
                     </p>
                   </div>
                 </TableCell> */}

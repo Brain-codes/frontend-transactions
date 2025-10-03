@@ -123,14 +123,14 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           badge: null,
           requiresAuth: true,
         },
-        {
-          name: "Branches",
-          icon: Building2,
-          route: "admin-branches",
-          href: "/admin/branches",
-          badge: null,
-          requiresAuth: true,
-        },
+        // {
+        //   name: "Branches",
+        //   icon: Building2,
+        //   route: "admin-branches",
+        //   href: "/admin/branches",
+        //   badge: null,
+        //   requiresAuth: true,
+        // },
         {
           name: "Settings",
           icon: Settings,

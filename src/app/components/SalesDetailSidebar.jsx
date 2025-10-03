@@ -853,7 +853,7 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                         </label>
                         <p className="text-sm text-gray-900 mt-1">
                           {sale.partner_name ||
-                            sale.organizations?.name ||
+                            sale.organizations?.partner_name ||
                             sale.partner ||
                             "N/A"}
                         </p>

@@ -398,8 +398,8 @@ class SuperAdminBranchesService {
       }
 
       // Count by organization
-      if (branch.organizations?.name) {
-        const orgName = branch.organizations.name;
+      if (branch.organizations?.partner_name) {
+        const orgName = branch.organizations.partner_name;
         stats.byOrganization[orgName] =
           (stats.byOrganization[orgName] || 0) + 1;
       }

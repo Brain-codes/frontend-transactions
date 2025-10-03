@@ -10,8 +10,14 @@ export interface Branch {
   created_by: string;
   organizations?: {
     id: string;
-    name: string;
-    partner_email: string;
+    partner_name: string;
+    email: string;
+    branch?: string;
+    state?: string;
+    address?: string;
+    contact_person?: string;
+    phone?: string;
+    alternative_phone?: string;
   };
   profiles?: {
     id: string;
@@ -58,8 +64,14 @@ export interface BranchesResponse {
     branches: Branch[];
     organization?: {
       id: string;
-      name: string;
-      partner_email: string;
+      partner_name: string;
+      email: string;
+      branch?: string;
+      state?: string;
+      address?: string;
+      contact_person?: string;
+      phone?: string;
+      alternative_phone?: string;
     };
     pagination: {
       page: number;

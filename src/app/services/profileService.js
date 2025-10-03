@@ -31,9 +31,16 @@ class ProfileService {
           organization_id,
           organizations(
             id,
-            name,
+            partner_name,
+            branch,
+            state,
+            contact_person,
+            contact_phone,
+            alternative_phone,
+            email,
+            address,
             created_at,
-            partner_email
+            updated_at
           )
         `
         )
@@ -49,7 +56,9 @@ class ProfileService {
         if (!response.organizations && response.organization_id) {
           const { data: orgResponse, error: orgError } = await this.supabase
             .from("organizations")
-            .select("id, name, created_at, partner_email")
+            .select(
+              "id, partner_name, branch, state, contact_person, contact_phone, alternative_phone, email, address, created_at, updated_at"
+            )
             .eq("id", response.organization_id)
             .maybeSingle();
 

@@ -1,7 +1,6 @@
 "use client";
 
 import Modal from "@/components/ui/modal";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -41,23 +40,6 @@ const OrganizationDetailSidebar = ({
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "inactive":
-        return "bg-gray-100 text-gray-800 border-gray-200";
-      case "suspended":
-        return "bg-red-100 text-red-800 border-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
-
-  const formatStatus = (status) => {
-    return status.charAt(0).toUpperCase() + status.slice(1);
-  };
-
   return (
     <Modal
       open={isOpen}
@@ -79,19 +61,14 @@ const OrganizationDetailSidebar = ({
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900">
-                {organization.organization_name || organization.name}
+                {organization.partner_name || "N/A"}
               </h2>
               <p className="text-sm text-gray-600">
-                {organization.partner_name}
+                {organization.branch || "N/A"}
               </p>
-              {organization.branch && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Branch: {organization.branch}
-                </p>
-              )}
-              <Badge className={`${getStatusColor(organization.status)} mt-1`}>
-                {formatStatus(organization.status)}
-              </Badge>
+              <p className="text-xs text-gray-500 mt-1">
+                {organization.state || "N/A"}
+              </p>
             </div>
           </div>
         </div>
@@ -104,37 +81,29 @@ const OrganizationDetailSidebar = ({
           </h3>
 
           <div className="space-y-3 pl-6">
-            <div className="flex items-start gap-3">
-              <Mail className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-gray-500">Partner Email</p>
-                <p className="text-sm text-gray-900 break-all">
-                  {organization.partner_email || "N/A"}
-                </p>
-              </div>
-            </div>
-
-            {organization.email && (
+            {organization.contact_person && (
               <div className="flex items-start gap-3">
-                <Mail className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <User className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-gray-500">Contact Email</p>
-                  <p className="text-sm text-gray-900 break-all">
-                    {organization.email}
+                  <p className="text-xs text-gray-500">Contact Person</p>
+                  <p className="text-sm text-gray-900">
+                    {organization.contact_person}
                   </p>
                 </div>
               </div>
             )}
 
-            <div className="flex items-start gap-3">
-              <Phone className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-gray-500">Contact Phone</p>
-                <p className="text-sm text-gray-900">
-                  {organization.contact_phone || "N/A"}
-                </p>
+            {organization.contact_phone && (
+              <div className="flex items-start gap-3">
+                <Phone className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-gray-500">Contact Phone</p>
+                  <p className="text-sm text-gray-900">
+                    {organization.contact_phone}
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
 
             {organization.alternative_phone && (
               <div className="flex items-start gap-3">
@@ -148,13 +117,13 @@ const OrganizationDetailSidebar = ({
               </div>
             )}
 
-            {organization.contact_person && (
+            {organization.email && (
               <div className="flex items-start gap-3">
-                <User className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <Mail className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-gray-500">Contact Person</p>
-                  <p className="text-sm text-gray-900">
-                    {organization.contact_person}
+                  <p className="text-xs text-gray-500">Email</p>
+                  <p className="text-sm text-gray-900 break-all">
+                    {organization.email}
                   </p>
                 </div>
               </div>
@@ -165,10 +134,7 @@ const OrganizationDetailSidebar = ({
         <Separator />
 
         {/* Location Information */}
-        {(organization.address ||
-          organization.city ||
-          organization.state ||
-          organization.country) && (
+        {(organization.address || organization.state) && (
           <>
             <div className="space-y-4">
               <h3 className="text-sm font-medium text-gray-900 flex items-center gap-2">
@@ -177,40 +143,18 @@ const OrganizationDetailSidebar = ({
               </h3>
 
               <div className="space-y-3 pl-6">
+                <div>
+                  <p className="text-xs text-gray-500">State</p>
+                  <p className="text-sm text-gray-900">
+                    {organization.state || "N/A"}
+                  </p>
+                </div>
+
                 {organization.address && (
                   <div>
                     <p className="text-xs text-gray-500">Address</p>
                     <p className="text-sm text-gray-900">
                       {organization.address}
-                    </p>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                  {organization.city && (
-                    <div>
-                      <p className="text-xs text-gray-500">City</p>
-                      <p className="text-sm text-gray-900">
-                        {organization.city}
-                      </p>
-                    </div>
-                  )}
-
-                  {organization.state && (
-                    <div>
-                      <p className="text-xs text-gray-500">State</p>
-                      <p className="text-sm text-gray-900">
-                        {organization.state}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {organization.country && (
-                  <div>
-                    <p className="text-xs text-gray-500">Country</p>
-                    <p className="text-sm text-gray-900">
-                      {organization.country}
                     </p>
                   </div>
                 )}

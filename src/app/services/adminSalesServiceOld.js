@@ -10,7 +10,7 @@ const API_BASE_URL =
 class AdminSalesService {
   constructor() {
     this.supabase = createClientComponentClient();
-    this.getSalesAdvancedURL = `${API_BASE_URL}/functions/v1/get-sales-advance-two`;
+    this.getSalesAdvancedURL = `${API_BASE_URL}/functions/v1/get-sales-advanced`;
     this.createSaleURL = `${API_BASE_URL}/functions/v1/create-sale`;
     this.uploadImageURL = `${API_BASE_URL}/functions/v1/upload-image`;
     this.getStovesURL = `${API_BASE_URL}/functions/v1/get-stove-ids`; // Updated to match Flutter

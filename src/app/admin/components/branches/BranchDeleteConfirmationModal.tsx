@@ -60,7 +60,7 @@ const BranchDeleteConfirmationModal: React.FC<
                   Organization:{" "}
                 </span>
                 <span className="text-gray-900">
-                  {branch.organizations.name}
+                  {branch.organizations.partner_name}
                 </span>
               </div>
             )}

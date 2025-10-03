@@ -11,8 +11,10 @@ class OrganizationsService {
     try {
       const { data, error } = await this.supabase
         .from("organizations")
-        .select("id, name, partner_email, created_at")
-        .order("name", { ascending: true });
+        .select(
+          "id, partner_name, branch, state, contact_person, contact_phone, alternative_phone, email, address, created_at, updated_at"
+        )
+        .order("partner_name", { ascending: true });
 
       if (error) {
         return {
@@ -26,7 +28,9 @@ class OrganizationsService {
       const normalizedData = (data || []).map((org) => ({
         ...org,
         displayName:
-          org.name && org.name.trim() ? org.name : `Organization ${org.id}`,
+          org.partner_name && org.partner_name.trim()
+            ? org.partner_name
+            : `Organization ${org.id}`,
       }));
 
       return {
@@ -63,7 +67,9 @@ class OrganizationsService {
     try {
       const { data, error } = await this.supabase
         .from("organizations")
-        .select("id, name, partner_email, created_at")
+        .select(
+          "id, partner_name, branch, state, contact_person, contact_phone, alternative_phone, email, address, created_at, updated_at"
+        )
         .eq("id", id)
         .single();
 
@@ -80,8 +86,8 @@ class OrganizationsService {
         data: {
           ...data,
           displayName:
-            data.name && data.name.trim()
-              ? data.name
+            data.partner_name && data.partner_name.trim()
+              ? data.partner_name
               : `Organization ${data.id}`,
         },
       };
@@ -99,9 +105,11 @@ class OrganizationsService {
     try {
       const { data, error } = await this.supabase
         .from("organizations")
-        .select("id, name, partner_email, created_at")
-        .ilike("name", `%${searchTerm}%`)
-        .order("name", { ascending: true });
+        .select(
+          "id, partner_name, branch, state, contact_person, contact_phone, alternative_phone, email, address, created_at, updated_at"
+        )
+        .ilike("partner_name", `%${searchTerm}%`)
+        .order("partner_name", { ascending: true });
 
       if (error) {
         return {
@@ -115,7 +123,9 @@ class OrganizationsService {
       const normalizedData = (data || []).map((org) => ({
         ...org,
         displayName:
-          org.name && org.name.trim() ? org.name : `Organization ${org.id}`,
+          org.partner_name && org.partner_name.trim()
+            ? org.partner_name
+            : `Organization ${org.id}`,
       }));
 
       return {

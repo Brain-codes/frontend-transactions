@@ -3,7 +3,7 @@
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
   "https://your-supabase-project.supabase.co";
-const API_FUNCTION_URL = `${API_BASE_URL}/functions/v1/get-sales-advance-two`;
+const API_FUNCTION_URL = `${API_BASE_URL}/functions/v1/get-sales-advanced`;
 
 class SalesAdvancedService {
   constructor() {

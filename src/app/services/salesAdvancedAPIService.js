@@ -10,7 +10,7 @@ const API_FUNCTIONS_URL = `${API_BASE_URL}/functions/v1`;
 
 class SalesAdvancedService {
   constructor() {
-    this.baseURL = `${API_FUNCTIONS_URL}/get-sales-advance-two`;
+    this.baseURL = `${API_FUNCTIONS_URL}/get-sales-advanced`;
     this.supabase = createClientComponentClient();
   }
 
