@@ -13,6 +13,7 @@ import {
   Plus,
   Settings,
   BarChart3,
+  FileImage,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import Link from "next/link";
@@ -74,6 +75,14 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           icon: Building2,
           route: "partners",
           href: "/partners",
+          badge: null,
+          requiresAuth: true,
+        },
+        {
+          name: "Agreement Images",
+          icon: FileImage,
+          route: "agreement-images",
+          href: "/agreement-images",
           badge: null,
           requiresAuth: true,
         },
@@ -139,6 +148,14 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           badge: null,
           requiresAuth: true,
         },
+        // {
+        //   name: "Agreement Images",
+        //   icon: FileImage,
+        //   route: "admin-agreement-images",
+        //   href: "/admin/agreement-images",
+        //   badge: null,
+        //   requiresAuth: true,
+        // },
       ];
     }
 
