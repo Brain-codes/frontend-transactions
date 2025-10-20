@@ -3,9 +3,10 @@
 
 export const DOC_METADATA = {
   title: "Atmosfair Sales Management API Documentation",
-  description: "Comprehensive API documentation for the Atmosfair Sales Management System",
+  description:
+    "Comprehensive API documentation for the Atmosfair Sales Management System",
   version: "1.0.0",
-  lastUpdated: new Date().toISOString().split('T')[0]
+  lastUpdated: new Date().toISOString().split("T")[0],
 };
 
 export const INTRO_CONTENT = {
@@ -14,7 +15,7 @@ export const INTRO_CONTENT = {
     user management, and organizational data. The API is built on Supabase Edge Functions and provides 
     role-based access control for different user types.
   `,
-  
+
   architecture: `
     The system is designed with a multi-tenant architecture supporting:
     - **Super Admins**: Full system access across all organizations
@@ -22,12 +23,13 @@ export const INTRO_CONTENT = {
     - **Agents**: Limited access for sales creation and viewing
   `,
 
-  baseUrl: "All API endpoints are served from your Supabase project URL under the `/functions/v1/` path.",
-  
+  baseUrl:
+    "All API endpoints are served from your Supabase project URL under the `/functions/v1/` path.",
+
   authentication: `
     All API endpoints require authentication using Supabase JWT tokens. The system uses Bearer token 
     authentication with automatic token refresh capabilities.
-  `
+  `,
 };
 
 export const COMMON_SECTIONS = {
@@ -45,7 +47,7 @@ export const COMMON_SECTIONS = {
       - Tokens are automatically managed by the \`tokenManager\` utility
       - Automatic token refresh is handled transparently
       - Token expiration is managed server-side by Supabase
-    `
+    `,
   },
 
   errorHandling: {
@@ -78,7 +80,7 @@ export const COMMON_SECTIONS = {
       - \`404\`: Not Found - Requested resource doesn't exist
       - \`400\`: Bad Request - Invalid input parameters
       - \`500\`: Internal Server Error - Unexpected server error
-    `
+    `,
   },
 
   pagination: {
@@ -104,7 +106,7 @@ export const COMMON_SECTIONS = {
         }
       }
       \`\`\`
-    `
+    `,
   },
 
   filtering: {
@@ -124,8 +126,8 @@ export const COMMON_SECTIONS = {
       - \`state\`: Filter by state
       - \`city\`: Filter by city
       - \`lga\`: Filter by Local Government Area
-    `
-  }
+    `,
+  },
 };
 
 export const ROLE_DESCRIPTIONS = {
@@ -142,8 +144,8 @@ export const ROLE_DESCRIPTIONS = {
     limitations: [
       "Cannot access other organizations' data",
       "Cannot manage super admin functions",
-      "Cannot access cross-organization reports"
-    ]
+      "Cannot access cross-organization reports",
+    ],
   },
 
   superAdmin: {
@@ -161,9 +163,167 @@ export const ROLE_DESCRIPTIONS = {
       "Manage partner organizations",
       "View system-wide analytics",
       "Export comprehensive reports",
-      "Manage system configurations"
-    ]
-  }
+      "Manage system configurations",
+    ],
+  },
+};
+
+export const RESPONSE_FORMATS = {
+  title: "API Response Formats",
+  description:
+    "The get-sales-advanced endpoint supports dual response formats to accommodate different use cases.",
+  formats: {
+    format1: {
+      title: "Format 1 - Standardized Format (Super Admin Default)",
+      description:
+        "Clara Di Gregorio's requested format with standardized field names for external integration",
+      usage: "Default for Super Admin role, external integrations",
+      example: {
+        success: true,
+        data: [
+          {
+            serialNumber: "SN123456",
+            salesDate: "2024-01-15",
+            created: "2024-01-15T10:30:00.000Z",
+            state: "Lagos",
+            district: "Ikeja",
+            address: "123 Main Street, Ikeja, Lagos",
+            latitude: 6.5244,
+            longitude: 3.3792,
+            phone: "+2348012345678",
+            contactPerson: "John Doe",
+            otherContactPhone: "+2348098765432",
+            salesPartner: "Partner Company Ltd",
+            userName: "John",
+            userSurname: "Doe",
+            cpa: null,
+          },
+        ],
+        pagination: {
+          total: 1,
+          limit: 100,
+          offset: 0,
+          hasMore: false,
+        },
+      },
+    },
+    format2: {
+      title: "Format 2 - Database Format (Admin Default & Service Default)",
+      description:
+        "Current database format maintaining existing structure for internal applications",
+      usage: "Default for Admin role, internal applications, mobile app",
+      example: {
+        success: true,
+        data: [
+          {
+            id: "uuid-here",
+            stove_serial_no: "SN123456",
+            sales_date: "2024-01-15",
+            created_at: "2024-01-15T10:30:00.000Z",
+            end_user_name: "John Doe",
+            contact_person: "John Doe",
+            phone: "+2348012345678",
+            other_phone: "+2348098765432",
+            partner_name: "Partner Company Ltd",
+            state_backup: "Lagos",
+            lga_backup: "Ikeja",
+            addresses: {
+              full_address: "123 Main Street, Ikeja, Lagos",
+              latitude: 6.5244,
+              longitude: 3.3792,
+            },
+            organizations: {
+              partner_name: "Partner Company Ltd",
+              state: "Lagos",
+            },
+          },
+        ],
+        pagination: {
+          total: 1,
+          limit: 100,
+          offset: 0,
+          hasMore: false,
+        },
+      },
+    },
+  },
+  mapping: [
+    {
+      format1: "serialNumber",
+      format2: "stove_serial_no",
+      description: "Stove serial number",
+    },
+    {
+      format1: "salesDate",
+      format2: "sales_date",
+      description: "Date of sale",
+    },
+    {
+      format1: "created",
+      format2: "created_at",
+      description: "Record creation timestamp",
+    },
+    {
+      format1: "state",
+      format2: "state_backup / addresses.state",
+      description: "State information",
+    },
+    {
+      format1: "district",
+      format2: "lga_backup",
+      description: "Local Government Area",
+    },
+    {
+      format1: "address",
+      format2: "addresses.full_address",
+      description: "Complete address",
+    },
+    {
+      format1: "latitude",
+      format2: "addresses.latitude",
+      description: "GPS latitude",
+    },
+    {
+      format1: "longitude",
+      format2: "addresses.longitude",
+      description: "GPS longitude",
+    },
+    {
+      format1: "phone",
+      format2: "phone / contact_phone",
+      description: "Primary phone number",
+    },
+    {
+      format1: "contactPerson",
+      format2: "contact_person",
+      description: "Contact person name",
+    },
+    {
+      format1: "otherContactPhone",
+      format2: "other_phone",
+      description: "Alternative phone",
+    },
+    {
+      format1: "salesPartner",
+      format2: "partner_name",
+      description: "Partner/Field assistant",
+    },
+    {
+      format1: "userName",
+      format2: "end_user_name (first part)",
+      description: "User first name",
+    },
+    {
+      format1: "userSurname",
+      format2: "end_user_name (remaining)",
+      description: "User surname",
+    },
+    {
+      format1: "cpa",
+      format2: "null (to be defined)",
+      description: "CPA field",
+    },
+  ],
 };
 
 export const CODE_EXAMPLES = {
@@ -232,7 +392,7 @@ class ApiService {
     return await response.json();
   }
 }
-    `
+    `,
   },
 
   flutter: `
@@ -261,7 +421,7 @@ class ApiService {
     return jsonDecode(response.body);
   }
 }
-  `
+  `,
 };
 
 export const BEST_PRACTICES = {
@@ -269,29 +429,34 @@ export const BEST_PRACTICES = {
   content: [
     {
       title: "Token Management",
-      description: "Always use the tokenManager utility for automatic token refresh and error handling."
+      description:
+        "Always use the tokenManager utility for automatic token refresh and error handling.",
     },
     {
       title: "Error Handling",
-      description: "Always check the 'success' field in API responses before processing data."
+      description:
+        "Always check the 'success' field in API responses before processing data.",
     },
     {
       title: "Pagination",
-      description: "Use appropriate page sizes to avoid overwhelming the client or server."
+      description:
+        "Use appropriate page sizes to avoid overwhelming the client or server.",
     },
     {
       title: "Caching",
-      description: "Implement client-side caching for frequently accessed data like user profiles."
+      description:
+        "Implement client-side caching for frequently accessed data like user profiles.",
     },
     {
       title: "Rate Limiting",
-      description: "Be mindful of API rate limits and implement proper retry mechanisms."
+      description:
+        "Be mindful of API rate limits and implement proper retry mechanisms.",
     },
     {
       title: "Data Validation",
-      description: "Always validate data on both client and server sides."
-    }
-  ]
+      description: "Always validate data on both client and server sides.",
+    },
+  ],
 };
 
 export const TROUBLESHOOTING = {
@@ -299,25 +464,30 @@ export const TROUBLESHOOTING = {
   issues: [
     {
       problem: "401 Unauthorized Error",
-      solution: "Check if your authentication token is valid and not expired. Try refreshing the token."
+      solution:
+        "Check if your authentication token is valid and not expired. Try refreshing the token.",
     },
     {
       problem: "403 Forbidden Error",
-      solution: "Verify that your user role has the necessary permissions for the requested operation."
+      solution:
+        "Verify that your user role has the necessary permissions for the requested operation.",
     },
     {
       problem: "Network Timeout",
-      solution: "Check your network connection and consider implementing retry logic with exponential backoff."
+      solution:
+        "Check your network connection and consider implementing retry logic with exponential backoff.",
     },
     {
       problem: "Data Not Loading",
-      solution: "Verify the API endpoint URL and check for any CORS issues if calling from a browser."
+      solution:
+        "Verify the API endpoint URL and check for any CORS issues if calling from a browser.",
     },
     {
       problem: "Large Response Times",
-      solution: "Consider implementing pagination, reducing the data requested, or adding appropriate filters."
-    }
-  ]
+      solution:
+        "Consider implementing pagination, reducing the data requested, or adding appropriate filters.",
+    },
+  ],
 };
 
 export const CHANGELOG = {
@@ -330,11 +500,11 @@ export const CHANGELOG = {
         "Initial API release",
         "Basic CRUD operations for sales, agents, and organizations",
         "Authentication and authorization system",
-        "Role-based access control"
-      ]
-    }
+        "Role-based access control",
+      ],
+    },
     // Add more versions as needed
-  ]
+  ],
 };
 
 export const FOOTER_CONTENT = {
@@ -343,9 +513,9 @@ export const FOOTER_CONTENT = {
     - Development Team: dev@atmosfair.com
     - Documentation Issues: Create an issue in the project repository
   `,
-  
+
   disclaimer: `
     This documentation is maintained alongside the codebase. 
     If you notice any discrepancies, please report them to the development team.
-  `
+  `,
 };

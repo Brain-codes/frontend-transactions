@@ -1,4 +1,9 @@
 // Service for Advanced Sales API
+// 
+// IMPORTANT: This service ALWAYS uses Format 2 (Database Format) regardless of user role.
+// - Format 1 is only shown in Super Admin documentation for external integration reference
+// - Format 2 is used by all internal applications (Admin, Super Admin, Mobile)
+// - The service automatically adds responseFormat: "format2" to all requests
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -23,17 +28,23 @@ class SalesAdvancedService {
 
   async fetchSales(filters = {}, method = "POST") {
     try {
+      // Always use Format 2 for service requests
+      const filtersWithFormat = {
+        ...filters,
+        responseFormat: "format2"
+      };
+
       const options = {
         method: method,
         headers: this.getHeaders(),
       };
 
       if (method === "POST") {
-        options.body = JSON.stringify(filters);
+        options.body = JSON.stringify(filtersWithFormat);
       } else {
         // For GET requests, convert filters to URL parameters
         const params = new window.URLSearchParams();
-        Object.entries(filters).forEach(([key, value]) => {
+        Object.entries(filtersWithFormat).forEach(([key, value]) => {
           if (value !== null && value !== undefined && value !== "") {
             if (Array.isArray(value)) {
               value.forEach((v) => params.append(key, v));
@@ -65,7 +76,11 @@ class SalesAdvancedService {
 
   async exportSales(filters = {}, format = "csv") {
     try {
-      const exportFilters = { ...filters, export: format };
+      const exportFilters = { 
+        ...filters, 
+        export: format,
+        responseFormat: "format2" // Always use Format 2 for exports
+      };
       const response = await fetch(API_FUNCTION_URL, {
         method: "POST",
         headers: this.getHeaders(),

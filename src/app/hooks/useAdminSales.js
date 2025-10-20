@@ -29,6 +29,7 @@ export const useAdminSales = () => {
         includeOrganization: true,
         sortBy: "created_at",
         sortOrder: "desc",
+        responseFormat: "format2",
       };
 
       const response = await adminSalesService.getSalesAdvanced(finalFilters);

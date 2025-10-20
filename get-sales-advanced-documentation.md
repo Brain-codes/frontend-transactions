@@ -218,6 +218,7 @@ const filters = {
   includeAddress: true,
   includeCreator: true,
   includeOrganization: true,
+  responseFormat: string,
 
   // Pagination
   page: 1,

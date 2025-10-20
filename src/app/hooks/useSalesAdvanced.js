@@ -81,6 +81,7 @@ export const useSalesAdvanced = (initialFilters = {}) => {
       includeCreator: true,
       includeImages: true,
       includeOrganization: true,
+      responseFormat: "format2",
       ...initialFilters,
     }),
     [initialFilters]

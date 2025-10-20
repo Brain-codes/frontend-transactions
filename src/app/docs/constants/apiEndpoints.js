@@ -2,11 +2,13 @@
 // This file contains all API endpoint definitions used across the documentation
 
 export const API_BASE_CONFIG = {
-  baseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || "https://your-supabase-project.supabase.co",
+  baseUrl:
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    "https://your-supabase-project.supabase.co",
   functionsPath: "/functions/v1",
   get functionsUrl() {
     return `${this.baseUrl}${this.functionsPath}`;
-  }
+  },
 };
 
 // Admin API Endpoints
@@ -27,9 +29,9 @@ export const ADMIN_ENDPOINTS = {
           totalSales: "number",
           monthlySales: "number",
           activeAgents: "number",
-          totalRevenue: "number"
-        }
-      }
+          totalRevenue: "number",
+        },
+      },
     },
     getUserProfile: {
       endpoint: "get-user-profile",
@@ -46,10 +48,10 @@ export const ADMIN_ENDPOINTS = {
           full_name: "string",
           email: "string",
           role: "string",
-          organization_id: "string"
-        }
-      }
-    }
+          organization_id: "string",
+        },
+      },
+    },
   },
 
   // Sales Management Endpoints
@@ -58,7 +60,8 @@ export const ADMIN_ENDPOINTS = {
       endpoint: "get-sales-advanced",
       method: "POST",
       url: `${API_BASE_CONFIG.functionsUrl}/get-sales-advanced`,
-      description: "Advanced sales data retrieval with filtering and pagination for admin users",
+      description:
+        "Advanced sales data retrieval with filtering and pagination for admin users (Returns Format 2 - Database Format)",
       requiredAuth: true,
       role: "admin",
       parameters: {
@@ -70,19 +73,43 @@ export const ADMIN_ENDPOINTS = {
         date_to: "string (optional, ISO date)",
         agent_id: "string (optional)",
         sort_by: "string (optional, default: 'created_at')",
-        sort_order: "string (optional, 'asc' or 'desc', default: 'desc')"
+        sort_order: "string (optional, 'asc' or 'desc', default: 'desc')",
+        responseFormat:
+          "string (optional, 'format1' or 'format2', default: 'format2' for admin)",
       },
       response: {
         success: "boolean",
-        data: "array of sales objects",
+        data: [
+          {
+            id: "string (UUID)",
+            stove_serial_no: "string",
+            sales_date: "string (ISO date)",
+            created_at: "string (ISO timestamp)",
+            end_user_name: "string",
+            contact_person: "string",
+            phone: "string",
+            other_phone: "string",
+            partner_name: "string",
+            state_backup: "string",
+            lga_backup: "string",
+            addresses: {
+              full_address: "string",
+              latitude: "number",
+              longitude: "number",
+            },
+            organizations: {
+              partner_name: "string",
+              state: "string",
+            },
+          },
+        ],
         pagination: {
-          currentPage: "number",
-          totalPages: "number",
-          totalCount: "number",
-          hasNextPage: "boolean",
-          hasPreviousPage: "boolean"
-        }
-      }
+          total: "number",
+          limit: "number",
+          offset: "number",
+          hasMore: "boolean",
+        },
+      },
     },
     getSale: {
       endpoint: "get-sale",
@@ -92,12 +119,12 @@ export const ADMIN_ENDPOINTS = {
       requiredAuth: true,
       role: "admin",
       parameters: {
-        sale_id: "string (required)"
+        sale_id: "string (required)",
       },
       response: {
         success: "boolean",
-        data: "sale object with full details"
-      }
+        data: "sale object with full details",
+      },
     },
     createSale: {
       endpoint: "create-sale",
@@ -114,13 +141,13 @@ export const ADMIN_ENDPOINTS = {
         price: "number (required)",
         agent_id: "string (optional)",
         payment_method: "string (optional)",
-        notes: "string (optional)"
+        notes: "string (optional)",
       },
       response: {
         success: "boolean",
         data: "newly created sale object",
-        message: "string"
-      }
+        message: "string",
+      },
     },
     updateSale: {
       endpoint: "update-sale",
@@ -136,13 +163,13 @@ export const ADMIN_ENDPOINTS = {
         customer_address: "string (optional)",
         price: "number (optional)",
         status: "string (optional)",
-        notes: "string (optional)"
+        notes: "string (optional)",
       },
       response: {
         success: "boolean",
         data: "updated sale object",
-        message: "string"
-      }
+        message: "string",
+      },
     },
     getStoveIds: {
       endpoint: "get-stove-ids",
@@ -152,12 +179,12 @@ export const ADMIN_ENDPOINTS = {
       requiredAuth: true,
       role: "admin",
       parameters: {
-        organization_id: "string (optional)"
+        organization_id: "string (optional)",
       },
       response: {
         success: "boolean",
-        data: "array of available stove objects"
-      }
+        data: "array of available stove objects",
+      },
     },
     uploadImage: {
       endpoint: "upload-image",
@@ -169,16 +196,16 @@ export const ADMIN_ENDPOINTS = {
       parameters: {
         image: "string (base64 encoded image)",
         filename: "string (required)",
-        folder: "string (optional, default: 'stove_images')"
+        folder: "string (optional, default: 'stove_images')",
       },
       response: {
         success: "boolean",
         data: {
           url: "string",
-          public_id: "string"
-        }
-      }
-    }
+          public_id: "string",
+        },
+      },
+    },
   },
 
   // Agent Management Endpoints
@@ -194,13 +221,13 @@ export const ADMIN_ENDPOINTS = {
         page: "number (optional, default: 1)",
         limit: "number (optional, default: 20)",
         search: "string (optional)",
-        status: "string (optional)"
+        status: "string (optional)",
       },
       response: {
         success: "boolean",
         data: "array of agent objects",
-        pagination: "pagination object"
-      }
+        pagination: "pagination object",
+      },
     },
     getAgent: {
       endpoint: "manage-agents/{agent_id}",
@@ -210,12 +237,12 @@ export const ADMIN_ENDPOINTS = {
       requiredAuth: true,
       role: "admin",
       parameters: {
-        agent_id: "string (required, in URL path)"
+        agent_id: "string (required, in URL path)",
       },
       response: {
         success: "boolean",
-        data: "agent object with full details"
-      }
+        data: "agent object with full details",
+      },
     },
     createAgent: {
       endpoint: "manage-agents",
@@ -229,13 +256,13 @@ export const ADMIN_ENDPOINTS = {
         email: "string (required)",
         phone: "string (required)",
         address: "string (optional)",
-        role: "string (default: 'agent')"
+        role: "string (default: 'agent')",
       },
       response: {
         success: "boolean",
         data: "newly created agent object",
-        message: "string"
-      }
+        message: "string",
+      },
     },
     updateAgent: {
       endpoint: "manage-agents/{agent_id}",
@@ -250,13 +277,13 @@ export const ADMIN_ENDPOINTS = {
         email: "string (optional)",
         phone: "string (optional)",
         address: "string (optional)",
-        status: "string (optional)"
+        status: "string (optional)",
       },
       response: {
         success: "boolean",
         data: "updated agent object",
-        message: "string"
-      }
+        message: "string",
+      },
     },
     deleteAgent: {
       endpoint: "manage-agents/{agent_id}",
@@ -266,13 +293,13 @@ export const ADMIN_ENDPOINTS = {
       requiredAuth: true,
       role: "admin",
       parameters: {
-        agent_id: "string (required, in URL path)"
+        agent_id: "string (required, in URL path)",
       },
       response: {
         success: "boolean",
-        message: "string"
-      }
-    }
+        message: "string",
+      },
+    },
   },
 
   // Branch Management Endpoints
@@ -289,13 +316,13 @@ export const ADMIN_ENDPOINTS = {
         limit: "number (optional, default: 20)",
         search: "string (optional)",
         state: "string (optional)",
-        city: "string (optional)"
+        city: "string (optional)",
       },
       response: {
         success: "boolean",
         data: "array of branch objects",
-        pagination: "pagination object"
-      }
+        pagination: "pagination object",
+      },
     },
     getBranch: {
       endpoint: "manage-branches/{branch_id}",
@@ -305,12 +332,12 @@ export const ADMIN_ENDPOINTS = {
       requiredAuth: true,
       role: "admin",
       parameters: {
-        branch_id: "string (required, in URL path)"
+        branch_id: "string (required, in URL path)",
       },
       response: {
         success: "boolean",
-        data: "branch object with full details"
-      }
+        data: "branch object with full details",
+      },
     },
     createBranch: {
       endpoint: "manage-branches",
@@ -325,13 +352,13 @@ export const ADMIN_ENDPOINTS = {
         city: "string (required)",
         state: "string (required)",
         phone: "string (optional)",
-        manager_name: "string (optional)"
+        manager_name: "string (optional)",
       },
       response: {
         success: "boolean",
         data: "newly created branch object",
-        message: "string"
-      }
+        message: "string",
+      },
     },
     updateBranch: {
       endpoint: "manage-branches/{branch_id}",
@@ -347,14 +374,14 @@ export const ADMIN_ENDPOINTS = {
         city: "string (optional)",
         state: "string (optional)",
         phone: "string (optional)",
-        manager_name: "string (optional)"
+        manager_name: "string (optional)",
       },
       response: {
         success: "boolean",
         data: "updated branch object",
-        message: "string"
-      }
-    }
+        message: "string",
+      },
+    },
   },
 
   // Activity Logging Endpoints
@@ -370,13 +397,13 @@ export const ADMIN_ENDPOINTS = {
         sale_id: "string (required)",
         activity_type: "string (required)",
         description: "string (required)",
-        metadata: "object (optional)"
+        metadata: "object (optional)",
       },
       response: {
         success: "boolean",
         data: "logged activity object",
-        message: "string"
-      }
+        message: "string",
+      },
     },
     getActivities: {
       endpoint: "get-sales-activities",
@@ -391,15 +418,15 @@ export const ADMIN_ENDPOINTS = {
         sale_id: "string (optional)",
         activity_type: "string (optional)",
         date_from: "string (optional, ISO date)",
-        date_to: "string (optional, ISO date)"
+        date_to: "string (optional, ISO date)",
       },
       response: {
         success: "boolean",
         data: "array of activity objects",
-        pagination: "pagination object"
-      }
-    }
-  }
+        pagination: "pagination object",
+      },
+    },
+  },
 };
 
 // Super Admin API Endpoints
@@ -407,45 +434,53 @@ export const SUPER_ADMIN_ENDPOINTS = {
   // Advanced Sales Endpoints
   sales: {
     getSalesAdvanced: {
-      endpoint: "get-sales-advance-two",
+      endpoint: "get-sales-advanced",
       method: "POST",
-      url: `${API_BASE_CONFIG.functionsUrl}/get-sales-advance-two`,
-      description: "Advanced sales data retrieval with comprehensive filtering across all organizations (Super Admin only)",
+      url: `${API_BASE_CONFIG.functionsUrl}/get-sales-advanced`,
+      description:
+        "Advanced sales data retrieval with comprehensive filtering across all organizations (Super Admin only - Returns Format 1 - Standardized Format)",
       requiredAuth: true,
       role: "super_admin",
       parameters: {
-        page: "number (optional, default: 1)",
         limit: "number (optional, default: 100)",
+        offset: "number (optional, default: 0)",
         search: "string (optional)",
-        status: "string (optional)",
-        date_from: "string (optional, ISO date)",
-        date_to: "string (optional, ISO date)",
-        organization_id: "string (optional)",
-        agent_id: "string (optional)",
-        state: "string or array (optional)",
-        city: "string or array (optional)",
-        lga: "string or array (optional)",
-        sort_by: "string (optional, default: 'created_at')",
-        sort_order: "string (optional, 'asc' or 'desc', default: 'desc')",
-        export: "boolean (optional, for CSV export)"
+        states: "array of strings (optional)",
+        organizationIds: "array of strings (optional)",
+        startDate: "string (optional, ISO date)",
+        endDate: "string (optional, ISO date)",
+        responseFormat:
+          "string (optional, 'format1' or 'format2', default: 'format1' for super_admin)",
       },
       response: {
         success: "boolean",
-        data: "array of sales objects with full details",
+        data: [
+          {
+            serialNumber: "string",
+            salesDate: "string (ISO date)",
+            created: "string (ISO timestamp)",
+            state: "string",
+            district: "string",
+            address: "string",
+            latitude: "number",
+            longitude: "number",
+            phone: "string",
+            contactPerson: "string",
+            otherContactPhone: "string",
+            salesPartner: "string",
+            userName: "string",
+            userSurname: "string",
+            cpa: "null or string",
+          },
+        ],
         pagination: {
-          currentPage: "number",
-          totalPages: "number",
-          totalCount: "number",
-          hasNextPage: "boolean",
-          hasPreviousPage: "boolean"
+          total: "number",
+          limit: "number",
+          offset: "number",
+          hasMore: "boolean",
         },
-        summary: {
-          totalSales: "number",
-          totalRevenue: "number",
-          averageSaleValue: "number"
-        }
-      }
-    }
+      },
+    },
   },
 
   // Organization Management Endpoints
@@ -462,13 +497,13 @@ export const SUPER_ADMIN_ENDPOINTS = {
         limit: "number (optional, default: 20)",
         search: "string (optional)",
         type: "string (optional)",
-        status: "string (optional)"
+        status: "string (optional)",
       },
       response: {
         success: "boolean",
         data: "array of organization objects",
-        pagination: "pagination object"
-      }
+        pagination: "pagination object",
+      },
     },
     getOrganization: {
       endpoint: "manage-organizations/{organization_id}",
@@ -478,12 +513,12 @@ export const SUPER_ADMIN_ENDPOINTS = {
       requiredAuth: true,
       role: "super_admin",
       parameters: {
-        organization_id: "string (required, in URL path)"
+        organization_id: "string (required, in URL path)",
       },
       response: {
         success: "boolean",
-        data: "organization object with full details"
-      }
+        data: "organization object with full details",
+      },
     },
     createOrganization: {
       endpoint: "manage-organizations",
@@ -497,13 +532,13 @@ export const SUPER_ADMIN_ENDPOINTS = {
         partner_email: "string (required)",
         type: "string (required)",
         address: "string (required)",
-        contact_info: "object (optional)"
+        contact_info: "object (optional)",
       },
       response: {
         success: "boolean",
         data: "newly created organization object",
-        message: "string"
-      }
+        message: "string",
+      },
     },
     updateOrganization: {
       endpoint: "manage-organizations/{organization_id}",
@@ -518,13 +553,13 @@ export const SUPER_ADMIN_ENDPOINTS = {
         partner_email: "string (optional)",
         type: "string (optional)",
         address: "string (optional)",
-        contact_info: "object (optional)"
+        contact_info: "object (optional)",
       },
       response: {
         success: "boolean",
         data: "updated organization object",
-        message: "string"
-      }
+        message: "string",
+      },
     },
     importOrganizationsCSV: {
       endpoint: "manage-organizations?import_csv=true",
@@ -535,18 +570,18 @@ export const SUPER_ADMIN_ENDPOINTS = {
       role: "super_admin",
       parameters: {
         csv_data: "string (CSV content as string)",
-        mapping: "object (column mapping configuration)"
+        mapping: "object (column mapping configuration)",
       },
       response: {
         success: "boolean",
         data: {
           imported: "number",
           failed: "number",
-          errors: "array of error objects"
+          errors: "array of error objects",
         },
-        message: "string"
-      }
-    }
+        message: "string",
+      },
+    },
   },
 
   // Branch Management (Cross-Organization)
@@ -564,13 +599,13 @@ export const SUPER_ADMIN_ENDPOINTS = {
         search: "string (optional)",
         organization_id: "string (optional)",
         state: "string (optional)",
-        city: "string (optional)"
+        city: "string (optional)",
       },
       response: {
         success: "boolean",
         data: "array of branch objects with organization details",
-        pagination: "pagination object"
-      }
+        pagination: "pagination object",
+      },
     },
     getPartnerBranches: {
       endpoint: "manage-branches/partner/{organization_id}",
@@ -583,15 +618,15 @@ export const SUPER_ADMIN_ENDPOINTS = {
         organization_id: "string (required, in URL path)",
         page: "number (optional, default: 1)",
         limit: "number (optional, default: 20)",
-        search: "string (optional)"
+        search: "string (optional)",
       },
       response: {
         success: "boolean",
         data: "array of branch objects",
         organization: "organization object",
-        pagination: "pagination object"
-      }
-    }
+        pagination: "pagination object",
+      },
+    },
   },
 
   // Agreement Images Endpoints
@@ -604,18 +639,18 @@ export const SUPER_ADMIN_ENDPOINTS = {
       requiredAuth: true,
       role: "super_admin",
       parameters: {
-        serial_number: "string (required)"
+        serial_number: "string (required)",
       },
       response: {
         success: "boolean",
         data: {
           image_url: "string",
           sale_info: "object",
-          customer_info: "object"
-        }
-      }
-    }
-  }
+          customer_info: "object",
+        },
+      },
+    },
+  },
 };
 
 // Flutter Mobile App Endpoints (for reference)
@@ -624,16 +659,16 @@ export const MOBILE_ENDPOINTS = {
   auth: {
     login: "Handled by Supabase Auth",
     logout: "Handled by Supabase Auth",
-    refreshToken: "Handled by Supabase Auth"
+    refreshToken: "Handled by Supabase Auth",
   },
-  
+
   // Shared endpoints used by both web and mobile
   shared: {
     createSale: ADMIN_ENDPOINTS.sales.createSale,
     uploadImage: ADMIN_ENDPOINTS.sales.uploadImage,
     getStoveIds: ADMIN_ENDPOINTS.sales.getStoveIds,
-    getSalesAdvanced: ADMIN_ENDPOINTS.sales.getSalesAdvanced
-  }
+    getSalesAdvanced: ADMIN_ENDPOINTS.sales.getSalesAdvanced,
+  },
 };
 
 // Error Response Structure
@@ -642,45 +677,46 @@ export const ERROR_RESPONSES = {
     success: false,
     error: "Unauthorized access",
     message: "Authentication required or invalid token",
-    statusCode: 401
+    statusCode: 401,
   },
   forbidden: {
     success: false,
     error: "Forbidden",
     message: "Insufficient permissions for this operation",
-    statusCode: 403
+    statusCode: 403,
   },
   notFound: {
     success: false,
     error: "Not found",
     message: "Requested resource not found",
-    statusCode: 404
+    statusCode: 404,
   },
   validationError: {
     success: false,
     error: "Validation error",
     message: "Invalid input parameters",
     statusCode: 400,
-    details: "array of validation error details"
+    details: "array of validation error details",
   },
   serverError: {
     success: false,
     error: "Internal server error",
     message: "An unexpected error occurred",
-    statusCode: 500
-  }
+    statusCode: 500,
+  },
 };
 
 // Authentication Requirements
 export const AUTH_REQUIREMENTS = {
   headers: {
     Authorization: "Bearer <supabase_jwt_token>",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   roles: {
     admin: "Can access organization-specific resources",
     super_admin: "Can access all resources across organizations",
-    agent: "Limited access to sales creation and viewing"
+    agent: "Limited access to sales creation and viewing",
   },
-  tokenRefresh: "Tokens are automatically refreshed by the tokenManager utility"
+  tokenRefresh:
+    "Tokens are automatically refreshed by the tokenManager utility",
 };
