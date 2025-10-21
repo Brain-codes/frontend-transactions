@@ -46,8 +46,19 @@ const TopNavigation = ({
   };
 
   const handleLogout = async () => {
-    await signOut();
-    // Navigation will be handled by useEffect when isAuthenticated becomes false
+    try {
+      await signOut();
+
+      // Small delay to ensure auth state is properly cleared
+      setTimeout(() => {
+        // Force immediate navigation to login page
+        window.location.href = "/login";
+      }, 100);
+    } catch (error) {
+      console.error("Error during logout:", error);
+      // Still navigate to login even if there was an error
+      window.location.href = "/login";
+    }
   };
 
   const getUserRole = () => {

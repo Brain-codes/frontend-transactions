@@ -1,5 +1,5 @@
 /* eslint-disable react/no-unescaped-entities */
- "use client";
+"use client";
 
 import { useAuth } from "../contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,15 @@ export default function UnauthorizedPage() {
   const { signOut } = useAuth();
 
   const handleSignOut = async () => {
-    await signOut();
-    window.location.href = "/login"; // Redirect to login after sign out
+    try {
+      await signOut();
+      // Force immediate navigation to login page
+      window.location.href = "/login";
+    } catch (error) {
+      console.error("Error during logout:", error);
+      // Still redirect to login even if there was an error
+      window.location.href = "/login";
+    }
   };
 
   return (
@@ -20,22 +27,23 @@ export default function UnauthorizedPage() {
           <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
             <AlertCircle className="h-6 w-6 text-red-600" />
           </div>
-          
+
           <h1 className="text-xl font-semibold text-gray-900 mb-2">
             Access Denied
           </h1>
-          
+
           <p className="text-gray-600 mb-6">
-            You don't have permission to access this application. 
-            Only super admin users can access the Atmosfair Sales Management System.
+            You don't have permission to access this application. Only super
+            admin users can access the Atmosfair Sales Management System.
           </p>
-          
+
           <div className="space-y-3">
             <p className="text-sm text-gray-500">
-              If you believe this is an error, please contact your administrator.
+              If you believe this is an error, please contact your
+              administrator.
             </p>
-            
-            <Button 
+
+            <Button
               onClick={handleSignOut}
               className="w-full bg-red-600 hover:bg-red-700 text-white"
             >

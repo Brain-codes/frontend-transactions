@@ -290,6 +290,20 @@ export const AuthProvider = ({ children }) => {
         // Clear profile and token data on sign out
         profileService.clearStoredProfileData();
         tokenManager.clearToken();
+
+        // Force clear localStorage of any remaining auth data
+        if (typeof window !== "undefined") {
+          const keys = Object.keys(localStorage).filter(
+            (key) =>
+              key.includes("supabase") ||
+              key.includes("auth") ||
+              key.includes("transaction")
+          );
+          keys.forEach((key) => localStorage.removeItem(key));
+        }
+
+        // Ensure user state is immediately cleared
+        setUser(null);
       }
 
       console.log(
@@ -342,12 +356,39 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signOut = async () => {
-    // Clear stored profile data and token before signing out
-    profileService.clearStoredProfileData();
-    tokenManager.clearToken();
+    try {
+      console.log("🔐 [AuthContext] Starting sign out process...");
 
-    const { error } = await supabase.auth.signOut();
-    return { error };
+      // Clear stored profile data and token before signing out
+      profileService.clearStoredProfileData();
+      tokenManager.clearToken();
+
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        console.error("🔐 [AuthContext] Sign out error:", error);
+        return { error };
+      }
+
+      // Ensure user state is cleared immediately
+      setUser(null);
+
+      console.log("🔐 [AuthContext] Sign out completed successfully");
+      return { error: null };
+    } catch (error) {
+      console.error(
+        "🔐 [AuthContext] Unexpected error during sign out:",
+        error
+      );
+
+      // Even if there's an error, clear local state
+      profileService.clearStoredProfileData();
+      tokenManager.clearToken();
+      setUser(null);
+
+      return { error };
+    }
   };
 
   const value = {

@@ -196,10 +196,17 @@ const AdminSettingsPage = () => {
   const handleLogout = async () => {
     try {
       await signOut();
-      router.push("/login");
+
+      // Small delay to ensure auth state is properly cleared
+      setTimeout(() => {
+        // Force immediate navigation to login page
+        window.location.href = "/login";
+      }, 100);
     } catch (err) {
       console.error("Logout error:", err);
       setError("An error occurred while logging out");
+      // Still navigate to login even if there was an error
+      window.location.href = "/login";
     }
   };
 
