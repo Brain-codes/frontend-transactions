@@ -169,7 +169,7 @@ const AgreementImagesPage = () => {
                   <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
-                      placeholder="Enter stove serial number (e.g., SN12345678)"
+                      placeholder="Enter stove serial number (e.g., 101052766)"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       onKeyPress={(e) => e.key === "Enter" && handleSearch()}
