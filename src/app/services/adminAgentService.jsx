@@ -155,15 +155,26 @@ class AdminAgentService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || `HTTP ${response.status}: ${response.statusText}`
-        );
+        
+        // If the error response has a structured format with specific error details
+        if (errorData.error && errorData.error !== errorData.message) {
+          throw new Error(errorData.error);
+        } else if (errorData.message) {
+          throw new Error(errorData.message);
+        } else {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
       }
 
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(result.message || "Failed to create sales agent");
+        // Combine message and error for clearer feedback
+        let errorMessage = result.message || "Failed to create sales agent";
+        if (result.error && result.error !== result.message) {
+          errorMessage = result.error;
+        }
+        throw new Error(errorMessage);
       }
 
       return {

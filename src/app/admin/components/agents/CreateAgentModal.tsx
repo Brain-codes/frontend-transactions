@@ -182,8 +182,17 @@ const CreateAgentModal: React.FC<CreateAgentModalProps> = ({
       }
     } catch (err) {
       console.error("Error creating agent:", err);
+      
+      // Extract the actual error message if available
+      let errorMessage = "An unexpected error occurred while creating the agent";
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
       setCreateErrors({
-        general: "An unexpected error occurred while creating the agent",
+        general: errorMessage,
       });
     } finally {
       setCreateLoading(false);
