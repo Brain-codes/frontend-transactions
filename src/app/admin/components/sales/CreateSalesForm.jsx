@@ -171,7 +171,7 @@ const CreateSalesForm = ({
           setFormData((prev) => ({
             ...prev,
             transactionId: generateTransactionId(),
-            partnerName: profileData?.organizationName || "",
+            partnerName: profileData?.partnerName || "",
           }));
 
           // Fetch available stoves for create mode

@@ -12,6 +12,7 @@ import profileService from "../services/profileService";
 export const loadProfileData = async () => {
   try {
     const profile = profileService.getStoredProfileData();
+    // console.log("PARTNER DATA", profile.organizations.partner_name);
     if (profile) {
       return {
         partnerName:
