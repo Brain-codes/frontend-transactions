@@ -60,6 +60,83 @@ class AuthService {
     }
   }
 
+  // Login with username or email using custom credentials endpoint
+  async loginWithCredentials(identifier, password) {
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+      if (!supabaseUrl) {
+        throw new Error("Supabase URL is not configured");
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/login-with-credentials`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          identifier,
+          password,
+        }),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: responseData.error || 'Login failed',
+          data: null,
+        };
+      }
+
+      if (responseData.success && responseData.session) {
+        // Set the session in Supabase client
+        const { error: sessionError } = await this.supabase.auth.setSession({
+          access_token: responseData.session.access_token,
+          refresh_token: responseData.session.refresh_token,
+        });
+
+        if (sessionError) {
+          console.error("Error setting session:", sessionError);
+          return {
+            success: false,
+            error: sessionError.message,
+            data: null,
+          };
+        }
+
+        // Store profile data if provided
+        if (responseData.profile) {
+          profileService.setProfile(responseData.profile);
+        }
+
+        return {
+          success: true,
+          data: {
+            user: responseData.session.user,
+            session: responseData.session,
+          },
+          error: null,
+          profile: responseData.profile,
+        };
+      }
+
+      return {
+        success: false,
+        error: 'Invalid response format',
+        data: null,
+      };
+    } catch (error) {
+      console.error("Error during credentials login:", error);
+      return {
+        success: false,
+        error: error.message || 'An unexpected error occurred',
+        data: null,
+      };
+    }
+  }
+
   // Enhanced logout function that clears profile data
   async signOut() {
     try {

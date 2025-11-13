@@ -14,6 +14,7 @@ import {
   Settings,
   BarChart3,
   FileImage,
+  Key,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import Link from "next/link";
@@ -75,6 +76,14 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           icon: Building2,
           route: "partners",
           href: "/partners",
+          badge: null,
+          requiresAuth: true,
+        },
+        {
+          name: "Credentials",
+          icon: Key,
+          route: "admin-credentials",
+          href: "/admin/credentials",
           badge: null,
           requiresAuth: true,
         },

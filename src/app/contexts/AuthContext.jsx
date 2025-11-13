@@ -355,6 +355,84 @@ export const AuthProvider = ({ children }) => {
     return { data, error };
   };
 
+  const signInWithCredentials = async (identifier, password) => {
+    try {
+      console.log("🔐 [AuthContext] Attempting credentials login...");
+
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error("Supabase URL is not configured");
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/login-with-credentials`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          identifier,
+          password,
+        }),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        console.error("🔐 [AuthContext] Credentials login failed:", responseData.error);
+        return {
+          data: null,
+          error: { message: responseData.error || 'Login failed' }
+        };
+      }
+
+      if (responseData.success && responseData.session) {
+        console.log("🔐 [AuthContext] Credentials login successful, setting session");
+
+        // Set the session in Supabase client
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: responseData.session.access_token,
+          refresh_token: responseData.session.refresh_token,
+        });
+
+        if (sessionError) {
+          console.error("🔐 [AuthContext] Error setting session:", sessionError);
+          return { data: null, error: sessionError };
+        }
+
+        // Store session data in tokenManager
+        tokenManager.setLoginData(responseData.session);
+
+        // Store profile data if provided
+        if (responseData.profile) {
+          console.log("🔐 [AuthContext] Storing profile from credentials response");
+          profileService.setProfile(responseData.profile);
+        }
+
+        // Update user state
+        setUser(responseData.session.user);
+
+        return {
+          data: {
+            user: responseData.session.user,
+            session: responseData.session,
+          },
+          error: null,
+        };
+      }
+
+      return {
+        data: null,
+        error: { message: 'Invalid response format' }
+      };
+    } catch (error) {
+      console.error("🔐 [AuthContext] Error during credentials login:", error);
+      return {
+        data: null,
+        error: { message: error.message || 'An unexpected error occurred' }
+      };
+    }
+  };
+
   const signOut = async () => {
     try {
       console.log("🔐 [AuthContext] Starting sign out process...");
@@ -401,6 +479,7 @@ export const AuthProvider = ({ children }) => {
     hasAdminAccess,
     isAtmosfairUser, // TODO: TEMPORARY - Remove when implementing proper role-based navigation
     signIn,
+    signInWithCredentials,
     signOut,
     supabase,
     // Profile-related methods

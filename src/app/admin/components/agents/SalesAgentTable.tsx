@@ -201,13 +201,13 @@ const SalesAgentTable: React.FC<SalesAgentTableProps> = ({
                         View Details
                       </DropdownMenuItem>
                       <hr className="border-gray-200" />
-                      <DropdownMenuItem
+                      {/* <DropdownMenuItem
                         onClick={() => onViewPerformance(agent)}
                         className="py-2 px-3 rounded-md hover:!bg-primary hover:!text-white"
                       >
                         <BarChart3 className="mr-3 h-4 w-4" />
                         Performance
-                      </DropdownMenuItem>
+                      </DropdownMenuItem> */}
                       <hr className="border-gray-200" />
                       <DropdownMenuItem
                         onClick={() => onEdit(agent)}

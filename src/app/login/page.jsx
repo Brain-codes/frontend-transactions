@@ -11,13 +11,13 @@ import { Label } from "@/components/ui/label";
 
 const LoginPage = () => {
   const [loginData, setLoginData] = useState({
-    email: "",
+    identifier: "",
     password: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const { signIn, isAuthenticated, loading: authLoading } = useAuth();
+  const { signInWithCredentials, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
 
   // Navigate to dashboard when user becomes authenticated
@@ -33,8 +33,8 @@ const LoginPage = () => {
     setError("");
 
     try {
-      const { data, error: authError } = await signIn(
-        loginData.email,
+      const { data, error: authError } = await signInWithCredentials(
+        loginData.identifier,
         loginData.password
       );
 
@@ -67,19 +67,20 @@ const LoginPage = () => {
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
               <Label
-                htmlFor="email"
+                htmlFor="identifier"
                 className="text-sm font-medium text-gray-700 mb-2 block"
               >
-                Username
+                Username or Email
               </Label>
               <Input
-                id="email"
-                type="email"
-                value={loginData.email}
+                id="identifier"
+                type="text"
+                value={loginData.identifier}
                 onChange={(e) =>
-                  setLoginData({ ...loginData, email: e.target.value })
+                  setLoginData({ ...loginData, identifier: e.target.value })
                 }
                 required
+                placeholder="Enter username or email"
                 className="w-full h-12 px-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>

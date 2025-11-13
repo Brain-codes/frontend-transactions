@@ -1,5 +1,6 @@
 // Admin Branches Service for branch management operations
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import tokenManager from "@/utils/tokenManager";
 import type {
   Branch,
   BranchFilters,
@@ -21,14 +22,12 @@ class AdminBranchesService {
     this.branchesURL = `${API_FUNCTIONS_URL}/manage-branches`;
   }
 
-  // Get token from Supabase session
+  // Get token using tokenManager (with automatic refresh)
   async getToken() {
     try {
-      const {
-        data: { session },
-      } = await this.supabase.auth.getSession();
-      return session?.access_token || null;
+      return await tokenManager.getValidToken();
     } catch (error) {
+      console.error("🏢 [AdminBranches] Token error:", error);
       return null;
     }
   }

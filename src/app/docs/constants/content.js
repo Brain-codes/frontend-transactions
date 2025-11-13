@@ -5,7 +5,7 @@ export const DOC_METADATA = {
   title: "Atmosfair Sales Management API Documentation",
   description:
     "Comprehensive API documentation for the Atmosfair Sales Management System",
-  version: "1.0.0",
+  version: "1.1.0",
   lastUpdated: new Date().toISOString().split("T")[0],
 };
 
@@ -493,6 +493,18 @@ export const TROUBLESHOOTING = {
 export const CHANGELOG = {
   title: "API Changelog",
   versions: [
+    {
+      version: "1.1.0",
+      date: "2024-10-21",
+      changes: [
+        "Added new get-sale edge function with flexible lookup methods",
+        "Support for sale lookup by UUID, transaction ID, or stove serial number",
+        "Enhanced error handling and response structure for get-sale endpoint",
+        "Comprehensive TypeScript/React examples for get-sale integration",
+        "Organization-based access control for sale retrieval",
+        "Rich data response including address and image information",
+      ],
+    },
     {
       version: "1.0.0",
       date: "2024-01-01",

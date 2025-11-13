@@ -115,16 +115,82 @@ export const ADMIN_ENDPOINTS = {
       endpoint: "get-sale",
       method: "POST",
       url: `${API_BASE_CONFIG.functionsUrl}/get-sale`,
-      description: "Get detailed information about a specific sale",
+      description:
+        "Retrieve a single sale record using ID, transaction ID, or stove serial number. Supports flexible lookup methods with organization-based access control.",
       requiredAuth: true,
       role: "admin",
       parameters: {
-        sale_id: "string (required)",
+        id: "UUID (optional) - Sale's unique identifier",
+        transaction_id: "string (optional) - Transaction ID of the sale",
+        stove_serial_no: "string (optional) - Stove serial number",
+        NOTE: "You must provide exactly ONE of: id, transaction_id, or stove_serial_no",
       },
       response: {
         success: "boolean",
-        data: "sale object with full details",
+        data: {
+          id: "string (UUID) - Unique sale identifier",
+          transaction_id: "string - Transaction ID",
+          stove_serial_no: "string - Stove serial number",
+          customer_name: "string - Customer full name",
+          customer_phone: "string - Customer phone number",
+          total_price: "number - Sale total price",
+          status: "string - Sale status (completed, pending, etc.)",
+          created_at: "string (ISO timestamp) - Creation timestamp",
+          organization_id: "string - Organization identifier",
+          agent_id: "string - Sales agent identifier",
+          address: {
+            id: "string - Address record ID",
+            street: "string - Street address",
+            city: "string - City name",
+            state: "string - State name",
+            postal_code: "string - Postal code",
+          },
+          stove_image: {
+            id: "string - Image record ID",
+            file_url: "string - Image URL",
+            file_name: "string - Image filename",
+          },
+          agreement_image: {
+            id: "string - Agreement record ID",
+            file_url: "string - Agreement document URL",
+            file_name: "string - Agreement filename",
+          },
+        },
+        message: "string (optional) - Success message",
       },
+      errorResponses: {
+        400: {
+          success: false,
+          message:
+            "Missing required parameter: id, transaction_id, or stove_serial_no",
+        },
+        401: {
+          success: false,
+          message: "Unauthorized",
+        },
+        404: {
+          success: false,
+          message: "Sale not found or access denied",
+          error: "Error details...",
+        },
+        500: {
+          success: false,
+          message: "Unexpected error",
+          error: "Error details...",
+        },
+      },
+      useCases: [
+        "Customer Support: Look up sales by transaction ID when customers call",
+        "Field Service: Find sales by stove serial number for maintenance",
+        "Admin Dashboard: Get detailed sale information by UUID",
+        "Mobile App: Quick sale lookup using any available identifier",
+      ],
+      features: [
+        "Flexible Lookup: Find sales by UUID, transaction ID, or stove serial number",
+        "Security: Organization-based access control (users only see their org's sales)",
+        "Rich Data: Returns sale with related address and image data",
+        "Super Admin: Super admins can access all sales across organizations",
+      ],
     },
     createSale: {
       endpoint: "create-sale",
@@ -433,6 +499,45 @@ export const ADMIN_ENDPOINTS = {
 export const SUPER_ADMIN_ENDPOINTS = {
   // Advanced Sales Endpoints
   sales: {
+    getSale: {
+      endpoint: "get-sale",
+      method: "POST",
+      url: `${API_BASE_CONFIG.functionsUrl}/get-sale`,
+      description:
+        "Retrieve a single sale record using ID, transaction ID, or stove serial number. Super admins can access sales from any organization.",
+      requiredAuth: true,
+      role: "super_admin",
+      parameters: {
+        id: "UUID (optional) - Sale's unique identifier",
+        transaction_id: "string (optional) - Transaction ID of the sale",
+        stove_serial_no: "string (optional) - Stove serial number",
+        NOTE: "You must provide exactly ONE of: id, transaction_id, or stove_serial_no",
+      },
+      response: {
+        success: "boolean",
+        data: {
+          id: "string (UUID) - Unique sale identifier",
+          transaction_id: "string - Transaction ID",
+          stove_serial_no: "string - Stove serial number",
+          customer_name: "string - Customer full name",
+          customer_phone: "string - Customer phone number",
+          total_price: "number - Sale total price",
+          status: "string - Sale status (completed, pending, etc.)",
+          created_at: "string (ISO timestamp) - Creation timestamp",
+          organization_id: "string - Organization identifier",
+          agent_id: "string - Sales agent identifier",
+          address: "object - Address information with full details",
+          stove_image: "object - Stove image information",
+          agreement_image: "object - Agreement document information",
+        },
+      },
+      superAdminFeatures: [
+        "Access sales from ANY organization (not restricted by organization_id)",
+        "Full system-wide sale lookup capabilities",
+        "Cross-organization data access for support and auditing",
+        "Complete sale data including all related information",
+      ],
+    },
     getSalesAdvanced: {
       endpoint: "get-sales-advanced",
       method: "POST",

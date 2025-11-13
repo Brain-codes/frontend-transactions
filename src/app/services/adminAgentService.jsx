@@ -155,7 +155,7 @@ class AdminAgentService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        
+
         // If the error response has a structured format with specific error details
         if (errorData.error && errorData.error !== errorData.message) {
           throw new Error(errorData.error);

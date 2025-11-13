@@ -11,12 +11,12 @@ import { Eye, EyeOff, Mail, Lock, ArrowRight, Building2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const LoginPage = () => {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { signIn } = useAuth();
+  const { signInWithCredentials } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e) => {
@@ -25,18 +25,18 @@ const LoginPage = () => {
     setError("");
 
     try {
-      const { data, error } = await signIn(email, password);
+      const { data, error } = await signInWithCredentials(identifier, password);
 
       if (error) {
         setError(error.message);
       } else if (data?.user) {
         // FIXME: TEMPORARY - Remove this atmosfair.com email routing logic when implementing proper role-based navigation
         // Check if user is super admin and has atmosfair.com email
-        const isSuperAdmin = 
+        const isSuperAdmin =
           data.user?.app_metadata?.role === "super_admin" ||
           data.user?.user_metadata?.role === "super_admin";
         const isAtmosfairUser = data.user?.email?.includes("atmosfair.com");
-        
+
         if (isSuperAdmin && isAtmosfairUser) {
           router.push("/sales");
         } else {
@@ -84,22 +84,22 @@ const LoginPage = () => {
 
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Email Field */}
+              {/* Username or Email Field */}
               <div className="space-y-2">
                 <Label
-                  htmlFor="email"
+                  htmlFor="identifier"
                   className="text-sm font-medium text-gray-700"
                 >
-                  Email Address
+                  Username or Email
                 </Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="identifier"
+                    type="text"
+                    placeholder="Enter username or email"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
                     className="pl-10 h-11 border-gray-200 focus:border-brand-600 focus:ring-brand-500"
                     required
                   />
@@ -149,7 +149,7 @@ const LoginPage = () => {
               {/* Submit Button */}
               <Button
                 type="submit"
-                disabled={loading || !email || !password}
+                disabled={loading || !identifier || !password}
                 className="w-full h-11 bg-gradient-to-r from-brand to-brand/80 hover:from-brand/20 hover:to-brand/50 text-white font-medium transition-all duration-200 transform hover:scale-[1.02] disabled:transform-none"
               >
                 {loading ? (
