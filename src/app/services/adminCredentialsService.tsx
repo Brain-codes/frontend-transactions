@@ -6,7 +6,7 @@ import tokenManager from "@/utils/tokenManager";
 interface Credential {
   partner_id: string;
   partner_name: string;
-  email: string;
+  email?: string;
   password: string;
   is_dummy_email: boolean;
   username: string;
@@ -17,6 +17,7 @@ interface Credential {
     contact_person?: string;
     state?: string;
     branch?: string;
+    email?: string;
   };
 }
 
@@ -159,25 +160,32 @@ class AdminCredentialsService {
 
   /**
    * Reset password for an organization
+   * Supports two modes:
+   * 1. Auto-generate: API generates a secure password (customPassword not provided)
+   * 2. Custom: Super Admin provides a custom password (customPassword provided)
    * Requires Super Admin password verification
    */
   async resetPassword(
     partnerId: string,
-    newPassword: string,
-    superAdminEmail: string,
-    superAdminPassword: string
-  ): Promise<ServiceResponse<{ message: string }>> {
+    superAdminPassword: string,
+    customPassword?: string
+  ): Promise<ServiceResponse<{ message: string; newPassword: string; passwordMode?: string }>> {
     try {
       const headers = await this.getHeaders();
+
+      const body: any = {
+        partner_id: partnerId,
+        super_admin_password: superAdminPassword,
+      };
+
+      if (customPassword) {
+        body.new_password = customPassword;
+      }
+
       const response = await fetch(`${this.getApiUrl()}/update-password`, {
         method: "PUT",
         headers,
-        body: JSON.stringify({
-          partner_id: partnerId,
-          new_password: newPassword,
-          super_admin_email: superAdminEmail,
-          super_admin_password: superAdminPassword,
-        }),
+        body: JSON.stringify(body),
       });
 
       const result = await response.json();
@@ -192,7 +200,11 @@ class AdminCredentialsService {
 
       return {
         success: true,
-        data: { message: result.message || "Password reset successfully" },
+        data: {
+          message: result.message || "Password reset successfully",
+          newPassword: result.newPassword || "",
+          passwordMode: result.passwordMode,
+        },
         error: null,
       };
     } catch (error) {

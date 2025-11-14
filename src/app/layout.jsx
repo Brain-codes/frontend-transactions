@@ -1,6 +1,7 @@
 import "./globals.css";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SidebarProvider } from "./contexts/SidebarContext";
+import { ToastProvider } from "./contexts/ToastContext";
 import NextTopLoader from "nextjs-toploader";
 
 export const metadata = {
@@ -29,7 +30,9 @@ export default function RootLayout({ children }) {
       <body className="antialiased">
         <NextTopLoader color="#b6de04" spin={true} />
         <AuthProvider>
-          <SidebarProvider>{children}</SidebarProvider>
+          <ToastProvider>
+            <SidebarProvider>{children}</SidebarProvider>
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

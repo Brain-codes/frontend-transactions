@@ -119,13 +119,18 @@ const CredentialsTable: React.FC<CredentialsTableProps> = ({
                     <span className="text-sm truncate max-w-[200px]">
                       {credential.is_dummy_email
                         ? credential.username
-                        : credential.email}
+                        : credential.email || credential.organizations?.email}
                     </span>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() =>
-                        copyToClipboard(credential.email, emailCopyId)
+                        copyToClipboard(
+                          credential.is_dummy_email
+                            ? credential.username ?? ""
+                            : credential.email ?? credential.organizations?.email ?? "",
+                          emailCopyId
+                        )
                       }
                       className="h-6 w-6 p-0"
                     >

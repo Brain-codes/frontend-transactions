@@ -16,21 +16,44 @@ const LoginPage = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loginAttempted, setLoginAttempted] = useState(false);
+  const [sessionCleared, setSessionCleared] = useState(false);
 
-  const { signInWithCredentials, isAuthenticated, loading: authLoading } = useAuth();
+  const { signInWithCredentials, isAuthenticated, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
 
-  // Navigate to dashboard when user becomes authenticated
+  // Force clear any stale auth state on mount (when user arrives at login page)
   useEffect(() => {
-    if (isAuthenticated && !authLoading) {
+    const clearStaleSession = async () => {
+      // Force sign out to clear any residual session
+      console.log("🔐 [Login] Force clearing any stale sessions on mount");
+      await signOut();
+      setLoginAttempted(false);
+      setSessionCleared(true); // Mark that session has been cleared
+    };
+
+    clearStaleSession();
+  }, []); // Run once on mount
+
+  // Navigate to dashboard ONLY after a successful login attempt
+  // AND only after the initial session clear is complete
+  useEffect(() => {
+    // Only redirect if:
+    // 1. Session has been cleared (prevents race condition)
+    // 2. User is authenticated
+    // 3. Auth is not loading
+    // 4. User explicitly attempted to log in
+    if (sessionCleared && isAuthenticated && !authLoading && loginAttempted) {
+      console.log("🔐 [Login] Authenticated and login attempted - redirecting to dashboard");
       router.push("/dashboard");
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [sessionCleared, isAuthenticated, authLoading, loginAttempted, router]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setLoginAttempted(true); // Mark that user attempted to log in
 
     try {
       const { data, error: authError } = await signInWithCredentials(
@@ -41,11 +64,13 @@ const LoginPage = () => {
       if (authError) {
         setError(authError.message);
         setLoading(false);
+        setLoginAttempted(false); // Reset on error
       }
       // Don't navigate here - let the useEffect handle it when isAuthenticated becomes true
     } catch (err) {
       setError("Login failed. Please try again.");
       setLoading(false);
+      setLoginAttempted(false); // Reset on error
     }
   };
 

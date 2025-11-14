@@ -1,11 +1,13 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useSidebar } from "../contexts/SidebarContext";
 import Sidebar from "./Sidebar.jsx";
 import TopNavigation from "./TopNavigation";
+import FirstTimePasswordChangeModal from "./FirstTimePasswordChangeModal";
+import profileService from "../services/profileService";
 
 type DashboardLayoutProps = {
   children?: React.ReactNode;
@@ -25,6 +27,21 @@ const DashboardLayout = ({
   const { user, signOut } = useAuth();
   const router = useRouter();
   const { sidebarOpen, toggleSidebar, closeSidebar } = useSidebar();
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  // Load user profile for password change check
+  useEffect(() => {
+    const loadProfile = async () => {
+      const storedProfile = profileService.getStoredProfileData();
+      if (storedProfile) {
+        setUserProfile(storedProfile);
+      }
+    };
+
+    if (user) {
+      loadProfile();
+    }
+  }, [user]);
 
   const handleLogout = async () => {
     await signOut();
@@ -55,6 +72,9 @@ const DashboardLayout = ({
         {/* Page content */}
         <main className="flex-1 overflow-y-auto bg-gray-50">{children}</main>
       </div>
+
+      {/* First-time password change modal */}
+      <FirstTimePasswordChangeModal userProfile={userProfile} />
     </div>
   );
 };

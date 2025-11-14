@@ -441,16 +441,35 @@ export const AuthProvider = ({ children }) => {
       profileService.clearStoredProfileData();
       tokenManager.clearToken();
 
+      // Force clear all localStorage auth data BEFORE Supabase signOut
+      if (typeof window !== "undefined") {
+        const keys = Object.keys(localStorage).filter(
+          (key) =>
+            key.includes("supabase") ||
+            key.includes("auth") ||
+            key.includes("transaction") ||
+            key.includes("sb-")
+        );
+        console.log("🔐 [AuthContext] Clearing localStorage keys:", keys);
+        keys.forEach((key) => {
+          try {
+            localStorage.removeItem(key);
+          } catch (e) {
+            console.error(`Failed to remove ${key}:`, e);
+          }
+        });
+      }
+
+      // Ensure user state is cleared immediately BEFORE Supabase call
+      setUser(null);
+
       // Sign out from Supabase
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
 
       if (error) {
         console.error("🔐 [AuthContext] Sign out error:", error);
-        return { error };
+        // Don't return error - we've already cleared local state
       }
-
-      // Ensure user state is cleared immediately
-      setUser(null);
 
       console.log("🔐 [AuthContext] Sign out completed successfully");
       return { error: null };
@@ -465,7 +484,25 @@ export const AuthProvider = ({ children }) => {
       tokenManager.clearToken();
       setUser(null);
 
-      return { error };
+      // Force clear localStorage again
+      if (typeof window !== "undefined") {
+        const keys = Object.keys(localStorage).filter(
+          (key) =>
+            key.includes("supabase") ||
+            key.includes("auth") ||
+            key.includes("transaction") ||
+            key.includes("sb-")
+        );
+        keys.forEach((key) => {
+          try {
+            localStorage.removeItem(key);
+          } catch (e) {
+            console.error(`Failed to remove ${key}:`, e);
+          }
+        });
+      }
+
+      return { error: null }; // Return success even if Supabase signOut failed
     }
   };
 

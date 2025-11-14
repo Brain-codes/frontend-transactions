@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const TopNavigation = ({
   onToggleSidebar,
@@ -187,7 +188,7 @@ const TopNavigation = ({
 
                 {/* Action Items */}
                 <div className="p-2">
-                  <button
+                  {/* <button
                     onClick={() => {
                       setShowUserDropdown(false);
                       // Navigate to settings page when implemented
@@ -198,7 +199,15 @@ const TopNavigation = ({
                     <Settings className="h-4 w-4 text-gray-500" />
                     <span>Account Settings</span>
                   </button>
-
+                   */}
+                  <Link
+                    href="/profile"
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                    onClick={() => setShowUserDropdown(false)}
+                  >
+                    <Settings className="h-4 w-4 text-gray-500" />
+                    <span>Account Settings</span>
+                  </Link>
                   <button
                     onClick={() => {
                       setShowUserDropdown(false);

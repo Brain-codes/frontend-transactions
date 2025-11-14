@@ -15,6 +15,7 @@ import {
   BarChart3,
   FileImage,
   Key,
+  User,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import Link from "next/link";
@@ -95,6 +96,14 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           badge: null,
           requiresAuth: true,
         },
+        {
+          name: "Profile",
+          icon: User,
+          route: "profile",
+          href: "/profile",
+          badge: null,
+          requiresAuth: true,
+        },
         // {
         //   name: "Admin Panel",
         //   icon: BarChart3,
@@ -149,11 +158,19 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
         //   badge: null,
         //   requiresAuth: true,
         // },
+        // {
+        //   name: "Settings",
+        //   icon: Settings,
+        //   route: "admin-settings",
+        //   href: "/admin/settings",
+        //   badge: null,
+        //   requiresAuth: true,
+        // },
         {
-          name: "Settings",
-          icon: Settings,
-          route: "admin-settings",
-          href: "/admin/settings",
+          name: "Profile",
+          icon: User,
+          route: "profile",
+          href: "/profile",
           badge: null,
           requiresAuth: true,
         },

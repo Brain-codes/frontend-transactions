@@ -45,7 +45,8 @@ const CredentialsPage = () => {
         (cred) =>
           cred.partner_id.toLowerCase().includes(term) ||
           cred.partner_name.toLowerCase().includes(term) ||
-          cred.email.toLowerCase().includes(term)
+          (cred.email && cred.email.toLowerCase().includes(term)) ||
+          (cred.username && cred.username.toLowerCase().includes(term))
       );
       setFilteredCredentials(filtered);
     }

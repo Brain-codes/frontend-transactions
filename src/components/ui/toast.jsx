@@ -134,9 +134,9 @@ const ToastContainer = ({ toasts, onRemove }) => {
   };
 
   return (
-    <div className="fixed top-0 right-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]">
+    <div className="fixed bottom-0 right-0 z-[100] flex max-h-screen w-full flex-col p-4 md:max-w-[420px] pointer-events-none">
       {toasts.map((toast) => (
-        <Toast key={toast.id} variant={toast.variant} className="mb-2">
+        <Toast key={toast.id} variant={toast.variant} className="mb-2 pointer-events-auto">
           <div className="flex items-start space-x-3">
             <div className="flex-shrink-0">{getIcon(toast.variant)}</div>
             <div className="flex-1 min-w-0">
