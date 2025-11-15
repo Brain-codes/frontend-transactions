@@ -174,7 +174,9 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
                     <Wand2 className="h-5 w-5 text-blue-600" />
                   )}
                   <Label className="font-semibold text-blue-900 cursor-pointer">
-                    {useCustomPassword ? "Custom Password" : "Auto-Generate Password"}
+                    {useCustomPassword
+                      ? "Custom Password"
+                      : "Auto-Generate Password"}
                   </Label>
                 </div>
                 <Switch

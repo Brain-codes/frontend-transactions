@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Download } from "lucide-react";
+import Link from "next/link";
 
 const LoginPage = () => {
   const [loginData, setLoginData] = useState({
@@ -75,7 +77,17 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 relative">
+      {/* Download App Link - Top Right */}
+      <div className="absolute top-4 right-4">
+        <Link href="/download">
+          <Button variant="outline" size="sm" className="gap-2">
+            <Download className="h-4 w-4" />
+            Download App
+          </Button>
+        </Link>
+      </div>
+
       <Card className="w-full max-w-md border-0 shadow-lg">
         <CardHeader className="text-center pb-8">
           <div className="mb-6">
@@ -147,6 +159,19 @@ const LoginPage = () => {
                 ? "Redirecting..."
                 : "Login"}
             </Button>
+
+            {/* Mobile App Download Link - Bottom */}
+            <div className="text-center pt-4 border-t">
+              <p className="text-sm text-gray-600 mb-2">
+                Prefer mobile?
+              </p>
+              <Link href="/download">
+                <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 gap-2">
+                  <Download className="h-4 w-4" />
+                  Download Android App
+                </Button>
+              </Link>
+            </div>
           </form>
         </CardContent>
       </Card>
