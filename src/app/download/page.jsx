@@ -6,16 +6,16 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Download, 
-  Smartphone, 
-  CheckCircle, 
-  Shield, 
-  Zap, 
+import {
+  Download,
+  Smartphone,
+  CheckCircle,
+  Shield,
+  Zap,
   Users,
   Activity,
   ArrowLeft,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 
 const DownloadPage = () => {
@@ -29,30 +29,31 @@ const DownloadPage = () => {
     {
       icon: Activity,
       title: "Real-time Sales Management",
-      description: "Create and manage sales on the go with instant synchronization"
+      description:
+        "Create and manage sales on the go with instant synchronization",
     },
     {
       icon: Users,
       title: "Agent Management",
-      description: "Manage your sales agents and track their performance"
+      description: "Manage your sales agents and track their performance",
     },
     {
       icon: Shield,
       title: "Secure Access",
-      description: "Enterprise-grade security with role-based access control"
+      description: "Enterprise-grade security with role-based access control",
     },
     {
       icon: Zap,
       title: "Offline Capability",
-      description: "Continue working even without internet connection"
-    }
+      description: "Continue working even without internet connection",
+    },
   ];
 
   const requirements = [
     "Android 8.0 (Oreo) or higher",
     "Minimum 100MB free storage space",
     "Active admin account credentials",
-    "Internet connection for initial setup"
+    "Internet connection for initial setup",
   ];
 
   return (
@@ -66,7 +67,10 @@ const DownloadPage = () => {
               Back to Login
             </Button>
           </Link>
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+          <Badge
+            variant="outline"
+            className="bg-green-50 text-green-700 border-green-200"
+          >
             Latest Version
           </Badge>
         </div>
@@ -86,7 +90,8 @@ const DownloadPage = () => {
             Download Mobile App
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Take your sales management anywhere with our powerful Android application designed specifically for administrators.
+            Take your sales management anywhere with our powerful Android
+            application designed specifically for administrators.
           </p>
         </div>
 
@@ -103,7 +108,7 @@ const DownloadPage = () => {
           </CardHeader>
           <CardContent className="pt-8">
             <div className="text-center mb-8">
-              <Button 
+              <Button
                 onClick={handleDownload}
                 size="lg"
                 className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg"
@@ -121,9 +126,12 @@ const DownloadPage = () => {
               <div className="flex gap-3">
                 <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="font-semibold text-amber-900 mb-1">iOS Not Available</h4>
+                  <h4 className="font-semibold text-amber-900 mb-1">
+                    iOS Not Available
+                  </h4>
                   <p className="text-sm text-amber-800">
-                    Due to iOS platform restrictions for enterprise applications, we currently only support Android devices. 
+                    Due to iOS platform restrictions for enterprise
+                    applications, we currently only support Android devices.
                     This app is designed for specific organizational use.
                   </p>
                 </div>
@@ -132,31 +140,43 @@ const DownloadPage = () => {
 
             {/* Installation Steps */}
             <div className="bg-gray-50 rounded-lg p-6 mb-8">
-              <h3 className="font-semibold text-lg mb-4">Installation Instructions</h3>
+              <h3 className="font-semibold text-lg mb-4">
+                Installation Instructions
+              </h3>
               <ol className="space-y-3">
                 <li className="flex gap-3">
                   <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">
                     1
                   </span>
-                  <span>Download the APK file by clicking the button above</span>
+                  <span>
+                    Download the APK file by clicking the button above
+                  </span>
                 </li>
                 <li className="flex gap-3">
                   <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">
                     2
                   </span>
-                  <span>Go to Settings → Security → Enable "Install from Unknown Sources"</span>
+                  <span>
+                    Go to Settings → Security → Enable "Install from Unknown
+                    Sources"
+                  </span>
                 </li>
                 <li className="flex gap-3">
                   <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">
                     3
                   </span>
-                  <span>Open the downloaded APK file and follow the installation prompts</span>
+                  <span>
+                    Open the downloaded APK file and follow the installation
+                    prompts
+                  </span>
                 </li>
                 <li className="flex gap-3">
                   <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">
                     4
                   </span>
-                  <span>Launch the app and log in with your admin credentials</span>
+                  <span>
+                    Launch the app and log in with your admin credentials
+                  </span>
                 </li>
               </ol>
             </div>
@@ -176,7 +196,9 @@ const DownloadPage = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold mb-2">{feature.title}</h3>
-                      <p className="text-sm text-muted-foreground">{feature.description}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {feature.description}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -211,14 +233,21 @@ const DownloadPage = () => {
                 <div className="space-y-3 text-sm text-muted-foreground">
                   <div className="flex items-start gap-2">
                     <Shield className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <span><strong>Admin Users:</strong> Organization administrators with full access to their organization's data</span>
+                    <span>
+                      <strong>Admin Users:</strong> Organization administrators
+                      with full access to their organization's data
+                    </span>
                   </div>
                   <div className="flex items-start gap-2">
                     <Users className="h-4 w-4 text-purple-600 flex-shrink-0 mt-0.5" />
-                    <span><strong>Sales Agents:</strong> Field agents who can create and manage sales (coming soon)</span>
+                    <span>
+                      <strong>Sales Agents:</strong> Field agents who can create
+                      and manage sales (coming soon)
+                    </span>
                   </div>
                   <p className="text-xs text-amber-600 mt-4">
-                    Note: Super admin features are only available on the web platform
+                    Note: Super admin features are only available on the web
+                    platform
                   </p>
                 </div>
               </div>
@@ -232,18 +261,15 @@ const DownloadPage = () => {
             <div className="text-center">
               <h3 className="font-semibold text-lg mb-2">Need Help?</h3>
               <p className="text-muted-foreground mb-4">
-                If you encounter any issues during installation or usage, please contact our support team.
+                If you encounter any issues during installation or usage, please
+                contact our support team.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button variant="outline" asChild>
-                  <Link href="/docs">
-                    View Documentation
-                  </Link>
+                  <Link href="/docs">View Documentation</Link>
                 </Button>
                 <Button variant="outline" asChild>
-                  <Link href="/login">
-                    Web Login
-                  </Link>
+                  <Link href="/login">Web Login</Link>
                 </Button>
               </div>
             </div>
@@ -252,9 +278,7 @@ const DownloadPage = () => {
 
         {/* Footer */}
         <div className="mt-12 pt-8 border-t text-center text-muted-foreground text-sm">
-          <p>
-            © 2025 Atmosfair Sales Management. All rights reserved.
-          </p>
+          <p>© 2025 Atmosfair Sales Management. All rights reserved.</p>
           <p className="mt-2">
             For technical support: <strong>support@atmosfair.com</strong>
           </p>

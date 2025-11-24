@@ -21,7 +21,12 @@ const LoginPage = () => {
   const [loginAttempted, setLoginAttempted] = useState(false);
   const [sessionCleared, setSessionCleared] = useState(false);
 
-  const { signInWithCredentials, isAuthenticated, loading: authLoading, signOut } = useAuth();
+  const {
+    signInWithCredentials,
+    isAuthenticated,
+    loading: authLoading,
+    signOut,
+  } = useAuth();
   const router = useRouter();
 
   // Force clear any stale auth state on mount (when user arrives at login page)
@@ -46,7 +51,9 @@ const LoginPage = () => {
     // 3. Auth is not loading
     // 4. User explicitly attempted to log in
     if (sessionCleared && isAuthenticated && !authLoading && loginAttempted) {
-      console.log("🔐 [Login] Authenticated and login attempted - redirecting to dashboard");
+      console.log(
+        "🔐 [Login] Authenticated and login attempted - redirecting to dashboard"
+      );
       router.push("/dashboard");
     }
   }, [sessionCleared, isAuthenticated, authLoading, loginAttempted, router]);
@@ -79,14 +86,14 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 relative">
       {/* Download App Link - Top Right */}
-      <div className="absolute top-4 right-4">
+      {/* <div className="absolute top-4 right-4">
         <Link href="/download">
           <Button variant="outline" size="sm" className="gap-2">
             <Download className="h-4 w-4" />
             Download App
           </Button>
         </Link>
-      </div>
+      </div> */}
 
       <Card className="w-full max-w-md border-0 shadow-lg">
         <CardHeader className="text-center pb-8">
@@ -161,17 +168,19 @@ const LoginPage = () => {
             </Button>
 
             {/* Mobile App Download Link - Bottom */}
-            <div className="text-center pt-4 border-t">
-              <p className="text-sm text-gray-600 mb-2">
-                Prefer mobile?
-              </p>
+            {/* <div className="text-center pt-4 border-t">
+              <p className="text-sm text-gray-600 mb-2">Prefer mobile?</p>
               <Link href="/download">
-                <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-600 hover:text-blue-700 gap-2"
+                >
                   <Download className="h-4 w-4" />
                   Download Android App
                 </Button>
               </Link>
-            </div>
+            </div> */}
           </form>
         </CardContent>
       </Card>

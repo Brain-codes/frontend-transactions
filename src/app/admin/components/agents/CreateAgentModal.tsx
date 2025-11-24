@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FormGrid, FormFieldWrapper } from "@/components/ui/form-grid";
 import {
   AlertCircle,
   UserPlus,
@@ -202,7 +203,7 @@ const CreateAgentModal: React.FC<CreateAgentModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent size="xl">
         <DialogHeader>
           <DialogTitle>Add New Sales Agent</DialogTitle>
           <DialogDescription>
@@ -236,126 +237,128 @@ const CreateAgentModal: React.FC<CreateAgentModalProps> = ({
             return null;
           })}
 
-          <div className="space-y-2">
-            <Label htmlFor="agentName">Full Name *</Label>
-            <Input
-              id="agentName"
-              value={createForm.name}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setCreateForm((prev) => ({
-                  ...prev,
-                  name: e.target.value,
-                }))
-              }
-              placeholder="Enter agent's full name"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="agentEmail">Email Address *</Label>
-            <Input
-              id="agentEmail"
-              type="email"
-              value={createForm.email}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setCreateForm((prev) => ({
-                  ...prev,
-                  email: e.target.value,
-                }))
-              }
-              placeholder="Enter agent's email address"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label htmlFor="agentPassword">Password *</Label>
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                onClick={generatePassword}
-                disabled={createLoading}
-                className="text-blue-600 hover:text-blue-800 p-0 h-auto text-sm"
-              >
-                <RefreshCw className="h-3 w-3 mr-1" />
-                Auto Generate
-              </Button>
-            </div>
-            <div className="relative">
+          <FormGrid>
+            <FormFieldWrapper fullWidth>
+              <Label htmlFor="agentName">Full Name *</Label>
               <Input
-                id="agentPassword"
-                type={showPassword ? "text" : "password"}
-                value={createForm.password}
+                id="agentName"
+                value={createForm.name}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setCreateForm((prev) => ({
                     ...prev,
-                    password: e.target.value,
+                    name: e.target.value,
                   }))
                 }
-                placeholder="Enter password"
-                className="pr-20"
+                placeholder="Enter agent's full name"
               />
-              <div className="absolute inset-y-0 right-0 flex items-center">
-                {createForm.password && (
+            </FormFieldWrapper>
+
+            <FormFieldWrapper fullWidth>
+              <Label htmlFor="agentEmail">Email Address *</Label>
+              <Input
+                id="agentEmail"
+                type="email"
+                value={createForm.email}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    email: e.target.value,
+                  }))
+                }
+                placeholder="Enter agent's email address"
+              />
+            </FormFieldWrapper>
+
+            <FormFieldWrapper>
+              <div className="flex justify-between items-center">
+                <Label htmlFor="agentPassword">Password *</Label>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  onClick={generatePassword}
+                  disabled={createLoading}
+                  className="text-blue-600 hover:text-blue-800 p-0 h-auto text-sm"
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Auto Generate
+                </Button>
+              </div>
+              <div className="relative">
+                <Input
+                  id="agentPassword"
+                  type={showPassword ? "text" : "password"}
+                  value={createForm.password}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setCreateForm((prev) => ({
+                      ...prev,
+                      password: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter password"
+                  className="pr-20"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center">
+                  {createForm.password && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(createForm.password)}
+                      disabled={createLoading}
+                      className="h-8 w-8 p-0 mr-1"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => copyToClipboard(createForm.password)}
+                    onClick={() => setShowPassword(!showPassword)}
                     disabled={createLoading}
                     className="h-8 w-8 p-0 mr-1"
                   >
-                    <Copy className="h-3 w-3" />
+                    {showPassword ? (
+                      <EyeOff className="h-3 w-3" />
+                    ) : (
+                      <Eye className="h-3 w-3" />
+                    )}
                   </Button>
-                )}
+                </div>
+              </div>
+            </FormFieldWrapper>
+
+            <FormFieldWrapper>
+              <Label htmlFor="confirmPassword">Confirm Password *</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setConfirmPassword(e.target.value)
+                  }
+                  placeholder="Confirm password"
+                  className="pr-10"
+                />
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   disabled={createLoading}
-                  className="h-8 w-8 p-0 mr-1"
+                  className="absolute inset-y-0 right-0 h-8 w-8 p-0 mr-1"
                 >
-                  {showPassword ? (
+                  {showConfirmPassword ? (
                     <EyeOff className="h-3 w-3" />
                   ) : (
                     <Eye className="h-3 w-3" />
                   )}
                 </Button>
               </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password *</Label>
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                value={confirmPassword}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setConfirmPassword(e.target.value)
-                }
-                placeholder="Confirm password"
-                className="pr-10"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                disabled={createLoading}
-                className="absolute inset-y-0 right-0 h-8 w-8 p-0 mr-1"
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-3 w-3" />
-                ) : (
-                  <Eye className="h-3 w-3" />
-                )}
-              </Button>
-            </div>
-          </div>
+            </FormFieldWrapper>
+          </FormGrid>
 
           {/* Copy Message */}
           {copyMessage && (

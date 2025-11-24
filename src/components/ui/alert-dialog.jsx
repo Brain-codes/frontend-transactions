@@ -39,12 +39,14 @@ const AlertDialogContent = React.forwardRef(
       <div
         ref={ref}
         className={cn(
-          "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 sm:rounded-lg",
+          "fixed left-[50%] top-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%] border bg-white shadow-lg duration-200 sm:rounded-lg flex flex-col overflow-hidden max-h-[90vh]",
           className
         )}
         {...props}
       >
-        {children}
+        <div className="overflow-y-auto overflow-x-hidden flex-1 p-6">
+          <div className="grid gap-4">{children}</div>
+        </div>
       </div>
     );
   }

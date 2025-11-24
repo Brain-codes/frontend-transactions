@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import Modal from "@/components/ui/modal";
+import { FormGrid, FormFieldWrapper } from "@/components/ui/form-grid";
 import { X, Plus, Save } from "lucide-react";
 import { lgaAndStates } from "../constants";
 
@@ -181,190 +182,204 @@ const OrganizationFormModal = ({
           ? "Update the organization details below."
           : "Fill in the information below to create a new partner."
       }
-      className="max-w-md"
+      size="2xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-6 mt-2">
-        {/* Required Fields - Only 3 required fields */}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Required Fields Section */}
         <div className="space-y-4">
-          {/* Partner Name */}
-          <div className="space-y-2">
-            <Label htmlFor="partner_name" className="text-gray-700">
-              Partner Name <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="partner_name"
-              value={formData.partner_name}
-              onChange={(e) =>
-                handleInputChange("partner_name", e.target.value)
-              }
-              placeholder="Enter partner name"
-              maxLength={100}
-              className={`text-sm text-gray-600 ${
-                errors.partner_name ? "border-red-500" : ""
-              }`}
-            />
-            {errors.partner_name && (
-              <p className="text-xs text-red-500">{errors.partner_name}</p>
-            )}
-          </div>
-
-          {/* Branch */}
-          <div className="space-y-2">
-            <Label htmlFor="branch" className="text-gray-700">
-              Branch <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="branch"
-              value={formData.branch}
-              onChange={(e) => handleInputChange("branch", e.target.value)}
-              placeholder="Enter branch name"
-              maxLength={100}
-              className={`text-sm text-gray-600 ${
-                errors.branch ? "border-red-500" : ""
-              }`}
-            />
-            {errors.branch && (
-              <p className="text-xs text-red-500">{errors.branch}</p>
-            )}
-          </div>
-
-          {/* State */}
-          <div className="space-y-2">
-            <Label htmlFor="state" className="text-gray-700">
-              State <span className="text-red-500">*</span>
-            </Label>
-            <Select
-              value={formData.state}
-              onValueChange={(value) => handleInputChange("state", value)}
-            >
-              <SelectTrigger
+          <h3 className="text-sm font-medium text-gray-900">
+            Required Information
+          </h3>
+          <FormGrid>
+            {/* Partner Name */}
+            <FormFieldWrapper fullWidth>
+              <Label htmlFor="partner_name" className="text-gray-700">
+                Partner Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="partner_name"
+                value={formData.partner_name}
+                onChange={(e) =>
+                  handleInputChange("partner_name", e.target.value)
+                }
+                placeholder="Enter partner name"
+                maxLength={100}
                 className={`text-sm text-gray-600 ${
-                  errors.state ? "border-red-500" : ""
+                  errors.partner_name ? "border-red-500" : ""
                 }`}
+              />
+              {errors.partner_name && (
+                <p className="text-xs text-red-500">{errors.partner_name}</p>
+              )}
+            </FormFieldWrapper>
+
+            {/* Branch */}
+            <FormFieldWrapper>
+              <Label htmlFor="branch" className="text-gray-700">
+                Branch <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="branch"
+                value={formData.branch}
+                onChange={(e) => handleInputChange("branch", e.target.value)}
+                placeholder="Enter branch name"
+                maxLength={100}
+                className={`text-sm text-gray-600 ${
+                  errors.branch ? "border-red-500" : ""
+                }`}
+              />
+              {errors.branch && (
+                <p className="text-xs text-red-500">{errors.branch}</p>
+              )}
+            </FormFieldWrapper>
+
+            {/* State */}
+            <FormFieldWrapper>
+              <Label htmlFor="state" className="text-gray-700">
+                State <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={formData.state}
+                onValueChange={(value) => handleInputChange("state", value)}
               >
-                <SelectValue placeholder="Select state" />
-              </SelectTrigger>
-              <SelectContent>
-                {nigerianStates.map((state) => (
-                  <SelectItem key={state} value={state}>
-                    {state}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.state && (
-              <p className="text-xs text-red-500">{errors.state}</p>
-            )}
-          </div>
+                <SelectTrigger
+                  className={`text-sm text-gray-600 ${
+                    errors.state ? "border-red-500" : ""
+                  }`}
+                >
+                  <SelectValue placeholder="Select state" />
+                </SelectTrigger>
+                <SelectContent>
+                  {nigerianStates.map((state) => (
+                    <SelectItem key={state} value={state}>
+                      {state}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.state && (
+                <p className="text-xs text-red-500">{errors.state}</p>
+              )}
+            </FormFieldWrapper>
+          </FormGrid>
         </div>
-        {/* Optional Fields - 5 optional fields */}
+
+        {/* Optional Fields Section */}
         <div className="space-y-4">
-          {/* Contact Person */}
-          <div className="space-y-2">
-            <Label htmlFor="contact_person" className="text-gray-700">
-              Contact Person
-            </Label>
-            <Input
-              id="contact_person"
-              value={formData.contact_person}
-              onChange={(e) =>
-                handleInputChange("contact_person", e.target.value)
-              }
-              placeholder="John Doe"
-              maxLength={100}
-              className={`text-sm text-gray-600 ${
-                errors.contact_person ? "border-red-500" : ""
-              }`}
-            />
-            {errors.contact_person && (
-              <p className="text-xs text-red-500">{errors.contact_person}</p>
-            )}
-          </div>
+          <h3 className="text-sm font-medium text-gray-900">
+            Contact Information (Optional)
+          </h3>
+          <FormGrid>
+            {/* Contact Person */}
+            <FormFieldWrapper>
+              <Label htmlFor="contact_person" className="text-gray-700">
+                Contact Person
+              </Label>
+              <Input
+                id="contact_person"
+                value={formData.contact_person}
+                onChange={(e) =>
+                  handleInputChange("contact_person", e.target.value)
+                }
+                placeholder="John Doe"
+                maxLength={100}
+                className={`text-sm text-gray-600 ${
+                  errors.contact_person ? "border-red-500" : ""
+                }`}
+              />
+              {errors.contact_person && (
+                <p className="text-xs text-red-500">{errors.contact_person}</p>
+              )}
+            </FormFieldWrapper>
 
-          {/* Contact Phone */}
-          <div className="space-y-2">
-            <Label htmlFor="contact_phone" className="text-gray-700">
-              Contact Phone
-            </Label>
-            <Input
-              id="contact_phone"
-              value={formData.contact_phone}
-              onChange={(e) =>
-                handleInputChange("contact_phone", e.target.value)
-              }
-              placeholder="+234123456789"
-              maxLength={20}
-              className={`text-sm text-gray-600 ${
-                errors.contact_phone ? "border-red-500" : ""
-              }`}
-            />
-            {errors.contact_phone && (
-              <p className="text-xs text-red-500">{errors.contact_phone}</p>
-            )}
-          </div>
+            {/* Contact Phone */}
+            <FormFieldWrapper>
+              <Label htmlFor="contact_phone" className="text-gray-700">
+                Contact Phone
+              </Label>
+              <Input
+                id="contact_phone"
+                value={formData.contact_phone}
+                onChange={(e) =>
+                  handleInputChange("contact_phone", e.target.value)
+                }
+                placeholder="+234123456789"
+                maxLength={20}
+                className={`text-sm text-gray-600 ${
+                  errors.contact_phone ? "border-red-500" : ""
+                }`}
+              />
+              {errors.contact_phone && (
+                <p className="text-xs text-red-500">{errors.contact_phone}</p>
+              )}
+            </FormFieldWrapper>
 
-          {/* Alternative Phone */}
-          <div className="space-y-2">
-            <Label htmlFor="alternative_phone" className="text-gray-700">
-              Alternative Phone
-            </Label>
-            <Input
-              id="alternative_phone"
-              value={formData.alternative_phone}
-              onChange={(e) =>
-                handleInputChange("alternative_phone", e.target.value)
-              }
-              placeholder="+234987654321"
-              maxLength={20}
-              className={`text-sm text-gray-600 ${
-                errors.alternative_phone ? "border-red-500" : ""
-              }`}
-            />
-            {errors.alternative_phone && (
-              <p className="text-xs text-red-500">{errors.alternative_phone}</p>
-            )}
-          </div>
+            {/* Alternative Phone */}
+            <FormFieldWrapper>
+              <Label htmlFor="alternative_phone" className="text-gray-700">
+                Alternative Phone
+              </Label>
+              <Input
+                id="alternative_phone"
+                value={formData.alternative_phone}
+                onChange={(e) =>
+                  handleInputChange("alternative_phone", e.target.value)
+                }
+                placeholder="+234987654321"
+                maxLength={20}
+                className={`text-sm text-gray-600 ${
+                  errors.alternative_phone ? "border-red-500" : ""
+                }`}
+              />
+              {errors.alternative_phone && (
+                <p className="text-xs text-red-500">
+                  {errors.alternative_phone}
+                </p>
+              )}
+            </FormFieldWrapper>
 
-          {/* Email */}
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-gray-700">
-              Email
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleInputChange("email", e.target.value)}
-              placeholder="contact@example.com"
-              className={`text-sm text-gray-600 ${
-                errors.email ? "border-red-500" : ""
-              }`}
-            />
-            {errors.email && (
-              <p className="text-xs text-red-500">{errors.email}</p>
-            )}
-          </div>
+            {/* Email */}
+            <FormFieldWrapper>
+              <Label htmlFor="email" className="text-gray-700">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleInputChange("email", e.target.value)}
+                placeholder="contact@example.com"
+                className={`text-sm text-gray-600 ${
+                  errors.email ? "border-red-500" : ""
+                }`}
+              />
+              {errors.email && (
+                <p className="text-xs text-red-500">{errors.email}</p>
+              )}
+            </FormFieldWrapper>
 
-          {/* Address */}
-          <div className="space-y-2">
-            <Label htmlFor="address" className="text-gray-700">
-              Address
-            </Label>
-            <Input
-              id="address"
-              value={formData.address}
-              onChange={(e) => handleInputChange("address", e.target.value)}
-              placeholder="123 Business Street"
-              maxLength={255}
-              className={`text-sm text-gray-600 ${
-                errors.address ? "border-red-500" : ""
-              }`}
-            />
-            {errors.address && (
-              <p className="text-xs text-red-500">{errors.address}</p>
-            )}
-          </div>
-        </div>{" "}
+            {/* Address */}
+            <FormFieldWrapper fullWidth>
+              <Label htmlFor="address" className="text-gray-700">
+                Address
+              </Label>
+              <Input
+                id="address"
+                value={formData.address}
+                onChange={(e) => handleInputChange("address", e.target.value)}
+                placeholder="123 Business Street"
+                maxLength={255}
+                className={`text-sm text-gray-600 ${
+                  errors.address ? "border-red-500" : ""
+                }`}
+              />
+              {errors.address && (
+                <p className="text-xs text-red-500">{errors.address}</p>
+              )}
+            </FormFieldWrapper>
+          </FormGrid>
+        </div>
+
         {/* Form Actions */}
         <div className="flex gap-3 pt-6 border-t">
           <Button
@@ -372,7 +387,7 @@ const OrganizationFormModal = ({
             variant="outline"
             onClick={handleClose}
             className="flex-1"
-            disabled={submitLoading} // Disable cancel button when submitting
+            disabled={submitLoading}
           >
             <X className="h-4 w-4 mr-2" />
             Cancel

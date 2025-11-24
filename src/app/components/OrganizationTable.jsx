@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -15,7 +16,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Eye,
   MoreVertical,
@@ -23,9 +23,29 @@ import {
   Trash2,
   Building2,
   FileText,
-  MapPin,
   Upload,
 } from "lucide-react";
+
+// Simple tooltip component
+const SimpleTooltip = ({ children, text }) => {
+  const [show, setShow] = useState(false);
+
+  return (
+    <div className="relative inline-block">
+      <div
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+      >
+        {children}
+      </div>
+      {show && (
+        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded whitespace-nowrap z-50">
+          {text}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const OrganizationTable = ({
   data,
@@ -82,17 +102,18 @@ const OrganizationTable = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Partner & Branch</TableHead>
-            <TableHead>Contact Info</TableHead>
+            <TableHead>Partner</TableHead>
+            <TableHead>Branch</TableHead>
+            <TableHead>Contact Name</TableHead>
+            <TableHead>Contact Phone</TableHead>
             <TableHead>Location</TableHead>
-            <TableHead>Created</TableHead>
             <TableHead className="text-center">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody className={loading ? "opacity-40" : ""}>
           {data.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center py-8">
+              <TableCell colSpan={6} className="text-center py-8">
                 <div className="flex flex-col items-center gap-3 text-gray-500">
                   <Building2 className="h-12 w-12 text-gray-300" />
                   <div>
@@ -112,130 +133,104 @@ const OrganizationTable = ({
                 key={organization.id || index}
                 className="hover:bg-gray-50 text-gray-700"
               >
-                {/* Partner & Branch */}
+                {/* Partner */}
                 <TableCell className="font-medium">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Building2 className="h-4 w-4 text-brand-600" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-gray-900 truncate">
-                        {organization.partner_name || "N/A"}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">
-                        {organization.branch || "N/A"}
-                      </p>
-                    </div>
+                  <div className="text-sm font-medium text-gray-900 truncate">
+                    {organization.partner_name || "N/A"}
                   </div>
                 </TableCell>
 
-                {/* Contact Info */}
+                {/* Branch */}
                 <TableCell>
-                  <div className="space-y-0.5 max-w-[200px]">
-                    {organization.contact_phone && (
-                      <p className="text-sm truncate">
-                        {organization.contact_phone}
-                      </p>
-                    )}
-                    {organization.email && (
-                      <p className="text-xs text-gray-500 truncate">
-                        {organization.email}
-                      </p>
-                    )}
-                    {organization.contact_person && (
-                      <p className="text-xs text-gray-400 truncate">
-                        {organization.contact_person}
-                      </p>
-                    )}
-                    {!organization.contact_phone &&
-                      !organization.email &&
-                      !organization.contact_person && (
-                        <span className="text-gray-500 text-sm">N/A</span>
-                      )}
+                  <div className="text-sm text-gray-700">
+                    {organization.branch || "N/A"}
+                  </div>
+                </TableCell>
+
+                {/* Contact Name */}
+                <TableCell>
+                  <div className="text-sm text-gray-700">
+                    {organization.contact_person || "N/A"}
+                  </div>
+                </TableCell>
+
+                {/* Contact Phone */}
+                <TableCell>
+                  <div className="text-sm text-gray-700">
+                    {organization.contact_phone || "N/A"}
                   </div>
                 </TableCell>
 
                 {/* Location */}
                 <TableCell>
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-medium text-gray-900">
-                      {organization.state || "N/A"}
-                    </p>
-                    {organization.address && (
-                      <p className="text-xs text-gray-400 truncate max-w-[150px]">
-                        {organization.address}
-                      </p>
-                    )}
+                  <div className="text-sm text-gray-700">
+                    {organization.state || organization.address || "N/A"}
                   </div>
                 </TableCell>
 
-                {/* Status */}
-                {/* <TableCell>
-                  <Badge className={getStatusColor(organization.status)}>
-                    {formatStatus(organization.status)}
-                  </Badge>
-                </TableCell> */}
-
-                {/* Created Date */}
-                <TableCell>{formatDate(organization.created_at)}</TableCell>
-
                 {/* Actions */}
                 <TableCell className="text-center">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
+                  <div className="flex items-center justify-center gap-1">
+                    <SimpleTooltip text="View Details">
+                      <Button
+                        variant="ghost"
+                        className="h-8 w-8 p-0"
                         onClick={() => onView(organization)}
-                        className="py-2 px-3  rounded-md hover:!bg-primary hover:!text-white"
                       >
-                        <Eye className="mr-5 h-4 w-4" />
-                        View Details
-                      </DropdownMenuItem>
-                      <hr className=" border-gray-200" />
-                      <DropdownMenuItem
-                        onClick={() => onViewStoveIds(organization)}
-                        className="py-2 px-3  rounded-md hover:!bg-primary hover:!text-white"
-                      >
-                        <FileText className="mr-5 h-4 w-4" strokeWidth={1.5} />
-                        View Stove ID&#39;s
-                      </DropdownMenuItem>
-                      <hr className=" border-gray-200" />
-                      {onImportCSV && (
-                        <>
-                          <DropdownMenuItem
-                            onClick={() => onImportCSV(organization)}
-                            className="py-2 px-3  rounded-md hover:!bg-primary hover:!text-white"
-                          >
-                            <Upload
-                              className="mr-5 h-4 w-4"
-                              strokeWidth={1.5}
-                            />
-                            Import CSV
-                          </DropdownMenuItem>
-                          <hr className=" border-gray-200" />
-                        </>
-                      )}
-                      <DropdownMenuItem
-                        onClick={() => onEdit(organization)}
-                        className="py-2 px-3  rounded-md hover:!bg-primary hover:!text-white"
-                      >
-                        <Edit className="mr-5 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <hr className=" border-gray-200" />
-                      <DropdownMenuItem
-                        onClick={() => onDelete(organization)}
-                        className="text-red-600 py-2 px-3  rounded-md hover:!bg-red-600 hover:!text-white"
-                      >
-                        <Trash2 className="mr-5 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </SimpleTooltip>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => onViewStoveIds(organization)}
+                          className="py-2 px-3  rounded-md hover:!bg-primary hover:!text-white"
+                        >
+                          <FileText
+                            className="mr-5 h-4 w-4"
+                            strokeWidth={1.5}
+                          />
+                          View Stove ID&#39;s
+                        </DropdownMenuItem>
+                        <hr className=" border-gray-200" />
+                        {onImportCSV && (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => onImportCSV(organization)}
+                              className="py-2 px-3  rounded-md hover:!bg-primary hover:!text-white"
+                            >
+                              <Upload
+                                className="mr-5 h-4 w-4"
+                                strokeWidth={1.5}
+                              />
+                              Import CSV
+                            </DropdownMenuItem>
+                            <hr className=" border-gray-200" />
+                          </>
+                        )}
+                        <DropdownMenuItem
+                          onClick={() => onEdit(organization)}
+                          className="py-2 px-3  rounded-md hover:!bg-primary hover:!text-white"
+                        >
+                          <Edit className="mr-5 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <hr className=" border-gray-200" />
+                        <DropdownMenuItem
+                          onClick={() => onDelete(organization)}
+                          className="text-red-600 py-2 px-3  rounded-md hover:!bg-red-600 hover:!text-white"
+                        >
+                          <Trash2 className="mr-5 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </TableCell>
               </TableRow>
             ))

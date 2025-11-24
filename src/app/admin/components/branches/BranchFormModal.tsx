@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FormGrid, FormFieldWrapper } from "@/components/ui/form-grid";
 import { lgaAndStates } from "@/app/constants";
 import adminBranchesService from "@/app/services/adminBranchesService";
 import superAdminBranchesService from "@/app/services/superAdminBranchesService";
@@ -177,7 +178,7 @@ const BranchFormModal: React.FC<BranchFormModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent size="xl">
         <DialogHeader>
           <DialogTitle>
             {mode === "create" ? "Create New Branch" : "Edit Branch"}
@@ -200,89 +201,71 @@ const BranchFormModal: React.FC<BranchFormModalProps> = ({
             </div>
           )}
 
-          {/* Branch Name */}
-          <div className="space-y-2">
-            <Label htmlFor="name">Branch Name *</Label>
-            <Input
-              id="name"
-              type="text"
-              value={formData.name}
-              onChange={(e) => handleInputChange("name", e.target.value)}
-              placeholder="Enter branch name"
-              required
-              maxLength={100}
-            />
-          </div>
+          <FormGrid>
+            {/* Branch Name */}
+            <FormFieldWrapper fullWidth>
+              <Label htmlFor="name">Branch Name *</Label>
+              <Input
+                id="name"
+                type="text"
+                value={formData.name}
+                onChange={(e) => handleInputChange("name", e.target.value)}
+                placeholder="Enter branch name"
+                required
+                maxLength={100}
+              />
+            </FormFieldWrapper>
 
-          {/* Country */}
-          {/* <div className="space-y-2">
-            <Label htmlFor="country">Country</Label>
-            <Select
-              value={formData.country}
-              onValueChange={(value) => handleInputChange("country", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select country" />
-              </SelectTrigger>
-              <SelectContent>
-                {countries.map((country) => (
-                  <SelectItem key={country} value={country}>
-                    {country}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div> */}
-
-          {/* State (Nigeria only) */}
-          {formData.country === "Nigeria" && (
-            <div className="space-y-2">
-              <Label htmlFor="state">State</Label>
-              <Select
-                value={formData.state || undefined}
-                onValueChange={(value) =>
-                  handleInputChange("state", value || "")
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select state" />
-                </SelectTrigger>
-                <SelectContent>
-                  {nigerianStates.map((state) => (
-                    <SelectItem key={state} value={state}>
-                      {state}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* LGA (Nigeria only, when state is selected) */}
-          {formData.country === "Nigeria" &&
-            formData.state &&
-            lgas.length > 0 && (
-              <div className="space-y-2">
-                <Label htmlFor="lga">Local Government Area</Label>
+            {/* State (Nigeria only) */}
+            {formData.country === "Nigeria" && (
+              <FormFieldWrapper>
+                <Label htmlFor="state">State</Label>
                 <Select
-                  value={formData.lga || undefined}
+                  value={formData.state || undefined}
                   onValueChange={(value) =>
-                    handleInputChange("lga", value || "")
+                    handleInputChange("state", value || "")
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select LGA" />
+                    <SelectValue placeholder="Select state" />
                   </SelectTrigger>
                   <SelectContent>
-                    {lgas.map((lga) => (
-                      <SelectItem key={lga} value={lga}>
-                        {lga}
+                    {nigerianStates.map((state) => (
+                      <SelectItem key={state} value={state}>
+                        {state}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </FormFieldWrapper>
             )}
+
+            {/* LGA (Nigeria only, when state is selected) */}
+            {formData.country === "Nigeria" &&
+              formData.state &&
+              lgas.length > 0 && (
+                <FormFieldWrapper>
+                  <Label htmlFor="lga">Local Government Area</Label>
+                  <Select
+                    value={formData.lga || undefined}
+                    onValueChange={(value) =>
+                      handleInputChange("lga", value || "")
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select LGA" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {lgas.map((lga) => (
+                        <SelectItem key={lga} value={lga}>
+                          {lga}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormFieldWrapper>
+              )}
+          </FormGrid>
 
           <DialogFooter className="flex gap-2">
             <Button

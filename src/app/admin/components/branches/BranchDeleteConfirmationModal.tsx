@@ -35,7 +35,7 @@ const BranchDeleteConfirmationModal: React.FC<
 
   return (
     <Dialog open={open} onOpenChange={onCancel}>
-      <DialogContent className="sm:max-w-[400px]">
+      <DialogContent size="md">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <AlertTriangle className="h-5 w-5 text-red-500" />

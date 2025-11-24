@@ -131,9 +131,9 @@ const StoveIdsSidebar = ({ organization, isOpen, onClose }) => {
         </span>
       }
       description="View all stove IDs for this organization"
-      className="max-w-lg"
+      size="3xl"
     >
-      <div className="mt-6 space-y-4 overflow-y-auto max-h-[80vh]">
+      <div className="space-y-4">
         {/* Totals and Status Filter */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           {totals && (
@@ -256,10 +256,12 @@ const StoveIdsSidebar = ({ organization, isOpen, onClose }) => {
         )}
 
         {/* Close Button */}
-        <Button variant="ghost" onClick={onClose} className="w-full mt-6">
-          <X className="h-4 w-4 mr-2" />
-          Close
-        </Button>
+        <div className="pt-4 border-t">
+          <Button variant="ghost" onClick={onClose} className="w-full">
+            <X className="h-4 w-4 mr-2" />
+            Close
+          </Button>
+        </div>
       </div>
     </Modal>
   );

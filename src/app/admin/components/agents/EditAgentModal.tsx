@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FormGrid, FormFieldWrapper } from "@/components/ui/form-grid";
 import { AlertCircle, Save, Loader2 } from "lucide-react";
 import { SalesAgent } from "@/types/salesAgent";
 import adminAgentService from "../../../services/adminAgentService.jsx";
@@ -163,7 +164,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent size="xl">
         <DialogHeader>
           <DialogTitle>Edit Sales Agent</DialogTitle>
           <DialogDescription>
@@ -196,52 +197,54 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
             return null;
           })}
 
-          <div className="space-y-2">
-            <Label htmlFor="updateName">Full Name *</Label>
-            <Input
-              id="updateName"
-              value={updateForm.full_name}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setUpdateForm((prev) => ({
-                  ...prev,
-                  full_name: e.target.value,
-                }))
-              }
-              placeholder="Enter agent's full name"
-            />
-          </div>
+          <FormGrid>
+            <FormFieldWrapper>
+              <Label htmlFor="updateName">Full Name *</Label>
+              <Input
+                id="updateName"
+                value={updateForm.full_name}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setUpdateForm((prev) => ({
+                    ...prev,
+                    full_name: e.target.value,
+                  }))
+                }
+                placeholder="Enter agent's full name"
+              />
+            </FormFieldWrapper>
 
-          <div className="space-y-2">
-            <Label htmlFor="updateEmail">Email Address *</Label>
-            <Input
-              id="updateEmail"
-              type="email"
-              value={updateForm.email}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setUpdateForm((prev) => ({
-                  ...prev,
-                  email: e.target.value,
-                }))
-              }
-              placeholder="Enter agent's email address"
-            />
-          </div>
+            <FormFieldWrapper>
+              <Label htmlFor="updateEmail">Email Address *</Label>
+              <Input
+                id="updateEmail"
+                type="email"
+                value={updateForm.email}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setUpdateForm((prev) => ({
+                    ...prev,
+                    email: e.target.value,
+                  }))
+                }
+                placeholder="Enter agent's email address"
+              />
+            </FormFieldWrapper>
 
-          <div className="space-y-2">
-            <Label htmlFor="updatePhone">Phone Number</Label>
-            <Input
-              id="updatePhone"
-              type="tel"
-              value={updateForm.phone}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setUpdateForm((prev) => ({
-                  ...prev,
-                  phone: e.target.value,
-                }))
-              }
-              placeholder="Enter agent's phone number (optional)"
-            />
-          </div>
+            <FormFieldWrapper fullWidth>
+              <Label htmlFor="updatePhone">Phone Number</Label>
+              <Input
+                id="updatePhone"
+                type="tel"
+                value={updateForm.phone}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setUpdateForm((prev) => ({
+                    ...prev,
+                    phone: e.target.value,
+                  }))
+                }
+                placeholder="Enter agent's phone number (optional)"
+              />
+            </FormFieldWrapper>
+          </FormGrid>
 
           <div className="flex justify-end space-x-3 pt-4">
             <Button
