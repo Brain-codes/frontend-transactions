@@ -177,31 +177,19 @@ const StoveIdsSidebar = ({ organization, isOpen, onClose }) => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
                   <TableHead>Stove ID</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead>Sales Date</TableHead>
+                  <TableHead className="text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {stoveIds.map((stove) => (
                   <TableRow key={stove.id}>
-                    <TableCell>
-                      <span
-                        className="truncate max-w-[80px] block cursor-pointer"
-                        title={stove.id}
-                        style={{
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {String(stove.id).length > 10
-                          ? `${String(stove.id).slice(0, 10)}...`
-                          : stove.id}
-                      </span>
+                    <TableCell className="font-medium">
+                      {stove.stove_id}
                     </TableCell>
-                    <TableCell>{stove.stove_id}</TableCell>
                     <TableCell>
                       <Badge
                         className={
@@ -214,15 +202,21 @@ const StoveIdsSidebar = ({ organization, isOpen, onClose }) => {
                           stove.status.slice(1)}
                       </Badge>
                     </TableCell>
-                    <TableCell className="flex items-center gap-2">
-                      {formatDate(stove.created_at)}
+                    <TableCell>{formatDate(stove.created_at)}</TableCell>
+                    <TableCell>
+                      {stove.status === "sold" && stove.sale_date
+                        ? formatDate(stove.sale_date)
+                        : stove.status === "sold"
+                        ? "N/A"
+                        : "-"}
+                    </TableCell>
+                    <TableCell className="text-center">
                       {stove.sale_id && (
                         <Button
                           size="icon"
                           variant="ghost"
-                          title="View Sale"
+                          title="View Sale Details"
                           onClick={() => handleViewSale(stove.sale_id)}
-                          className="ml-2"
                           disabled={
                             saleLoading && loadingSaleId !== stove.sale_id
                           }

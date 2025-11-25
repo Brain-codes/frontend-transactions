@@ -16,6 +16,7 @@ import {
   FileImage,
   Key,
   User,
+  Package,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import Link from "next/link";
@@ -77,6 +78,14 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           icon: Building2,
           route: "partners",
           href: "/partners",
+          badge: null,
+          requiresAuth: true,
+        },
+        {
+          name: "Stove ID Management",
+          icon: Package,
+          route: "stove-management",
+          href: "/stove-management",
           badge: null,
           requiresAuth: true,
         },
@@ -147,6 +156,14 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           icon: Users,
           route: "admin-agents",
           href: "/admin/agents",
+          badge: null,
+          requiresAuth: true,
+        },
+        {
+          name: "Stove ID Management",
+          icon: Package,
+          route: "stove-management",
+          href: "/stove-management",
           badge: null,
           requiresAuth: true,
         },
@@ -255,36 +272,41 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">
               Main Navigation
             </p>
-            {navItems.map((item) => (
-              <Link
-                key={item.route}
-                href={item.href}
-                onClick={() => navigateToRoute(item.href)}
-                className={`group flex items-center justify-between w-full px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
-                  currentRoute === item.route
-                    ? "bg-brand/10 text-brand border border-brand/20 shadow-sm"
-                    : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div
-                    className={`p-2 rounded-lg transition-colors ${
-                      currentRoute === item.route
-                        ? "bg-brand text-white"
-                        : "bg-gray-100 text-gray-500 group-hover:bg-gray-200 group-hover:text-gray-600"
-                    }`}
-                  >
-                    <item.icon className="h-5 w-5" />
+            {navItems.map((item) => {
+              // Check if current route matches item route
+              const isActive = currentRoute === item.route;
+
+              return (
+                <Link
+                  key={item.route}
+                  href={item.href}
+                  onClick={() => navigateToRoute(item.href)}
+                  className={`group flex items-center justify-between w-full px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+                    isActive
+                      ? "bg-brand/10 text-brand border border-brand/20 shadow-sm"
+                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className={`p-2 rounded-lg transition-colors ${
+                        isActive
+                          ? "bg-brand text-white"
+                          : "bg-gray-100 text-gray-500 group-hover:bg-gray-200 group-hover:text-gray-600"
+                      }`}
+                    >
+                      <item.icon className="h-5 w-5" />
+                    </div>
+                    <span>{item.name}</span>
                   </div>
-                  <span>{item.name}</span>
-                </div>
-                {item.badge && (
-                  <Badge variant="secondary" className="text-xs px-2 py-1">
-                    {item.badge}
-                  </Badge>
-                )}
-              </Link>
-            ))}
+                  {item.badge && (
+                    <Badge variant="secondary" className="text-xs px-2 py-1">
+                      {item.badge}
+                    </Badge>
+                  )}
+                </Link>
+              );
+            })}
           </div>
         </nav>
       </div>
