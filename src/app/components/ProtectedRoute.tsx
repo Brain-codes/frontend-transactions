@@ -17,8 +17,14 @@ const ProtectedRoute = ({
   requireSuperAdmin = false,
   requireAdminAccess = false,
 }: ProtectedRouteProp) => {
-  const { user, loading, isAuthenticated, isSuperAdmin, hasAdminAccess, userRole } =
-    useAuth();
+  const {
+    user,
+    loading,
+    isAuthenticated,
+    isSuperAdmin,
+    hasAdminAccess,
+    userRole,
+  } = useAuth();
   const router = useRouter();
   const [timeoutReached, setTimeoutReached] = useState(false);
 
@@ -133,8 +139,11 @@ const ProtectedRoute = ({
   }
 
   // Show loading spinner while redirecting
-  const hasRoleAccess = !allowedRoles || allowedRoles.length === 0 || (userRole && allowedRoles.includes(userRole));
-  
+  const hasRoleAccess =
+    !allowedRoles ||
+    allowedRoles.length === 0 ||
+    (userRole && allowedRoles.includes(userRole));
+
   if (
     !isAuthenticated ||
     !hasRoleAccess ||

@@ -125,7 +125,8 @@ export const AuthProvider = ({ children }) => {
   const hasAdminAccess = isSuperAdmin || isAdmin;
 
   // Get user role
-  const userRole = user?.app_metadata?.role || user?.user_metadata?.role || null;
+  const userRole =
+    user?.app_metadata?.role || user?.user_metadata?.role || null;
 
   // TODO: TEMPORARY - Remove this atmosfair.com email check when implementing proper role-based navigation
   // Helper function to check if user email contains atmosfair.com
@@ -370,29 +371,37 @@ export const AuthProvider = ({ children }) => {
         throw new Error("Supabase URL is not configured");
       }
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/login-with-credentials`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          identifier,
-          password,
-        }),
-      });
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/login-with-credentials`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            identifier,
+            password,
+          }),
+        }
+      );
 
       const responseData = await response.json();
 
       if (!response.ok) {
-        console.error("🔐 [AuthContext] Credentials login failed:", responseData.error);
+        console.error(
+          "🔐 [AuthContext] Credentials login failed:",
+          responseData.error
+        );
         return {
           data: null,
-          error: { message: responseData.error || 'Login failed' }
+          error: { message: responseData.error || "Login failed" },
         };
       }
 
       if (responseData.success && responseData.session) {
-        console.log("🔐 [AuthContext] Credentials login successful, setting session");
+        console.log(
+          "🔐 [AuthContext] Credentials login successful, setting session"
+        );
 
         // Set the session in Supabase client
         const { error: sessionError } = await supabase.auth.setSession({
@@ -401,7 +410,10 @@ export const AuthProvider = ({ children }) => {
         });
 
         if (sessionError) {
-          console.error("🔐 [AuthContext] Error setting session:", sessionError);
+          console.error(
+            "🔐 [AuthContext] Error setting session:",
+            sessionError
+          );
           return { data: null, error: sessionError };
         }
 
@@ -410,7 +422,9 @@ export const AuthProvider = ({ children }) => {
 
         // Store profile data if provided
         if (responseData.profile) {
-          console.log("🔐 [AuthContext] Storing profile from credentials response");
+          console.log(
+            "🔐 [AuthContext] Storing profile from credentials response"
+          );
           profileService.setProfile(responseData.profile);
         }
 
@@ -428,13 +442,13 @@ export const AuthProvider = ({ children }) => {
 
       return {
         data: null,
-        error: { message: 'Invalid response format' }
+        error: { message: "Invalid response format" },
       };
     } catch (error) {
       console.error("🔐 [AuthContext] Error during credentials login:", error);
       return {
         data: null,
-        error: { message: error.message || 'An unexpected error occurred' }
+        error: { message: error.message || "An unexpected error occurred" },
       };
     }
   };
@@ -470,7 +484,7 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
 
       // Sign out from Supabase
-      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      const { error } = await supabase.auth.signOut({ scope: "local" });
 
       if (error) {
         console.error("🔐 [AuthContext] Sign out error:", error);
