@@ -90,6 +90,14 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           requiresAuth: true,
         },
         {
+          name: "User Management",
+          icon: Users,
+          route: "user-management",
+          href: "/user-management",
+          badge: null,
+          requiresAuth: true,
+        },
+        {
           name: "Credentials",
           icon: Key,
           route: "admin-credentials",
