@@ -163,14 +163,23 @@ const UserManagementPage = () => {
       }
 
       setUsers(result.data || []);
-      setPagination(
-        result.pagination || {
+
+      // Map API pagination response to local state format
+      if (result.pagination) {
+        setPagination({
+          page: result.pagination.currentPage || 1,
+          page_size: result.pagination.itemsPerPage || 25,
+          total_count: result.pagination.totalItems || 0,
+          total_pages: result.pagination.totalPages || 0,
+        });
+      } else {
+        setPagination({
           page: 1,
           page_size: 25,
           total_count: 0,
           total_pages: 0,
-        }
-      );
+        });
+      }
     } catch (err) {
       console.error("Error fetching users:", err);
       toast.error("Failed to fetch users", err.message);
@@ -342,7 +351,7 @@ const UserManagementPage = () => {
     setActionLoading(true);
     try {
       const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const functionUrl = `${baseUrl}/functions/v1/manage-users`;
+      const functionUrl = `${baseUrl}/functions/v1/manage-users/${selectedUser.id}`;
 
       const {
         data: { session },
@@ -353,7 +362,6 @@ const UserManagementPage = () => {
       }
 
       const payload = {
-        id: selectedUser.id,
         full_name: userForm.full_name.trim(),
         phone: userForm.phone.trim() || null,
       };
@@ -392,7 +400,7 @@ const UserManagementPage = () => {
     setActionLoading(true);
     try {
       const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const functionUrl = `${baseUrl}/functions/v1/manage-users`;
+      const functionUrl = `${baseUrl}/functions/v1/manage-users/${userId}`;
 
       const {
         data: { session },
@@ -402,10 +410,9 @@ const UserManagementPage = () => {
         throw new Error("No authentication token found");
       }
 
-      const action = currentStatus === "active" ? "disable" : "enable";
+      const newStatus = currentStatus === "active" ? "disabled" : "active";
       const payload = {
-        id: userId,
-        action: action,
+        status: newStatus,
       };
 
       const response = await fetch(functionUrl, {
@@ -444,7 +451,7 @@ const UserManagementPage = () => {
     setActionLoading(true);
     try {
       const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const functionUrl = `${baseUrl}/functions/v1/manage-users?id=${selectedUser.id}`;
+      const functionUrl = `${baseUrl}/functions/v1/manage-users/${selectedUser.id}`;
 
       const {
         data: { session },
@@ -722,7 +729,7 @@ const UserManagementPage = () => {
             {loading && (
               <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
                 <div className="text-center">
-                  <Loader2 className="animate-spin h-8 w-8 border-b-2 border-brand-600 mx-auto mb-2" />
+                  <Loader2 className="animate-spin h-8 w-8 mx-auto mb-2" />
                   <p className="text-sm text-gray-600">Loading users...</p>
                 </div>
               </div>
@@ -946,7 +953,10 @@ const UserManagementPage = () => {
                     type="email"
                     value={userForm.email}
                     onChange={(e) =>
-                      setUserForm((prev) => ({ ...prev, email: e.target.value }))
+                      setUserForm((prev) => ({
+                        ...prev,
+                        email: e.target.value,
+                      }))
                     }
                     placeholder="Enter email address"
                     className={formErrors.email ? "border-red-500" : ""}
@@ -963,7 +973,10 @@ const UserManagementPage = () => {
                     id="phone"
                     value={userForm.phone}
                     onChange={(e) =>
-                      setUserForm((prev) => ({ ...prev, phone: e.target.value }))
+                      setUserForm((prev) => ({
+                        ...prev,
+                        phone: e.target.value,
+                      }))
                     }
                     placeholder="Enter phone number"
                   />
@@ -1029,7 +1042,9 @@ const UserManagementPage = () => {
                             }))
                           }
                           placeholder="Enter password (min 8 characters)"
-                          className={formErrors.password ? "border-red-500" : ""}
+                          className={
+                            formErrors.password ? "border-red-500" : ""
+                          }
                         />
                         <Button
                           type="button"
@@ -1146,7 +1161,10 @@ const UserManagementPage = () => {
                     id="edit_phone"
                     value={userForm.phone}
                     onChange={(e) =>
-                      setUserForm((prev) => ({ ...prev, phone: e.target.value }))
+                      setUserForm((prev) => ({
+                        ...prev,
+                        phone: e.target.value,
+                      }))
                     }
                     placeholder="Enter phone number"
                   />
