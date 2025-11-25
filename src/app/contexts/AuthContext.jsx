@@ -111,6 +111,9 @@ export const AuthProvider = ({ children }) => {
   const isSuperAdmin =
     user?.app_metadata?.role === "super_admin" ||
     user?.user_metadata?.role === "super_admin";
+  const isSuperAdminAgent =
+    user?.app_metadata?.role === "super_admin_agent" ||
+    user?.user_metadata?.role === "super_admin_agent";
   const isAdmin =
     user?.app_metadata?.role === "admin" ||
     user?.user_metadata?.role === "admin";
@@ -120,6 +123,9 @@ export const AuthProvider = ({ children }) => {
 
   // Helper function to check if user has admin level access (admin or super_admin)
   const hasAdminAccess = isSuperAdmin || isAdmin;
+
+  // Get user role
+  const userRole = user?.app_metadata?.role || user?.user_metadata?.role || null;
 
   // TODO: TEMPORARY - Remove this atmosfair.com email check when implementing proper role-based navigation
   // Helper function to check if user email contains atmosfair.com
@@ -511,9 +517,11 @@ export const AuthProvider = ({ children }) => {
     loading,
     isAuthenticated,
     isSuperAdmin,
+    isSuperAdminAgent,
     isAdmin,
     isAgent,
     hasAdminAccess,
+    userRole,
     isAtmosfairUser, // TODO: TEMPORARY - Remove when implementing proper role-based navigation
     signIn,
     signInWithCredentials,

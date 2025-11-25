@@ -575,7 +575,7 @@ const UserManagementPage = () => {
   };
 
   return (
-    <ProtectedRoute allowedRoles={["super_admin"]}>
+    <ProtectedRoute allowedRoles={["super_admin", "super_admin_agent"]}>
       <DashboardLayout currentRoute="user-management">
         <div className="flex-1 bg-white p-6 space-y-6">
           {/* Header */}

@@ -6,16 +6,18 @@ import { useAuth } from "../contexts/AuthContext";
 
 type ProtectedRouteProp = {
   children?: React.ReactNode;
+  allowedRoles?: string[];
   requireSuperAdmin?: boolean;
   requireAdminAccess?: boolean;
 };
 
 const ProtectedRoute = ({
   children,
+  allowedRoles,
   requireSuperAdmin = false,
   requireAdminAccess = false,
 }: ProtectedRouteProp) => {
-  const { user, loading, isAuthenticated, isSuperAdmin, hasAdminAccess } =
+  const { user, loading, isAuthenticated, isSuperAdmin, hasAdminAccess, userRole } =
     useAuth();
   const router = useRouter();
   const [timeoutReached, setTimeoutReached] = useState(false);
@@ -67,6 +69,14 @@ const ProtectedRoute = ({
         return;
       }
 
+      // Check allowedRoles if specified
+      if (allowedRoles && allowedRoles.length > 0) {
+        if (!userRole || !allowedRoles.includes(userRole)) {
+          router.push("/unauthorized");
+          return;
+        }
+      }
+
       if (requireSuperAdmin && !isSuperAdmin) {
         // User is authenticated but not super admin
         router.push("/unauthorized");
@@ -85,6 +95,8 @@ const ProtectedRoute = ({
     isAuthenticated,
     isSuperAdmin,
     hasAdminAccess,
+    userRole,
+    allowedRoles,
     requireSuperAdmin,
     requireAdminAccess,
     router,
@@ -121,8 +133,11 @@ const ProtectedRoute = ({
   }
 
   // Show loading spinner while redirecting
+  const hasRoleAccess = !allowedRoles || allowedRoles.length === 0 || (userRole && allowedRoles.includes(userRole));
+  
   if (
     !isAuthenticated ||
+    !hasRoleAccess ||
     (requireSuperAdmin && !isSuperAdmin) ||
     (requireAdminAccess && !hasAdminAccess)
   ) {

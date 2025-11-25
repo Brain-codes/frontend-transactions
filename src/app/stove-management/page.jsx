@@ -74,6 +74,8 @@ const StoveManagementPage = () => {
     stove_id: "",
     status: "",
     organization_name: "",
+    branch: "",
+    state: "",
     date_from: "",
     date_to: "",
   });
@@ -114,6 +116,12 @@ const StoveManagementPage = () => {
       if (currentFilters.status) params.append("status", currentFilters.status);
       if (currentFilters.organization_name && userRole === "super_admin") {
         params.append("organization_name", currentFilters.organization_name);
+      }
+      if (currentFilters.branch && userRole === "super_admin") {
+        params.append("branch", currentFilters.branch);
+      }
+      if (currentFilters.state && userRole === "super_admin") {
+        params.append("state", currentFilters.state);
       }
       if (currentFilters.date_from)
         params.append("date_from", currentFilters.date_from);
@@ -186,6 +194,8 @@ const StoveManagementPage = () => {
       stove_id: "",
       status: "",
       organization_name: "",
+      branch: "",
+      state: "",
       date_from: "",
       date_to: "",
     };
@@ -372,6 +382,40 @@ const StoveManagementPage = () => {
                 </div>
               )}
 
+              {/* Branch (Super Admin only) */}
+              {userRole === "super_admin" && (
+                <div>
+                  <label className="text-xs text-gray-600 mb-1 block">
+                    Branch
+                  </label>
+                  <Input
+                    placeholder="Search branch..."
+                    value={filters.branch}
+                    onChange={(e) =>
+                      handleFilterChange("branch", e.target.value)
+                    }
+                    className="w-full"
+                  />
+                </div>
+              )}
+
+              {/* State (Super Admin only) */}
+              {userRole === "super_admin" && (
+                <div>
+                  <label className="text-xs text-gray-600 mb-1 block">
+                    State
+                  </label>
+                  <Input
+                    placeholder="Search state..."
+                    value={filters.state}
+                    onChange={(e) =>
+                      handleFilterChange("state", e.target.value)
+                    }
+                    className="w-full"
+                  />
+                </div>
+              )}
+
               {/* Date From */}
               <div>
                 <label className="text-xs text-gray-600 mb-1 block">
@@ -460,7 +504,7 @@ const StoveManagementPage = () => {
             {loading && (
               <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
                 <div className="text-center">
-                  <Loader2 className="animate-spin h-8 w-8 border-b-2 border-brand-600 mx-auto mb-2" />
+                  <Loader2 className="animate-spin h-8 w-8 mx-auto mb-2" />
                   <p className="text-sm text-gray-600">Loading stove IDs...</p>
                 </div>
               </div>
@@ -473,9 +517,11 @@ const StoveManagementPage = () => {
                   <TableHead>Status</TableHead>
                   {userRole === "super_admin" ? (
                     <>
-                      <TableHead>Used By</TableHead>
-                      <TableHead>Location</TableHead>
+                      <TableHead>Partner Name</TableHead>
+                      <TableHead>Branch</TableHead>
+                      <TableHead>Location (State)</TableHead>
                       <TableHead>Date Sold</TableHead>
+                      <TableHead>Sold To</TableHead>
                     </>
                   ) : (
                     <>
@@ -490,7 +536,7 @@ const StoveManagementPage = () => {
                 {stoveIds.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={userRole === "super_admin" ? 6 : 5}
+                      colSpan={userRole === "super_admin" ? 8 : 5}
                       className="text-center py-8"
                     >
                       <div className="text-gray-500">
@@ -522,11 +568,11 @@ const StoveManagementPage = () => {
                           <TableCell>
                             <div className="text-sm">
                               {stove.organization_name || "N/A"}
-                              {stove.branch && (
-                                <div className="text-xs text-gray-500">
-                                  {stove.branch}
-                                </div>
-                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {stove.branch || "N/A"}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -539,6 +585,11 @@ const StoveManagementPage = () => {
                               {stove.status === "sold" && stove.sale_date
                                 ? formatDate(stove.sale_date)
                                 : "-"}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {stove.sold_to || "-"}
                             </div>
                           </TableCell>
                         </>
