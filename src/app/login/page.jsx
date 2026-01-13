@@ -24,6 +24,9 @@ const LoginPage = () => {
   const {
     signInWithCredentials,
     isAuthenticated,
+    isSuperAdmin,
+    isAdmin,
+    isAgent,
     loading: authLoading,
     signOut,
   } = useAuth();
@@ -42,7 +45,7 @@ const LoginPage = () => {
     clearStaleSession();
   }, []); // Run once on mount
 
-  // Navigate to dashboard ONLY after a successful login attempt
+  // Navigate to appropriate dashboard based on role after successful login
   // AND only after the initial session clear is complete
   useEffect(() => {
     // Only redirect if:
@@ -52,11 +55,21 @@ const LoginPage = () => {
     // 4. User explicitly attempted to log in
     if (sessionCleared && isAuthenticated && !authLoading && loginAttempted) {
       console.log(
-        "🔐 [Login] Authenticated and login attempted - redirecting to dashboard"
+        "🔐 [Login] Authenticated and login attempted - redirecting based on role"
       );
-      router.push("/dashboard");
+      
+      // Redirect based on role
+      if (isSuperAdmin) {
+        router.push("/dashboard");
+      } else if (isAdmin) {
+        router.push("/admin");
+      } else if (isAgent) {
+        router.push("/agent");
+      } else {
+        router.push("/unauthorized");
+      }
     }
-  }, [sessionCleared, isAuthenticated, authLoading, loginAttempted, router]);
+  }, [sessionCleared, isAuthenticated, authLoading, loginAttempted, isSuperAdmin, isAdmin, isAgent, router]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
