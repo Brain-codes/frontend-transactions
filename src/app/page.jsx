@@ -5,20 +5,25 @@ import { useAuth } from "./contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const { isAuthenticated, isSuperAdmin, loading } = useAuth();
+  const { isAuthenticated, isSuperAdmin, isAdmin, isAgent, loading } =
+    useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!loading) {
       if (!isAuthenticated) {
         router.push("/login");
-      } else if (!isSuperAdmin) {
-        router.push("/unauthorized");
-      } else {
+      } else if (isSuperAdmin) {
         router.push("/dashboard");
+      } else if (isAdmin) {
+        router.push("/admin");
+      } else if (isAgent) {
+        router.push("/agent");
+      } else {
+        router.push("/unauthorized");
       }
     }
-  }, [isAuthenticated, isSuperAdmin, loading, router]);
+  }, [isAuthenticated, isSuperAdmin, isAdmin, isAgent, loading, router]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">

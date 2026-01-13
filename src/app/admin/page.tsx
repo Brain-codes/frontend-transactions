@@ -18,7 +18,7 @@ import adminDashboardService from "../services/adminDashboardService";
 
 const AdminDashboardPage = () => {
   const { user, getStoredProfile } = useAuth();
-    const storedProfile = getStoredProfile();
+  const storedProfile = getStoredProfile();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<DashboardStats | null>(
@@ -75,7 +75,7 @@ const AdminDashboardPage = () => {
 
   if (loading) {
     return (
-      <ProtectedRoute requireAdminAccess={true}>
+      <ProtectedRoute allowedRoles={["admin", "super_admin"]}>
         <DashboardLayout currentRoute="admin">
           <div className="h-full flex items-center justify-center">
             <div className="text-center">
@@ -90,7 +90,7 @@ const AdminDashboardPage = () => {
 
   if (error) {
     return (
-      <ProtectedRoute requireAdminAccess={true}>
+      <ProtectedRoute allowedRoles={["admin", "super_admin"]}>
         <DashboardLayout currentRoute="admin">
           <div className="h-full flex items-center justify-center">
             <div className="text-center">
@@ -105,7 +105,7 @@ const AdminDashboardPage = () => {
   }
 
   return (
-    <ProtectedRoute requireAdminAccess={true}>
+    <ProtectedRoute allowedRoles={["admin", "super_admin"]}>
       <DashboardLayout
         currentRoute="admin"
         title={`Welcome back, ${

@@ -121,8 +121,8 @@ export const AuthProvider = ({ children }) => {
     user?.app_metadata?.role === "agent" ||
     user?.user_metadata?.role === "agent";
 
-  // Helper function to check if user has admin level access (admin or super_admin)
-  const hasAdminAccess = isSuperAdmin || isAdmin;
+  // Helper function to check if user has admin level access (admin, agent, or super_admin)
+  const hasAdminAccess = isSuperAdmin || isAdmin || isAgent;
 
   // Get user role
   const userRole =

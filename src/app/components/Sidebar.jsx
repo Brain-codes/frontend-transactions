@@ -23,7 +23,8 @@ import Link from "next/link";
 
 const Sidebar = ({ isOpen, onClose, currentRoute }) => {
   const router = useRouter();
-  const { isSuperAdmin, isAdmin, hasAdminAccess, isAtmosfairUser } = useAuth();
+  const { isSuperAdmin, isAdmin, isAgent, hasAdminAccess, isAtmosfairUser } =
+    useAuth();
 
   // Navigation items based on user role
   const getNavItems = () => {
@@ -207,6 +208,44 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
         //   badge: null,
         //   requiresAuth: true,
         // },
+      ];
+    }
+
+    // Agent gets access to sales creation and viewing
+    if (isAgent) {
+      return [
+        {
+          name: "Dashboard",
+          icon: Home,
+          route: "agent",
+          href: "/agent",
+          badge: null,
+          requiresAuth: true,
+        },
+        {
+          name: "Sales",
+          icon: ShoppingCart,
+          route: "admin-sales",
+          href: "/admin/sales",
+          badge: null,
+          requiresAuth: true,
+        },
+        {
+          name: "Create Sale",
+          icon: Plus,
+          route: "admin-create-sale",
+          href: "/admin/sales/create",
+          badge: null,
+          requiresAuth: true,
+        },
+        {
+          name: "Profile",
+          icon: User,
+          route: "profile",
+          href: "/profile",
+          badge: null,
+          requiresAuth: true,
+        },
       ];
     }
 
