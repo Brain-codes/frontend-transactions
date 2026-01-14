@@ -94,14 +94,14 @@ const OrganizationSidebar = ({ onSelectOrganization, selectedOrgIds }) => {
     fetchOrganizations(1, "");
   }, []);
 
-  // Auto-select first organization on initial load
+  // Auto-select "All Organizations" on initial load
   useEffect(() => {
-    if (!hasAutoSelected && organizations.length > 0 && !loading) {
-      const firstOrg = organizations[0];
-      onSelectOrganization(firstOrg.organization_ids);
+    if (!hasAutoSelected && !loading) {
+      // Select "All Organizations" by default (empty array means all)
+      onSelectOrganization([]);
       setHasAutoSelected(true);
     }
-  }, [organizations, loading, hasAutoSelected, onSelectOrganization]);
+  }, [loading, hasAutoSelected, onSelectOrganization]);
 
   // Handle search with debounce
   useEffect(() => {
@@ -197,6 +197,32 @@ const OrganizationSidebar = ({ onSelectOrganization, selectedOrgIds }) => {
           </div>
         ) : (
           <div className="py-2">
+            {/* All Organizations Option */}
+            <div
+              className={`flex items-center gap-2 px-4 py-2 cursor-pointer hover:bg-gray-50 transition-colors ${
+                !selectedOrgIds || selectedOrgIds.length === 0
+                  ? "bg-blue-50"
+                  : ""
+              }`}
+              onClick={() => onSelectOrganization([])}
+            >
+              <div className="w-5" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900">
+                  All Organizations
+                </div>
+                <div className="text-xs text-gray-500">View all sales data</div>
+              </div>
+              {(!selectedOrgIds || selectedOrgIds.length === 0) && (
+                <Badge variant="default" className="text-xs">
+                  Selected
+                </Badge>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-gray-200 my-2" />
+
             {organizations.map((group) => {
               const isExpanded = expandedGroups.has(group.base_name);
               const isGroupSelected = isSelected(group.organization_ids);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -24,6 +24,7 @@ const TopNavigation = ({
   user,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const dropdownRef = useRef(null);
   const {
     signOut,
     getStoredProfile,
@@ -40,6 +41,23 @@ const TopNavigation = ({
       router.push("/login");
     }
   }, [isAuthenticated, router]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowUserDropdown(false);
+      }
+    };
+
+    if (showUserDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showUserDropdown]);
 
   const getUserInitials = (email) => {
     if (!email) return "U";
@@ -110,11 +128,10 @@ const TopNavigation = ({
           {/* Optional right button */}
           {rightButton && <div className="hidden sm:block">{rightButton}</div>}
 
-          <div className="relative">
+          <div className="relative" ref={dropdownRef}>
             <div
               className="flex items-center space-x-2 sm:space-x-3 pl-2 sm:pl-4 border-l border-gray-200 cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors"
-              onMouseEnter={() => setShowUserDropdown(true)}
-              onMouseLeave={() => setShowUserDropdown(false)}
+              onClick={() => setShowUserDropdown(!showUserDropdown)}
             >
               <div className="bg-gradient-to-br from-brand-800 to-brand-900 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center">
                 <span className="text-white font-semibold text-xs">
@@ -134,11 +151,7 @@ const TopNavigation = ({
 
             {/* User Dropdown */}
             {showUserDropdown && (
-              <div
-                className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50"
-                onMouseEnter={() => setShowUserDropdown(true)}
-                onMouseLeave={() => setShowUserDropdown(false)}
-              >
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50">
                 {/* User Info Header */}
                 <div className="p-4 border-b border-gray-100">
                   <div className="flex items-center space-x-3">
