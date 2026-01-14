@@ -57,7 +57,7 @@ const LoginPage = () => {
       console.log(
         "🔐 [Login] Authenticated and login attempted - redirecting based on role"
       );
-      
+
       // Redirect based on role
       if (isSuperAdmin) {
         router.push("/dashboard");
@@ -69,7 +69,16 @@ const LoginPage = () => {
         router.push("/unauthorized");
       }
     }
-  }, [sessionCleared, isAuthenticated, authLoading, loginAttempted, isSuperAdmin, isAdmin, isAgent, router]);
+  }, [
+    sessionCleared,
+    isAuthenticated,
+    authLoading,
+    loginAttempted,
+    isSuperAdmin,
+    isAdmin,
+    isAgent,
+    router,
+  ]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
