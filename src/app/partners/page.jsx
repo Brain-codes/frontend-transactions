@@ -71,6 +71,13 @@ const PartnersPage = () => {
     city: "",
   });
 
+  // Sorting state
+  const [sorting, setSorting] = useState({
+    sortBy: "created_at",
+    sortOrder: "desc",
+  });
+  const [sortValue, setSortValue] = useState("created_newest");
+
   // Nigerian states from constants
   const nigerianStates = Object.keys(lgaAndStates).sort();
 
@@ -149,6 +156,44 @@ const PartnersPage = () => {
       setActiveFilters((prev) => ({ ...prev, state: value }));
       applyFilters({ state: value, page: 1 });
     }
+  };
+
+  const handleSortChange = (value) => {
+    let sortBy, sortOrder;
+
+    switch (value) {
+      case "name_asc":
+        sortBy = "partner_name";
+        sortOrder = "asc";
+        break;
+      case "name_desc":
+        sortBy = "partner_name";
+        sortOrder = "desc";
+        break;
+      case "created_newest":
+        sortBy = "created_at";
+        sortOrder = "desc";
+        break;
+      case "created_oldest":
+        sortBy = "created_at";
+        sortOrder = "asc";
+        break;
+      case "updated_newest":
+        sortBy = "updated_at";
+        sortOrder = "desc";
+        break;
+      case "updated_oldest":
+        sortBy = "updated_at";
+        sortOrder = "asc";
+        break;
+      default:
+        sortBy = "created_at";
+        sortOrder = "desc";
+    }
+
+    setSortValue(value);
+    setSorting({ sortBy, sortOrder });
+    applyFilters({ sortBy, sortOrder, page: 1 });
   };
 
   // Clear individual filter
@@ -569,26 +614,56 @@ const PartnersPage = () => {
                 Showing {organizationsData.length} of {pagination.total}{" "}
                 partners (Page {pagination.page} of {pagination.totalPages})
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Items per page:</span>
-                <Select
-                  value={pagination.limit.toString()}
-                  onValueChange={(value) =>
-                    handlePageSizeChange(parseInt(value))
-                  }
-                  disabled={tableLoading}
-                >
-                  <SelectTrigger className="w-20 text-sm text-gray-600">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5">5</SelectItem>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Sort by:</span>
+                  <Select
+                    value={sortValue}
+                    onValueChange={handleSortChange}
+                    disabled={tableLoading}
+                  >
+                    <SelectTrigger className="w-40 text-sm text-gray-600">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="name_asc">A - Z</SelectItem>
+                      <SelectItem value="name_desc">Z - A</SelectItem>
+                      <SelectItem value="created_newest">
+                        Created (Newest)
+                      </SelectItem>
+                      <SelectItem value="created_oldest">
+                        Created (Oldest)
+                      </SelectItem>
+                      <SelectItem value="updated_newest">
+                        Updated (Newest)
+                      </SelectItem>
+                      <SelectItem value="updated_oldest">
+                        Updated (Oldest)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Items per page:</span>
+                  <Select
+                    value={pagination.limit.toString()}
+                    onValueChange={(value) =>
+                      handlePageSizeChange(parseInt(value))
+                    }
+                    disabled={tableLoading}
+                  >
+                    <SelectTrigger className="w-20 text-sm text-gray-600">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </div>
