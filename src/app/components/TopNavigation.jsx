@@ -10,6 +10,7 @@ import {
   Settings,
   LogOut,
   Mail,
+  PanelLeft,
   Shield,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
@@ -111,15 +112,16 @@ const TopNavigation = ({
             className="hover:bg-gray-100 flex-shrink-0"
             onClick={onToggleSidebar}
           >
-            <Menu className="h-5 w-5 text-gray-700" />
+            <PanelLeft className="h-5 w-5 text-gray-700" />
           </Button>
           <div className="min-w-0 flex-1">
-            <h1 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 truncate">
+            <img src="/logo.png" className="w-auto h-[65px]" />
+            {/* <h1 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 truncate">
               {title}
             </h1>
             <p className="text-xs sm:text-sm lg:text-base text-gray-600 mt-0.5 sm:mt-1 truncate">
               {description}
-            </p>
+            </p> */}
           </div>
         </div>
 
