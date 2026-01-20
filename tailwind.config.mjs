@@ -8,6 +8,17 @@ const config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: [
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+          "Apple Color Emoji",
+          "Segoe UI Emoji",
+          "Segoe UI Symbol",
+          "Noto Color Emoji",
+        ],
+      },
       screens: {
         xs: "375px",
       },
@@ -32,6 +43,7 @@ const config = {
           800: "#3730a3",
           900: "#07376a",
           950: "#030f2e",
+          light: "#EFF6FF", // Light shade for filters and backgrounds
         },
         primary: {
           DEFAULT: "#0f172a",

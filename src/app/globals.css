@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -57,7 +56,9 @@
   }
   body {
     @apply bg-white text-gray-900;
-    font-family: "DM Sans", sans-serif;
+    font-family:
+      ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+      "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     font-optical-sizing: auto;
     background-color: rgb(244, 248, 253) !important;
     color: #0f172a !important;
@@ -79,7 +80,9 @@
 body {
   color: #252a0f !important;
   background-color: rgb(244, 248, 253) !important;
-  font-family: "DM Sans", sans-serif;
+  font-family:
+    ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
   font-optical-sizing: auto;
 }
 
@@ -252,7 +255,9 @@ body {
 .filter-input .ant-picker {
   border: 2px solid #e5e7eb;
   border-radius: 8px;
-  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  transition:
+    border-color 0.2s ease-in-out,
+    box-shadow 0.2s ease-in-out;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
 

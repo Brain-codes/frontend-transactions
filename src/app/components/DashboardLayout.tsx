@@ -49,7 +49,7 @@ const DashboardLayout = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Sidebar
         isOpen={sidebarOpen}
         onClose={closeSidebar}
@@ -70,7 +70,7 @@ const DashboardLayout = ({
         />
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-white">{children}</main>
       </div>
 
       {/* First-time password change modal */}
