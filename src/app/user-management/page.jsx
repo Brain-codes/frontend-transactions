@@ -122,7 +122,7 @@ const UserManagementPage = () => {
   const fetchUsers = async (
     page = 1,
     pageSize = 25,
-    currentFilters = filters
+    currentFilters = filters,
   ) => {
     setLoading(true);
     try {
@@ -207,14 +207,12 @@ const UserManagementPage = () => {
     fetchUsers(1, size);
   };
 
-  // Handle filter change
+  // Handle filter change with auto-apply
   const handleFilterChange = (field, value) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
-  };
-
-  // Apply filters
-  const handleApplyFilters = () => {
-    fetchUsers(1, pagination.page_size, filters);
+    const newFilters = { ...filters, [field]: value };
+    setFilters(newFilters);
+    // Auto-apply filters
+    fetchUsers(1, pagination.page_size, newFilters);
   };
 
   // Clear filters
@@ -325,7 +323,7 @@ const UserManagementPage = () => {
         "User created successfully",
         result.generated_password
           ? `Password: ${result.generated_password}`
-          : "User can now log in"
+          : "User can now log in",
       );
 
       setShowCreateModal(false);
@@ -432,7 +430,7 @@ const UserManagementPage = () => {
 
       toast.success(
         `User ${action}d successfully`,
-        `User account is now ${action === "disable" ? "disabled" : "active"}`
+        `User account is now ${action === "disable" ? "disabled" : "active"}`,
       );
 
       fetchUsers(pagination.page, pagination.page_size);
@@ -556,7 +554,7 @@ const UserManagementPage = () => {
           totalPages - 3,
           totalPages - 2,
           totalPages - 1,
-          totalPages
+          totalPages,
         );
       } else {
         pages.push(
@@ -566,7 +564,7 @@ const UserManagementPage = () => {
           currentPage,
           currentPage + 1,
           "...",
-          totalPages
+          totalPages,
         );
       }
     }
@@ -584,9 +582,6 @@ const UserManagementPage = () => {
               <h1 className="text-2xl font-bold text-gray-900">
                 User Management
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Manage super admin agents and their access
-              </p>
             </div>
 
             <Button
@@ -602,44 +597,28 @@ const UserManagementPage = () => {
           </div>
 
           {/* Filters */}
-          <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Filters</span>
-              {hasActiveFilters && (
-                <Badge variant="outline" className="ml-2">
-                  {Object.values(filters).filter((v) => v !== "").length} active
-                </Badge>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-brand-light p-4 rounded-lg border border-gray-200">
+            <div className="flex flex-wrap items-center gap-4">
               {/* Search */}
-              <div>
-                <label className="text-xs text-gray-600 mb-1 block">
-                  Search
-                </label>
+              <div className="flex-1 min-w-[150px]">
                 <Input
                   placeholder="Name or email..."
                   value={filters.search}
                   onChange={(e) => handleFilterChange("search", e.target.value)}
-                  className="w-full"
+                  className="bg-white"
                 />
               </div>
 
               {/* Status Filter */}
-              <div>
-                <label className="text-xs text-gray-600 mb-1 block">
-                  Status
-                </label>
+              <div className="flex-1 min-w-[150px]">
                 <Select
                   value={filters.status || "all"}
                   onValueChange={(value) =>
                     handleFilterChange("status", value === "all" ? "" : value)
                   }
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All statuses" />
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All statuses</SelectItem>
@@ -650,16 +629,15 @@ const UserManagementPage = () => {
               </div>
 
               {/* Role Filter */}
-              <div>
-                <label className="text-xs text-gray-600 mb-1 block">Role</label>
+              <div className="flex-1 min-w-[150px]">
                 <Select
                   value={filters.role || "all"}
                   onValueChange={(value) =>
                     handleFilterChange("role", value === "all" ? "" : value)
                   }
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All roles" />
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Role" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All roles</SelectItem>
@@ -670,23 +648,19 @@ const UserManagementPage = () => {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
 
-            {/* Filter Actions */}
-            <div className="flex gap-2">
-              <Button onClick={handleApplyFilters} size="sm">
-                <Search className="h-4 w-4 mr-2" />
-                Apply Filters
-              </Button>
+              {/* Clear Filters Button */}
               {hasActiveFilters && (
-                <Button
-                  onClick={handleClearFilters}
-                  size="sm"
-                  variant="outline"
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Clear Filters
-                </Button>
+                <div>
+                  <Button
+                    onClick={handleClearFilters}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Clear
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -701,7 +675,7 @@ const UserManagementPage = () => {
               to{" "}
               {Math.min(
                 pagination.page * pagination.page_size,
-                pagination.total_count
+                pagination.total_count,
               )}{" "}
               of {pagination.total_count} users
             </div>
@@ -725,7 +699,7 @@ const UserManagementPage = () => {
           </div>
 
           {/* Table */}
-          <div className="bg-white rounded-lg border border-gray-200 relative">
+          <div className="bg-white rounded-lg border border-gray-200 relative overflow-hidden">
             {loading && (
               <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
                 <div className="text-center">
@@ -736,15 +710,19 @@ const UserManagementPage = () => {
             )}
 
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created At</TableHead>
-                  <TableHead className="text-center">Actions</TableHead>
+              <TableHeader className="bg-brand">
+                <TableRow className="hover:bg-brand">
+                  <TableHead className="text-white py-4 first:rounded-tl-lg">
+                    Name
+                  </TableHead>
+                  <TableHead className="text-white py-4">Email</TableHead>
+                  <TableHead className="text-white py-4">Phone</TableHead>
+                  <TableHead className="text-white py-4">Role</TableHead>
+                  <TableHead className="text-white py-4">Status</TableHead>
+                  <TableHead className="text-white py-4">Created At</TableHead>
+                  <TableHead className="text-center text-white py-4 last:rounded-tr-lg">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className={loading ? "opacity-40" : ""}>
@@ -757,8 +735,13 @@ const UserManagementPage = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  users.map((user) => (
-                    <TableRow key={user.id} className="hover:bg-gray-50">
+                  users.map((user, index) => (
+                    <TableRow
+                      key={user.id}
+                      className={`${
+                        index % 2 === 0 ? "bg-white" : "bg-brand-light"
+                      } hover:bg-gray-50`}
+                    >
                       <TableCell className="font-medium">
                         {user.full_name || "N/A"}
                       </TableCell>
