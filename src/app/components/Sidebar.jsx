@@ -13,10 +13,13 @@ import {
   Plus,
   Settings,
   BarChart3,
+  LayoutDashboard,
   FileImage,
   Key,
   User,
+  UserCheck,
   Package,
+  Tag,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import Link from "next/link";
@@ -31,7 +34,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
     const baseItems = [
       {
         name: "Dashboard",
-        icon: Home,
+        icon: LayoutDashboard,
         route: "dashboard",
         href: "/dashboard",
         badge: null,
@@ -60,7 +63,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
       return [
         {
           name: "Dashboard",
-          icon: Home,
+          icon: LayoutDashboard,
           route: "dashboard",
           href: "/dashboard",
           badge: null,
@@ -76,7 +79,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
         },
         {
           name: "Partners",
-          icon: Building2,
+          icon: UserCheck,
           route: "partners",
           href: "/partners",
           badge: null,
@@ -84,7 +87,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
         },
         {
           name: "Stove ID Management",
-          icon: Package,
+          icon: Tag,
           route: "stove-management",
           href: "/stove-management",
           badge: null,
@@ -138,7 +141,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
       return [
         {
           name: "Dashboard",
-          icon: Home,
+          icon: LayoutDashboard,
           route: "admin",
           href: "/admin",
           badge: null,
@@ -170,7 +173,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
         },
         {
           name: "Stove ID Management",
-          icon: Package,
+          icon: Tag,
           route: "stove-management",
           href: "/stove-management",
           badge: null,
@@ -216,7 +219,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
       return [
         {
           name: "Dashboard",
-          icon: Home,
+          icon: LayoutDashboard,
           route: "agent",
           href: "/agent",
           badge: null,
