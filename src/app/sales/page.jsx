@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
-import OrganizationSidebar from "../components/OrganizationSidebar";
-import SalesAdvancedFilterShadcn from "../components/SalesAdvancedFilterShadcn";
 import { Button } from "@/components/ui/button";
-import ActiveFiltersBar from "./components/ActiveFiltersBar.jsx";
+import { Input } from "@/components/ui/input";
 import SalesTable from "./components/SalesTable";
 import BulkActionsToolbar from "./components/BulkActionsToolbar";
 import {
@@ -18,45 +16,70 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { DatePicker } from "@/components/ui/date-picker";
-import DateRangePicker from "@/app/components/ui/date-range-picker";
 import useSalesAdvanced from "../hooks/useSalesAdvanced";
-import organizationsService from "../services/organizationsService";
+import { useAuth } from "../contexts/AuthContext";
 import { lgaAndStates } from "../constants";
 import ReceiptModal from "./components/ReceiptModal.jsx";
 import AttachmentsModal from "./components/AttachmentsModal";
-import { Download, Search, X, Building2 } from "lucide-react";
+import { Download, Search, X, Building2, Loader2 } from "lucide-react";
 
 const SalesPage = () => {
-  const [selectedState, setSelectedState] = useState("");
+  const { supabase } = useAuth();
+
+  // Cache management for organizations
+  const ORG_CACHE_KEY = "sales_organizations_cache";
+  const ORG_CACHE_TIMESTAMP_KEY = "sales_organizations_cache_timestamp";
+  const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+  const getCachedOrganizations = () => {
+    try {
+      const cached = localStorage.getItem(ORG_CACHE_KEY);
+      const timestamp = localStorage.getItem(ORG_CACHE_TIMESTAMP_KEY);
+
+      if (cached && timestamp) {
+        const age = Date.now() - parseInt(timestamp);
+        if (age < CACHE_DURATION) {
+          return JSON.parse(cached);
+        }
+      }
+    } catch (err) {
+      console.error("Error reading cache:", err);
+    }
+    return null;
+  };
+
+  const setCachedOrganizations = (data) => {
+    try {
+      localStorage.setItem(ORG_CACHE_KEY, JSON.stringify(data));
+      localStorage.setItem(ORG_CACHE_TIMESTAMP_KEY, Date.now().toString());
+    } catch (err) {
+      console.error("Error setting cache:", err);
+    }
+  };
+
   // Modal state for receipts and attachments
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showAttachmentsModal, setShowAttachmentsModal] = useState(false);
   const [modalSale, setModalSale] = useState(null);
   const [selectedLGA, setSelectedLGA] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedSale, setSelectedSale] = useState(null);
+  const [selectedState, setSelectedState] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
   // Organization selection
   const [selectedOrgIds, setSelectedOrgIds] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
+  const [loadingOrgs, setLoadingOrgs] = useState(false);
+  const [orgSearch, setOrgSearch] = useState("");
+  const [openOrgPopover, setOpenOrgPopover] = useState(false);
+  const orgDropdownRef = useRef(null);
 
   // Bulk actions state
   const [selectedItems, setSelectedItems] = useState(new Set());
-  const [organizations, setOrganizations] = useState([]);
-  const [organizationsLoading, setOrganizationsLoading] = useState(false);
   const [customDateRange, setCustomDateRange] = useState({
     startDate: "",
     endDate: "",
   });
-  const [showCustomDate, setShowCustomDate] = useState(true);
+  const [exportLoading, setExportLoading] = useState(false);
   const isManualSearchClear = useRef(false);
   const searchTimeoutRef = useRef(null);
 
@@ -71,9 +94,138 @@ const SalesPage = () => {
     fetchSales,
   } = useSalesAdvanced();
 
-  // Handle organization selection from sidebar
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        orgDropdownRef.current &&
+        !orgDropdownRef.current.contains(event.target)
+      ) {
+        setOpenOrgPopover(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Load cached organizations on mount
+  useEffect(() => {
+    const cached = getCachedOrganizations();
+    if (cached && cached.length > 0) {
+      setOrganizations(cached);
+    }
+  }, []);
+
+  // Fetch organizations for search dropdown (using get-organizations-grouped with caching)
+  const fetchOrganizationsForSearch = useCallback(
+    async (searchTerm = "") => {
+      setLoadingOrgs(true);
+      try {
+        // Check cache first
+        const cachedData = getCachedOrganizations();
+
+        if (cachedData && cachedData.length > 0) {
+          // Use cached data and filter client-side
+          if (searchTerm) {
+            const filtered = cachedData.filter(
+              (group) =>
+                group.base_name
+                  .toLowerCase()
+                  .includes(searchTerm.toLowerCase()) ||
+                group.branches.some(
+                  (branch) =>
+                    branch.branch
+                      .toLowerCase()
+                      .includes(searchTerm.toLowerCase()) ||
+                    (branch.state &&
+                      branch.state
+                        .toLowerCase()
+                        .includes(searchTerm.toLowerCase())),
+                ),
+            );
+            setOrganizations(filtered);
+          } else {
+            setOrganizations(cachedData);
+          }
+          setLoadingOrgs(false);
+          return;
+        }
+
+        // If no cache, fetch from API
+        const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const functionUrl = `${baseUrl}/functions/v1/get-organizations-grouped`;
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session?.access_token) {
+          throw new Error("No authentication token found");
+        }
+
+        const params = new URLSearchParams({
+          page: "1",
+          page_size: "500", // Fetch all for caching
+        });
+
+        const response = await fetch(`${functionUrl}?${params}`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to fetch organizations");
+        }
+
+        const fetchedData = result.data || [];
+
+        // Cache the full dataset
+        setCachedOrganizations(fetchedData);
+
+        // Apply search filter if needed
+        if (searchTerm) {
+          const filtered = fetchedData.filter(
+            (group) =>
+              group.base_name
+                .toLowerCase()
+                .includes(searchTerm.toLowerCase()) ||
+              group.branches.some(
+                (branch) =>
+                  branch.branch
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase()) ||
+                  (branch.state &&
+                    branch.state
+                      .toLowerCase()
+                      .includes(searchTerm.toLowerCase())),
+              ),
+          );
+          setOrganizations(filtered);
+        } else {
+          setOrganizations(fetchedData);
+        }
+      } catch (err) {
+        console.error("Error fetching organizations:", err);
+        setOrganizations([]);
+      } finally {
+        setLoadingOrgs(false);
+      }
+    },
+    [supabase],
+  );
+
+  // Handle organization selection
   const handleSelectOrganization = (orgIds) => {
     setSelectedOrgIds(orgIds);
+    setOpenOrgPopover(false);
 
     // Apply organization filter
     if (orgIds && orgIds.length > 0) {
@@ -82,6 +234,31 @@ const SalesPage = () => {
       // Clear organization filter
       applyFilters({ organization_ids: "", page: 1 });
     }
+  };
+
+  // Get selected organization name for display
+  const getSelectedOrgName = () => {
+    if (!selectedOrgIds || selectedOrgIds.length === 0) {
+      return "";
+    }
+
+    for (const group of organizations) {
+      if (
+        selectedOrgIds.length === group.organization_ids.length &&
+        selectedOrgIds.every((id) => group.organization_ids.includes(id))
+      ) {
+        return `${group.base_name} (All Branches)`;
+      }
+
+      const branch = group.branches.find(
+        (b) => selectedOrgIds.includes(b.id) && selectedOrgIds.length === 1,
+      );
+      if (branch) {
+        return `${group.base_name} - ${branch.branch}`;
+      }
+    }
+
+    return `${selectedOrgIds.length} selected`;
   };
 
   // Get states from constants
@@ -258,6 +435,17 @@ const SalesPage = () => {
     }
   };
 
+  const handleExportClick = async () => {
+    setExportLoading(true);
+    try {
+      await exportSales();
+    } catch (error) {
+      console.error("Export failed:", error);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   const handleExportSelected = () => {
     const selectedIds = Array.from(selectedItems);
     if (selectedIds.length === 0) return;
@@ -335,7 +523,7 @@ const SalesPage = () => {
         const firstDayThisMonth = new Date(
           today.getFullYear(),
           today.getMonth(),
-          1
+          1,
         );
         const firstDayStr = firstDayThisMonth.toISOString().split("T")[0];
         const todayStrMonth = today.toISOString().split("T")[0];
@@ -348,12 +536,12 @@ const SalesPage = () => {
         const firstDayLastMonth = new Date(
           today.getFullYear(),
           today.getMonth() - 1,
-          1
+          1,
         );
         const lastDayLastMonth = new Date(
           today.getFullYear(),
           today.getMonth(),
-          0
+          0,
         );
         const firstDayLastStr = firstDayLastMonth.toISOString().split("T")[0];
         const lastDayLastStr = lastDayLastMonth.toISOString().split("T")[0];
@@ -402,7 +590,7 @@ const SalesPage = () => {
     } else {
       // Find the proper state name from constants
       const stateName = nigerianStates.find(
-        (state) => state.toLowerCase() === value
+        (state) => state.toLowerCase() === value,
       );
       const stateLabel =
         stateName || value.charAt(0).toUpperCase() + value.slice(1);
@@ -430,7 +618,7 @@ const SalesPage = () => {
     } else {
       // Find the organization name for display
       const selectedOrg = organizations.find(
-        (org) => org.id.toString() === value
+        (org) => org.id.toString() === value,
       );
       const partnerLabel = selectedOrg
         ? selectedOrg.displayName
@@ -510,404 +698,440 @@ const SalesPage = () => {
         title="Atmosfair Sales Management"
         description="Manage and track all your Atmosfair sales transactions"
       >
-        <div className="flex h-screen overflow-hidden">
-          {/* Organization Sidebar */}
-          <OrganizationSidebar
-            onSelectOrganization={handleSelectOrganization}
-            selectedOrgIds={selectedOrgIds}
-          />
-
-          {/* Main Content */}
-          <div className="flex-1 overflow-y-auto bg-gray-50">
-            <div className="p-6 space-y-6">
-              {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    Sales Management
-                  </h1>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {selectedOrgIds.length > 0
-                      ? `Viewing sales for selected organization${
-                          selectedOrgIds.length > 1 ? "s" : ""
-                        }`
-                      : "Viewing all sales"}
-                  </p>
-                </div>
-              </div>
-
-              <>
-                {/* Filters Section */}
-                <div className="bg-white border-b border-gray-200 p-4 lg:p-6 rounded-lg">
-                  {/* Mobile Export Button - Only visible on mobile */}
-                  {/* <div className="sm:hidden mb-4">
-              <Button
-                variant="outline"
-                onClick={() => handleExport("csv")}
-                className="w-full text-gray-700"
-                disabled={tableLoading}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Export CSV
-              </Button>
-            </div> */}
-
-                  {/* Search and All Filters - Mobile Responsive but Desktop Horizontal */}
-                  <div
-                    className={`flex flex-col xl:flex-row gap-4 items-start xl:items-start ${
-                      tableLoading ? "opacity-70" : ""
-                    }`}
-                  >
-                    {/* Search Bar */}
-                    <div className="flex-1 relative min-w-0 mt-0 md:mt-6">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 z-10" />
-                      <input
-                        type="text"
-                        placeholder="Search by customer name, phone, serial number, partner..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 !py-2.5 text-sm border border-gray-300 rounded-lg text-gray-600 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-                      />
-                      {searchTerm && (
-                        <button
-                          onClick={() => {
-                            // Cancel any pending search
-                            if (searchTimeoutRef.current) {
-                              clearTimeout(searchTimeoutRef.current);
-                              searchTimeoutRef.current = null;
-                            }
-                            isManualSearchClear.current = true;
-                            setSearchTerm("");
-                            // Immediately fetch data without search parameter
-                            applyFilters({ search: "", page: 1 });
-                          }}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* State and Partner Filters - Responsive but Desktop Inline */}
-                    <div className="flex flex-col sm:flex-row xl:flex-row gap-3 items-start">
-                      {/* State Filter */}
-                      <div className="space-y-1 w-full sm:w-auto">
-                        <label className="text-sm font-medium text-gray-700">
-                          State
-                        </label>
-                        <Select
-                          value={
-                            selectedState
-                              ? selectedState.toLowerCase()
-                              : undefined
-                          }
-                          onValueChange={handleStateFilter}
-                          disabled={tableLoading}
-                        >
-                          <SelectTrigger className="w-full sm:w-40 !py-2.5">
-                            <SelectValue placeholder="All states">
-                              {selectedState || "All states"}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All states</SelectItem>
-                            {nigerianStates.map((state) => (
-                              <SelectItem
-                                key={state}
-                                value={state.toLowerCase()}
-                                className="text-gray-700"
-                              >
-                                {state}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {/* LGA Filter */}
-                      <div className="space-y-1 w-full sm:w-auto">
-                        <label className="text-sm font-medium text-gray-700">
-                          LGA
-                        </label>
-                        <Select
-                          value={selectedLGA ? selectedLGA : undefined}
-                          onValueChange={handleLGAFilter}
-                          disabled={tableLoading || !selectedState}
-                        >
-                          <SelectTrigger className="w-full sm:w-40 !py-2.5">
-                            <SelectValue
-                              placeholder={
-                                selectedState
-                                  ? "All LGAs"
-                                  : "Select state first"
-                              }
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All LGAs</SelectItem>
-                            {selectedState &&
-                              lgaAndStates[selectedState] &&
-                              lgaAndStates[selectedState].map((lga) => (
-                                <SelectItem key={lga} value={lga}>
-                                  {lga}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Date Container - Compact for Desktop Inline */}
-                    <div className=" rounded-lg pt-2 space-y-3 w-full xl:w-auto xl:min-w-[320px]">
-                      {/* Date Range Picker with Apply Button */}
-                      <DateRangePicker
-                        value={customDateRange}
-                        onChange={(range, isFinalChange) => {
-                          setCustomDateRange(range);
-
-                          if (isFinalChange) {
-                            if (range.startDate || range.endDate) {
-                              // Handle any date selection (start only, end only, or both)
-                              let dateLabel = "";
-                              if (range.startDate && range.endDate) {
-                                dateLabel = `${range.startDate} to ${range.endDate}`;
-                              } else if (range.startDate) {
-                                dateLabel = `From ${range.startDate}`;
-                              } else if (range.endDate) {
-                                dateLabel = `To ${range.endDate}`;
-                              }
-
-                              setActiveQuickFilters((prev) => ({
-                                ...prev,
-                                dateRange: dateLabel,
-                              }));
-
-                              applyFilters({
-                                dateFrom: range.startDate || "",
-                                dateTo: range.endDate || "",
-                                page: 1,
-                              });
-                            } else if (!range.startDate && !range.endDate) {
-                              // Clearing dates
-                              setActiveQuickFilters((prev) => ({
-                                ...prev,
-                                dateRange: "",
-                              }));
-                              applyFilters({
-                                dateFrom: "",
-                                dateTo: "",
-                                page: 1,
-                              });
-                            }
-                          }
-                        }}
-                        maxDate={new Date().toISOString().split("T")[0]}
-                        disabled={tableLoading}
-                        className="w-full"
-                      />
-                    </div>
-                    <div className="flex flex-col items-center gap-2">
-                      <span className="text-sm text-gray-600">
-                        Items per page:
-                      </span>
-                      <Select
-                        value={pagination.limit.toString()}
-                        onValueChange={(value) =>
-                          handlePageSizeChange(parseInt(value))
-                        }
-                        disabled={tableLoading}
-                      >
-                        <SelectTrigger className="w-20 text-gray-700">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="5">5</SelectItem>
-                          <SelectItem value="10">10</SelectItem>
-                          <SelectItem value="25">25</SelectItem>
-                          <SelectItem value="50">50</SelectItem>
-                          <SelectItem value="100">100</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleExport("csv")}
-                      className="text-white bg-brand mt-7"
-                      disabled={tableLoading}
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Export CSV
-                    </Button>
-                  </div>
-
-                  {/* Active Filters Display */}
-                  <ActiveFiltersBar
-                    activeQuickFilters={activeQuickFilters}
-                    selectedLGA={selectedLGA}
-                    searchTerm={searchTerm}
-                    tableLoading={tableLoading}
-                    clearQuickFilters={clearQuickFilters}
-                    handleStateFilter={handleStateFilter}
-                    handleLGAFilter={handleLGAFilter}
-                    handlePartnerFilter={handlePartnerFilter}
-                    setCustomDateRange={setCustomDateRange}
-                    handleQuickDateFilter={handleQuickDateFilter}
-                    applyFilters={applyFilters}
-                    setSearchTerm={setSearchTerm}
-                    searchTimeoutRef={searchTimeoutRef}
-                    isManualSearchClear={isManualSearchClear}
-                  />
-
-                  {/* Stats */}
-                  <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <div className="text-sm text-gray-600">
-                      Showing {displayData.length} of {pagination.total} sales
-                      (Page {pagination.page} of {pagination.totalPages})
-                    </div>
-                  </div>
-                </div>
-
-                <h1 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 truncate px-0 pt-4">
-                  Sales Management Table
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto bg-white">
+          <div className="p-6 space-y-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Sales Management
                 </h1>
-                {/* Table */}
-                <div className="flex-1 overflow-auto">
-                  <div className="bg-white rounded-lg border border-gray-200 relative">
-                    {/* Table Loading Overlay */}
-                    {tableLoading && (
-                      <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
-                        <div className="text-center">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600 mx-auto mb-2"></div>
-                          <p className="text-sm text-gray-600">
-                            Loading data...
-                          </p>
-                        </div>
-                      </div>
-                    )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleExportClick}
+                  variant="outline"
+                  size="sm"
+                  disabled={exportLoading}
+                >
+                  {exportLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
 
-                    {/* Bulk Actions Toolbar */}
-                    <div className="p-4 pb-0">
-                      <BulkActionsToolbar
-                        selectedCount={selectedItems.size}
-                        onExportSelected={handleExportSelected}
-                        onDeleteSelected={handleDeleteSelected}
-                        onClearSelection={handleClearSelection}
-                        disabled={tableLoading}
-                      />
-                    </div>
-
-                    <SalesTable
-                      displayData={displayData}
-                      tableLoading={tableLoading}
-                      searchTerm={searchTerm}
-                      formatDate={formatDate}
-                      getStoveAge={getStoveAge}
-                      exportSales={exportSales}
-                      handleDownloadReceipt={handleDownloadReceipt}
-                      handleShowAttachments={handleShowAttachments}
-                      handleDelete={handleDelete}
-                      selectedItems={selectedItems}
-                      onSelectItem={handleSelectItem}
-                      onSelectAll={handleSelectAll}
+            {/* Filters Section */}
+            <div className="bg-brand-light p-4 rounded-lg border border-gray-200">
+              <div className="flex flex-wrap items-center gap-4">
+                {/* Organization Search */}
+                <div className="flex-1 min-w-[200px]" ref={orgDropdownRef}>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search organizations..."
+                      value={orgSearch}
+                      onChange={(e) => {
+                        setOrgSearch(e.target.value);
+                        fetchOrganizationsForSearch(e.target.value);
+                        setOpenOrgPopover(true);
+                      }}
+                      onFocus={() => {
+                        setOpenOrgPopover(true);
+                        if (!orgSearch) {
+                          // Reset to cached full list when focused with no search
+                          const cached = getCachedOrganizations();
+                          if (cached) {
+                            setOrganizations(cached);
+                          }
+                        }
+                      }}
+                      className="pl-9 bg-white"
                     />
                   </div>
-
-                  {/* Pagination */}
-                  {pagination.totalPages > 1 && (
-                    <div
-                      className={`mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 ${
-                        tableLoading ? "opacity-50 pointer-events-none" : ""
-                      }`}
-                    >
-                      <div className="text-sm text-gray-600">
-                        Page {pagination.page} of {pagination.totalPages}(
-                        {pagination.total} total items)
+                  {openOrgPopover && (
+                    <div className="absolute z-50 min-w-[200px] max-w-[300px] mt-2 bg-white rounded-md border border-gray-200 shadow-md max-h-64 overflow-y-auto">
+                      <div className="p-2">
+                        {loadingOrgs ? (
+                          <div className="px-2 py-4 text-sm text-center text-gray-500 flex items-center justify-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Loading organizations...
+                          </div>
+                        ) : (
+                          <>
+                            <div
+                              className="px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 rounded-sm flex items-center gap-2"
+                              onClick={() => {
+                                handleSelectOrganization([]);
+                                setOrgSearch("");
+                                // Reset to show all cached organizations
+                                const cached = getCachedOrganizations();
+                                if (cached && cached.length > 0) {
+                                  setOrganizations(cached);
+                                }
+                              }}
+                            >
+                              <Building2 className="h-4 w-4" />
+                              All Organizations
+                            </div>
+                            {organizations.length === 0 && orgSearch ? (
+                              <div className="px-2 py-4 text-sm text-center text-gray-500">
+                                No organization found.
+                              </div>
+                            ) : (
+                              organizations.map((group) => (
+                                <div key={group.base_name}>
+                                  <div
+                                    className="px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 rounded-sm"
+                                    onClick={() => {
+                                      handleSelectOrganization(
+                                        group.organization_ids,
+                                      );
+                                      setOrgSearch("");
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-between w-full">
+                                      <div className="flex items-center gap-2">
+                                        <Building2 className="h-4 w-4" />
+                                        {group.base_name}
+                                      </div>
+                                      {group.branch_count > 1 && (
+                                        <span className="text-xs text-gray-500">
+                                          {group.branch_count} branches
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {group.branch_count > 1 &&
+                                    group.branches.map((branch) => (
+                                      <div
+                                        key={branch.id}
+                                        className="pl-8 px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 rounded-sm"
+                                        onClick={() => {
+                                          handleSelectOrganization([branch.id]);
+                                          setOrgSearch("");
+                                        }}
+                                      >
+                                        <div className="flex items-center justify-between w-full">
+                                          <span>{branch.branch}</span>
+                                          {branch.state && (
+                                            <span className="text-xs text-gray-500">
+                                              {branch.state}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                </div>
+                              ))
+                            )}
+                          </>
+                        )}
                       </div>
-
-                      <Pagination>
-                        <PaginationContent>
-                          <PaginationItem>
-                            <PaginationPrevious
-                              onClick={() =>
-                                handlePageChange(pagination.page - 1)
-                              }
-                              className={
-                                pagination.page <= 1 || tableLoading
-                                  ? "pointer-events-none opacity-50"
-                                  : "cursor-pointer"
-                              }
-                            />
-                          </PaginationItem>
-
-                          {/* Page Numbers */}
-                          {[...Array(pagination.totalPages)].map((_, index) => {
-                            const page = index + 1;
-                            const isCurrentPage = page === pagination.page;
-                            const showPage =
-                              page === 1 ||
-                              page === pagination.totalPages ||
-                              (page >= pagination.page - 2 &&
-                                page <= pagination.page + 2);
-                            if (!showPage) {
-                              if (
-                                page === pagination.page - 3 ||
-                                page === pagination.page + 3
-                              ) {
-                                return (
-                                  <PaginationItem key={page}>
-                                    <PaginationEllipsis />
-                                  </PaginationItem>
-                                );
-                              }
-                              return null;
-                            }
-                            return (
-                              <PaginationItem key={page}>
-                                <PaginationLink
-                                  onClick={() =>
-                                    !tableLoading && handlePageChange(page)
-                                  }
-                                  isActive={isCurrentPage}
-                                  className={`cursor-pointer ${
-                                    tableLoading ? "pointer-events-none" : ""
-                                  }`}
-                                >
-                                  {page}
-                                </PaginationLink>
-                              </PaginationItem>
-                            );
-                          })}
-
-                          <PaginationItem>
-                            <PaginationNext
-                              onClick={() =>
-                                handlePageChange(pagination.page + 1)
-                              }
-                              className={
-                                pagination.page >= pagination.totalPages ||
-                                tableLoading
-                                  ? "pointer-events-none opacity-50"
-                                  : "cursor-pointer"
-                              }
-                            />
-                          </PaginationItem>
-                        </PaginationContent>
-                      </Pagination>
                     </div>
                   )}
                 </div>
-              </>
+
+                {/* Selected Organization Badge */}
+                {selectedOrgIds.length > 0 && (
+                  <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-md border border-gray-200">
+                    <Building2 className="h-4 w-4 text-gray-600" />
+                    <span className="text-sm font-medium text-gray-900">
+                      {getSelectedOrgName()}
+                    </span>
+                    <button
+                      onClick={() => {
+                        handleSelectOrganization([]);
+                        setOrgSearch("");
+                        // Reset to cached full list
+                        const cached = getCachedOrganizations();
+                        if (cached) {
+                          setOrganizations(cached);
+                        }
+                      }}
+                      className="ml-1 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Search Filter */}
+                <div className="flex-1 min-w-[150px]">
+                  <Input
+                    placeholder="Search sales..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSearchTerm(value);
+                      isManualSearchClear.current = false;
+
+                      if (searchTimeoutRef.current) {
+                        clearTimeout(searchTimeoutRef.current);
+                      }
+
+                      searchTimeoutRef.current = setTimeout(() => {
+                        applyFilters({ search: value, page: 1 });
+                      }, 500);
+                    }}
+                    className="bg-white"
+                  />
+                </div>
+
+                {/* State Filter */}
+                <div className="flex-1 min-w-[150px]">
+                  <Input
+                    placeholder="State"
+                    value={selectedState}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSelectedState(value);
+                      applyFilters({ state: value, page: 1 });
+                    }}
+                    className="bg-white"
+                  />
+                </div>
+
+                {/* LGA Filter */}
+                <div className="flex-1 min-w-[150px]">
+                  <Input
+                    placeholder="LGA"
+                    value={selectedLGA}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSelectedLGA(value);
+                      applyFilters({ lga: value, page: 1 });
+                    }}
+                    className="bg-white"
+                  />
+                </div>
+
+                {/* Date From */}
+                <div className="flex-1 min-w-[150px]">
+                  <Input
+                    type="date"
+                    placeholder="Date From"
+                    value={customDateRange.startDate}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setCustomDateRange((prev) => ({
+                        ...prev,
+                        startDate: value,
+                      }));
+                      applyFilters({
+                        dateFrom: value,
+                        page: 1,
+                      });
+                    }}
+                    className="bg-white"
+                  />
+                </div>
+
+                {/* Date To */}
+                <div className="flex-1 min-w-[150px]">
+                  <Input
+                    type="date"
+                    placeholder="Date To"
+                    value={customDateRange.endDate}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setCustomDateRange((prev) => ({
+                        ...prev,
+                        endDate: value,
+                      }));
+                      applyFilters({
+                        dateTo: value,
+                        page: 1,
+                      });
+                    }}
+                    className="bg-white"
+                  />
+                </div>
+
+                {/* Clear Filters */}
+                {(searchTerm ||
+                  selectedState ||
+                  selectedLGA ||
+                  customDateRange.startDate ||
+                  customDateRange.endDate ||
+                  selectedOrgIds.length > 0) && (
+                  <div>
+                    <Button
+                      onClick={() => {
+                        setSearchTerm("");
+                        setSelectedState("");
+                        setSelectedLGA("");
+                        setCustomDateRange({ startDate: "", endDate: "" });
+                        handleSelectOrganization([]);
+                        setOrgSearch("");
+                        // Reset to cached full list
+                        const cached = getCachedOrganizations();
+                        if (cached) {
+                          setOrganizations(cached);
+                        }
+                        applyFilters({
+                          search: "",
+                          state: "",
+                          lga: "",
+                          dateFrom: "",
+                          dateTo: "",
+                          organization_ids: "",
+                          page: 1,
+                        });
+                      }}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Clear
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Table Controls */}
+            <div>
+              <p className="text-sm text-gray-500">
+                {selectedOrgIds.length > 0
+                  ? `Viewing sales for selected organization${
+                      selectedOrgIds.length > 1 ? "s" : ""
+                    }`
+                  : "Viewing all sales"}
+              </p>
+            </div>
+
+            {/* Table */}
+            <div className="flex-1 overflow-auto">
+              <div className="bg-white rounded-lg border border-gray-200 relative overflow-hidden">
+                {/* Table Loading Overlay */}
+                {tableLoading && (
+                  <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600 mx-auto mb-2"></div>
+                      <p className="text-sm text-gray-600">Loading data...</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Bulk Actions Toolbar */}
+                <div className="p-4 pb-0">
+                  <BulkActionsToolbar
+                    selectedCount={selectedItems.size}
+                    onExportSelected={handleExportSelected}
+                    onDeleteSelected={handleDeleteSelected}
+                    onClearSelection={handleClearSelection}
+                    disabled={tableLoading}
+                  />
+                </div>
+
+                <SalesTable
+                  displayData={displayData}
+                  tableLoading={tableLoading}
+                  searchTerm={searchTerm}
+                  formatDate={formatDate}
+                  getStoveAge={getStoveAge}
+                  exportSales={exportSales}
+                  handleDownloadReceipt={handleDownloadReceipt}
+                  handleShowAttachments={handleShowAttachments}
+                  handleDelete={handleDelete}
+                  selectedItems={selectedItems}
+                  onSelectItem={handleSelectItem}
+                  onSelectAll={handleSelectAll}
+                />
+              </div>
+
+              {/* Pagination */}
+              {pagination.totalPages > 1 && (
+                <div
+                  className={`mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 ${
+                    tableLoading ? "opacity-50 pointer-events-none" : ""
+                  }`}
+                >
+                  <div className="text-sm text-gray-600">
+                    Page {pagination.page} of {pagination.totalPages} (
+                    {pagination.total} total items)
+                  </div>
+
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => handlePageChange(pagination.page - 1)}
+                          className={
+                            pagination.page <= 1 || tableLoading
+                              ? "pointer-events-none opacity-50"
+                              : "cursor-pointer"
+                          }
+                        />
+                      </PaginationItem>
+
+                      {/* Page Numbers */}
+                      {[...Array(pagination.totalPages)].map((_, index) => {
+                        const page = index + 1;
+                        const isCurrentPage = page === pagination.page;
+                        const showPage =
+                          page === 1 ||
+                          page === pagination.totalPages ||
+                          (page >= pagination.page - 2 &&
+                            page <= pagination.page + 2);
+                        if (!showPage) {
+                          if (
+                            page === pagination.page - 3 ||
+                            page === pagination.page + 3
+                          ) {
+                            return (
+                              <PaginationItem key={page}>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            );
+                          }
+                          return null;
+                        }
+                        return (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              onClick={() =>
+                                !tableLoading && handlePageChange(page)
+                              }
+                              isActive={isCurrentPage}
+                              className={`cursor-pointer ${
+                                tableLoading ? "pointer-events-none" : ""
+                              }`}
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      })}
+
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() => handlePageChange(pagination.page + 1)}
+                          className={
+                            pagination.page >= pagination.totalPages ||
+                            tableLoading
+                              ? "pointer-events-none opacity-50"
+                              : "cursor-pointer"
+                          }
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
             </div>
           </div>
         </div>
-
-        {/* Advanced Filters Sidebar */}
-        <SalesAdvancedFilterShadcn
-          isOpen={showFilters}
-          onClose={() => setShowFilters(false)}
-          onFilter={handleFilter}
-          onExport={handleExport}
-          salesData={salesData}
-        />
 
         {/* Receipt Modal */}
         {showReceiptModal && (

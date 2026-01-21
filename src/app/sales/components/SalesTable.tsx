@@ -54,14 +54,14 @@ const SalesTable = ({
 
   // Check if some (but not all) items are selected
   const someSelected = displayData.some((sale) =>
-    selectedItems.has(sale.id.toString())
+    selectedItems.has(sale.id.toString()),
   );
 
   return (
     <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-12">
+      <TableHeader className="bg-brand">
+        <TableRow className="hover:bg-brand">
+          <TableHead className="text-white py-4 first:rounded-tl-lg w-12">
             <Checkbox
               checked={allCurrentPageSelected}
               onCheckedChange={(checked: boolean) => onSelectAll(checked)}
@@ -70,29 +70,32 @@ const SalesTable = ({
                 if (el)
                   el.indeterminate = someSelected && !allCurrentPageSelected;
               }}
+              className="border-white data-[state=checked]:bg-white data-[state=checked]:text-brand"
             />
           </TableHead>
-          <TableHead>Sales Partner</TableHead>
-          <TableHead>Transaction ID</TableHead>
-          <TableHead>Stove ID</TableHead>
-          <TableHead>Longitude</TableHead>
-          <TableHead>Latitude</TableHead>
-          <TableHead>Sales Date</TableHead>
-          <TableHead>Stove Age</TableHead>
-          <TableHead>Signature</TableHead>
-          <TableHead>Sales State</TableHead>
-          <TableHead>Sales LGA</TableHead>
-          <TableHead>End User Name</TableHead>
-          <TableHead>End User Phone</TableHead>
-          <TableHead>End User Address</TableHead>
-          <TableHead className="text-center">Actions</TableHead>
+          <TableHead className="text-white py-4">Sales Partner</TableHead>
+          <TableHead className="text-white py-4">Transaction ID</TableHead>
+          <TableHead className="text-white py-4">Stove ID</TableHead>
+          <TableHead className="text-white py-4">Longitude</TableHead>
+          <TableHead className="text-white py-4">Latitude</TableHead>
+          <TableHead className="text-white py-4">Sales Date</TableHead>
+          <TableHead className="text-white py-4">Stove Age</TableHead>
+          <TableHead className="text-white py-4">Signature</TableHead>
+          <TableHead className="text-white py-4">Sales State</TableHead>
+          <TableHead className="text-white py-4">Sales LGA</TableHead>
+          <TableHead className="text-white py-4">End User Name</TableHead>
+          <TableHead className="text-white py-4">End User Phone</TableHead>
+          <TableHead className="text-white py-4">End User Address</TableHead>
+          <TableHead className="text-center text-white py-4 last:rounded-tr-lg">
+            Actions
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody className={tableLoading ? "opacity-40" : ""}>
         {displayData.length === 0 ? (
           <TableRow>
             <TableCell colSpan={15} className="text-center py-8">
-              <div className="text-gray-900">
+              <div className="text-gray-500">
                 {searchTerm
                   ? "No sales found matching your search."
                   : "No sales data available."}
@@ -100,13 +103,15 @@ const SalesTable = ({
             </TableCell>
           </TableRow>
         ) : (
-          displayData.map((sale: SuperAdminSale) => {
+          displayData.map((sale: SuperAdminSale, index: number) => {
             const isSelected = selectedItems.has(sale.id.toString());
 
             return (
               <TableRow
                 key={sale.id}
-                className="hover:bg-gray-50 text-gray-700"
+                className={`${
+                  index % 2 === 0 ? "bg-white" : "bg-brand-light"
+                } hover:bg-gray-50`}
               >
                 <TableCell>
                   <Checkbox
@@ -118,9 +123,7 @@ const SalesTable = ({
                   />
                 </TableCell>
                 <TableCell>
-                  {sale.partner_name ??
-                    sale.organizations?.name ??
-                    "N/A"}
+                  {sale.partner_name ?? sale.organizations?.name ?? "N/A"}
                 </TableCell>
                 <TableCell className="font-medium">
                   {sale.transaction_id ?? sale.id}
@@ -183,7 +186,8 @@ const SalesTable = ({
                         onClick={() => handleDownloadReceipt(sale)}
                       >
                         {" "}
-                        <Download className="mr-2 h-4 w-4" /> Download Receipt{" "}
+                        <Download className="mr-2 h-4 w-4" /> Download
+                        Receipt{" "}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => handleShowAttachments(sale)}
