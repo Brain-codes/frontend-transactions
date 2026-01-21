@@ -69,6 +69,38 @@ const StoveManagementPage = () => {
   const { supabase, user, userRole } = useAuth();
   const { toast, toasts, removeToast } = useToast();
 
+  // Cache management for organizations
+  const ORG_CACHE_KEY = "stove_management_organizations_cache";
+  const ORG_CACHE_TIMESTAMP_KEY =
+    "stove_management_organizations_cache_timestamp";
+  const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+  const getCachedOrganizations = () => {
+    try {
+      const cached = localStorage.getItem(ORG_CACHE_KEY);
+      const timestamp = localStorage.getItem(ORG_CACHE_TIMESTAMP_KEY);
+
+      if (cached && timestamp) {
+        const age = Date.now() - parseInt(timestamp);
+        if (age < CACHE_DURATION) {
+          return JSON.parse(cached);
+        }
+      }
+    } catch (err) {
+      console.error("Error reading cache:", err);
+    }
+    return null;
+  };
+
+  const setCachedOrganizations = (data) => {
+    try {
+      localStorage.setItem(ORG_CACHE_KEY, JSON.stringify(data));
+      localStorage.setItem(ORG_CACHE_TIMESTAMP_KEY, Date.now().toString());
+    } catch (err) {
+      console.error("Error setting cache:", err);
+    }
+  };
+
   // State management
   const [loading, setLoading] = useState(false);
   const [stoveIds, setStoveIds] = useState([]);
@@ -129,10 +161,41 @@ const StoveManagementPage = () => {
     };
   }, []);
 
-  // Fetch organizations for search
+  // Fetch organizations for search (with caching)
   const fetchOrganizations = async (searchTerm = "") => {
     setLoadingOrgs(true);
     try {
+      // Check cache first
+      const cachedData = getCachedOrganizations();
+
+      if (cachedData && cachedData.length > 0) {
+        // Use cached data and filter client-side
+        if (searchTerm) {
+          const filtered = cachedData.filter(
+            (group) =>
+              group.base_name
+                .toLowerCase()
+                .includes(searchTerm.toLowerCase()) ||
+              group.branches.some(
+                (branch) =>
+                  branch.branch
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase()) ||
+                  (branch.state &&
+                    branch.state
+                      .toLowerCase()
+                      .includes(searchTerm.toLowerCase())),
+              ),
+          );
+          setOrganizations(filtered);
+        } else {
+          setOrganizations(cachedData);
+        }
+        setLoadingOrgs(false);
+        return;
+      }
+
+      // If no cache, fetch from API
       const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const functionUrl = `${baseUrl}/functions/v1/get-organizations-grouped`;
 
@@ -146,12 +209,8 @@ const StoveManagementPage = () => {
 
       const params = new URLSearchParams({
         page: "1",
-        page_size: "100",
+        page_size: "500", // Fetch all for caching
       });
-
-      if (searchTerm) {
-        params.append("search", searchTerm);
-      }
 
       const response = await fetch(`${functionUrl}?${params}`, {
         method: "GET",
@@ -167,7 +226,31 @@ const StoveManagementPage = () => {
         throw new Error(result.error || "Failed to fetch organizations");
       }
 
-      setOrganizations(result.data || []);
+      const fetchedData = result.data || [];
+
+      // Cache the full dataset
+      setCachedOrganizations(fetchedData);
+
+      // Apply search filter if needed
+      if (searchTerm) {
+        const filtered = fetchedData.filter(
+          (group) =>
+            group.base_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            group.branches.some(
+              (branch) =>
+                branch.branch
+                  .toLowerCase()
+                  .includes(searchTerm.toLowerCase()) ||
+                (branch.state &&
+                  branch.state
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase())),
+            ),
+        );
+        setOrganizations(filtered);
+      } else {
+        setOrganizations(fetchedData);
+      }
     } catch (err) {
       console.error("Error fetching organizations:", err);
       setOrganizations([]);
@@ -370,6 +453,13 @@ const StoveManagementPage = () => {
     setFilters(clearedFilters);
     handleSelectOrganization([]);
     setOrgSearch("");
+
+    // Reset organizations list to cached full list
+    const cached = getCachedOrganizations();
+    if (cached && cached.length > 0) {
+      setOrganizations(cached);
+    }
+
     fetchStoveIds(1, pagination.page_size, clearedFilters);
   };
 
@@ -432,7 +522,14 @@ const StoveManagementPage = () => {
 
   // Load organizations on mount
   useEffect(() => {
-    fetchOrganizations();
+    // Load cached organizations first
+    const cached = getCachedOrganizations();
+    if (cached && cached.length > 0) {
+      setOrganizations(cached);
+    } else {
+      // If no cache, fetch from API
+      fetchOrganizations();
+    }
     fetchStats([]);
     fetchStoveIds(1, 25);
   }, []);
@@ -502,11 +599,23 @@ const StoveManagementPage = () => {
                         placeholder="Search organizations..."
                         value={orgSearch}
                         onChange={(e) => {
-                          setOrgSearch(e.target.value);
-                          fetchOrganizations(e.target.value);
+                          const value = e.target.value;
+                          setOrgSearch(value);
+                          fetchOrganizations(value);
                           setOpenOrgPopover(true);
                         }}
-                        onFocus={() => setOpenOrgPopover(true)}
+                        onFocus={() => {
+                          setOpenOrgPopover(true);
+                          // Always show all organizations when focused
+                          if (orgSearch === "") {
+                            const cached = getCachedOrganizations();
+                            if (cached && cached.length > 0) {
+                              setOrganizations(cached);
+                            } else {
+                              fetchOrganizations("");
+                            }
+                          }
+                        }}
                         className="pl-9 bg-white"
                       />
                     </div>
@@ -526,6 +635,11 @@ const StoveManagementPage = () => {
                                   handleSelectOrganization([]);
                                   setOrgSearch("");
                                   setOpenOrgPopover(false);
+                                  // Reset to show all cached organizations
+                                  const cached = getCachedOrganizations();
+                                  if (cached && cached.length > 0) {
+                                    setOrganizations(cached);
+                                  }
                                 }}
                               >
                                 <Building2 className="h-4 w-4" />
