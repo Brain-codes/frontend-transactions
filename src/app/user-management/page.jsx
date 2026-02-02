@@ -983,7 +983,7 @@ const UserManagementPage = () => {
                       <SelectItem value="super_admin_agent">
                         Super Admin Agent
                       </SelectItem>
-                      <SelectItem value="super_admin">Super Admin</SelectItem>
+                      {/* <SelectItem value="super_admin">Super Admin</SelectItem> */}
                     </SelectContent>
                   </Select>
                 </div>
