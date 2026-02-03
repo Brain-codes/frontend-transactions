@@ -82,6 +82,10 @@ export default function ProfilePage() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Simple pagination for stoves
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Show 10 stoves per page
+
   // Form state
   const [formData, setFormData] = useState({
     username: "",
@@ -223,7 +227,7 @@ export default function ProfilePage() {
 
         toast.success(
           "Profile Updated",
-          `Successfully updated: ${updatedFields}`
+          `Successfully updated: ${updatedFields}`,
         );
 
         setEditMode(false);
@@ -232,8 +236,13 @@ export default function ProfilePage() {
         // Auto-logout after updating sensitive data
         await handleLogoutAfterUpdate();
       } else {
-        setFormErrors({ general: response.error || "Failed to update profile" });
-        toast.error("Update Failed", response.error || "Failed to update profile");
+        setFormErrors({
+          general: response.error || "Failed to update profile",
+        });
+        toast.error(
+          "Update Failed",
+          response.error || "Failed to update profile",
+        );
       }
     } catch (err) {
       const errorMsg =
@@ -248,12 +257,25 @@ export default function ProfilePage() {
   const handlePasswordChangeSuccess = async () => {
     toast.success(
       "Password Updated",
-      "Your password has been changed successfully"
+      "Your password has been changed successfully",
     );
 
     // Auto-logout after password change
     await handleLogoutAfterUpdate();
   };
+
+  // Simple pagination for stove IDs
+  const getPaginatedStoves = () => {
+    if (!profileData?.organization?.stove_ids) return [];
+
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return profileData.organization.stove_ids.slice(startIndex, endIndex);
+  };
+
+  const totalPages = Math.ceil(
+    (profileData?.organization?.stove_ids?.length || 0) / itemsPerPage,
+  );
 
   if (loading) {
     return (
@@ -314,9 +336,7 @@ export default function ProfilePage() {
                   <User className="h-5 w-5" />
                   Profile Information
                 </CardTitle>
-                <CardDescription>
-                  Your personal account details
-                </CardDescription>
+                <CardDescription>Your personal account details</CardDescription>
               </div>
               <div className="flex gap-2">
                 {editMode ? (
@@ -382,7 +402,9 @@ export default function ProfilePage() {
                       <Input
                         id="username"
                         value={formData.username}
-                        onChange={(e) => handleChange("username", e.target.value)}
+                        onChange={(e) =>
+                          handleChange("username", e.target.value)
+                        }
                         className={formErrors.username ? "border-red-500" : ""}
                         disabled={updateLoading}
                       />
@@ -451,18 +473,18 @@ export default function ProfilePage() {
                         profile?.role === "super_admin"
                           ? "default"
                           : profile?.role === "admin"
-                          ? "secondary"
-                          : "outline"
+                            ? "secondary"
+                            : "outline"
                       }
                       className="text-sm"
                     >
                       {profile?.role === "super_admin"
                         ? "Super Admin"
                         : profile?.role === "admin"
-                        ? "Admin"
-                        : profile?.role === "agent"
-                        ? "Agent"
-                        : profile?.role}
+                          ? "Admin"
+                          : profile?.role === "agent"
+                            ? "Agent"
+                            : profile?.role}
                     </Badge>
                   </div>
                 </div>
@@ -471,7 +493,10 @@ export default function ProfilePage() {
               {/* Current Password (shown in edit mode) */}
               {editMode && (
                 <div className="space-y-2 pt-4 border-t">
-                  <Label htmlFor="currentPassword" className="flex items-center gap-2">
+                  <Label
+                    htmlFor="currentPassword"
+                    className="flex items-center gap-2"
+                  >
                     <Key className="h-4 w-4" />
                     Current Password <span className="text-red-500">*</span>
                   </Label>
@@ -483,7 +508,9 @@ export default function ProfilePage() {
                       handleChange("currentPassword", e.target.value)
                     }
                     placeholder="Enter your current password to confirm changes"
-                    className={formErrors.currentPassword ? "border-red-500" : ""}
+                    className={
+                      formErrors.currentPassword ? "border-red-500" : ""
+                    }
                     disabled={updateLoading}
                   />
                   {formErrors.currentPassword && (
@@ -611,12 +638,15 @@ export default function ProfilePage() {
                         </div>
                       )}
 
+                      {/* Assigned Stoves */}
                       {organization.stove_ids &&
                         organization.stove_ids.length > 0 && (
                           <div className="space-y-2 md:col-span-2">
-                            <Label>Assigned Stoves</Label>
+                            <Label>
+                              Assigned Stoves ({organization.stove_ids.length})
+                            </Label>
                             <div className="flex flex-wrap gap-2">
-                              {organization.stove_ids.map((stove) => (
+                              {getPaginatedStoves().map((stove) => (
                                 <Badge
                                   key={stove.id}
                                   variant="outline"
@@ -626,6 +656,50 @@ export default function ProfilePage() {
                                 </Badge>
                               ))}
                             </div>
+
+                            {/* Simple Pagination */}
+                            {totalPages > 1 && (
+                              <div className="flex items-center justify-between pt-3 border-t">
+                                <div className="text-sm text-gray-600">
+                                  Showing {(currentPage - 1) * itemsPerPage + 1}{" "}
+                                  to{" "}
+                                  {Math.min(
+                                    currentPage * itemsPerPage,
+                                    organization.stove_ids.length,
+                                  )}{" "}
+                                  of {organization.stove_ids.length}
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    onClick={() =>
+                                      setCurrentPage((prev) =>
+                                        Math.max(1, prev - 1),
+                                      )
+                                    }
+                                    disabled={currentPage === 1}
+                                    variant="outline"
+                                    size="sm"
+                                  >
+                                    Previous
+                                  </Button>
+                                  <span className="flex items-center px-3 text-sm">
+                                    Page {currentPage} of {totalPages}
+                                  </span>
+                                  <Button
+                                    onClick={() =>
+                                      setCurrentPage((prev) =>
+                                        Math.min(totalPages, prev + 1),
+                                      )
+                                    }
+                                    disabled={currentPage === totalPages}
+                                    variant="outline"
+                                    size="sm"
+                                  >
+                                    Next
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                     </>

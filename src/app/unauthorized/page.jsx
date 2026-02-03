@@ -2,53 +2,101 @@
 "use client";
 
 import { useAuth } from "../contexts/AuthContext";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, LogOut } from "lucide-react";
+import { AlertCircle, Home, LogOut } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export default function UnauthorizedPage() {
-  const { signOut } = useAuth();
+  const { signOut, user, isSuperAdmin, isAdmin, getStoredProfile } = useAuth();
+  const router = useRouter();
+  const [userInfo, setUserInfo] = useState(null);
+
+  useEffect(() => {
+    // Get user profile information
+    const profile = getStoredProfile();
+    if (profile) {
+      setUserInfo({
+        role: isSuperAdmin
+          ? "Super Admin"
+          : isAdmin
+            ? "Admin"
+            : profile.role || "User",
+        organization: profile.organization_name || profile.organizations?.name,
+      });
+    }
+  }, [getStoredProfile, isSuperAdmin, isAdmin]);
 
   const handleSignOut = async () => {
     try {
       await signOut();
-      // Force immediate navigation to login page
       window.location.href = "/login";
     } catch (error) {
       console.error("Error during logout:", error);
-      // Still redirect to login even if there was an error
       window.location.href = "/login";
     }
   };
 
+  const handleGoToDashboard = () => {
+    // Route to appropriate dashboard based on role
+    if (isSuperAdmin) {
+      router.push("/dashboard");
+    } else if (isAdmin) {
+      router.push("/admin");
+    } else {
+      router.push("/dashboard");
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-white flex items-center justify-center px-4">
       <div className="max-w-md w-full">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-            <AlertCircle className="h-6 w-6 text-red-600" />
+        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-gray-100 mb-4">
+            <AlertCircle className="h-6 w-6 text-gray-600" />
           </div>
 
           <h1 className="text-xl font-semibold text-gray-900 mb-2">
-            Access Denied
+            Page Not Found
           </h1>
 
           <p className="text-gray-600 mb-6">
-            You don't have permission to access this page. Please contact your
-            administrator if you believe this is an error.
+            The page you're looking for doesn't exist or you don't have access
+            to it.
           </p>
 
+          {userInfo && (
+            <div className="mb-6 p-3 bg-gray-50 rounded-md border border-gray-200">
+              <p className="text-sm text-gray-700">
+                You are logged in as{" "}
+                <span className="font-medium">{userInfo.role}</span>
+                {userInfo.organization && (
+                  <>
+                    {" "}
+                    for{" "}
+                    <span className="font-medium">{userInfo.organization}</span>
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+
           <div className="space-y-3">
-            <p className="text-sm text-gray-500">
-              If you believe this is an error, please contact your
-              administrator.
-            </p>
+            <Button
+              onClick={handleGoToDashboard}
+              className="w-full bg-brand hover:bg-brand/90 text-white"
+            >
+              <Home className="h-4 w-4 mr-2" />
+              Go to Dashboard
+            </Button>
 
             <Button
               onClick={handleSignOut}
-              className="w-full bg-red-600 hover:bg-red-700 text-white"
+              variant="outline"
+              className="w-full"
             >
               <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
+              Log Out
             </Button>
           </div>
         </div>
