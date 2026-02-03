@@ -66,8 +66,13 @@ const SimpleTooltip = ({ children, text }) => {
 };
 
 const StoveManagementPage = () => {
-  const { supabase, user, userRole } = useAuth();
+  const { supabase, user, userRole, isSuperAdmin, isAdmin, getStoredProfile } =
+    useAuth();
   const { toast, toasts, removeToast } = useToast();
+
+  // Get admin's organization for filtering
+  const userProfile = getStoredProfile();
+  const adminOrgId = userProfile?.organization_id || null;
 
   // Cache management for organizations
   const ORG_CACHE_KEY = "stove_management_organizations_cache";
@@ -112,7 +117,10 @@ const StoveManagementPage = () => {
   });
 
   // Organization selection
-  const [selectedOrgIds, setSelectedOrgIds] = useState([]);
+  // For admin users, automatically set their organization ID
+  const [selectedOrgIds, setSelectedOrgIds] = useState(
+    isAdmin && adminOrgId ? [adminOrgId] : [],
+  );
   const [organizations, setOrganizations] = useState([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [orgSearch, setOrgSearch] = useState("");
@@ -162,7 +170,13 @@ const StoveManagementPage = () => {
   }, []);
 
   // Fetch organizations for search (with caching)
+  // Only super admins need this - admins are locked to their organization
   const fetchOrganizations = async (searchTerm = "") => {
+    // Skip for admin users - they don't have organization selector
+    if (isAdmin && !isSuperAdmin) {
+      return;
+    }
+
     setLoadingOrgs(true);
     try {
       // Check cache first
@@ -451,22 +465,27 @@ const StoveManagementPage = () => {
       date_to: "",
     };
     setFilters(clearedFilters);
-    handleSelectOrganization([]);
-    setOrgSearch("");
 
-    // Reset organizations list to cached full list
-    const cached = getCachedOrganizations();
-    if (cached && cached.length > 0) {
-      setOrganizations(cached);
+    // Only clear organization selection for super admins
+    // Admins should always keep their organization filter
+    if (isSuperAdmin) {
+      handleSelectOrganization([]);
+      setOrgSearch("");
+
+      // Reset organizations list to cached full list
+      const cached = getCachedOrganizations();
+      if (cached && cached.length > 0) {
+        setOrganizations(cached);
+      }
     }
 
     fetchStoveIds(1, pagination.page_size, clearedFilters);
   };
 
-  // Check if any filters are active (including organization)
+  // Check if any filters are active (including organization for super admins only)
   const hasActiveFilters =
     Object.values(filters).some((value) => value !== "") ||
-    selectedOrgIds.length > 0;
+    (isSuperAdmin && selectedOrgIds.length > 0);
 
   // Fetch stove details
   const handleViewStove = async (stoveId) => {
@@ -573,7 +592,7 @@ const StoveManagementPage = () => {
   };
 
   return (
-    <ProtectedRoute allowedRoles={["super_admin"]}>
+    <ProtectedRoute allowedRoles={["super_admin", "admin"]}>
       <DashboardLayout currentRoute="stove-management">
         {/* Main Content */}
         <div className="flex-1 overflow-y-auto bg-white">
@@ -591,121 +610,123 @@ const StoveManagementPage = () => {
               {/* Filters */}
               <div className="bg-brand-light p-4 rounded-lg border border-gray-200">
                 <div className="flex flex-wrap items-center gap-4">
-                  {/* Organization Search */}
-                  <div className="flex-1 min-w-[200px]" ref={orgDropdownRef}>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input
-                        placeholder="Search organizations..."
-                        value={orgSearch}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setOrgSearch(value);
-                          fetchOrganizations(value);
-                          setOpenOrgPopover(true);
-                        }}
-                        onFocus={() => {
-                          setOpenOrgPopover(true);
-                          // Always show all organizations when focused
-                          if (orgSearch === "") {
-                            const cached = getCachedOrganizations();
-                            if (cached && cached.length > 0) {
-                              setOrganizations(cached);
-                            } else {
-                              fetchOrganizations("");
+                  {/* Organization Search - Only for Super Admins */}
+                  {isSuperAdmin && (
+                    <div className="flex-1 min-w-[200px]" ref={orgDropdownRef}>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Search organizations..."
+                          value={orgSearch}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setOrgSearch(value);
+                            fetchOrganizations(value);
+                            setOpenOrgPopover(true);
+                          }}
+                          onFocus={() => {
+                            setOpenOrgPopover(true);
+                            // Always show all organizations when focused
+                            if (orgSearch === "") {
+                              const cached = getCachedOrganizations();
+                              if (cached && cached.length > 0) {
+                                setOrganizations(cached);
+                              } else {
+                                fetchOrganizations("");
+                              }
                             }
-                          }
-                        }}
-                        className="pl-9 bg-white"
-                      />
-                    </div>
-                    {openOrgPopover && (
-                      <div className="absolute z-50 min-w-[200px] max-w-[300px] mt-2 bg-white rounded-md border border-gray-200 shadow-md max-h-64 overflow-y-auto">
-                        <div className="p-2">
-                          {loadingOrgs ? (
-                            <div className="px-2 py-4 text-sm text-center text-gray-500 flex items-center justify-center gap-2">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Loading organizations...
-                            </div>
-                          ) : (
-                            <>
-                              <div
-                                className="px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 rounded-sm flex items-center gap-2"
-                                onClick={() => {
-                                  handleSelectOrganization([]);
-                                  setOrgSearch("");
-                                  setOpenOrgPopover(false);
-                                  // Reset to show all cached organizations
-                                  const cached = getCachedOrganizations();
-                                  if (cached && cached.length > 0) {
-                                    setOrganizations(cached);
-                                  }
-                                }}
-                              >
-                                <Building2 className="h-4 w-4" />
-                                All Organizations
-                              </div>
-                              {organizations.length === 0 && orgSearch ? (
-                                <div className="px-2 py-4 text-sm text-center text-gray-500">
-                                  No organization found.
-                                </div>
-                              ) : (
-                                organizations.map((group) => (
-                                  <div key={group.base_name}>
-                                    <div
-                                      className="px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 rounded-sm"
-                                      onClick={() => {
-                                        handleSelectOrganization(
-                                          group.organization_ids,
-                                        );
-                                        setOrgSearch("");
-                                        setOpenOrgPopover(false);
-                                      }}
-                                    >
-                                      <div className="flex items-center justify-between w-full">
-                                        <div className="flex items-center gap-2">
-                                          <Building2 className="h-4 w-4" />
-                                          {group.base_name}
-                                        </div>
-                                        {group.branch_count > 1 && (
-                                          <span className="text-xs text-gray-500">
-                                            {group.branch_count} branches
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                    {group.branch_count > 1 &&
-                                      group.branches.map((branch) => (
-                                        <div
-                                          key={branch.id}
-                                          className="pl-8 px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 rounded-sm"
-                                          onClick={() => {
-                                            handleSelectOrganization([
-                                              branch.id,
-                                            ]);
-                                            setOrgSearch("");
-                                            setOpenOrgPopover(false);
-                                          }}
-                                        >
-                                          <div className="flex items-center justify-between w-full">
-                                            <span>{branch.branch}</span>
-                                            {branch.state && (
-                                              <span className="text-xs text-gray-500">
-                                                {branch.state}
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                      ))}
-                                  </div>
-                                ))
-                              )}
-                            </>
-                          )}
-                        </div>
+                          }}
+                          className="pl-9 bg-white"
+                        />
                       </div>
-                    )}
-                  </div>
+                      {openOrgPopover && (
+                        <div className="absolute z-50 min-w-[200px] max-w-[300px] mt-2 bg-white rounded-md border border-gray-200 shadow-md max-h-64 overflow-y-auto">
+                          <div className="p-2">
+                            {loadingOrgs ? (
+                              <div className="px-2 py-4 text-sm text-center text-gray-500 flex items-center justify-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Loading organizations...
+                              </div>
+                            ) : (
+                              <>
+                                <div
+                                  className="px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 rounded-sm flex items-center gap-2"
+                                  onClick={() => {
+                                    handleSelectOrganization([]);
+                                    setOrgSearch("");
+                                    setOpenOrgPopover(false);
+                                    // Reset to show all cached organizations
+                                    const cached = getCachedOrganizations();
+                                    if (cached && cached.length > 0) {
+                                      setOrganizations(cached);
+                                    }
+                                  }}
+                                >
+                                  <Building2 className="h-4 w-4" />
+                                  All Organizations
+                                </div>
+                                {organizations.length === 0 && orgSearch ? (
+                                  <div className="px-2 py-4 text-sm text-center text-gray-500">
+                                    No organization found.
+                                  </div>
+                                ) : (
+                                  organizations.map((group) => (
+                                    <div key={group.base_name}>
+                                      <div
+                                        className="px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 rounded-sm"
+                                        onClick={() => {
+                                          handleSelectOrganization(
+                                            group.organization_ids,
+                                          );
+                                          setOrgSearch("");
+                                          setOpenOrgPopover(false);
+                                        }}
+                                      >
+                                        <div className="flex items-center justify-between w-full">
+                                          <div className="flex items-center gap-2">
+                                            <Building2 className="h-4 w-4" />
+                                            {group.base_name}
+                                          </div>
+                                          {group.branch_count > 1 && (
+                                            <span className="text-xs text-gray-500">
+                                              {group.branch_count} branches
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {group.branch_count > 1 &&
+                                        group.branches.map((branch) => (
+                                          <div
+                                            key={branch.id}
+                                            className="pl-8 px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 rounded-sm"
+                                            onClick={() => {
+                                              handleSelectOrganization([
+                                                branch.id,
+                                              ]);
+                                              setOrgSearch("");
+                                              setOpenOrgPopover(false);
+                                            }}
+                                          >
+                                            <div className="flex items-center justify-between w-full">
+                                              <span>{branch.branch}</span>
+                                              {branch.state && (
+                                                <span className="text-xs text-gray-500">
+                                                  {branch.state}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        ))}
+                                    </div>
+                                  ))
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Stove ID Search */}
                   <div className="flex-1 min-w-[150px]">
@@ -741,17 +762,19 @@ const StoveManagementPage = () => {
                     </Select>
                   </div>
 
-                  {/* Branch */}
-                  <div className="flex-1 min-w-[150px]">
-                    <Input
-                      placeholder="Branch"
-                      value={filters.branch}
-                      onChange={(e) =>
-                        handleFilterChange("branch", e.target.value)
-                      }
-                      className="bg-white"
-                    />
-                  </div>
+                  {/* Branch - Only for Super Admins */}
+                  {isSuperAdmin && (
+                    <div className="flex-1 min-w-[150px]">
+                      <Input
+                        placeholder="Branch"
+                        value={filters.branch}
+                        onChange={(e) =>
+                          handleFilterChange("branch", e.target.value)
+                        }
+                        className="bg-white"
+                      />
+                    </div>
+                  )}
 
                   {/* State */}
                   <div className="flex-1 min-w-[150px]">
@@ -804,8 +827,8 @@ const StoveManagementPage = () => {
                     />
                   </div>
 
-                  {/* Selected Organization Badge */}
-                  {selectedOrgIds.length > 0 && (
+                  {/* Selected Organization Badge - Only for Super Admins */}
+                  {isSuperAdmin && selectedOrgIds.length > 0 && (
                     <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-md border border-gray-200">
                       <Building2 className="h-4 w-4 text-gray-600" />
                       <span className="text-sm font-medium text-gray-900">
@@ -841,7 +864,7 @@ const StoveManagementPage = () => {
 
               {/* Statistics Cards */}
               <div className="flex gap-4">
-                <Card className="w-fit">
+                <Card className="w-fit shadow-none">
                   <CardContent className="p-4">
                     {loadingStats ? (
                       <div className="flex items-center justify-center h-16 w-48">
@@ -865,7 +888,7 @@ const StoveManagementPage = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="w-fit">
+                <Card className="w-fit shadow-none">
                   <CardContent className="p-4">
                     {loadingStats ? (
                       <div className="flex items-center justify-center h-16 w-48">
@@ -889,7 +912,7 @@ const StoveManagementPage = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="w-fit">
+                <Card className="w-fit shadow-none">
                   <CardContent className="p-4">
                     {loadingStats ? (
                       <div className="flex items-center justify-center h-16 w-48">
