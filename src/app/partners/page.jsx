@@ -998,6 +998,7 @@ const PartnersPage = () => {
                     <TableHead className="text-white py-4 first:rounded-tl-lg">
                       Partner
                     </TableHead>
+                    <TableHead className="text-white py-4">Type</TableHead>
                     <TableHead className="text-white py-4">Branch</TableHead>
                     <TableHead className="text-white py-4">
                       Total Stove ID Received
@@ -1016,7 +1017,7 @@ const PartnersPage = () => {
                 <TableBody className={tableLoading ? "opacity-40" : ""}>
                   {organizationsData.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={7} className="text-center py-8">
                         <div className="text-gray-500">
                           {tableLoading ? "Loading..." : "No partners found"}
                         </div>
@@ -1032,6 +1033,22 @@ const PartnersPage = () => {
                       >
                         <TableCell className="font-medium">
                           {org.partner_name}
+                        </TableCell>
+                        <TableCell>
+                          {org.partner_type ? (
+                            <div
+                              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent ${
+                                org.partner_type === "partner"
+                                  ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
+                                  : "bg-green-100 text-green-800 hover:bg-green-100"
+                              }`}
+                            >
+                              {org.partner_type.charAt(0).toUpperCase() +
+                                org.partner_type.slice(1)}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-xs">-</span>
+                          )}
                         </TableCell>
                         <TableCell>{org.branch || "N/A"}</TableCell>
                         <TableCell>
