@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,7 +50,8 @@ import SignatureCanvas from "../../../components/ui/SignatureCanvas";
 
 const CreateSalesForm = ({
   onSuccess,
-  onCancel,
+  onCancel = null,
+  cancelHref = "",
   isModal = false,
   showSuccessState = true,
   mode = "create", // "create" or "edit"
@@ -215,8 +217,12 @@ const CreateSalesForm = ({
     try {
       setStovesLoading(true);
 
-      // Get organization ID from stored profile
-      const organizationId = profileService.getOrganizationId();
+      // Get organization ID from stored profile (or SAA sessionStorage fallback)
+      const organizationId =
+        profileService.getOrganizationId() ||
+        (typeof sessionStorage !== "undefined"
+          ? sessionStorage.getItem("saa_selected_org_id")
+          : null);
 
       if (!organizationId) {
         setError("Organization ID not found. Please log in again.");
@@ -364,6 +370,15 @@ const CreateSalesForm = ({
       // Transform form data for API
       const apiData = transformFormDataForAPI(formData);
 
+      // For SAA users who have no profile org_id, include the org from sessionStorage
+      const saaOrgId =
+        typeof sessionStorage !== "undefined"
+          ? sessionStorage.getItem("saa_selected_org_id")
+          : null;
+      if (saaOrgId) {
+        apiData.organizationId = saaOrgId;
+      }
+
       let response;
       if (isEditMode) {
         response = await adminSalesService.updateSale(initialData.id, apiData);
@@ -372,6 +387,10 @@ const CreateSalesForm = ({
       }
 
       if (response.success) {
+        // Clean up SAA org selection from sessionStorage
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.removeItem("saa_selected_org_id");
+        }
         setSuccess(true);
         if (onSuccess) {
           onSuccess(response.data);

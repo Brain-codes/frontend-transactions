@@ -26,7 +26,7 @@ import Link from "next/link";
 
 const Sidebar = ({ isOpen, onClose, currentRoute }) => {
   const router = useRouter();
-  const { isSuperAdmin, isAdmin, isAgent, hasAdminAccess, isAtmosfairUser } =
+  const { isSuperAdmin, isSuperAdminAgent, isAdmin, isAgent, hasAdminAccess, isAtmosfairUser } =
     useAuth();
 
   // Navigation items based on user role
@@ -133,6 +133,52 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
         //   badge: "New",
         //   requiresAuth: true,
         // },
+      ];
+    }
+
+    // Super Admin Agent gets access to their assigned partners' sales
+    if (isSuperAdminAgent) {
+      return [
+        {
+          name: "Dashboard",
+          icon: LayoutDashboard,
+          route: "super-admin-agent",
+          href: "/super-admin-agent",
+          badge: null,
+          requiresAuth: true,
+        },
+        {
+          name: "Sales",
+          icon: ShoppingCart,
+          route: "super-admin-agent-sales",
+          href: "/super-admin-agent/sales",
+          badge: null,
+          requiresAuth: true,
+        },
+        {
+          name: "My Partners",
+          icon: UserCheck,
+          route: "super-admin-agent-partners",
+          href: "/super-admin-agent/partners",
+          badge: null,
+          requiresAuth: true,
+        },
+        {
+          name: "Stove IDs",
+          icon: Package,
+          route: "super-admin-agent-stove-ids",
+          href: "/super-admin-agent/stove-ids",
+          badge: null,
+          requiresAuth: true,
+        },
+        {
+          name: "Profile",
+          icon: User,
+          route: "profile",
+          href: "/profile",
+          badge: null,
+          requiresAuth: true,
+        },
       ];
     }
 

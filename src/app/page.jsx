@@ -5,7 +5,7 @@ import { useAuth } from "./contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const { isAuthenticated, isSuperAdmin, isAdmin, isAgent, loading } =
+  const { isAuthenticated, isSuperAdmin, isSuperAdminAgent, isAdmin, isAgent, loading } =
     useAuth();
   const router = useRouter();
 
@@ -15,6 +15,8 @@ export default function Home() {
         router.push("/login");
       } else if (isSuperAdmin) {
         router.push("/dashboard");
+      } else if (isSuperAdminAgent) {
+        router.push("/super-admin-agent");
       } else if (isAdmin) {
         router.push("/admin");
       } else if (isAgent) {
@@ -23,7 +25,7 @@ export default function Home() {
         router.push("/unauthorized");
       }
     }
-  }, [isAuthenticated, isSuperAdmin, isAdmin, isAgent, loading, router]);
+  }, [isAuthenticated, isSuperAdmin, isSuperAdminAgent, isAdmin, isAgent, loading, router]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">

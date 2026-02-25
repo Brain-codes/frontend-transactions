@@ -76,6 +76,49 @@ This is the **only correct pattern** for generating new Supabase Edge Functions.
 
 ---
 
+## **EDGE FUNCTION URL ROUTING PATTERN (NEW FUNCTIONS — MUST FOLLOW)**
+
+When a domain entity requires multiple operations (CRUD + sub-resources), use **ONE edge function** with internal URL routing. Do **NOT** create separate edge functions per operation (e.g., no `create-super-admin-agents`, `delete-super-admin-agents` — only one `super-admin-agents` function).
+
+### Pattern Example: `super-admin-agents`
+
+Single folder handles all operations:
+
+```
+super-admin-agents/
+  index.ts              ← entry point, routes by HTTP method + URL path
+  cors.ts               ← CORS headers
+  authenticate.ts       ← JWT auth + role verification
+  routeHandlers.ts      ← URL path parsing and dispatch to operation files
+  readOptions.ts        ← all GET operations
+  writeOptions.ts       ← all POST / PATCH operations
+  deleteOptions.ts      ← all DELETE operations
+  organizationOptions.ts ← sub-resource operations (e.g., /{id}/organizations)
+```
+
+Routes handled by ONE function:
+
+```
+GET    /super-admin-agents                         → list all
+POST   /super-admin-agents                         → create
+GET    /super-admin-agents/{id}                    → get single
+PATCH  /super-admin-agents/{id}                    → update
+DELETE /super-admin-agents/{id}                    → delete
+GET    /super-admin-agents/{id}/organizations      → list org assignments
+POST   /super-admin-agents/{id}/organizations      → replace org assignments
+DELETE /super-admin-agents/{id}/organizations/{orgId} → remove single org
+```
+
+### Rules:
+
+- **ONE folder per domain entity** — all CRUD + sub-resource routes live inside one edge function folder
+- `index.ts` is always the entry point; it calls `routeHandlers.ts` to dispatch
+- `routeHandlers.ts` parses the URL path and HTTP method, then delegates to the correct operation file
+- Additional sub-resource files follow the `[subResource]Options.ts` naming pattern
+- All new SAA-related edge functions are named with the prefix `super-admin-agent(s)`
+
+---
+
 ## **SUPABASE WORKFLOW RULES**
 
 The project uses two Supabase systems in parallel:

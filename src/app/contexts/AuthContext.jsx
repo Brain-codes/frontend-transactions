@@ -18,6 +18,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [storedProfileRole, setStoredProfileRole] = useState(null);
   const supabase = createClientComponentClient();
 
   // Track the last user to detect actual user changes vs session refresh
@@ -110,23 +111,27 @@ export const AuthProvider = ({ children }) => {
   const isAuthenticated = !!user;
   const isSuperAdmin =
     user?.app_metadata?.role === "super_admin" ||
-    user?.user_metadata?.role === "super_admin";
+    user?.user_metadata?.role === "super_admin" ||
+    storedProfileRole === "super_admin";
   const isSuperAdminAgent =
     user?.app_metadata?.role === "super_admin_agent" ||
-    user?.user_metadata?.role === "super_admin_agent";
+    user?.user_metadata?.role === "super_admin_agent" ||
+    storedProfileRole === "super_admin_agent";
   const isAdmin =
     user?.app_metadata?.role === "admin" ||
-    user?.user_metadata?.role === "admin";
+    user?.user_metadata?.role === "admin" ||
+    storedProfileRole === "admin";
   const isAgent =
     user?.app_metadata?.role === "agent" ||
-    user?.user_metadata?.role === "agent";
+    user?.user_metadata?.role === "agent" ||
+    storedProfileRole === "agent";
 
-  // Helper function to check if user has admin level access (admin, agent, or super_admin)
-  const hasAdminAccess = isSuperAdmin || isAdmin || isAgent;
+  // Helper function to check if user has admin level access (admin, agent, super_admin, or super_admin_agent)
+  const hasAdminAccess = isSuperAdmin || isSuperAdminAgent || isAdmin || isAgent;
 
   // Get user role
   const userRole =
-    user?.app_metadata?.role || user?.user_metadata?.role || null;
+    user?.app_metadata?.role || user?.user_metadata?.role || storedProfileRole || null;
 
   // TODO: TEMPORARY - Remove this atmosfair.com email check when implementing proper role-based navigation
   // Helper function to check if user email contains atmosfair.com
@@ -197,6 +202,9 @@ export const AuthProvider = ({ children }) => {
               // Continue with auth even if profile fetch fails
             }
           }
+          // Sync role from stored profile so routing works even if JWT metadata lacks the role
+          const latestProfile = profileService.getStoredProfileData();
+          if (latestProfile?.role) setStoredProfileRole(latestProfile.role);
         } else {
           console.log(
             "🔐 [AuthContext] No session found - user needs to log in"
@@ -293,10 +301,14 @@ export const AuthProvider = ({ children }) => {
           );
           // Continue with auth even if profile fetch fails
         }
+        // Sync role from profile so routing works even if JWT metadata lacks the role
+        const signInProfile = profileService.getStoredProfileData();
+        if (signInProfile?.role) setStoredProfileRole(signInProfile.role);
       } else if (event === "SIGNED_OUT") {
         // Clear profile and token data on sign out
         profileService.clearStoredProfileData();
         tokenManager.clearToken();
+        setStoredProfileRole(null);
 
         // Force clear localStorage of any remaining auth data
         if (typeof window !== "undefined") {
@@ -357,6 +369,9 @@ export const AuthProvider = ({ children }) => {
         );
         // Continue with auth even if profile fetch fails
       }
+      // Sync role from profile so routing works even if JWT metadata lacks the role
+      const loginProfile = profileService.getStoredProfileData();
+      if (loginProfile?.role) setStoredProfileRole(loginProfile.role);
     }
 
     return { data, error };
@@ -536,6 +551,7 @@ export const AuthProvider = ({ children }) => {
     isAgent,
     hasAdminAccess,
     userRole,
+    storedProfileRole,
     isAtmosfairUser, // TODO: TEMPORARY - Remove when implementing proper role-based navigation
     signIn,
     signInWithCredentials,

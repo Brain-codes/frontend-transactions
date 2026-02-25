@@ -37,6 +37,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast, ToastContainer } from "@/components/ui/toast";
@@ -54,7 +60,10 @@ import {
   EyeOff,
   AlertCircle,
   RefreshCw,
+  Building2,
+  MoreVertical,
 } from "lucide-react";
+import AssignOrganizationsModal from "../super-admin-agents/components/AssignOrganizationsModal";
 
 // Simple tooltip component
 const SimpleTooltip = ({ children, text }) => {
@@ -102,7 +111,9 @@ const UserManagementPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showAssignOrgsModal, setShowAssignOrgsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedUserForOrgs, setSelectedUserForOrgs] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Form state for create/edit
@@ -140,7 +151,7 @@ const UserManagementPage = () => {
       // Build query parameters
       const params = new URLSearchParams({
         page: page.toString(),
-        page_size: pageSize.toString(),
+        limit: pageSize.toString(),
       });
 
       // Add filters
@@ -718,6 +729,7 @@ const UserManagementPage = () => {
                   <TableHead className="text-white py-4">Email</TableHead>
                   <TableHead className="text-white py-4">Phone</TableHead>
                   <TableHead className="text-white py-4">Role</TableHead>
+                  <TableHead className="text-white py-4">Assigned Partners</TableHead>
                   <TableHead className="text-white py-4">Status</TableHead>
                   <TableHead className="text-white py-4">Created At</TableHead>
                   <TableHead className="text-center text-white py-4 last:rounded-tr-lg">
@@ -728,7 +740,7 @@ const UserManagementPage = () => {
               <TableBody className={loading ? "opacity-40" : ""}>
                 {users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={8} className="text-center py-8">
                       <div className="text-gray-500">
                         {loading ? "Loading..." : "No users found"}
                       </div>
@@ -760,6 +772,16 @@ const UserManagementPage = () => {
                             : "Super Admin Agent"}
                         </Badge>
                       </TableCell>
+                      <TableCell className="text-center">
+                        {user.role === "super_admin_agent" ? (
+                          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                            {user.assigned_organizations_count ?? 0} 
+                            
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge
                           className={
@@ -773,62 +795,60 @@ const UserManagementPage = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>{formatDate(user.created_at)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-center gap-1">
-                          {/* Edit Button */}
-                          <SimpleTooltip text="Edit User">
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          {/* Assign Partners — SAA only */}
+                          {user.role === "super_admin_agent" && (
                             <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => openEditModal(user)}
+                              size="sm"
+                              className="bg-brand hover:bg-brand/90 text-white text-xs"
+                              onClick={() => {
+                                setSelectedUserForOrgs(user);
+                                setShowAssignOrgsModal(true);
+                              }}
                               disabled={actionLoading}
                             >
-                              <Edit className="h-4 w-4 text-blue-600" />
+                              <Building2 className="h-3 w-3 mr-1" />
+                              Assign Partners
                             </Button>
-                          </SimpleTooltip>
-
-                          {/* Disable/Enable Button */}
-                          {user.status === "active" ? (
-                            <SimpleTooltip text="Disable User">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() =>
-                                  handleToggleUserStatus(user.id, user.status)
-                                }
-                                disabled={actionLoading}
-                              >
-                                <UserX className="h-4 w-4 text-orange-600" />
-                              </Button>
-                            </SimpleTooltip>
-                          ) : (
-                            <SimpleTooltip text="Enable User">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() =>
-                                  handleToggleUserStatus(user.id, user.status)
-                                }
-                                disabled={actionLoading}
-                              >
-                                <UserCheck className="h-4 w-4 text-green-600" />
-                              </Button>
-                            </SimpleTooltip>
                           )}
 
-                          {/* Delete Button - Only for super_admin_agent */}
-                          {user.role === "super_admin_agent" && (
-                            <SimpleTooltip text="Delete User">
-                              <Button
-                                size="icon"
-                                variant="ghost"
+                          {/* More dropdown */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditModal(user)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit User
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleToggleUserStatus(user.id, user.status)}
+                              >
+                                {user.status === "active" ? (
+                                  <>
+                                    <UserX className="h-4 w-4 mr-2 text-orange-500" />
+                                    Disable User
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserCheck className="h-4 w-4 mr-2 text-green-500" />
+                                    Enable User
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-red-600"
                                 onClick={() => openDeleteModal(user)}
-                                disabled={actionLoading}
                               >
-                                <Trash2 className="h-4 w-4 text-red-600" />
-                              </Button>
-                            </SimpleTooltip>
-                          )}
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete User
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -983,7 +1003,7 @@ const UserManagementPage = () => {
                       <SelectItem value="super_admin_agent">
                         Super Admin Agent
                       </SelectItem>
-                      {/* <SelectItem value="super_admin">Super Admin</SelectItem> */}
+                      <SelectItem value="super_admin">Super Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1251,6 +1271,22 @@ const UserManagementPage = () => {
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Assign Organizations Modal */}
+          {showAssignOrgsModal && selectedUserForOrgs && (
+            <AssignOrganizationsModal
+              agent={selectedUserForOrgs}
+              onClose={() => {
+                setShowAssignOrgsModal(false);
+                setSelectedUserForOrgs(null);
+              }}
+              onSuccess={() => {
+                setShowAssignOrgsModal(false);
+                setSelectedUserForOrgs(null);
+                toast.success("Partner assignments updated");
+              }}
+            />
+          )}
 
           {/* Toast Container */}
           <ToastContainer toasts={toasts} removeToast={removeToast} />
