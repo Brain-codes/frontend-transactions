@@ -114,6 +114,32 @@ class SuperAdminAgentService {
     );
   }
 
+  // ─── State Assignments ────────────────────────────────────────────────────
+
+  // Get assigned states for an agent
+  async getAgentStates(agentId) {
+    return await this.request(
+      `${API_FUNCTIONS_URL}/super-admin-agents/${agentId}/states`,
+      { method: "GET" }
+    );
+  }
+
+  // Replace all state assignments for an agent (full replace)
+  async setAgentStates(agentId, states) {
+    return await this.request(
+      `${API_FUNCTIONS_URL}/super-admin-agents/${agentId}/states`,
+      { method: "POST", body: JSON.stringify({ states }) }
+    );
+  }
+
+  // Remove a single state assignment
+  async removeAgentState(agentId, state) {
+    return await this.request(
+      `${API_FUNCTIONS_URL}/super-admin-agents/${agentId}/states/${encodeURIComponent(state)}`,
+      { method: "DELETE" }
+    );
+  }
+
   // ─── SAA Portal: Dashboard ────────────────────────────────────────────────
 
   // Get dashboard stats for the logged-in SAA

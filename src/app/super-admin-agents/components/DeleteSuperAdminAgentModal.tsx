@@ -21,6 +21,7 @@ interface Agent {
   status: string;
   created_at: string;
   assigned_organizations_count: number;
+  assigned_states_count: number;
 }
 
 interface DeleteSuperAdminAgentModalProps {

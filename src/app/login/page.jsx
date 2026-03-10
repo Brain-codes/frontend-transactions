@@ -27,6 +27,7 @@ const LoginPage = () => {
     isSuperAdmin,
     isAdmin,
     isAgent,
+    isSuperAdminAgent,
     loading: authLoading,
     signOut,
   } = useAuth();
@@ -65,6 +66,8 @@ const LoginPage = () => {
         router.push("/admin");
       } else if (isAgent) {
         router.push("/agent");
+      } else if (isSuperAdminAgent) {
+        router.push("/super-admin-agent");
       } else {
         router.push("/unauthorized");
       }

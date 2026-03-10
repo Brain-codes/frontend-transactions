@@ -39,6 +39,7 @@ interface Agent {
   status: string;
   created_at: string;
   assigned_organizations_count: number;
+  assigned_states_count: number;
 }
 
 interface CreateSuperAdminAgentModalProps {
@@ -144,7 +145,7 @@ const CreateSuperAdminAgentModal: React.FC<CreateSuperAdminAgentModalProps> = ({
         phone: form.phone.trim() || undefined,
         role: form.role,
       });
-      onSuccess(result.data);
+      onSuccess({ ...result.data, assigned_organizations_count: 0, assigned_states_count: 0 });
       resetForm();
     } catch (err: any) {
       setErrors({ general: err.message || "Failed to create agent" });

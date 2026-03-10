@@ -33,6 +33,7 @@ const TopNavigation = ({
     isAdmin,
     isAgent,
     isAuthenticated,
+    isSuperAdminAgent,
   } = useAuth();
   const router = useRouter();
 
@@ -85,6 +86,7 @@ const TopNavigation = ({
     if (isSuperAdmin) return "Super Admin";
     if (isAdmin) return "Admin";
     if (isAgent) return "Agent";
+    if (isSuperAdminAgent) return "Super Admin Agent";
     return "User";
   };
 

@@ -94,6 +94,8 @@ const ProtectedRoute = ({
         router.push("/unauthorized");
         return;
       }
+
+      
     }
   }, [
     loading,

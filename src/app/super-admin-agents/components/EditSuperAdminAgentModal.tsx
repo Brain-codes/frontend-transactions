@@ -31,6 +31,7 @@ interface Agent {
   status: string;
   created_at: string;
   assigned_organizations_count: number;
+  assigned_states_count: number;
 }
 
 interface EditSuperAdminAgentModalProps {
@@ -93,7 +94,7 @@ const EditSuperAdminAgentModal: React.FC<EditSuperAdminAgentModalProps> = ({
         agent.id,
         updates
       );
-      onSuccess(result.data);
+      onSuccess({ ...result.data, assigned_organizations_count: agent.assigned_organizations_count, assigned_states_count: agent.assigned_states_count });
     } catch (err: any) {
       setErrors({ general: err.message || "Failed to update agent" });
     } finally {

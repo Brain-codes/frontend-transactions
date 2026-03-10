@@ -68,6 +68,7 @@ interface Agent {
   status: string;
   created_at: string;
   assigned_organizations_count: number;
+  assigned_states_count: number;
 }
 
 interface PaginationInfo {
@@ -396,12 +397,16 @@ const SuperAdminAgentsPage = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                          {agent.assigned_organizations_count ?? 0} partner
-                          {(agent.assigned_organizations_count ?? 0) !== 1
-                            ? "s"
-                            : ""}
-                        </Badge>
+                        <div className="flex items-center gap-1.5">
+                          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                            {agent.assigned_organizations_count ?? 0} org{(agent.assigned_organizations_count ?? 0) !== 1 ? "s" : ""}
+                          </Badge>
+                          {(agent.assigned_states_count ?? 0) > 0 && (
+                            <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+                              {agent.assigned_states_count} state{agent.assigned_states_count !== 1 ? "s" : ""}
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge

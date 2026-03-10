@@ -774,10 +774,16 @@ const UserManagementPage = () => {
                       </TableCell>
                       <TableCell className="text-center">
                         {user.role === "super_admin_agent" ? (
-                          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                            {user.assigned_organizations_count ?? 0} 
-                            
-                          </Badge>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                              {user.assigned_organizations_count ?? 0} org{(user.assigned_organizations_count ?? 0) !== 1 ? "s" : ""}
+                            </Badge>
+                            {(user.assigned_states_count ?? 0) > 0 && (
+                              <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+                                {user.assigned_states_count} state{user.assigned_states_count !== 1 ? "s" : ""}
+                              </Badge>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
