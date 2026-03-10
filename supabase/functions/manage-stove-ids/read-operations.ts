@@ -197,6 +197,8 @@ export async function getStoveIdById(
         partner_name,
         branch,
         state,
+        address,
+        email,
         contact_person,
         contact_phone
       ),
@@ -253,6 +255,8 @@ export async function getStoveIdById(
     organization_name: data.organizations?.partner_name || "N/A",
     branch: data.organizations?.branch || "N/A",
     location: data.organizations?.state || "N/A",
+    address: data.organizations?.address || "N/A",
+    email: data.organizations?.email || "N/A",
     contact_name: data.organizations?.contact_person || "N/A",
     contact_phone: data.organizations?.contact_phone || "N/A",
     sale_id: sale?.id || null,

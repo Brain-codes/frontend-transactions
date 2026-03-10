@@ -142,9 +142,19 @@ const StoveDetailModal = ({ open, onClose, stove }) => {
               <div className="bg-gray-50 p-3 rounded-lg">
                 <p className="text-xs text-gray-600 mb-1 flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
-                  Location
+                  State
                 </p>
                 <p className="font-medium text-gray-900">{stove.location}</p>
+              </div>
+
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <p className="text-xs text-gray-600 mb-1 flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  Address
+                </p>
+                <p className="font-medium text-gray-900">
+                  {stove.address || "N/A"}
+                </p>
               </div>
 
               <div className="bg-gray-50 p-3 rounded-lg">
@@ -157,7 +167,7 @@ const StoveDetailModal = ({ open, onClose, stove }) => {
                 </p>
               </div>
 
-              <div className="bg-gray-50 p-3 rounded-lg md:col-span-2">
+              <div className="bg-gray-50 p-3 rounded-lg">
                 <p className="text-xs text-gray-600 mb-1 flex items-center gap-1">
                   <Phone className="h-3 w-3" />
                   Contact Phone
