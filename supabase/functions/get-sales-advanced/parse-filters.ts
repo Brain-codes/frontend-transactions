@@ -72,6 +72,11 @@ export interface Filters {
   hasAgreementImage?: boolean;
   hasSignature?: boolean;
 
+  // Installment filters
+  isInstallment?: boolean;
+  paymentStatus?: string;
+  paymentModelId?: string;
+
   // Search
   search?: string;
 

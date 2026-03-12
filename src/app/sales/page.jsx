@@ -21,7 +21,14 @@ import { useAuth } from "../contexts/AuthContext";
 import { lgaAndStates } from "../constants";
 import ReceiptModal from "./components/ReceiptModal.jsx";
 import AttachmentsModal from "./components/AttachmentsModal";
-import { Download, Search, X, Building2, Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Download, Search, X, Building2, Loader2, Trash2 } from "lucide-react";
 
 const SalesPage = () => {
   const { supabase } = useAuth();
@@ -61,6 +68,11 @@ const SalesPage = () => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showAttachmentsModal, setShowAttachmentsModal] = useState(false);
   const [modalSale, setModalSale] = useState(null);
+
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteSale, setDeleteSale] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [selectedLGA, setSelectedLGA] = useState("");
   const [selectedState, setSelectedState] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -411,8 +423,47 @@ const SalesPage = () => {
   };
 
   const handleDelete = (sale) => {
-    console.log("Delete sale:", sale);
-    // Add delete functionality here
+    setDeleteSale(sale);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteSale) return;
+
+    try {
+      setDeleting(true);
+
+      // Reset linked stove first (status + sale_id together to satisfy check constraint)
+      const { error: stoveError } = await supabase
+        .from("stove_ids")
+        .update({ status: "available", sale_id: null })
+        .eq("sale_id", deleteSale.id);
+
+      if (stoveError) {
+        console.error("Error resetting stove:", stoveError);
+      }
+
+      // Delete the sale
+      const { error: deleteError } = await supabase
+        .from("sales")
+        .delete()
+        .eq("id", deleteSale.id);
+
+      if (deleteError) {
+        alert(`Failed to delete sale: ${deleteError.message}`);
+        return;
+      }
+
+      // Close modal and refresh
+      setShowDeleteModal(false);
+      setDeleteSale(null);
+      fetchSales();
+    } catch (err) {
+      console.error("Error deleting sale:", err);
+      alert("An error occurred while deleting the sale.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // Bulk action handlers
@@ -1149,6 +1200,64 @@ const SalesPage = () => {
             onClose={() => setShowAttachmentsModal(false)}
             modalSale={modalSale}
           />
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && deleteSale && (
+          <Dialog
+            open={showDeleteModal}
+            onOpenChange={(open) => {
+              if (!open && !deleting) {
+                setShowDeleteModal(false);
+                setDeleteSale(null);
+              }
+            }}
+          >
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-red-600">
+                  <Trash2 className="h-5 w-5" />
+                  Delete Sale
+                </DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete sale{" "}
+                  <span className="font-semibold text-gray-900">
+                    {deleteSale.transaction_id || deleteSale.id}
+                  </span>
+                  ? This will also release the linked stove back to available. This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeleteSale(null);
+                  }}
+                  disabled={deleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={confirmDelete}
+                  disabled={deleting}
+                >
+                  {deleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </>
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         )}
       </DashboardLayout>
     </ProtectedRoute>

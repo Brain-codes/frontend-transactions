@@ -183,6 +183,18 @@ export interface SuperAdminSale {
   agreement_image_id?: string;
   created_at?: string;
 
+  // Installment payment fields
+  is_installment?: boolean;
+  payment_model_id?: string;
+  total_paid?: number;
+  payment_status?: string;
+  payment_model?: {
+    id: string;
+    name: string;
+    duration_months: number;
+    fixed_price: number;
+  };
+
   // Related data (when included) - Updated to match new response structure
   addresses?: Address; // Changed from address to addresses
   stove_image?: ImageData;

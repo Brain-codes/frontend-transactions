@@ -58,7 +58,9 @@ import {
   Edit,
   Trash2,
   Eye,
+  Layers,
 } from "lucide-react";
+import AssignPaymentModelsModal from "./components/AssignPaymentModelsModal";
 
 const PartnersPage = () => {
   const { supabase, userRole } = useAuth();
@@ -106,6 +108,8 @@ const PartnersPage = () => {
   const [formSubmitLoading, setFormSubmitLoading] = useState(false);
 
   // Organization CSV Import state
+  const [showPaymentModelsModal, setShowPaymentModelsModal] = useState(false);
+  const [paymentModelsOrg, setPaymentModelsOrg] = useState(null);
   const [showOrgImportModal, setShowOrgImportModal] = useState(false);
   const [orgImportLoading, setOrgImportLoading] = useState(false);
 
@@ -1094,6 +1098,17 @@ const PartnersPage = () => {
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit
                                 </DropdownMenuItem>
+                                {userRole === "super_admin" && (
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setPaymentModelsOrg(org);
+                                      setShowPaymentModelsModal(true);
+                                    }}
+                                  >
+                                    <Layers className="mr-2 h-4 w-4" />
+                                    Assign Payment Models
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                   onClick={() => handleDelete(org)}
                                   className="text-red-600"
@@ -1218,6 +1233,24 @@ const PartnersPage = () => {
           loading={orgImportLoading}
           supabase={supabase}
         />
+
+        {showPaymentModelsModal && paymentModelsOrg && (
+          <AssignPaymentModelsModal
+            organization={paymentModelsOrg}
+            onClose={() => {
+              setShowPaymentModelsModal(false);
+              setPaymentModelsOrg(null);
+            }}
+            onSuccess={() => {
+              setShowPaymentModelsModal(false);
+              setPaymentModelsOrg(null);
+              toast({
+                variant: "success",
+                title: "Payment models assigned successfully",
+              });
+            }}
+          />
+        )}
 
         <ToastContainer toasts={toasts} onRemove={removeToast} />
       </DashboardLayout>

@@ -228,6 +228,7 @@ const GooglePlacesInput = ({
               key={prediction.place_id}
               type="button"
               className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 focus:bg-gray-50 focus:outline-none"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => handlePlaceSelect(prediction)}
             >
               <div className="flex items-start">

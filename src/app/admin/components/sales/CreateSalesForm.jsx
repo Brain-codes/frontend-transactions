@@ -28,6 +28,10 @@ import {
   Save,
   Loader2,
   AlertCircle,
+  CreditCard,
+  Clock,
+  Layers,
+  Info,
 } from "lucide-react";
 import DateRangePicker from "@/app/components/ui/date-range-picker";
 import GooglePlacesInput from "@/app/components/ui/google-places-input";
@@ -47,6 +51,7 @@ import {
 } from "../../../utils/profileUtils";
 import ImageUploadSection from "../../../components/ui/ImageUploadSection";
 import SignatureCanvas from "../../../components/ui/SignatureCanvas";
+import paymentModelService from "../../../services/paymentModelService";
 
 const CreateSalesForm = ({
   onSuccess,
@@ -80,6 +85,18 @@ const CreateSalesForm = ({
 
   // Validation state
   const [errors, setErrors] = useState({});
+
+  // Installment payment state
+  const [paymentModels, setPaymentModels] = useState([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [isInstallment, setIsInstallment] = useState(false);
+  const [selectedModelId, setSelectedModelId] = useState("");
+  const [selectedModel, setSelectedModel] = useState(null);
+  const [initialPaymentAmount, setInitialPaymentAmount] = useState("");
+  const [initialPaymentMethod, setInitialPaymentMethod] = useState("");
+  const [initialPaymentProofImageId, setInitialPaymentProofImageId] = useState("");
+  const [initialPaymentProofPreview, setInitialPaymentProofPreview] = useState(null);
+  const [uploadingProof, setUploadingProof] = useState(false);
 
   // Stove search state
   const [stoveSearchTerm, setStoveSearchTerm] = useState("");
@@ -248,6 +265,53 @@ const CreateSalesForm = ({
     }
   };
 
+  // Fetch payment models for the organization (create mode only)
+  useEffect(() => {
+    if (isEditMode) return;
+
+    const fetchPaymentModels = async () => {
+      try {
+        setModelsLoading(true);
+        const organizationId =
+          profileService.getOrganizationId() ||
+          (typeof sessionStorage !== "undefined"
+            ? sessionStorage.getItem("saa_selected_org_id")
+            : null);
+
+        if (!organizationId) return;
+
+        const result = await paymentModelService.getOrgPaymentModels(organizationId);
+        if (result.data && result.data.length > 0) {
+          // Extract the payment_model from each assignment
+          const models = result.data
+            .map((a) => a.payment_model)
+            .filter((m) => m && m.is_active !== false);
+          setPaymentModels(models);
+        }
+      } catch (err) {
+        console.error("Error fetching payment models:", err);
+      } finally {
+        setModelsLoading(false);
+      }
+    };
+
+    fetchPaymentModels();
+  }, [isEditMode]);
+
+  // Update selected model details when model ID changes
+  useEffect(() => {
+    if (selectedModelId) {
+      const model = paymentModels.find((m) => m.id === selectedModelId);
+      setSelectedModel(model || null);
+      if (model) {
+        // Auto-fill amount with model's fixed price
+        handleInputChange("amount", model.fixed_price.toString());
+      }
+    } else {
+      setSelectedModel(null);
+    }
+  }, [selectedModelId, paymentModels]);
+
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -340,6 +404,62 @@ const CreateSalesForm = ({
     setFormData((prev) => ({ ...prev, signature: signatureData }));
   };
 
+  // Handle initial payment proof image upload
+  const handleProofImageUpload = async (file) => {
+    if (!file) return;
+    try {
+      setUploadingProof(true);
+      const response = await adminSalesService.uploadImage(file, "paymentProof");
+      if (response.success) {
+        const uploadData = response.data.upload || response.data;
+        setInitialPaymentProofImageId(uploadData.id);
+        const reader = new FileReader();
+        reader.onload = (e) => setInitialPaymentProofPreview(e.target.result);
+        reader.readAsDataURL(file);
+      } else {
+        setError("Failed to upload payment proof image");
+      }
+    } catch (err) {
+      console.error("Error uploading proof image:", err);
+      setError("An error occurred while uploading payment proof image");
+    } finally {
+      setUploadingProof(false);
+    }
+  };
+
+  // Handle payment type dropdown change
+  const handlePaymentTypeChange = (value) => {
+    if (value === "full_payment") {
+      setIsInstallment(false);
+      setSelectedModelId("");
+      setSelectedModel(null);
+      setInitialPaymentAmount("");
+      setInitialPaymentMethod("");
+      setInitialPaymentProofImageId("");
+      setInitialPaymentProofPreview(null);
+      handleInputChange("amount", "");
+    } else {
+      // value is a payment model ID
+      setIsInstallment(true);
+      setSelectedModelId(value);
+    }
+  };
+
+  const formatCurrency = (amount) =>
+    `₦${Number(amount).toLocaleString("en-NG")}`;
+
+  // Format a raw number string with commas for display in inputs
+  const formatAmountInput = (value) => {
+    const digits = String(value).replace(/[^0-9]/g, "");
+    if (!digits) return "";
+    return Number(digits).toLocaleString("en-NG");
+  };
+
+  // Strip commas to get raw number string
+  const parseAmountInput = (value) => {
+    return value.replace(/[^0-9]/g, "");
+  };
+
   const validateForm = () => {
     const newErrors = validateSalesForm(formData);
     setErrors(newErrors);
@@ -351,6 +471,28 @@ const CreateSalesForm = ({
 
     if (!validateForm()) {
       return;
+    }
+
+    // Validate installment-specific fields
+    if (isInstallment) {
+      if (!selectedModelId) {
+        setError("Please select a payment model for installment payment");
+        return;
+      }
+      if (
+        initialPaymentAmount &&
+        selectedModel?.min_down_payment > 0 &&
+        parseFloat(initialPaymentAmount) < parseFloat(selectedModel.min_down_payment)
+      ) {
+        setError(
+          `Initial payment must be at least ${formatCurrency(selectedModel.min_down_payment)}`
+        );
+        return;
+      }
+      if (initialPaymentAmount && parseFloat(initialPaymentAmount) > 0 && !initialPaymentMethod) {
+        setError("Please select a payment method for the initial payment");
+        return;
+      }
     }
 
     // For edit mode, check if any changes were made
@@ -377,6 +519,19 @@ const CreateSalesForm = ({
           : null;
       if (saaOrgId) {
         apiData.organizationId = saaOrgId;
+      }
+
+      // Add installment payment data if applicable
+      if (isInstallment && selectedModelId) {
+        apiData.isInstallment = true;
+        apiData.paymentModelId = selectedModelId;
+        if (initialPaymentAmount && parseFloat(initialPaymentAmount) > 0) {
+          apiData.initialPaymentAmount = parseFloat(initialPaymentAmount);
+          apiData.initialPaymentMethod = initialPaymentMethod || "cash";
+          if (initialPaymentProofImageId) {
+            apiData.initialPaymentProofImageId = initialPaymentProofImageId;
+          }
+        }
       }
 
       let response;
@@ -611,7 +766,7 @@ const CreateSalesForm = ({
           </CardContent>
         </Card>
 
-        {/* Sale Information */}
+        {/* Sale Information & Payment */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -622,23 +777,6 @@ const CreateSalesForm = ({
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="amount">Sale Amount (₦) *</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  value={formData.amount}
-                  onChange={(e) => handleInputChange("amount", e.target.value)}
-                  placeholder="Enter sale amount"
-                  min="0"
-                  step="0.01"
-                  className={errors.amount ? "border-red-500" : ""}
-                />
-                {errors.amount && (
-                  <p className="text-sm text-red-600">{errors.amount}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="stoveSerialNo">
                   Stove Serial Number *
                   {isEditMode && (
@@ -648,7 +786,6 @@ const CreateSalesForm = ({
                   )}
                 </Label>
                 {isEditMode ? (
-                  // Read-only display for edit mode
                   <Input
                     id="stoveSerialNo"
                     value={formData.stoveSerialNo || stoveSearchTerm}
@@ -658,7 +795,6 @@ const CreateSalesForm = ({
                     disabled
                   />
                 ) : (
-                  // Searchable dropdown for create mode
                   <div className="relative stove-search-container">
                     <Input
                       id="stoveSerialNo"
@@ -689,7 +825,6 @@ const CreateSalesForm = ({
                               }));
                               setStoveSearchTerm(stove.stove_id);
                               setShowStoveDropdown(false);
-                              // Clear error
                               if (errors.stoveSerialNo) {
                                 setErrors((prev) => ({
                                   ...prev,
@@ -718,7 +853,6 @@ const CreateSalesForm = ({
                   onChange={(e) =>
                     handleInputChange("partnerName", e.target.value)
                   }
-                  //   placeholder="Loaded from profile"
                   className="bg-gray-50"
                   readOnly
                 />
@@ -726,7 +860,193 @@ const CreateSalesForm = ({
                   <p className="text-sm text-red-600">{errors.partnerName}</p>
                 )}
               </div>
+
+              {/* Payment Type dropdown — only in create mode when org has models */}
+              {!isEditMode && paymentModels.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="paymentType">Payment Type *</Label>
+                  <Select
+                    value={isInstallment ? selectedModelId : "full_payment"}
+                    onValueChange={handlePaymentTypeChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payment type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="full_payment">
+                        Full Payment — One-time complete payment
+                      </SelectItem>
+                      {paymentModels.map((model) => (
+                        <SelectItem key={model.id} value={model.id}>
+                          {model.name} — {formatCurrency(model.fixed_price)} / {model.duration_months} mo
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="amount">
+                  Sale Amount (₦) *
+                  {isInstallment && selectedModel && (
+                    <span className="text-gray-500 text-sm ml-2">
+                      (Set by payment model)
+                    </span>
+                  )}
+                </Label>
+                <Input
+                  id="amount"
+                  type="text"
+                  inputMode="numeric"
+                  value={formatAmountInput(formData.amount)}
+                  onChange={(e) => handleInputChange("amount", parseAmountInput(e.target.value))}
+                  placeholder="Enter sale amount"
+                  className={`${errors.amount ? "border-red-500" : ""} ${
+                    isInstallment && selectedModel ? "bg-gray-50" : ""
+                  }`}
+                  readOnly={isInstallment && !!selectedModel}
+                />
+                {errors.amount && (
+                  <p className="text-sm text-red-600">{errors.amount}</p>
+                )}
+              </div>
             </div>
+
+            {/* Model Summary — shown when an installment model is selected */}
+            {isInstallment && selectedModel && (
+              <div className="space-y-4 pt-2">
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+                  <div className="flex items-center gap-2 text-brand font-medium">
+                    <Layers className="h-4 w-4" />
+                    {selectedModel.name}
+                  </div>
+                  {selectedModel.description && (
+                    <p className="text-sm text-gray-600">
+                      {selectedModel.description}
+                    </p>
+                  )}
+                  <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <CreditCard className="h-3.5 w-3.5 text-gray-500" />
+                      <span className="text-gray-600">Fixed Price:</span>
+                      <span className="font-medium">
+                        {formatCurrency(selectedModel.fixed_price)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-gray-500" />
+                      <span className="text-gray-600">Duration:</span>
+                      <span className="font-medium">
+                        {selectedModel.duration_months} months
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <CreditCard className="h-3.5 w-3.5 text-gray-500" />
+                      <span className="text-gray-600">Monthly:</span>
+                      <span className="font-medium">
+                        ~
+                        {formatCurrency(
+                          (
+                            selectedModel.fixed_price /
+                            selectedModel.duration_months
+                          ).toFixed(0)
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                  {selectedModel.min_down_payment > 0 && (
+                    <div className="flex items-center gap-1.5 text-sm text-amber-700">
+                      <Info className="h-3.5 w-3.5" />
+                      Minimum down payment:{" "}
+                      {formatCurrency(selectedModel.min_down_payment)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Initial Payment Fields */}
+                <div className="space-y-4 pt-2 border-t">
+                  <div className="flex items-center gap-2 text-sm font-medium text-gray-700 pt-2">
+                    <CreditCard className="h-4 w-4" />
+                    Initial Payment (Optional)
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="initialPaymentAmount">
+                        Initial Payment Amount (₦)
+                      </Label>
+                      <Input
+                        id="initialPaymentAmount"
+                        type="text"
+                        inputMode="numeric"
+                        value={formatAmountInput(initialPaymentAmount)}
+                        onChange={(e) => {
+                          const raw = parseAmountInput(e.target.value);
+                          if (
+                            raw === "" ||
+                            parseFloat(raw) <=
+                              parseFloat(selectedModel.fixed_price)
+                          ) {
+                            setInitialPaymentAmount(raw);
+                          }
+                        }}
+                        placeholder={
+                          selectedModel.min_down_payment > 0
+                            ? `Min: ${formatCurrency(selectedModel.min_down_payment)}`
+                            : "Enter initial payment"
+                        }
+                      />
+                      {initialPaymentAmount &&
+                        selectedModel.min_down_payment > 0 &&
+                        parseFloat(initialPaymentAmount) <
+                          parseFloat(selectedModel.min_down_payment) && (
+                          <p className="text-sm text-amber-600">
+                            Minimum down payment is{" "}
+                            {formatCurrency(selectedModel.min_down_payment)}
+                          </p>
+                        )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="initialPaymentMethod">
+                        Payment Method
+                      </Label>
+                      <Select
+                        value={initialPaymentMethod}
+                        onValueChange={(value) =>
+                          setInitialPaymentMethod(value)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select method" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cash">Cash</SelectItem>
+                          <SelectItem value="transfer">Transfer</SelectItem>
+                          <SelectItem value="pos">POS</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Proof of Payment Image */}
+                  {initialPaymentAmount &&
+                    parseFloat(initialPaymentAmount) > 0 && (
+                      <ImageUploadSection
+                        label="Proof of Payment"
+                        preview={initialPaymentProofPreview}
+                        uploading={uploadingProof}
+                        onUpload={handleProofImageUpload}
+                        placeholder="Upload proof of initial payment"
+                        uploadIcon={FileText}
+                        buttonText="Upload Proof"
+                        changeButtonText="Change Proof"
+                      />
+                    )}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

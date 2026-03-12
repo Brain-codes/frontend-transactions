@@ -60,6 +60,12 @@ serve(async (req) => {
       agreementImageId,
       // SAA-specific: explicit organization override
       organizationId: requestedOrgId,
+      // Installment payment fields
+      isInstallment,
+      paymentModelId,
+      initialPaymentAmount,
+      initialPaymentMethod,
+      initialPaymentProofImageId,
     } = body;
 
     // ── Authenticate ─────────────────────────────────────────────────────────
@@ -120,6 +126,66 @@ serve(async (req) => {
     }
 
     console.log("🏢 Resolved organization ID:", organizationId);
+
+    // ── Installment payment validation ──────────────────────────────────────
+    let saleAmount = amount;
+    let installmentData: any = null;
+
+    if (isInstallment && paymentModelId) {
+      console.log("💳 Installment mode: validating payment model", paymentModelId);
+
+      // Verify org has access to this model
+      const { data: orgModelLink, error: linkError } = await supabase
+        .from("organization_payment_models")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .eq("payment_model_id", paymentModelId)
+        .maybeSingle();
+
+      if (linkError || !orgModelLink) {
+        return jsonError("This organization does not have access to the selected payment model", 403);
+      }
+
+      // Fetch model details
+      const { data: paymentModel, error: modelError } = await supabase
+        .from("payment_models")
+        .select("id, name, fixed_price, min_down_payment, is_active, duration_months")
+        .eq("id", paymentModelId)
+        .single();
+
+      if (modelError || !paymentModel) {
+        return jsonError("Payment model not found", 404);
+      }
+
+      if (!paymentModel.is_active) {
+        return jsonError("This payment model is no longer active");
+      }
+
+      // Use model's fixed price as the sale amount
+      saleAmount = paymentModel.fixed_price;
+
+      // Validate initial payment
+      const initialAmt = parseFloat(initialPaymentAmount) || 0;
+      if (paymentModel.min_down_payment && initialAmt < paymentModel.min_down_payment) {
+        return jsonError(
+          `Minimum down payment is ₦${paymentModel.min_down_payment}`
+        );
+      }
+      if (initialAmt > saleAmount) {
+        return jsonError("Initial payment cannot exceed the total price");
+      }
+
+      installmentData = {
+        modelId: paymentModelId,
+        initialAmount: initialAmt,
+        paymentMethod: initialPaymentMethod || "cash",
+        proofImageId: initialPaymentProofImageId || null,
+        totalPaid: initialAmt,
+        paymentStatus: initialAmt >= saleAmount ? "fully_paid" : initialAmt > 0 ? "partially_paid" : "partially_paid",
+      };
+
+      console.log("✅ Installment validated:", paymentModel.name, "Price:", saleAmount);
+    }
 
     // ── Insert address ────────────────────────────────────────────────────────
     console.log("📍 Inserting address:", addressData);
@@ -192,7 +258,7 @@ serve(async (req) => {
           phone,
           other_phone: otherPhone,
           partner_name: partnerName,
-          amount,
+          amount: saleAmount,
           signature,
           status: saleStatus,
           created_by: userId,
@@ -200,6 +266,10 @@ serve(async (req) => {
           address_id: address.id,
           stove_image_id: stoveImageId,
           agreement_image_id: agreementImageId,
+          is_installment: !!installmentData,
+          payment_model_id: installmentData?.modelId || null,
+          total_paid: installmentData?.totalPaid || 0,
+          payment_status: installmentData ? installmentData.paymentStatus : "not_applicable",
         },
       ])
       .select("id")
@@ -226,6 +296,29 @@ serve(async (req) => {
     }
 
     console.log("✅ Sales saved and stove_ids updated with sale_id:", saleId);
+
+    // ── Record initial installment payment (if any) ─────────────────────────
+    if (installmentData && installmentData.initialAmount > 0) {
+      console.log("💰 Recording initial installment payment:", installmentData.initialAmount);
+      const { error: paymentError } = await supabase
+        .from("installment_payments")
+        .insert({
+          sale_id: saleId,
+          amount: installmentData.initialAmount,
+          payment_method: installmentData.paymentMethod,
+          proof_image_id: installmentData.proofImageId,
+          recorded_by: userId,
+          payment_date: salesDate || new Date().toISOString().split("T")[0],
+          notes: "Initial down payment",
+        });
+
+      if (paymentError) {
+        console.error("⚠️ Initial payment insert failed:", paymentError.message);
+        // Don't fail the whole sale creation, just log
+      } else {
+        console.log("✅ Initial installment payment recorded");
+      }
+    }
 
     return withCors(
       new Response(

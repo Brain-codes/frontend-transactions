@@ -24,4 +24,16 @@ export interface AdminSales {
   created_at: string; // ISO timestamp
   status: string; // could be "completed" | "pending" | ...
   address: Address;
+
+  // Installment payment fields
+  is_installment?: boolean;
+  payment_model_id?: string;
+  total_paid?: number;
+  payment_status?: string;
+  payment_model?: {
+    id: string;
+    name: string;
+    duration_months: number;
+    fixed_price: number;
+  };
 };

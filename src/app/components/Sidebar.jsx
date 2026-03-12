@@ -20,6 +20,7 @@ import {
   UserCheck,
   Package,
   Tag,
+  Layers,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import Link from "next/link";
@@ -82,6 +83,14 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           icon: UserCheck,
           route: "partners",
           href: "/partners",
+          badge: null,
+          requiresAuth: true,
+        },
+        {
+          name: "Payment Models",
+          icon: Layers,
+          route: "payment-models",
+          href: "/payment-models",
           badge: null,
           requiresAuth: true,
         },

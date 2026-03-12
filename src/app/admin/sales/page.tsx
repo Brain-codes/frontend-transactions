@@ -461,6 +461,7 @@ const AdminSalesPage = () => {
                   setShowDetailModal(false);
                   setSelectedSale(null);
                 }}
+                onSaleUpdated={fetchSalesData}
               />
 
               {/* Create Sale Modal */}

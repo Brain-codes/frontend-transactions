@@ -15,7 +15,37 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Eye, MoreVertical, Edit } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { AdminSales } from "@/types/adminSales";
+
+const getPaymentStatusBadge = (sale: AdminSales) => {
+  if (!sale.is_installment) return null;
+  const status = sale.payment_status;
+  if (status === "fully_paid") {
+    return (
+      <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
+        Fully Paid
+      </Badge>
+    );
+  }
+  if (status === "partially_paid") {
+    return (
+      <div className="flex flex-col gap-0.5">
+        <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs">
+          Partially Paid
+        </Badge>
+        <span className="text-xs text-gray-500">
+          ₦{(sale.total_paid ?? 0).toLocaleString()} / ₦{sale.amount.toLocaleString()}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">
+      Installment
+    </Badge>
+  );
+};
 
 interface SalesTableProps {
   salesData: AdminSales[];
@@ -65,6 +95,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
             <TableHead>State</TableHead>
             <TableHead>LGA</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Payment</TableHead>
             <TableHead>Date</TableHead>
             <TableHead className="text-center">Actions</TableHead>
           </TableRow>
@@ -82,6 +113,11 @@ const SalesTable: React.FC<SalesTableProps> = ({
               <TableCell>{sale.state_backup || "N/A"}</TableCell>
               <TableCell>{sale.lga_backup || "N/A"}</TableCell>
               <TableCell>{getStatusBadge(sale.status ?? "N/A")}</TableCell>
+              <TableCell>
+                {getPaymentStatusBadge(sale) || (
+                  <span className="text-xs text-gray-400">Full Payment</span>
+                )}
+              </TableCell>
               <TableCell>{formatDate(sale.created_at ?? "N/A")}</TableCell>
               <TableCell className="text-center">
                 <DropdownMenu>

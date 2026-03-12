@@ -61,6 +61,10 @@ interface Sale {
   created_at: string;
   organization_id: string | null;
   organizations?: { id: string; partner_name: string; branch: string | null };
+  is_installment?: boolean;
+  total_paid?: number;
+  payment_status?: string;
+  payment_model?: { id: string; name: string; duration_months: number; fixed_price: number } | null;
 }
 
 interface AssignedOrg {
@@ -295,6 +299,7 @@ function SalesPageContent() {
                   <TableHead className="text-white py-4">Amount</TableHead>
                   <TableHead className="text-white py-4">State</TableHead>
                   <TableHead className="text-white py-4">Status</TableHead>
+                  <TableHead className="text-white py-4">Payment</TableHead>
                   <TableHead className="text-white py-4">Approval</TableHead>
                   <TableHead className="text-white py-4">Date</TableHead>
                   <TableHead className="text-center text-white py-4 last:rounded-tr-lg">
@@ -306,7 +311,7 @@ function SalesPageContent() {
                 {!loading && sales.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={9}
+                      colSpan={10}
                       className="text-center py-12 text-gray-500"
                     >
                       <div className="flex flex-col items-center gap-2">
@@ -357,6 +362,33 @@ function SalesPageContent() {
                         >
                           {sale.status || "—"}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {sale.is_installment ? (
+                          sale.payment_status === "fully_paid" ? (
+                            <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
+                              Fully Paid
+                            </Badge>
+                          ) : sale.payment_status === "partially_paid" ? (
+                            <div className="flex flex-col gap-0.5">
+                              <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs">
+                                Partially Paid
+                              </Badge>
+                              <span className="text-xs text-gray-500">
+                                ₦{(sale.total_paid ?? 0).toLocaleString()} / ₦
+                                {(sale.amount ?? 0).toLocaleString()}
+                              </span>
+                            </div>
+                          ) : (
+                            <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">
+                              Installment
+                            </Badge>
+                          )
+                        ) : (
+                          <span className="text-xs text-gray-400">
+                            Full Payment
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
                         {sale.agent_approved ? (

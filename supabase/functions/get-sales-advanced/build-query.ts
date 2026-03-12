@@ -91,6 +91,10 @@ function buildOptimizedSelectFields(filters: Filters): string {
     "agent_approved",
     "agent_approved_at",
     "agent_approved_by",
+    "is_installment",
+    "payment_model_id",
+    "total_paid",
+    "payment_status",
   ];
 
   // Add joins based on what's requested to avoid N+1 queries
@@ -99,6 +103,11 @@ function buildOptimizedSelectFields(filters: Filters): string {
   // Always include basic organization info since it's commonly needed
   joinFields.push(
     "organizations!inner(id, partner_name, branch, state, email)"
+  );
+
+  // Always include payment model info for installment sales
+  joinFields.push(
+    "payment_model:payment_models!left(id, name, duration_months, fixed_price)"
   );
 
   // Include address if specifically requested
@@ -235,6 +244,15 @@ function applyAmountFilters(query: any, filters: Filters) {
 function applyStatusFilters(query: any, filters: Filters) {
   if (filters.status) query = query.eq("status", filters.status);
   if (filters.statuses?.length) query = query.in("status", filters.statuses);
+
+  // Installment filters
+  if (filters.isInstallment !== undefined && filters.isInstallment !== null) {
+    const boolVal = filters.isInstallment === true || (filters.isInstallment as any) === "true";
+    query = query.eq("is_installment", boolVal);
+  }
+  if (filters.paymentStatus) query = query.eq("payment_status", filters.paymentStatus);
+  if (filters.paymentModelId) query = query.eq("payment_model_id", filters.paymentModelId);
+
   return query;
 }
 

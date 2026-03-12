@@ -15,8 +15,38 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Download, Eye, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { SuperAdminSale } from "@/types/superAdminSales";
 import { Checkbox } from "../../../components/ui/checkbox";
+
+const getPaymentStatusBadge = (sale: SuperAdminSale) => {
+  if (!sale.is_installment) return null;
+  const status = sale.payment_status;
+  if (status === "fully_paid") {
+    return (
+      <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
+        Fully Paid
+      </Badge>
+    );
+  }
+  if (status === "partially_paid") {
+    return (
+      <div className="flex flex-col gap-0.5">
+        <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs">
+          Partially Paid
+        </Badge>
+        <span className="text-xs text-gray-500">
+          ₦{(sale.total_paid ?? 0).toLocaleString()} / ₦{sale.amount.toLocaleString()}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">
+      Installment
+    </Badge>
+  );
+};
 
 type SalesTableProps = {
   displayData: SuperAdminSale[];
@@ -86,6 +116,7 @@ const SalesTable = ({
           <TableHead className="text-white py-4">End User Name</TableHead>
           <TableHead className="text-white py-4">End User Phone</TableHead>
           <TableHead className="text-white py-4">End User Address</TableHead>
+          <TableHead className="text-white py-4">Payment</TableHead>
           <TableHead className="text-center text-white py-4 last:rounded-tr-lg">
             Actions
           </TableHead>
@@ -94,7 +125,7 @@ const SalesTable = ({
       <TableBody className={tableLoading ? "opacity-40" : ""}>
         {displayData.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={15} className="text-center py-8">
+            <TableCell colSpan={16} className="text-center py-8">
               <div className="text-gray-500">
                 {searchTerm
                   ? "No sales found matching your search."
@@ -154,6 +185,11 @@ const SalesTable = ({
                 <TableCell>{sale.phone ?? "N/A"}</TableCell>
                 <TableCell className="max-w-[200px] truncate">
                   {sale.addresses?.full_address ?? "N/A"}
+                </TableCell>
+                <TableCell>
+                  {getPaymentStatusBadge(sale) || (
+                    <span className="text-xs text-gray-400">Full Payment</span>
+                  )}
                 </TableCell>
                 <TableCell className="cursor-pointer text-center">
                   <DropdownMenu>
