@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,9 @@ import {
   UserCheck,
   Package,
   Tag,
+  Layers,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import Link from "next/link";
@@ -28,6 +32,13 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
   const router = useRouter();
   const { isSuperAdmin, isSuperAdminAgent, isAdmin, isAgent, hasAdminAccess, isAtmosfairUser } =
     useAuth();
+
+  // Track which sub-menus are expanded
+  const [expandedItems, setExpandedItems] = useState({});
+
+  const toggleExpand = (key) => {
+    setExpandedItems((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   // Navigation items based on user role
   const getNavItems = () => {
@@ -72,16 +83,36 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
         {
           name: "Sales",
           icon: ShoppingCart,
-          route: "sales",
-          href: "/sales",
+          route: "sales-group",
+          href: null,
           badge: null,
           requiresAuth: true,
+          children: [
+            {
+              name: "All Sales",
+              route: "sales",
+              href: "/sales",
+            },
+            {
+              name: "Sales Financial Reports",
+              route: "financial-reports",
+              href: "/sales/financial-reports",
+            },
+          ],
         },
         {
           name: "Partners",
           icon: UserCheck,
           route: "partners",
           href: "/partners",
+          badge: null,
+          requiresAuth: true,
+        },
+        {
+          name: "Payment Models",
+          icon: Layers,
+          route: "payment-models",
+          href: "/payment-models",
           badge: null,
           requiresAuth: true,
         },
@@ -196,18 +227,27 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
         {
           name: "Sales",
           icon: ShoppingCart,
-          route: "admin-sales",
-          href: "/admin/sales",
+          route: "admin-sales-group",
+          href: null, // parent group, no direct navigation
           badge: null,
           requiresAuth: true,
-        },
-        {
-          name: "Create Sale",
-          icon: Plus,
-          route: "admin-create-sale",
-          href: "/admin/sales/create",
-          badge: null,
-          requiresAuth: true,
+          children: [
+            {
+              name: "All Sales",
+              route: "admin-sales",
+              href: "/admin/sales",
+            },
+            {
+              name: "Create Sale",
+              route: "admin-create-sale",
+              href: "/admin/sales/create",
+            },
+            {
+              name: "Sales Financial Reports",
+              route: "admin-financial-reports",
+              href: "/admin/sales/financial-reports",
+            },
+          ],
         },
         {
           name: "Agents",
@@ -274,18 +314,27 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
         {
           name: "Sales",
           icon: ShoppingCart,
-          route: "admin-sales",
-          href: "/admin/sales",
+          route: "agent-sales-group",
+          href: null,
           badge: null,
           requiresAuth: true,
-        },
-        {
-          name: "Create Sale",
-          icon: Plus,
-          route: "admin-create-sale",
-          href: "/admin/sales/create",
-          badge: null,
-          requiresAuth: true,
+          children: [
+            {
+              name: "All Sales",
+              route: "admin-sales",
+              href: "/admin/sales",
+            },
+            {
+              name: "Create Sale",
+              route: "admin-create-sale",
+              href: "/admin/sales/create",
+            },
+            {
+              name: "Sales Financial Reports",
+              route: "admin-financial-reports",
+              href: "/admin/sales/financial-reports",
+            },
+          ],
         },
         {
           name: "Profile",
@@ -317,6 +366,11 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
     if (window.innerWidth < 1024) {
       onClose();
     }
+  };
+
+  // Check if any child route is active (for auto-expanding parent)
+  const isChildActive = (children) => {
+    return children?.some((child) => currentRoute === child.route);
   };
 
   return (
@@ -360,7 +414,62 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
         {/* Navigation */}
         <nav className="flex-1 px-2 py-2 space-y-1 overflow-y-auto min-h-0">
           {navItems.map((item) => {
-            // Check if current route matches item route
+            // Items with children render as expandable groups
+            if (item.children) {
+              const childActive = isChildActive(item.children);
+              const isExpanded =
+                expandedItems[item.route] !== undefined
+                  ? expandedItems[item.route]
+                  : childActive; // auto-expand if a child is active
+
+              return (
+                <div key={item.route}>
+                  {/* Parent item (toggle only, no navigation) */}
+                  <button
+                    onClick={() => toggleExpand(item.route)}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm w-full text-left ${
+                      childActive
+                        ? "text-gray-900 font-medium"
+                        : "text-gray-700 hover:bg-white/50"
+                    }`}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    <span className="flex-1">{item.name}</span>
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                    )}
+                  </button>
+
+                  {/* Children */}
+                  {isExpanded && (
+                    <div className="ml-4 pl-4 border-l border-gray-200 space-y-0.5 mt-0.5">
+                      {item.children.map((child) => {
+                        const isChildRouteActive =
+                          currentRoute === child.route;
+                        return (
+                          <Link
+                            key={child.route}
+                            href={child.href}
+                            onClick={() => navigateToRoute(child.href)}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+                              isChildRouteActive
+                                ? "bg-white text-gray-900 font-medium"
+                                : "text-gray-600 hover:bg-white/50"
+                            }`}
+                          >
+                            <span>{child.name}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // Regular items (no children)
             const isActive = currentRoute === item.route;
 
             return (

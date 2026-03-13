@@ -93,7 +93,9 @@ serve(async (req) => {
         *,
         address:addresses (*),
         stove_image:uploads!sales_stove_image_id_fkey (*),
-        agreement_image:uploads!sales_agreement_image_id_fkey (*)
+        agreement_image:uploads!sales_agreement_image_id_fkey (*),
+        payment_model:payment_models!left (*),
+        installment_payments (*)
         `
     );
 
