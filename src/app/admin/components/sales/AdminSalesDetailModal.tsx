@@ -89,8 +89,8 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
     try {
       setPaymentsLoading(true);
       const result = await paymentModelService.getInstallmentPayments(sale.id);
-      setInstallmentPayments(result.data?.payments || []);
-      setPaymentSummary(result.data?.summary || null);
+      setInstallmentPayments(result.data || []);
+      setPaymentSummary(result.summary || null);
     } catch (err) {
       console.error("Error fetching installment payments:", err);
     } finally {

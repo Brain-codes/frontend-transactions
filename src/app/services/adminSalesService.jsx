@@ -355,6 +355,64 @@ class AdminSalesService {
     }
   }
 
+  // Get sales for financial reports (uses get-sales-advanced with POST body)
+  async getFinancialReportSales({
+    page = 1,
+    limit = 500,
+    search,
+    paymentStatus,
+    dateFrom,
+    dateTo,
+  } = {}) {
+    try {
+      const body = {
+        page,
+        limit,
+        responseFormat: "format2",
+        ...(search ? { search } : {}),
+        ...(paymentStatus ? { paymentStatus } : {}),
+        ...(dateFrom ? { dateFrom } : {}),
+        ...(dateTo ? { dateTo } : {}),
+      };
+
+      const response = await fetch(
+        `${API_FUNCTIONS_URL}/get-sales-advanced`,
+        {
+          method: "POST",
+          headers: await this.getHeaders(),
+          body: JSON.stringify(body),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `HTTP ${response.status}: ${response.statusText}`
+        );
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.message || "Failed to fetch financial data");
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        pagination: result.pagination,
+      };
+    } catch (error) {
+      console.error("Error fetching financial report sales:", error);
+      return {
+        success: false,
+        error: error.message,
+        data: [],
+        pagination: null,
+      };
+    }
+  }
+
   // Log sales activity
   async logSalesActivity(saleId, activityType, description, metadata = null) {
     try {

@@ -26,11 +26,20 @@ import {
 } from "lucide-react";
 import paymentModelService from "../../../services/paymentModelService";
 
+interface SaleSummary {
+  transactionId?: string;
+  customerName?: string;
+  totalAmount: number;
+  amountPaid: number;
+  amountOwed: number;
+}
+
 interface RecordPaymentModalProps {
   saleId: string;
   remainingBalance: number;
   onClose: () => void;
   onSuccess: () => void;
+  saleSummary?: SaleSummary;
 }
 
 const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
@@ -38,6 +47,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   remainingBalance,
   onClose,
   onSuccess,
+  saleSummary,
 }) => {
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
@@ -102,6 +112,33 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-4">
+          {saleSummary && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                {saleSummary.transactionId && (
+                  <div>
+                    <span className="text-gray-500">Transaction ID</span>
+                    <p className="font-medium">{saleSummary.transactionId}</p>
+                  </div>
+                )}
+                {saleSummary.customerName && (
+                  <div>
+                    <span className="text-gray-500">Customer</span>
+                    <p className="font-medium">{saleSummary.customerName}</p>
+                  </div>
+                )}
+                <div>
+                  <span className="text-gray-500">Total</span>
+                  <p className="font-bold">{formatCurrency(saleSummary.totalAmount)}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Paid</span>
+                  <p className="font-bold text-green-700">{formatCurrency(saleSummary.amountPaid)}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
