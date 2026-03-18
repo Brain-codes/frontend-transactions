@@ -6,11 +6,12 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, History, Plus, Pencil, Trash2, Calendar, CheckCircle2, Clock } from "lucide-react";
+import { MoreVertical, History, Plus, Pencil, Trash2, Calendar, CheckCircle2, Clock, Eye } from "lucide-react";
 import { AdminSales } from "@/types/adminSales";
 
 interface FinancialReportRowActionsProps {
   sale: AdminSales;
+  onViewDetails: (sale: AdminSales) => void;
   onViewHistory: (sale: AdminSales) => void;
   onRecordPayment: (sale: AdminSales) => void;
   onEditSale?: (sale: AdminSales) => void;
@@ -18,7 +19,7 @@ interface FinancialReportRowActionsProps {
 }
 
 const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
-  sale, onViewHistory, onRecordPayment, onEditSale, onDeleteSale,
+  sale, onViewDetails, onViewHistory, onRecordPayment, onEditSale, onDeleteSale,
 }) => {
   const isInstallment = sale.is_installment === true;
   const isFullyPaid = sale.payment_status === "fully_paid";
@@ -53,7 +54,18 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
             <MoreVertical className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuContent align="end" className="w-60">
+          {/* View Details */}
+          <DropdownMenuItem
+            onClick={() => onViewDetails(sale)}
+            className="py-2 px-3 rounded-md hover:!bg-brand hover:!text-white cursor-pointer"
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            View Details
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
           {/* Payment History */}
           <DropdownMenuItem
             onClick={() => onViewHistory(sale)}

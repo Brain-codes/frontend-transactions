@@ -32,7 +32,7 @@ const AdminSalesPage = () => {
         rightButton={
           <Button
             size="sm"
-            className="bg-brand hover:bg-brand/90 text-white flex items-center gap-1.5"
+            className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
             onClick={() => router.push("/admin/sales/create")}
           >
             <Plus className="h-4 w-4" />
@@ -40,7 +40,7 @@ const AdminSalesPage = () => {
           </Button>
         }
       >
-        <div className="px-6 pb-6">
+        <div className="pb-6">
           <FinancialReportsView
             loadSales={loadSales}
             onEditSale={handleEditSale}

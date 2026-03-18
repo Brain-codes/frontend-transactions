@@ -7,6 +7,7 @@ import FinancialReportsFilters from "./FinancialReportsFilters";
 import FinancialReportsTable from "./FinancialReportsTable";
 import PaymentHistoryModal from "./PaymentHistoryModal";
 import RecordPaymentModal from "../sales/RecordPaymentModal";
+import AdminSalesDetailModal from "../sales/AdminSalesDetailModal";
 import { AdminSales } from "@/types/adminSales";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
   const [showFinancialSummary, setShowFinancialSummary] = useState(true);
   const [showStatusBreakdown, setShowStatusBreakdown] = useState(true);
 
+  const [detailModalSale, setDetailModalSale] = useState<AdminSales | null>(null);
   const [historyModalSale, setHistoryModalSale] = useState<AdminSales | null>(null);
   const [paymentModalSale, setPaymentModalSale] = useState<AdminSales | null>(null);
 
@@ -211,6 +213,7 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
             totalRecords={filteredSales.length}
             onPageChange={setCurrentPage}
             onPageSizeChange={setPageSize}
+            onViewDetails={setDetailModalSale}
             onViewHistory={setHistoryModalSale}
             onRecordPayment={setPaymentModalSale}
             onEditSale={onEditSale}
@@ -222,6 +225,14 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
       )}
 
       {/* Modals */}
+      <AdminSalesDetailModal
+        open={!!detailModalSale}
+        onClose={() => setDetailModalSale(null)}
+        sale={detailModalSale}
+        viewFrom="admin"
+        onSaleUpdated={fetchSales}
+      />
+
       <PaymentHistoryModal open={!!historyModalSale} onClose={() => setHistoryModalSale(null)} sale={historyModalSale} />
 
       {paymentModalSale && (

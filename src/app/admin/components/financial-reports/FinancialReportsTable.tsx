@@ -21,6 +21,7 @@ interface FinancialReportsTableProps {
   totalRecords: number;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
+  onViewDetails: (sale: AdminSales) => void;
   onViewHistory: (sale: AdminSales) => void;
   onRecordPayment: (sale: AdminSales) => void;
   onEditSale?: (sale: AdminSales) => void;
@@ -57,7 +58,7 @@ const getStatusBadge = (sale: AdminSales) => {
 
 const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
   data, loading, currentPage, pageSize, totalRecords,
-  onPageChange, onPageSizeChange, onViewHistory, onRecordPayment,
+  onPageChange, onPageSizeChange, onViewDetails, onViewHistory, onRecordPayment,
   onEditSale, onDeleteSale, sortOrder, onToggleSort,
 }) => {
   const totalPages = Math.ceil(totalRecords / pageSize);
@@ -112,7 +113,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
       </div>
 
       {/* Table */}
-      <div className="bg-white border-x border-gray-200 overflow-x-auto">
+      <div className="bg-white border-x border-gray-200 overflow-x-auto mt-5">
         <Table>
           <TableHeader>
             <TableRow className="bg-brand hover:bg-brand">
@@ -166,6 +167,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                 <TableCell className="text-center">
                   <FinancialReportRowActions
                     sale={sale}
+                    onViewDetails={onViewDetails}
                     onViewHistory={onViewHistory}
                     onRecordPayment={onRecordPayment}
                     onEditSale={onEditSale}

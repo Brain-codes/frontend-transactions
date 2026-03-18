@@ -66,7 +66,7 @@ const DashboardLayout = ({
           onToggleSidebar={toggleSidebar}
           title={title}
           description={description}
-          rightButton={rightButton}
+          rightButton={null}
           user={user}
         />
 
