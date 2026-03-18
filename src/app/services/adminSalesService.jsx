@@ -369,6 +369,7 @@ class AdminSalesService {
         page,
         limit,
         responseFormat: "format2",
+        includeCreator: true,
         ...(search ? { search } : {}),
         ...(paymentStatus ? { paymentStatus } : {}),
         ...(dateFrom ? { dateFrom } : {}),

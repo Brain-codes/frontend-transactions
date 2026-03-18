@@ -929,7 +929,7 @@ const CreateSalesForm = ({
                   <div className="grid grid-cols-3 gap-3 text-sm">
                     <div className="flex items-center gap-1.5">
                       <CreditCard className="h-3.5 w-3.5 text-gray-500" />
-                      <span className="text-gray-600">Fixed Price:</span>
+                      <span className="text-gray-600">Price:</span>
                       <span className="font-medium">
                         {formatCurrency(selectedModel.fixed_price)}
                       </span>

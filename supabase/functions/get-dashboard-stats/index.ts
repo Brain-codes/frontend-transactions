@@ -20,6 +20,17 @@ serve(async (req) => {
     );
   }
 
+  // Parse optional date filters from body
+  let dateFrom: string | null = null;
+  let dateTo: string | null = null;
+  try {
+    const body = await req.json().catch(() => ({}));
+    dateFrom = body.date_from || null;
+    dateTo = body.date_to || null;
+  } catch (_) {
+    // ignore parse errors
+  }
+
   // Create client for user authentication
   const userSupabase = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -228,19 +239,34 @@ serve(async (req) => {
       console.error("Error fetching pending sales count:", pendingCountError);
     }
 
-    // Get total sales amount for the organization
-    const { data: salesAmountData, error: amountError } = await supabase
+    // Get financial aggregation data (with optional date filters)
+    let financialQuery = supabase
       .from("sales")
-      .select("amount")
+      .select("amount, total_paid, is_installment, payment_status")
       .eq("organization_id", organizationId)
       .not("amount", "is", null);
 
+    if (dateFrom) financialQuery = financialQuery.gte("sales_date", dateFrom);
+    if (dateTo) financialQuery = financialQuery.lte("sales_date", dateTo + "T23:59:59");
+
+    const { data: financialData, error: financialError } = await financialQuery;
+
     let totalSalesAmount = 0;
-    if (!amountError && salesAmountData) {
-      totalSalesAmount = salesAmountData.reduce(
-        (sum, sale) => sum + (sale.amount || 0),
-        0
-      );
+    let totalAmountPaid = 0;
+    let totalAmountOwed = 0;
+    let customersOwing = 0;
+
+    if (!financialError && financialData) {
+      for (const sale of financialData) {
+        const amount = sale.amount || 0;
+        const paid = sale.is_installment ? (sale.total_paid || 0) : amount;
+        totalSalesAmount += amount;
+        totalAmountPaid += paid;
+        if (sale.is_installment && sale.payment_status !== "fully_paid") {
+          customersOwing += 1;
+        }
+      }
+      totalAmountOwed = totalSalesAmount - totalAmountPaid;
     }
 
     // Return dashboard statistics
@@ -251,6 +277,12 @@ serve(async (req) => {
       stovesWithLandmark: salesWithLandmarkCount || 0,
       pendingSales: pendingSalesCount || 0,
       totalSalesAmount: totalSalesAmount,
+      // Financial summary fields
+      totalExpectedAmount: totalSalesAmount,
+      totalAmountPaid: totalAmountPaid,
+      totalAmountOwed: totalAmountOwed,
+      totalCustomers: totalSalesCount || 0,
+      customersOwing: customersOwing,
       organizationId: organizationId,
       totalStovesReceived: totalStovesReceived || 0,
       totalStovesSold: totalStovesSold || 0,

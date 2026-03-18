@@ -39,7 +39,7 @@ import {
   Loader2,
   Search,
   X,
-  DollarSign,
+  CreditCard,
   Activity,
   ArrowUpRight,
   ArrowDownRight,
@@ -652,7 +652,7 @@ const DashboardPage = () => {
                         </div>
                       </div>
                       <div className="bg-green-100 p-3 rounded-full">
-                        <DollarSign className="h-6 w-6 text-green-600" />
+                        <CreditCard className="h-6 w-6 text-green-600" />
                       </div>
                     </div>
                   )}

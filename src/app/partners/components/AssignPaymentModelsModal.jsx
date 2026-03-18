@@ -17,7 +17,7 @@ import {
   AlertCircle,
   Check,
   Clock,
-  DollarSign,
+  CreditCard,
 } from "lucide-react";
 import paymentModelService from "../../services/paymentModelService";
 
@@ -152,7 +152,7 @@ const AssignPaymentModelsModal = ({ organization, onClose, onSuccess }) => {
                       <p className="font-medium text-gray-900">{model.name}</p>
                       <div className="flex items-center gap-3 mt-0.5">
                         <span className="text-xs text-gray-500 flex items-center gap-1">
-                          <DollarSign className="h-3 w-3" />
+                          <CreditCard className="h-3 w-3" />
                           {formatCurrency(model.fixed_price)}
                         </span>
                         <span className="text-xs text-gray-500 flex items-center gap-1">

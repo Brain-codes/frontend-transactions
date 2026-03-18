@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   CreditCard,
-  DollarSign,
   Clock,
   Plus,
   Loader2,
@@ -346,7 +345,7 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
                 </div>
                 <div className="flex gap-4 text-xs text-gray-600">
                   <span className="flex items-center gap-1">
-                    <DollarSign className="h-3 w-3" />
+                    <CreditCard className="h-3 w-3" />
                     {formatCurrency(sale.payment_model.fixed_price)}
                   </span>
                   <span className="flex items-center gap-1">

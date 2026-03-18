@@ -25,6 +25,16 @@ export interface AdminSales {
   status: string; // could be "completed" | "pending" | ...
   address: Address;
 
+  // Agent info (joined from profiles via created_by)
+  agent_name?: string;
+  creator?: {
+    id: string;
+    full_name: string;
+    email: string;
+    phone?: string;
+    role?: string;
+  };
+
   // Installment payment fields
   is_installment?: boolean;
   payment_model_id?: string;

@@ -7,6 +7,7 @@ import { useSidebar } from "../contexts/SidebarContext";
 import Sidebar from "./Sidebar.jsx";
 import TopNavigation from "./TopNavigation";
 import FirstTimePasswordChangeModal from "./FirstTimePasswordChangeModal";
+import PageHeader from "./PageHeader";
 import profileService from "../services/profileService";
 
 type DashboardLayoutProps = {
@@ -70,7 +71,14 @@ const DashboardLayout = ({
         />
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-white">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-white">
+          {title && (
+            <div className="px-6 pt-6">
+              <PageHeader title={title} right={rightButton} />
+            </div>
+          )}
+          {children}
+        </main>
       </div>
 
       {/* First-time password change modal */}
