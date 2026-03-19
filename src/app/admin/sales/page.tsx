@@ -108,6 +108,7 @@ const AdminSalesPage = () => {
             loadSales={loadSales}
             onEditSale={handleEditSale}
             onDeleteSale={handleDeleteSale}
+            viewFrom={isAgent ? "agent" : "admin"}
           />
         </div>
       </DashboardLayout>

@@ -96,7 +96,7 @@ const PaymentStatusCards: React.FC<PaymentStatusCardsProps> = ({
           <div
             key={card.label}
             onClick={() => onFilterClick?.(card.filter)}
-            className={`${card.bg} border-2 rounded-lg p-4 transition-all
+            className={`${card.bg} border rounded-lg p-4 transition-all
               ${isActive ? `${card.activeBorder} shadow-md` : `${card.border}`}
               ${clickable ? "cursor-pointer hover:shadow-md hover:scale-[1.02]" : ""}
             `}

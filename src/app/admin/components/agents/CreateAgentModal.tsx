@@ -209,7 +209,7 @@ const CreateAgentModal: React.FC<CreateAgentModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent size="xl">
+      <DialogContent size="3xl">
         <DialogHeader>
           <DialogTitle>Add New Sales Agent</DialogTitle>
           <DialogDescription>

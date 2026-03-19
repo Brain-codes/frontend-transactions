@@ -1,6 +1,7 @@
 import { Address, ImageData } from "./superAdminSales";
 
 export interface AdminSales {
+  organizations: any;
   id: string;
   transaction_id: string;
   stove_serial_no: string;
