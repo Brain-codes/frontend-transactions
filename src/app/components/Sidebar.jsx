@@ -60,10 +60,10 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
       if (isAtmosfairUser) {
         return [
           {
-            name: "Sales",
+            name: "Manage Sales",
             icon: ShoppingCart,
-            route: "sales",
-            href: "/sales",
+            route: "sales-manage",
+            href: "/sales/manage",
             badge: null,
             requiresAuth: true,
           },
@@ -81,24 +81,23 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           requiresAuth: true,
         },
         {
-          name: "Sales",
+          name: "Manage Sales",
           icon: ShoppingCart,
-          route: "sales-group",
-          href: null,
+          route: "sales-manage",
+          href: "/sales/manage",
           badge: null,
           requiresAuth: true,
-          children: [
-            {
-              name: "All Sales",
-              route: "sales",
-              href: "/sales",
-            },
-            {
-              name: "Sales Financial Reports",
-              route: "financial-reports",
-              href: "/sales/financial-reports",
-            },
-          ],
+          // children removed — All Sales + Sales Financial Reports merged into /sales/manage
+          // {
+          //   name: "All Sales",
+          //   route: "sales",
+          //   href: "/sales",
+          // },
+          // {
+          //   name: "Sales Financial Reports",
+          //   route: "financial-reports",
+          //   href: "/sales/financial-reports",
+          // },
         },
         {
           name: "Partners",
