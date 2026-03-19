@@ -165,7 +165,7 @@ const CreateAgentModal: React.FC<CreateAgentModalProps> = ({
         createForm.name,
         createForm.email,
         createForm.password,
-        createForm.phone
+        createForm.phone as any
       );
 
       if (response.success) {
