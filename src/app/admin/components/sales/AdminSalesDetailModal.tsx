@@ -11,6 +11,7 @@ import { CreditCard, Clock, Plus, Loader2, Layers } from "lucide-react";
 import { AdminSales } from "@/types/adminSales";
 import type { SuperAdminSale } from "@/types/superAdminSales";
 import paymentModelService from "../../../services/paymentModelService";
+import adminSalesService from "../../../services/adminSalesService";
 import RecordPaymentModal from "./RecordPaymentModal";
 
 interface InstallmentPayment {
@@ -75,6 +76,24 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
   viewFrom,
   onSaleUpdated,
 }) => {
+  // Full sale data fetched on open — enriches list data with address, images, creator
+  const [fullSale, setFullSale] = useState<any>(null);
+  const [fullSaleLoading, setFullSaleLoading] = useState(false);
+
+  useEffect(() => {
+    if (open && sale?.id) {
+      setFullSaleLoading(true);
+      (adminSalesService as any).getSale(sale.id).then((result: any) => {
+        if (result.success && result.data) setFullSale(result.data);
+      }).catch(() => {}).finally(() => setFullSaleLoading(false));
+    } else if (!open) {
+      setFullSale(null);
+    }
+  }, [open, sale?.id]);
+
+  // Merge: full sale data takes priority, list sale as fallback
+  const activeSale: any = fullSale || sale;
+
   const [installmentPayments, setInstallmentPayments] = useState<InstallmentPayment[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [showRecordPayment, setShowRecordPayment] = useState(false);
@@ -86,13 +105,13 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
     progress_percent: number;
   } | null>(null);
 
-  const isInstallment = sale?.is_installment === true;
+  const isInstallment = activeSale?.is_installment === true;
 
   const fetchInstallmentPayments = useCallback(async () => {
-    if (!sale?.id || !isInstallment) return;
+    if (!activeSale?.id || !isInstallment) return;
     try {
       setPaymentsLoading(true);
-      const result = await paymentModelService.getInstallmentPayments(sale.id);
+      const result = await paymentModelService.getInstallmentPayments(activeSale.id);
       setInstallmentPayments(result.data || []);
       setPaymentSummary(result.summary || null);
     } catch (err) {
@@ -126,28 +145,40 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
 
   if (!sale) return null;
 
-  const totalPaid = paymentSummary?.total_paid ?? (sale.total_paid || 0);
-  const saleAmount = sale.amount || 0;
+  const totalPaid = paymentSummary?.total_paid ?? (activeSale?.total_paid || 0);
+  const saleAmount = activeSale?.amount || 0;
   const remainingBalance = paymentSummary?.remaining_balance ?? saleAmount - totalPaid;
   const progressPercent =
     paymentSummary?.progress_percent ??
     (saleAmount > 0 ? (totalPaid / saleAmount) * 100 : 0);
-  const isFullyPaid = sale.payment_status === "fully_paid";
+  const isFullyPaid = activeSale?.payment_status === "fully_paid";
 
+  // Images — get-sale returns stove_image/agreement_image directly; list data uses stove_image_id
   const stoveImageUrl =
-    viewFrom === "superAdmin"
+    activeSale?.stove_image?.url ||
+    (viewFrom === "superAdmin"
       ? (sale as SuperAdminSale).stove_image?.url
-      : (sale as AdminSales).stove_image_id?.url;
+      : (sale as AdminSales).stove_image_id?.url);
 
   const agreementImageUrl =
-    viewFrom === "superAdmin"
+    activeSale?.agreement_image?.url ||
+    (viewFrom === "superAdmin"
       ? (sale as SuperAdminSale).agreement_image?.url
-      : (sale as AdminSales).agreement_image_id?.url;
+      : (sale as AdminSales).agreement_image_id?.url);
 
+  // Address — get-sale returns address; list data may have addresses (superAdmin) or address (admin)
   const address =
-    viewFrom === "superAdmin"
+    activeSale?.address ||
+    (viewFrom === "superAdmin"
       ? (sale as SuperAdminSale).addresses
-      : (sale as AdminSales).address;
+      : (sale as AdminSales).address);
+
+  // Creator — show agent's full name if they're an agent, otherwise "Admin"
+  const creatorName = activeSale?.creator
+    ? activeSale.creator.role === "agent"
+      ? activeSale.creator.full_name
+      : "Admin"
+    : (activeSale as AdminSales)?.agent_name || null;
 
   return (
     <>
@@ -163,12 +194,12 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Transaction:{" "}
                   <span className="font-semibold text-primary">
-                    {sale.transaction_id || "N/A"}
+                    {activeSale?.transaction_id || "N/A"}
                   </span>
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                {getStatusBadge(sale)}
+                {activeSale && getStatusBadge(activeSale)}
                 {isInstallment && !isFullyPaid && (
                   <Button
                     size="sm"
@@ -185,15 +216,23 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
 
           {/* Scrollable content */}
           <div className="px-5 py-3 space-y-3 overflow-y-auto flex-1">
+            {/* Loading overlay while fetching full details */}
+            {fullSaleLoading && (
+              <div className="flex items-center gap-2 text-xs text-gray-500 py-1">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Loading full details...
+              </div>
+            )}
+
             {/* Row 1: Sale Info + Customer Details */}
             <div className="grid grid-cols-2 gap-3">
               <SectionCard title="Sale Information">
                 <div className="grid grid-cols-2 gap-2">
-                  <DetailItem label="Sales Date" value={formatDate(sale.sales_date)} />
-                  <DetailItem label="Created" value={formatDate(sale.created_at)} />
-                  <DetailItem label="Stove Serial No" value={sale.stove_serial_no} />
-                  <DetailItem label="Partner Name" value={sale.partner_name} />
-                  <DetailItem label="Agent" value={(sale as AdminSales).creator?.full_name || (sale as AdminSales).agent_name} />
+                  <DetailItem label="Sales Date" value={formatDate(activeSale?.sales_date)} />
+                  <DetailItem label="Created" value={formatDate(activeSale?.created_at)} />
+                  <DetailItem label="Stove Serial No" value={activeSale?.stove_serial_no} />
+                  <DetailItem label="Partner Name" value={activeSale?.partner_name} />
+                  <DetailItem label="Agent" value={creatorName} />
                   <DetailItem
                     label="Payment Type"
                     value={
@@ -213,12 +252,12 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
 
               <SectionCard title="Customer Details">
                 <div className="grid grid-cols-2 gap-2">
-                  <DetailItem label="Customer Name" value={sale.end_user_name} />
-                  <DetailItem label="AKA" value={sale.aka} />
-                  <DetailItem label="Phone" value={sale.phone} />
-                  <DetailItem label="Other Phone" value={sale.other_phone} />
-                  <DetailItem label="Contact Person" value={sale.contact_person} />
-                  <DetailItem label="Contact Phone" value={sale.contact_phone} />
+                  <DetailItem label="Customer Name" value={activeSale?.end_user_name} />
+                  <DetailItem label="AKA" value={activeSale?.aka} />
+                  <DetailItem label="Phone" value={activeSale?.phone} />
+                  <DetailItem label="Other Phone" value={activeSale?.other_phone} />
+                  <DetailItem label="Contact Person" value={activeSale?.contact_person} />
+                  <DetailItem label="Contact Phone" value={activeSale?.contact_phone} />
                 </div>
               </SectionCard>
             </div>
@@ -277,7 +316,7 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
                   <DetailItem
                     label="Signature"
                     value={
-                      sale.signature ? (
+                      activeSale?.signature ? (
                         <span className="text-green-600">Available</span>
                       ) : undefined
                     }
@@ -311,13 +350,13 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
                 />
                 <DetailItem
                   label="Payment Status"
-                  value={getStatusBadge(sale)}
+                  value={activeSale && getStatusBadge(activeSale)}
                 />
-                {isInstallment && sale.payment_model && (
+                {isInstallment && activeSale?.payment_model && (
                   <>
-                    <DetailItem label="Payment Model" value={sale.payment_model.name} />
-                    <DetailItem label="Duration" value={`${sale.payment_model.duration_months} months`} />
-                    <DetailItem label="Installment Price" value={formatCurrency(sale.payment_model.fixed_price)} />
+                    <DetailItem label="Payment Model" value={activeSale.payment_model.name} />
+                    <DetailItem label="Duration" value={`${activeSale.payment_model.duration_months} months`} />
+                    <DetailItem label="Installment Price" value={formatCurrency(activeSale.payment_model.fixed_price)} />
                     <DetailItem label="Progress" value={`${progressPercent.toFixed(0)}% complete`} />
                   </>
                 )}
@@ -389,15 +428,15 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
       </Dialog>
 
       {/* Record Payment Modal */}
-      {showRecordPayment && sale?.id && (
+      {showRecordPayment && activeSale?.id && (
         <RecordPaymentModal
-          saleId={sale.id}
+          saleId={activeSale.id}
           remainingBalance={remainingBalance}
           onClose={() => setShowRecordPayment(false)}
           onSuccess={handlePaymentRecorded}
           saleSummary={{
-            transactionId: sale.transaction_id,
-            customerName: sale.end_user_name,
+            transactionId: activeSale.transaction_id,
+            customerName: activeSale.end_user_name,
             totalAmount: saleAmount,
             amountPaid: totalPaid,
             amountOwed: remainingBalance,

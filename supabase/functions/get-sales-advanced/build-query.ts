@@ -117,10 +117,8 @@ function buildOptimizedSelectFields(filters: Filters): string {
     );
   }
 
-  // Include creator/profile if specifically requested
-  if (filters.includeCreator) {
-    joinFields.push("creator:profiles!created_by(id, full_name, email, phone, role)");
-  }
+  // Creator is fetched separately in fetchRelatedData (fetchCreators) to avoid FK hint issues.
+  // Do NOT add a profiles join here — it depends on a FK constraint name that may not match.
 
   // Include images if specifically requested
   if (

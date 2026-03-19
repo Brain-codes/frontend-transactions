@@ -28,6 +28,8 @@ interface FinancialReportsTableProps {
   onDeleteSale?: (sale: AdminSales) => void;
   sortOrder: "asc" | "desc";
   onToggleSort: () => void;
+  // "admin" shows Agent column, "superAdmin" shows Partner column, "agent" hides both
+  viewFrom?: "admin" | "superAdmin" | "agent";
 }
 
 const formatCurrency = (amount: number) =>
@@ -59,7 +61,7 @@ const getStatusBadge = (sale: AdminSales) => {
 const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
   data, loading, currentPage, pageSize, totalRecords,
   onPageChange, onPageSizeChange, onViewDetails, onViewHistory, onRecordPayment,
-  onEditSale, onDeleteSale, sortOrder, onToggleSort,
+  onEditSale, onDeleteSale, sortOrder, onToggleSort, viewFrom = "admin",
 }) => {
   const totalPages = Math.ceil(totalRecords / pageSize);
   const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
@@ -131,7 +133,12 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                 </div>
               </TableHead>
               <TableHead className="text-white font-semibold text-xs text-center whitespace-nowrap">Status</TableHead>
-              <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Agent</TableHead>
+              {viewFrom === "admin" && (
+                <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Sales Rep</TableHead>
+              )}
+              {viewFrom === "superAdmin" && (
+                <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner</TableHead>
+              )}
               <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Payment Model</TableHead>
               <TableHead className="text-white font-semibold text-xs text-right whitespace-nowrap">Amount Paid</TableHead>
               <TableHead className="text-white font-semibold text-xs text-right whitespace-nowrap">Total Amount</TableHead>
@@ -149,7 +156,20 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                 <TableCell className="text-xs">{sale.state_backup || "N/A"}</TableCell>
                 <TableCell className="text-xs">{formatDate(sale.sales_date || sale.created_at)}</TableCell>
                 <TableCell className="text-center">{getStatusBadge(sale)}</TableCell>
-                <TableCell className="text-xs">{sale.creator?.full_name || sale.agent_name || "N/A"}</TableCell>
+                {viewFrom === "admin" && (
+                  <TableCell className="text-xs">
+                    {sale.creator
+                      ? sale.creator.role === "agent"
+                        ? sale.creator.full_name
+                        : "Admin"
+                      : sale.agent_name || "N/A"}
+                  </TableCell>
+                )}
+                {viewFrom === "superAdmin" && (
+                  <TableCell className="text-xs">
+                    {sale.organizations?.partner_name || sale.partner_name || "N/A"}
+                  </TableCell>
+                )}
                 <TableCell className="text-xs">
                   {sale.is_installment
                     ? (sale.payment_model?.name || "Installment")

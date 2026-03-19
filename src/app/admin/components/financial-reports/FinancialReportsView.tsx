@@ -16,6 +16,7 @@ interface FinancialReportsViewProps {
   loadSales: () => Promise<{ success: boolean; data?: AdminSales[]; error?: string }>;
   onEditSale?: (sale: AdminSales) => void;
   onDeleteSale?: (sale: AdminSales) => void;
+  viewFrom?: "admin" | "superAdmin" | "agent";
 }
 
 const getAmountPaid = (sale: AdminSales): number =>
@@ -24,7 +25,7 @@ const getAmountPaid = (sale: AdminSales): number =>
 const getAmountOwed = (sale: AdminSales): number =>
   sale.is_installment ? sale.amount - (sale.total_paid ?? 0) : 0;
 
-const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, onEditSale, onDeleteSale }) => {
+const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, onEditSale, onDeleteSale, viewFrom = "admin" }) => {
   const [allSales, setAllSales] = useState<AdminSales[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -220,6 +221,7 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
             onDeleteSale={onDeleteSale}
             sortOrder={sortOrder}
             onToggleSort={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
+            viewFrom={viewFrom}
           />
         </>
       )}

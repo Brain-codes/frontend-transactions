@@ -37,6 +37,7 @@ serve(async (req) => {
       )
     );
   }
+  // Auth client — uses user JWT for authentication
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL"),
     Deno.env.get("SUPABASE_ANON_KEY"),
@@ -47,6 +48,11 @@ serve(async (req) => {
         },
       },
     }
+  );
+  // Admin client — uses service role key, bypasses RLS for data queries
+  const adminSupabase = createClient(
+    Deno.env.get("SUPABASE_URL"),
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
   );
   try {
     // Authenticate user
@@ -65,8 +71,8 @@ serve(async (req) => {
       );
     }
     const userId = userData.user.id;
-    // Get user profile (including role)
-    const { data: profile, error: profileError } = await supabase
+    // Get user profile (including role) — use adminSupabase to bypass RLS
+    const { data: profile, error: profileError } = await adminSupabase
       .from("profiles")
       .select("organization_id, role")
       .eq("id", userId)
@@ -87,8 +93,8 @@ serve(async (req) => {
         )
       );
     }
-    // Fetch sale with joins
-    let saleQuery = supabase.from("sales").select(
+    // Fetch sale with joins — use adminSupabase to bypass RLS on uploads/addresses
+    let saleQuery = adminSupabase.from("sales").select(
       `
         *,
         address:addresses (*),
@@ -127,6 +133,17 @@ serve(async (req) => {
         )
       );
     }
+
+    // Fetch creator profile separately (avoids FK constraint dependency)
+    if (sale.created_by) {
+      const { data: creator } = await adminSupabase
+        .from("profiles")
+        .select("id, full_name, email, phone, role")
+        .eq("id", sale.created_by)
+        .maybeSingle();
+      sale.creator = creator || null;
+    }
+
     return withCors(
       new Response(
         JSON.stringify({

@@ -40,6 +40,7 @@ export async function getStoveIds(
     `
       id,
       stove_id,
+      sale_id,
       organization_id,
       status,
       created_at,
@@ -143,7 +144,11 @@ export async function getStoveIds(
 
   // Transform data to include calculated fields
   const transformedData = data?.map((item: any) => {
-    const sale = item.sales && item.sales.length > 0 ? item.sales[0] : null;
+    // Handle both object (FK from stove_ids.sale_id) and array (FK from sales side)
+    const saleRaw = item.sales;
+    const sale = saleRaw
+      ? Array.isArray(saleRaw) ? saleRaw[0] || null : saleRaw
+      : null;
 
     return {
       id: item.id,
@@ -154,7 +159,7 @@ export async function getStoveIds(
       organization_name: item.organizations?.partner_name || "N/A",
       branch: item.organizations?.branch || "N/A",
       location: item.organizations?.state || "N/A",
-      sale_id: sale?.id || null,
+      sale_id: item.sale_id || sale?.id || null,
       sale_date: sale?.sales_date || sale?.created_at || null,
       sold_to: sale?.end_user_name || null,
     };
@@ -189,6 +194,7 @@ export async function getStoveIdById(
       `
       id,
       stove_id,
+      sale_id,
       organization_id,
       status,
       created_at,
@@ -205,8 +211,15 @@ export async function getStoveIdById(
       sales!left (
         id,
         end_user_name,
+        phone,
         sales_date,
-        created_at
+        created_at,
+        transaction_id,
+        amount,
+        state_backup,
+        lga_backup,
+        is_installment,
+        payment_status
       )
     `
     )
@@ -243,8 +256,11 @@ export async function getStoveIdById(
 
   console.log(`✅ Found stove ID: ${data.stove_id}`);
 
-  // Transform data
-  const sale = data.sales && data.sales.length > 0 ? data.sales[0] : null;
+  // Transform data — handle both object and array from sales join
+  const saleRaw = data.sales;
+  const sale = saleRaw
+    ? Array.isArray(saleRaw) ? saleRaw[0] || null : saleRaw
+    : null;
 
   return {
     id: data.id,
@@ -259,8 +275,10 @@ export async function getStoveIdById(
     email: data.organizations?.email || "N/A",
     contact_name: data.organizations?.contact_person || "N/A",
     contact_phone: data.organizations?.contact_phone || "N/A",
-    sale_id: sale?.id || null,
+    sale_id: data.sale_id || sale?.id || null,
     sale_date: sale?.sales_date || sale?.created_at || null,
     sold_to: sale?.end_user_name || null,
+    // Pass full sale object so the modal can use it directly
+    sale: sale || null,
   };
 }

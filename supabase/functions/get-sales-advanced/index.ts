@@ -102,6 +102,13 @@ async function executeMainLogic(req: Request) {
       }
     );
 
+    // Pure service-role client (no user JWT) — used for cross-user queries like fetchCreators
+    // This bypasses RLS so admin can read profiles of other users
+    const adminSupabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
     // Authenticate user
     console.log("🔐 Authenticating user...");
     const { userRole, userId, userOrgId, assignedOrgIds } = await authenticateUser(supabase);
@@ -133,7 +140,7 @@ async function executeMainLogic(req: Request) {
     // Only fetch additional related data if specifically requested and not already included
     if (sales && sales.length > 0 && needsAdditionalFetching(filters)) {
       console.log("🔗 Fetching additional related data...");
-      await fetchRelatedData(supabase, sales, filters);
+      await fetchRelatedData(adminSupabase, sales, filters);
       console.log("✅ Additional data attached");
     }
 

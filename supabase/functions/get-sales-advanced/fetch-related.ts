@@ -29,7 +29,8 @@ export async function fetchRelatedData(
     fetchPromises.push(fetchAddresses(supabase, sales));
   }
 
-  if (filters.includeCreator && !sales[0]?.creator) {
+  // Always fetch creators via direct profiles query — reliable regardless of FK constraints
+  if (filters.includeCreator) {
     fetchPromises.push(fetchCreators(supabase, sales));
   }
 
