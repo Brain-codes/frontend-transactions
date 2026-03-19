@@ -82,6 +82,7 @@ export async function getOrganizations(
   const offset = parseInt(searchParams.get("offset") || "0");
   const search = searchParams.get("search");
   const status = searchParams.get("status");
+  const partnerType = searchParams.get("partner_type");
   const sortBy = searchParams.get("sortBy") || "created_at";
   const sortOrder = searchParams.get("sortOrder") || "desc";
   const includeAdminUsers = searchParams.get("include_admin_users") !== "false"; // Default to true
@@ -128,6 +129,10 @@ export async function getOrganizations(
 
   if (status) {
     query = query.eq("status", status);
+  }
+
+  if (partnerType) {
+    query = query.eq("partner_type", partnerType);
   }
 
   // Apply sorting and pagination with validated parameters

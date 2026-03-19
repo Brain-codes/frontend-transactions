@@ -100,7 +100,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           // },
         },
         {
-          name: "Partners",
+          name: "Manage Partners",
           icon: UserCheck,
           route: "partners",
           href: "/partners",

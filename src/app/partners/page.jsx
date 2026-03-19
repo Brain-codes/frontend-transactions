@@ -5,12 +5,10 @@ import DashboardLayout from "../components/DashboardLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import OrganizationFormModal from "../components/OrganizationFormModal";
 import OrganizationDetailSidebar from "../components/OrganizationDetailSidebar";
-import StoveIdsSidebar from "../components/StoveIdsSidebar";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import OrganizationCSVImportModal from "../components/OrganizationCSVImportModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -28,19 +26,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import useOrganizations from "../hooks/useOrganizations";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast, ToastContainer } from "@/components/ui/toast";
@@ -51,112 +48,385 @@ import {
   X,
   Building2,
   Upload,
-  Package,
-  CheckCircle,
+  Users,
+  UserCheck,
   Loader2,
   MoreVertical,
   Edit,
   Trash2,
   Eye,
   Layers,
+  Package,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 import AssignPaymentModelsModal from "./components/AssignPaymentModelsModal";
+import AdminSalesDetailModal from "../admin/components/sales/AdminSalesDetailModal";
+
+// ── Stove IDs Modal ──────────────────────────────────────────────────────────
+
+const StoveIdsModal = ({ organization, isOpen, onClose }) => {
+  const { supabase } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [stoveIds, setStoveIds] = useState([]);
+  const [totals, setTotals] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [error, setError] = useState(null);
+  const [selectedSale, setSelectedSale] = useState(null);
+  const [loadingSaleId, setLoadingSaleId] = useState(null);
+
+  useEffect(() => {
+    if (isOpen && organization) {
+      setSearch("");
+      fetchStoveIds(statusFilter);
+    }
+  }, [isOpen, organization, statusFilter]);
+
+  const fetchStoveIds = async (sf) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const body = { organization_id: organization.id };
+      if (sf && sf !== "all") body.status = sf;
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-stove-ids`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to fetch stove IDs");
+      setStoveIds(data.data || []);
+      setTotals(data.totals || null);
+    } catch (err) {
+      setError(err.message);
+      setStoveIds([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewSale = async (saleId) => {
+    setLoadingSaleId(saleId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-sale?id=${saleId}`,
+        { headers: { Authorization: `Bearer ${session.access_token}` } }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to fetch sale");
+      setSelectedSale(data.data || null);
+    } catch (err) {
+      toast({ variant: "error", title: "Failed to fetch sale", description: err.message });
+    } finally {
+      setLoadingSaleId(null);
+    }
+  };
+
+  const formatDate = (d) => {
+    if (!d) return "N/A";
+    try { return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }); }
+    catch { return "N/A"; }
+  };
+
+  const filtered = stoveIds.filter((s) =>
+    !search || s.stove_id?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalCount = totals?.total_stove_ids ?? 0;
+  const available = totals?.total_stove_available ?? 0;
+  const sold = totals?.total_stove_sold ?? 0;
+  const soldPct = totalCount > 0 ? Math.round((sold / totalCount) * 100) : 0;
+  const availPct = totalCount > 0 ? Math.round((available / totalCount) * 100) : 0;
+
+  return (
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+          {/* Header */}
+          <DialogHeader className="px-5 py-3 bg-gradient-to-r from-blue-50/80 to-sky-50/80 border-b shrink-0">
+            <DialogTitle className="text-base font-bold">Stove IDs</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              {organization?.partner_name} — all assigned stove IDs
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            {/* Stats — SectionCard pattern: 3 inline stat boxes */}
+            {totals && (
+              <div className="bg-muted/30 border border-border/50 rounded-lg p-4">
+                <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider border-b border-primary/20 pb-1 mb-3">
+                  Stove Summary
+                </h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Total Assigned</p>
+                    <p className="text-xl font-bold text-gray-900">{totalCount.toLocaleString()}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Available</p>
+                    <p className="text-xl font-bold text-green-700">{available.toLocaleString()}</p>
+                    <p className="text-[10px] text-green-600">{availPct}% of total</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Sold</p>
+                    <p className="text-xl font-bold text-blue-700">{sold.toLocaleString()}</p>
+                    <p className="text-[10px] text-blue-600">{soldPct}% of total</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Filters */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="relative flex-1 min-w-[180px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                <Input
+                  placeholder="Search stove ID..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-8 h-8 text-xs bg-white"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[130px] h-8 text-xs bg-white">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="available">Available</SelectItem>
+                  <SelectItem value="sold">Sold</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Stove Cards */}
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-brand" />
+              </div>
+            ) : error ? (
+              <div className="text-center text-red-600 py-8 text-sm">{error}</div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center text-gray-500 py-8 text-sm">No stove IDs found.</div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {filtered.map((stove) => (
+                  <div
+                    key={stove.id}
+                    className={`bg-muted/30 border rounded-lg p-3 space-y-2 ${
+                      stove.status === "sold" ? "border-blue-200" : "border-green-200"
+                    }`}
+                  >
+                    {/* Card header: stove ID + status pill */}
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-gray-900">{stove.stove_id}</p>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        stove.status === "sold"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-green-100 text-green-700"
+                      }`}>
+                        {stove.status === "sold" ? "Sold" : "Available"}
+                      </span>
+                    </div>
+                    {/* Dates */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Assigned</p>
+                        <p className="text-[11px] font-medium text-gray-700">{formatDate(stove.created_at)}</p>
+                      </div>
+                      {stove.status === "sold" && (
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Sale Date</p>
+                          <p className="text-[11px] font-medium text-gray-700">{formatDate(stove.sale_date)}</p>
+                        </div>
+                      )}
+                    </div>
+                    {/* View Sale button */}
+                    {stove.sale_id && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full h-7 text-xs text-blue-600 border-blue-200 hover:bg-blue-50"
+                        onClick={() => handleViewSale(stove.sale_id)}
+                        disabled={!!loadingSaleId}
+                      >
+                        {loadingSaleId === stove.sale_id
+                          ? <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          : <Eye className="h-3 w-3 mr-1" />}
+                        View Sale
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {selectedSale && (
+        <AdminSalesDetailModal
+          open={!!selectedSale}
+          onClose={() => setSelectedSale(null)}
+          sale={selectedSale}
+          viewFrom="superAdmin"
+        />
+      )}
+    </>
+  );
+};
+
+// ── Partner Detail Modal ──────────────────────────────────────────────────────
+
+const DetailItem = ({ label, value, span2 = false }) => (
+  <div className={`space-y-0.5 ${span2 ? "md:col-span-2" : ""}`}>
+    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
+    <p className="text-xs font-medium text-gray-900">{value || <span className="text-gray-400">N/A</span>}</p>
+  </div>
+);
+
+const SectionCard = ({ title, children }) => (
+  <div className="bg-muted/30 rounded-lg p-4 border border-border/50">
+    <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider border-b border-primary/20 pb-1 mb-3">
+      {title}
+    </h3>
+    {children}
+  </div>
+);
+
+const PartnerDetailModal = ({ organization, isOpen, onClose, onEdit }) => {
+  if (!organization) return null;
+  const formatDate = (d) => {
+    if (!d) return "N/A";
+    try { return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }); }
+    catch { return "N/A"; }
+  };
+  const typeLabel = organization.partner_type
+    ? organization.partner_type.charAt(0).toUpperCase() + organization.partner_type.slice(1)
+    : "N/A";
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+        <DialogHeader className="px-5 py-3 bg-gradient-to-r from-blue-50/80 to-sky-50/80 border-b shrink-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle className="text-base font-bold">Partner Details</DialogTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">{organization.partner_name}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${
+                organization.status === "active"
+                  ? "bg-green-50 text-green-700 border-green-200"
+                  : organization.status === "inactive"
+                  ? "bg-gray-50 text-gray-600 border-gray-200"
+                  : "bg-red-50 text-red-700 border-red-200"
+              }`}>
+                {organization.status ? organization.status.charAt(0).toUpperCase() + organization.status.slice(1) : "N/A"}
+              </span>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { onClose(); onEdit(organization); }}>
+                <Edit className="h-3 w-3 mr-1" />Edit
+              </Button>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+          {/* Basic Info */}
+          <SectionCard title="Partner Information">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <DetailItem label="Partner Name" value={organization.partner_name} />
+              <DetailItem label="Partner ID" value={organization.partner_id} />
+              <DetailItem label="Type" value={typeLabel} />
+              <DetailItem label="Branch" value={organization.branch} />
+              <DetailItem label="State" value={organization.state} />
+              <DetailItem label="Date Joined" value={formatDate(organization.created_at)} />
+            </div>
+          </SectionCard>
+
+          {/* Contact */}
+          <SectionCard title="Contact Information">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <DetailItem label="Contact Person" value={organization.contact_person} />
+              <DetailItem label="Contact Phone" value={organization.contact_phone} />
+              <DetailItem label="Alternative Phone" value={organization.alternative_phone} />
+              <DetailItem label="Email" value={organization.email} />
+              <DetailItem label="Address" value={organization.address} span2 />
+            </div>
+          </SectionCard>
+
+          {/* Stove Summary */}
+          <SectionCard title="Stove Summary">
+            <div className="grid grid-cols-3 gap-3">
+              <DetailItem label="Total Received" value={(organization.total_stove_ids || 0).toLocaleString()} />
+              <DetailItem label="Sold" value={(organization.sold_stove_ids || 0).toLocaleString()} />
+              <DetailItem label="Available" value={(organization.available_stove_ids || 0).toLocaleString()} />
+            </div>
+          </SectionCard>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
 
 const PartnersPage = () => {
   const { supabase, userRole } = useAuth();
   const { toast, toasts, removeToast } = useToast();
 
-  // Cache management for organizations
   const ORG_CACHE_KEY = "partners_organizations_cache";
   const ORG_CACHE_TIMESTAMP_KEY = "partners_organizations_cache_timestamp";
-  const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+  const CACHE_DURATION = 30 * 60 * 1000;
 
   const getCachedOrganizations = () => {
     try {
       const cached = localStorage.getItem(ORG_CACHE_KEY);
-      const timestamp = localStorage.getItem(ORG_CACHE_TIMESTAMP_KEY);
-
-      if (cached && timestamp) {
-        const age = Date.now() - parseInt(timestamp);
-        if (age < CACHE_DURATION) {
-          return JSON.parse(cached);
-        }
-      }
-    } catch (err) {
-      console.error("Error reading cache:", err);
-    }
+      const ts = localStorage.getItem(ORG_CACHE_TIMESTAMP_KEY);
+      if (cached && ts && Date.now() - parseInt(ts) < CACHE_DURATION) return JSON.parse(cached);
+    } catch {}
     return null;
   };
-
   const setCachedOrganizations = (data) => {
     try {
       localStorage.setItem(ORG_CACHE_KEY, JSON.stringify(data));
       localStorage.setItem(ORG_CACHE_TIMESTAMP_KEY, Date.now().toString());
-    } catch (err) {
-      console.error("Error setting cache:", err);
-    }
+    } catch {}
   };
 
-  // State management
+  // Modal state
   const [selectedOrganization, setSelectedOrganization] = useState(null);
-  const [showStoveIdsSidebar, setShowStoveIdsSidebar] = useState(false);
-  const [organizationForStoveIds, setOrganizationForStoveIds] = useState(null);
+  const [stoveIdsOrg, setStoveIdsOrg] = useState(null);
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingOrganization, setEditingOrganization] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [organizationToDelete, setOrganizationToDelete] = useState(null);
   const [formSubmitLoading, setFormSubmitLoading] = useState(false);
-
-  // Organization CSV Import state
   const [showPaymentModelsModal, setShowPaymentModelsModal] = useState(false);
   const [paymentModelsOrg, setPaymentModelsOrg] = useState(null);
   const [showOrgImportModal, setShowOrgImportModal] = useState(false);
-  const [orgImportLoading, setOrgImportLoading] = useState(false);
 
-  // Filter state
-  const [filters, setFilters] = useState({
-    search: "",
-    status: "",
-    state: "",
-  });
+  // Filters
+  const [filters, setFilters] = useState({ search: "", state: "all", partner_type: "all" });
+  const [typeCardFilter, setTypeCardFilter] = useState("all"); // synced with partner_type filter
 
-  // Organization search for dropdown (matching Stove ID Management pattern)
-  const [selectedOrgIds, setSelectedOrgIds] = useState([]);
-  const [organizations, setOrganizations] = useState([]);
-  const [loadingOrgs, setLoadingOrgs] = useState(false);
-  const [orgSearch, setOrgSearch] = useState("");
-  const [openOrgPopover, setOpenOrgPopover] = useState(false);
-  const orgDropdownRef = useRef(null);
-
-  // Statistics state
-  const [stats, setStats] = useState({
-    total_received: 0,
-    total_sold: 0,
-    total_available: 0,
-    total_partners: 0,
-  });
+  // Stats
+  const [stats, setStats] = useState({ total_received: 0, total_sold: 0, total_available: 0, total_partners: 0 });
   const [loadingStats, setLoadingStats] = useState(false);
+  const [typeCounts, setTypeCounts] = useState({ customer: 0, partner: 0 });
+  const [loadingTypeCounts, setLoadingTypeCounts] = useState(false);
 
   const nigerianStates = Object.keys(lgaAndStates).sort();
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        orgDropdownRef.current &&
-        !orgDropdownRef.current.contains(event.target)
-      ) {
-        setOpenOrgPopover(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  // Hook for organizations data
   const {
     data: organizationsData,
     loading,
@@ -170,53 +440,17 @@ const PartnersPage = () => {
     fetchOrganizations,
   } = useOrganizations();
 
-  // Clear error when auth becomes available
-  useEffect(() => {
-    if (error && error.includes("login") && supabase) {
-      // Retry fetching if we have auth now
-      const timer = setTimeout(() => {
-        fetchOrganizations();
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [error, supabase, fetchOrganizations]);
-
   // Fetch statistics
-  const fetchStats = async (orgIds = null) => {
+  const fetchStats = async () => {
     setLoadingStats(true);
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const functionUrl = `${baseUrl}/functions/v1/get-stove-stats`;
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session?.access_token) {
-        throw new Error("No authentication token found");
-      }
-
-      const params = new URLSearchParams();
-
-      // Add organization filter if provided
-      if (orgIds && orgIds.length > 0) {
-        params.append("organization_ids", orgIds.join(","));
-      }
-
-      const response = await fetch(`${functionUrl}?${params}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to fetch statistics");
-      }
-
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-stove-stats`,
+        { headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" } }
+      );
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error);
       setStats({
         total_received: result.data?.total || 0,
         total_sold: result.data?.sold || 0,
@@ -224,895 +458,445 @@ const PartnersPage = () => {
         total_partners: pagination.total || 0,
       });
     } catch (err) {
-      console.error("Error fetching stats:", err);
+      console.error("Stats error:", err);
     } finally {
       setLoadingStats(false);
     }
   };
 
-  // Fetch stats on mount and when data changes
   useEffect(() => {
-    if (!loading) {
-      fetchStats(selectedOrgIds.length > 0 ? selectedOrgIds : null);
-    }
-  }, [organizationsData, pagination.total, selectedOrgIds]);
+    if (!loading) fetchStats();
+  }, [organizationsData, pagination.total]);
 
-  // Load cached organizations on mount
-  useEffect(() => {
-    const cached = getCachedOrganizations();
-    if (cached && cached.length > 0) {
-      setOrganizations(cached);
+  // Fetch total counts per partner type (accurate, not page-level)
+  const fetchTypeCounts = async () => {
+    setLoadingTypeCounts(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const base = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-organizations`;
+      const headers = { Authorization: `Bearer ${session.access_token}` };
+      const [custRes, partRes] = await Promise.all([
+        fetch(`${base}?partner_type=customer&limit=1&offset=0&include_admin_users=false`, { headers }),
+        fetch(`${base}?partner_type=partner&limit=1&offset=0&include_admin_users=false`, { headers }),
+      ]);
+      const [custData, partData] = await Promise.all([custRes.json(), partRes.json()]);
+      setTypeCounts({
+        customer: custData.pagination?.total ?? 0,
+        partner: partData.pagination?.total ?? 0,
+      });
+    } catch (err) {
+      console.error("Type counts error:", err);
+    } finally {
+      setLoadingTypeCounts(false);
     }
+  };
+
+  useEffect(() => {
+    fetchTypeCounts();
   }, []);
 
-  // Fetch organizations for search dropdown (using get-organizations-grouped with caching)
-  const fetchOrganizationsForSearch = useCallback(
-    async (searchTerm = "") => {
-      setLoadingOrgs(true);
-      try {
-        // Check cache first
-        const cachedData = getCachedOrganizations();
-
-        if (cachedData && cachedData.length > 0) {
-          // Use cached data and filter client-side
-          if (searchTerm) {
-            const filtered = cachedData.filter(
-              (group) =>
-                group.base_name
-                  .toLowerCase()
-                  .includes(searchTerm.toLowerCase()) ||
-                group.branches.some(
-                  (branch) =>
-                    branch.branch
-                      .toLowerCase()
-                      .includes(searchTerm.toLowerCase()) ||
-                    (branch.state &&
-                      branch.state
-                        .toLowerCase()
-                        .includes(searchTerm.toLowerCase())),
-                ),
-            );
-            setOrganizations(filtered);
-          } else {
-            setOrganizations(cachedData);
-          }
-          setLoadingOrgs(false);
-          return;
-        }
-
-        // If no cache, fetch from API
-        const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const functionUrl = `${baseUrl}/functions/v1/get-organizations-grouped`;
-
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (!session?.access_token) {
-          throw new Error("No authentication token found");
-        }
-
-        const params = new URLSearchParams({
-          page: "1",
-          page_size: "500", // Fetch all for caching
-        });
-
-        const response = await fetch(`${functionUrl}?${params}`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error || "Failed to fetch organizations");
-        }
-
-        const fetchedData = result.data || [];
-
-        // Cache the full dataset
-        setCachedOrganizations(fetchedData);
-
-        // Apply search filter if needed
-        if (searchTerm) {
-          const filtered = fetchedData.filter(
-            (group) =>
-              group.base_name
-                .toLowerCase()
-                .includes(searchTerm.toLowerCase()) ||
-              group.branches.some(
-                (branch) =>
-                  branch.branch
-                    .toLowerCase()
-                    .includes(searchTerm.toLowerCase()) ||
-                  (branch.state &&
-                    branch.state
-                      .toLowerCase()
-                      .includes(searchTerm.toLowerCase())),
-              ),
-          );
-          setOrganizations(filtered);
-        } else {
-          setOrganizations(fetchedData);
-        }
-      } catch (err) {
-        console.error("Error fetching organizations:", err);
-        setOrganizations([]);
-      } finally {
-        setLoadingOrgs(false);
-      }
-    },
-    [supabase],
-  );
-
-  // Auto-apply filters when they change
+  // Apply filters when they change — always pass all filter keys so the hook's
+  // internal filtersRef gets overwritten (prevents stale values from merging back in)
   useEffect(() => {
     const timer = setTimeout(() => {
-      const filterParams = {};
-      if (filters.search) filterParams.search = filters.search;
-      if (filters.status && filters.status !== "all")
-        filterParams.status = filters.status;
-      if (filters.state && filters.state !== "all")
-        filterParams.state = filters.state;
-      filterParams.page = 1;
-
-      applyFilters(filterParams);
-    }, 300); // Debounce search
-
+      applyFilters({
+        page: 1,
+        search: filters.search || null,
+        state: filters.state !== "all" ? filters.state : null,
+        partner_type: filters.partner_type !== "all" ? filters.partner_type : null,
+      });
+    }, 300);
     return () => clearTimeout(timer);
-  }, [filters.search, filters.status, filters.state]);
+  }, [filters]);
 
-  // Filter handlers
-  const handleFilterChange = (field, value) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
-  };
+  const handleFilterChange = (field, value) => setFilters((prev) => ({ ...prev, [field]: value }));
 
-  // Handle organization selection
-  const handleSelectOrganization = (orgIds) => {
-    setSelectedOrgIds(orgIds);
-    setOpenOrgPopover(false);
-
-    // Update stats based on selection
-    fetchStats(orgIds && orgIds.length > 0 ? orgIds : null);
-
-    // Build search filter based on selected organization IDs
-    // The manage-organizations endpoint filters by search, not organization_ids
-    // So we need to build a search term from the selected organizations
-    let searchFilter = "";
-
-    if (orgIds && orgIds.length > 0) {
-      // Get organization names from the selected IDs
-      const cachedOrgs = getCachedOrganizations() || organizations;
-
-      for (const group of cachedOrgs) {
-        // Check if all org IDs match (all branches selected)
-        if (
-          orgIds.length === group.organization_ids.length &&
-          orgIds.every((id) => group.organization_ids.includes(id))
-        ) {
-          searchFilter = group.base_name;
-          break;
-        }
-        // Check if specific branch is selected
-        const selectedBranch = group.branches.find(
-          (b) => orgIds.includes(b.id) && orgIds.length === 1,
-        );
-        if (selectedBranch) {
-          searchFilter = group.base_name;
-          break;
-        }
-      }
-    }
-
-    // Update filters and apply
-    const newFilters = { ...filters, search: searchFilter, page: 1 };
-    setFilters(newFilters);
-
-    // Trigger the filter
-    const filterParams = {};
-    if (searchFilter) filterParams.search = searchFilter;
-    if (filters.status && filters.status !== "all")
-      filterParams.status = filters.status;
-    if (filters.state && filters.state !== "all")
-      filterParams.state = filters.state;
-    filterParams.page = 1;
-
-    applyFilters(filterParams);
-  };
-
-  // Get selected organization name for display
-  const getSelectedOrgName = () => {
-    if (!selectedOrgIds || selectedOrgIds.length === 0) {
-      return "";
-    }
-
-    for (const group of organizations) {
-      if (
-        selectedOrgIds.length === group.organization_ids.length &&
-        selectedOrgIds.every((id) => group.organization_ids.includes(id))
-      ) {
-        return `${group.base_name} (All Branches)`;
-      }
-
-      const branch = group.branches.find(
-        (b) => selectedOrgIds.includes(b.id) && selectedOrgIds.length === 1,
-      );
-      if (branch) {
-        return `${group.base_name} - ${branch.branch}`;
-      }
-    }
-
-    return `${selectedOrgIds.length} selected`;
+  const handleTypeCardClick = (type) => {
+    const next = typeCardFilter === type ? "all" : type;
+    setTypeCardFilter(next);
+    setFilters((prev) => ({ ...prev, partner_type: next }));
   };
 
   const handleClearFilters = () => {
-    const clearedFilters = {
-      search: "",
-      status: "",
-      state: "",
-    };
-    setFilters(clearedFilters);
-    setSelectedOrgIds([]);
-    setOrgSearch("");
-
-    // Reset organizations list to cached full list
-    const cached = getCachedOrganizations();
-    if (cached && cached.length > 0) {
-      setOrganizations(cached);
-    }
-
-    // Reset stats to show all organizations
-    fetchStats(null);
-
-    // Apply empty filters explicitly to show all partners data
-    applyFilters({
-      page: 1,
-      search: "",
-      status: "",
-      state: "",
-    });
+    setFilters({ search: "", state: "all", partner_type: "all" });
+    setTypeCardFilter("all");
   };
 
   const hasActiveFilters =
-    filters.search ||
-    filters.status ||
-    filters.state ||
-    selectedOrgIds.length > 0;
+    filters.search || filters.state !== "all" || filters.partner_type !== "all";
 
-  // Pagination handlers
-  const handlePageChange = (page) => {
-    applyFilters({ page });
+  // Pagination
+  const handlePageChange = (page) => applyFilters({ page });
+  const handlePageSizeChange = (value) => applyFilters({ page: 1, limit: parseInt(value) });
+
+  const getVisiblePages = () => {
+    const pages = [];
+    let start = Math.max(1, pagination.page - 2);
+    const end = Math.min(pagination.totalPages, start + 4);
+    start = Math.max(1, end - 4);
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
   };
 
-  const handlePageSizeChange = (value) => {
-    applyFilters({ page: 1, limit: parseInt(value) });
-  };
-
-  // Organization action handlers
-  const handleViewDetails = (organization) => {
-    setShowFormModal(false);
-    setShowDeleteModal(false);
-    setEditingOrganization(null);
-    setOrganizationToDelete(null);
-    setSelectedOrganization(organization);
-    setShowStoveIdsSidebar(false);
-    setOrganizationForStoveIds(null);
-  };
-
-  const handleViewStoveIds = (organization) => {
-    setSelectedOrganization(null);
-    setShowStoveIdsSidebar(true);
-    setOrganizationForStoveIds(organization);
-  };
-
-  const handleEdit = (organization) => {
-    setSelectedOrganization(null);
-    setShowDeleteModal(false);
-    setOrganizationToDelete(null);
-    setEditingOrganization(organization);
-    setShowFormModal(true);
-  };
-
-  const handleDelete = (organization) => {
-    setSelectedOrganization(null);
-    setShowFormModal(false);
-    setEditingOrganization(null);
-    setOrganizationToDelete(organization);
-    setShowDeleteModal(true);
-  };
-
-  const handleCreateNew = () => {
-    setSelectedOrganization(null);
-    setShowDeleteModal(false);
-    setOrganizationToDelete(null);
-    setEditingOrganization(null);
-    setShowFormModal(true);
-  };
-
-  const handleImportOrganizations = () => {
-    setSelectedOrganization(null);
-    setShowFormModal(false);
-    setShowDeleteModal(false);
-    setEditingOrganization(null);
-    setOrganizationToDelete(null);
-    setShowOrgImportModal(true);
-  };
-
-  const handleOrgImportComplete = () => {
-    fetchOrganizations();
-  };
+  // Action handlers
+  const handleViewDetails = (org) => setSelectedOrganization(org);
+  const handleViewStoveIds = (org) => setStoveIdsOrg(org);
+  const handleEdit = (org) => { setEditingOrganization(org); setShowFormModal(true); };
+  const handleDelete = (org) => { setOrganizationToDelete(org); setShowDeleteModal(true); };
+  const handleCreateNew = () => { setEditingOrganization(null); setShowFormModal(true); };
 
   const handleFormSubmit = async (formData) => {
     setFormSubmitLoading(true);
     try {
       if (editingOrganization) {
-        const response = await updateOrganization(
-          editingOrganization.id,
-          formData,
-        );
-        if (response.success) {
-          toast.success("Success", "Organization updated successfully");
-          setShowFormModal(false);
-          setEditingOrganization(null);
-        }
+        const res = await updateOrganization(editingOrganization.id, formData);
+        if (res.success) { toast({ variant: "success", title: "Organization updated successfully" }); setShowFormModal(false); setEditingOrganization(null); }
       } else {
-        const response = await createOrganization(formData);
-        if (response.success) {
-          toast.success("Success", "Organization created successfully");
-          setShowFormModal(false);
-        }
+        const res = await createOrganization(formData);
+        if (res.success) { toast({ variant: "success", title: "Organization created successfully" }); setShowFormModal(false); }
       }
-    } catch (error) {
-      console.error("Form submission error:", error);
-    } finally {
-      setFormSubmitLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setFormSubmitLoading(false); }
   };
 
   const handleDeleteConfirm = async () => {
     try {
-      const response = await deleteOrganization(organizationToDelete.id);
-      if (response.success) {
-        toast.success("Success", "Organization deleted successfully");
+      const res = await deleteOrganization(organizationToDelete.id);
+      if (res.success) {
+        toast({ variant: "success", title: "Organization deleted successfully" });
         setShowDeleteModal(false);
         setOrganizationToDelete(null);
       }
-    } catch (error) {
-      console.error("Delete error:", error);
-      toast.error("Error", error.message || "Failed to delete organization");
+    } catch (err) {
+      toast({ variant: "error", title: "Error", description: err.message || "Failed to delete" });
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    try {
-      return new Date(dateString).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-    } catch {
-      return "Invalid Date";
-    }
-  };
+  const startRecord = organizationsData.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
+  const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
 
-  // Loading state
-  if (loading) {
-    return (
-      <ProtectedRoute requireSuperAdmin={true}>
-        <DashboardLayout currentRoute="partners">
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center">
-              <Loader2 className="animate-spin h-12 w-12 mx-auto mb-4 text-brand" />
-              <p className="text-gray-600">Loading partners data...</p>
-            </div>
-          </div>
-        </DashboardLayout>
-      </ProtectedRoute>
-    );
-  }
+  // Loading / Error states
+  if (loading) return (
+    <ProtectedRoute requireSuperAdmin={true}>
+      <DashboardLayout currentRoute="partners" title="Manage Partners">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="animate-spin h-8 w-8 text-brand" />
+        </div>
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
 
-  // Error state - only show if persistent (not initial auth check)
-  if (error && !error.includes("login")) {
-    return (
-      <ProtectedRoute requireSuperAdmin={true}>
-        <DashboardLayout currentRoute="partners">
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-red-600 mb-4">
-                Error loading partners data: {error}
-              </p>
-              <Button onClick={() => fetchOrganizations()}>Try Again</Button>
-            </div>
+  if (error && !error.includes("login")) return (
+    <ProtectedRoute requireSuperAdmin={true}>
+      <DashboardLayout currentRoute="partners" title="Manage Partners">
+        <div className="p-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-600 text-sm">
+            Error: {error}
+            <Button onClick={fetchOrganizations} size="sm" variant="outline" className="ml-3">Retry</Button>
           </div>
-        </DashboardLayout>
-      </ProtectedRoute>
-    );
-  }
+        </div>
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
 
   return (
     <ProtectedRoute requireSuperAdmin={true}>
-      <DashboardLayout currentRoute="partners">
-        <div className="flex-1 overflow-y-auto bg-white">
-          <div className="p-6 space-y-6">
-            {/* Page Header with Buttons */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Partners</h1>
-              </div>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <Button
-                  onClick={handleImportOrganizations}
-                  variant="outline"
-                  className="flex items-center justify-center gap-2"
-                >
-                  <Upload className="h-4 w-4" />
-                  <span className="hidden sm:inline">Import Organizations</span>
-                  <span className="sm:hidden">Import</span>
-                </Button>
-                <Button
-                  onClick={handleCreateNew}
-                  className="bg-brand hover:bg-brand/90 flex items-center justify-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">Add Partner</span>
-                  <span className="sm:hidden">Add</span>
-                </Button>
+      <DashboardLayout
+        currentRoute="partners"
+        title="Manage Partners"
+        rightButton={
+          <div className="flex items-center gap-2">
+            <Button onClick={() => setShowOrgImportModal(true)} variant="outline" size="sm" className="flex items-center gap-1.5">
+              <Upload className="h-4 w-4" />
+              Import
+            </Button>
+            <Button onClick={handleCreateNew} size="sm" className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5">
+              <Plus className="h-4 w-4" />
+              Add Partner
+            </Button>
+          </div>
+        }
+      >
+        <div className="p-6 space-y-5">
+
+          {/* ── Stats Cards ─────────────────────────────────────────────── */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Total Partners */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Building2 className="h-5 w-5 text-blue-700" />
+                </div>
+                <div>
+                  <p className="text-sm text-blue-600 font-medium">Total Partners</p>
+                  <p className="text-xl font-bold text-blue-900">
+                    {loadingStats ? <Loader2 className="h-4 w-4 animate-spin" /> : pagination.total.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-blue-500">Registered</p>
+                </div>
               </div>
             </div>
 
-            {/* Filters Section */}
-            <div className="bg-brand-light p-4 rounded-lg border border-gray-200">
-              <div className="flex flex-wrap items-center gap-4">
-                {/* Organization Search with Dropdown */}
-                <div className="flex-1 min-w-[200px]" ref={orgDropdownRef}>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Search organizations..."
-                      value={orgSearch}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setOrgSearch(value);
-                        fetchOrganizationsForSearch(value);
-                        setOpenOrgPopover(true);
-                      }}
-                      onFocus={() => {
-                        setOpenOrgPopover(true);
-                        // Always show all organizations when focused
-                        if (orgSearch === "") {
-                          const cached = getCachedOrganizations();
-                          if (cached && cached.length > 0) {
-                            setOrganizations(cached);
-                          } else {
-                            fetchOrganizationsForSearch("");
-                          }
-                        }
-                      }}
-                      className="pl-9 bg-white"
-                    />
-                  </div>
-                  {openOrgPopover && (
-                    <div className="absolute z-50 min-w-[200px] max-w-[300px] mt-2 bg-white rounded-md border border-gray-200 shadow-md max-h-64 overflow-y-auto">
-                      <div className="p-2">
-                        {loadingOrgs ? (
-                          <div className="px-2 py-4 text-sm text-center text-gray-500 flex items-center justify-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Loading organizations...
-                          </div>
-                        ) : (
-                          <>
-                            <div
-                              className="px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 rounded-sm flex items-center gap-2"
-                              onClick={() => {
-                                handleSelectOrganization([]);
-                                setOrgSearch("");
-                                // Reset to show all cached organizations
-                                const cached = getCachedOrganizations();
-                                if (cached && cached.length > 0) {
-                                  setOrganizations(cached);
-                                }
-                              }}
-                            >
-                              <Building2 className="h-4 w-4" />
-                              All Organizations
-                            </div>
-                            {organizations.length === 0 && orgSearch ? (
-                              <div className="px-2 py-4 text-sm text-center text-gray-500">
-                                No organization found.
-                              </div>
-                            ) : (
-                              organizations.map((group) => (
-                                <div key={group.base_name}>
-                                  <div
-                                    className="px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 rounded-sm"
-                                    onClick={() => {
-                                      handleSelectOrganization(
-                                        group.organization_ids,
-                                      );
-                                      setOrgSearch("");
-                                    }}
-                                  >
-                                    <div className="flex items-center justify-between w-full">
-                                      <div className="flex items-center gap-2">
-                                        <Building2 className="h-4 w-4" />
-                                        {group.base_name}
-                                      </div>
-                                      {group.branch_count > 1 && (
-                                        <span className="text-xs text-gray-500">
-                                          {group.branch_count} branches
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  {group.branch_count > 1 &&
-                                    group.branches.map((branch) => (
-                                      <div
-                                        key={branch.id}
-                                        className="pl-8 px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 rounded-sm"
-                                        onClick={() => {
-                                          handleSelectOrganization([branch.id]);
-                                          setOrgSearch("");
-                                        }}
-                                      >
-                                        <div className="flex items-center justify-between w-full">
-                                          <span>{branch.branch}</span>
-                                          {branch.state && (
-                                            <span className="text-xs text-gray-500">
-                                              {branch.state}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    ))}
-                                </div>
-                              ))
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
+            {/* Customer type — clickable filter */}
+            <div
+              className={`bg-green-50 border rounded-lg p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all ${typeCardFilter === "customer" ? "border-green-600 shadow-md" : "border-green-200"}`}
+              onClick={() => handleTypeCardClick("customer")}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Users className="h-5 w-5 text-green-700" />
                 </div>
-
-                {/* Selected Organization Badge */}
-                {selectedOrgIds.length > 0 && (
-                  <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-md border border-gray-200">
-                    <Building2 className="h-4 w-4 text-gray-600" />
-                    <span className="text-sm font-medium text-gray-900">
-                      {getSelectedOrgName()}
-                    </span>
-                    <button
-                      onClick={() => {
-                        handleSelectOrganization([]);
-                        setOrgSearch("");
-                      }}
-                      className="ml-1 text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                )}
-
-                {/* Status Filter */}
-                <div className="flex-1 min-w-[150px]">
-                  <Select
-                    value={filters.status}
-                    onValueChange={(value) =>
-                      handleFilterChange("status", value)
-                    }
-                  >
-                    <SelectTrigger className="bg-white">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="suspended">Suspended</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div>
+                  <p className="text-sm text-green-600 font-medium">Customers</p>
+                  <p className="text-xl font-bold text-green-900">
+                    {loadingTypeCounts ? <Loader2 className="h-4 w-4 animate-spin" /> : typeCounts.customer.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-green-500">Click to filter</p>
                 </div>
+              </div>
+              {typeCardFilter === "customer" && (
+                <p className="text-xs font-semibold mt-2 opacity-70 text-center text-green-700">✓ Filter active — click again to clear</p>
+              )}
+            </div>
 
-                {/* State Filter */}
-                <div className="flex-1 min-w-[150px]">
-                  <Select
-                    value={filters.state}
-                    onValueChange={(value) =>
-                      handleFilterChange("state", value)
-                    }
-                  >
-                    <SelectTrigger className="bg-white">
-                      <SelectValue placeholder="State" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All States</SelectItem>
-                      {nigerianStates.map((state) => (
-                        <SelectItem key={state} value={state.toLowerCase()}>
-                          {state}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            {/* Partner type — clickable filter */}
+            <div
+              className={`bg-amber-50 border rounded-lg p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all ${typeCardFilter === "partner" ? "border-amber-600 shadow-md" : "border-amber-200"}`}
+              onClick={() => handleTypeCardClick("partner")}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <UserCheck className="h-5 w-5 text-amber-700" />
                 </div>
+                <div>
+                  <p className="text-sm text-amber-600 font-medium">Partners</p>
+                  <p className="text-xl font-bold text-amber-900">
+                    {loadingTypeCounts ? <Loader2 className="h-4 w-4 animate-spin" /> : typeCounts.partner.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-amber-500">Click to filter</p>
+                </div>
+              </div>
+              {typeCardFilter === "partner" && (
+                <p className="text-xs font-semibold mt-2 opacity-70 text-center text-amber-700">✓ Filter active — click again to clear</p>
+              )}
+            </div>
 
-                {/* Clear Filters Button */}
-                {hasActiveFilters && (
+            {/* Stove Inventory — compact 3-value card */}
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Package className="h-5 w-5 text-purple-700" />
+                </div>
+                <p className="text-sm text-purple-600 font-medium">Stove Inventory</p>
+              </div>
+              {loadingStats ? (
+                <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
+              ) : (
+                <div className="flex items-center gap-3 text-xs">
                   <div>
-                    <Button
-                      onClick={handleClearFilters}
-                      size="sm"
-                      variant="outline"
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Clear
-                    </Button>
+                    <p className="text-[10px] text-purple-500 uppercase">Total</p>
+                    <p className="font-bold text-purple-900">{stats.total_received.toLocaleString()}</p>
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Statistics Cards */}
-            <div className="flex flex-wrap gap-4">
-              <Card className="w-fit">
-                <CardContent className="p-4">
-                  {loadingStats ? (
-                    <div className="flex items-center justify-center h-16 w-48">
-                      <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-4">
-                      <div className="bg-purple-100 p-3 rounded-full flex-shrink-0">
-                        <Package className="h-6 w-6 text-purple-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm text-gray-600 mb-1 whitespace-nowrap">
-                          Total Stove ID Received
-                        </p>
-                        <p className="text-2xl font-bold text-purple-600">
-                          {stats.total_received.toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="w-fit">
-                <CardContent className="p-4">
-                  {loadingStats ? (
-                    <div className="flex items-center justify-center h-16 w-48">
-                      <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-4">
-                      <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
-                        <CheckCircle className="h-6 w-6 text-blue-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm text-gray-600 mb-1 whitespace-nowrap">
-                          Total Stove ID Sold
-                        </p>
-                        <p className="text-2xl font-bold text-blue-600">
-                          {stats.total_sold.toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="w-fit">
-                <CardContent className="p-4">
-                  {loadingStats ? (
-                    <div className="flex items-center justify-center h-16 w-48">
-                      <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-4">
-                      <div className="bg-green-100 p-3 rounded-full flex-shrink-0">
-                        <Package className="h-6 w-6 text-green-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm text-gray-600 mb-1 whitespace-nowrap">
-                          Total Available Stove IDs
-                        </p>
-                        <p className="text-2xl font-bold text-green-600">
-                          {stats.total_available.toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="w-fit">
-                <CardContent className="p-4">
-                  {loadingStats ? (
-                    <div className="flex items-center justify-center h-16 w-48">
-                      <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-4">
-                      <div className="bg-orange-100 p-3 rounded-full flex-shrink-0">
-                        <Building2 className="h-6 w-6 text-orange-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm text-gray-600 mb-1 whitespace-nowrap">
-                          Total Partners
-                        </p>
-                        <p className="text-2xl font-bold text-orange-600">
-                          {stats.total_partners.toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Table Controls */}
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                Showing{" "}
-                {organizationsData.length > 0
-                  ? (pagination.page - 1) * pagination.limit + 1
-                  : 0}{" "}
-                to{" "}
-                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
-                of {pagination.total} partners
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Items per page:</span>
-                <Select
-                  value={pagination.limit.toString()}
-                  onValueChange={handlePageSizeChange}
-                >
-                  <SelectTrigger className="w-20 bg-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="bg-white rounded-lg border border-gray-200 relative overflow-hidden">
-              {tableLoading && (
-                <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
-                  <div className="text-center">
-                    <Loader2 className="animate-spin h-8 w-8 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600">Loading partners...</p>
+                  <div className="h-5 w-px bg-purple-200" />
+                  <div>
+                    <p className="text-[10px] text-green-500 uppercase">Available</p>
+                    <p className="font-bold text-green-700">{stats.total_available.toLocaleString()}</p>
+                  </div>
+                  <div className="h-5 w-px bg-purple-200" />
+                  <div>
+                    <p className="text-[10px] text-blue-500 uppercase">Sold</p>
+                    <p className="font-bold text-blue-700">{stats.total_sold.toLocaleString()}</p>
                   </div>
                 </div>
               )}
+            </div>
+          </div>
 
+          {/* ── Filter Bar ──────────────────────────────────────────────── */}
+          <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
+            {/* Search */}
+            <div className="w-1/4 min-w-[180px] relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search by name, ID, branch..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange("search", e.target.value)}
+                className="pl-9 bg-white h-9 text-sm"
+              />
+            </div>
+
+            {/* Partner Type */}
+            <Select value={filters.partner_type} onValueChange={(v) => { handleFilterChange("partner_type", v); setTypeCardFilter(v); }}>
+              <SelectTrigger className="w-[150px] h-9 bg-white text-sm">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="customer">Customer</SelectItem>
+                <SelectItem value="partner">Partner</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* State */}
+            <Select value={filters.state} onValueChange={(v) => handleFilterChange("state", v)}>
+              <SelectTrigger className="w-[155px] h-9 bg-white text-sm">
+                <SelectValue placeholder="All States" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All States</SelectItem>
+                {nigerianStates.map((s) => (
+                  <SelectItem key={s} value={s.toLowerCase()}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Has Stove IDs filter — practical: shows only partners with stoves assigned */}
+            {/* <Select
+              value={filters.has_stove_ids ?? "all"}
+              onValueChange={(v) => handleFilterChange("has_stove_ids", v)}
+            >
+              <SelectTrigger className="w-[160px] h-9 bg-white text-sm">
+                <SelectValue placeholder="Stove Assignment" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Partners</SelectItem>
+                <SelectItem value="yes">Has Stove IDs</SelectItem>
+                <SelectItem value="no">No Stove IDs</SelectItem>
+              </SelectContent>
+            </Select> */}
+
+            {/* Clear */}
+            {hasActiveFilters && (
+              <Button onClick={handleClearFilters} size="sm" variant="outline" className="h-9">
+                <X className="h-4 w-4 mr-1" />
+                Clear
+              </Button>
+            )}
+          </div>
+
+          {/* ── Table ───────────────────────────────────────────────────── */}
+          <div className="space-y-0">
+            {/* Pagination header */}
+            <div className="bg-blue-50 rounded-t-lg px-4 py-2 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-gray-600">
+                  Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
+                  <span className="font-medium">{pagination.total}</span> partners
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">per page:</span>
+                  <Select value={pagination.limit?.toString() ?? "10"} onValueChange={handlePageSizeChange}>
+                    <SelectTrigger className="w-[65px] h-7 bg-white text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <p className="text-sm font-bold text-green-500">
+                Total Partners: <span className="text-brand">{pagination.total}</span>
+              </p>
+            </div>
+
+            {/* Table */}
+            <div className="bg-white border-x border-gray-200 overflow-x-auto relative">
+              {tableLoading && (
+                <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
+                  <Loader2 className="h-6 w-6 animate-spin text-brand" />
+                </div>
+              )}
               <Table>
-                <TableHeader className="bg-brand">
-                  <TableRow className="hover:bg-brand">
-                    <TableHead className="text-white py-4 first:rounded-tl-lg">
-                      Partner
-                    </TableHead>
-                    <TableHead className="text-white py-4">Type</TableHead>
-                    <TableHead className="text-white py-4">Branch</TableHead>
-                    <TableHead className="text-white py-4">
-                      Total Stove ID Received
-                    </TableHead>
-                    <TableHead className="text-white py-4">
-                      Total Stove ID Sold
-                    </TableHead>
-                    <TableHead className="text-white py-4">
-                      Total Available Stove IDs
-                    </TableHead>
-                    <TableHead className="text-center text-white py-4 last:rounded-tr-lg">
-                      Actions
-                    </TableHead>
+                <TableHeader>
+                  <TableRow className="bg-brand hover:bg-brand">
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner Name</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Type</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Branch</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">State</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stove IDs</TableHead>
+                    <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className={tableLoading ? "opacity-40" : ""}>
                   {organizationsData.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        <div className="text-gray-500">
-                          {tableLoading ? "Loading..." : "No partners found"}
-                        </div>
+                      <TableCell colSpan={6} className="text-center py-10">
+                        <Building2 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500 font-medium">No partners found</p>
+                        <p className="text-gray-400 text-sm">Try adjusting your filters</p>
                       </TableCell>
                     </TableRow>
                   ) : (
-                    organizationsData.map((org, index) => (
-                      <TableRow
-                        key={org.id}
-                        className={`${
-                          index % 2 === 0 ? "bg-white" : "bg-brand-light"
-                        } hover:bg-gray-50`}
-                      >
-                        <TableCell className="font-medium">
-                          {org.partner_name}
-                        </TableCell>
+                    organizationsData.map((org, idx) => (
+                      <TableRow key={org.id} className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}>
+                        <TableCell className="text-xs font-medium text-gray-900">{org.partner_name}</TableCell>
                         <TableCell>
                           {org.partner_type ? (
-                            <div
-                              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent ${
-                                org.partner_type === "partner"
-                                  ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
-                                  : "bg-green-100 text-green-800 hover:bg-green-100"
-                              }`}
-                            >
-                              {org.partner_type.charAt(0).toUpperCase() +
-                                org.partner_type.slice(1)}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400 text-xs">-</span>
-                          )}
+                            <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                              org.partner_type === "partner"
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-green-100 text-green-700"
+                            }`}>
+                              {org.partner_type === "partner" ? "Partner" : "Customer"}
+                            </span>
+                          ) : <span className="text-gray-400 text-xs">—</span>}
                         </TableCell>
-                        <TableCell>{org.branch || "N/A"}</TableCell>
+                        <TableCell className="text-xs">{org.branch || "N/A"}</TableCell>
+                        <TableCell className="text-xs">{org.state || "N/A"}</TableCell>
+
+                        {/* Stove IDs — compact 3-value inline */}
                         <TableCell>
-                          <Badge className="bg-purple-100 text-purple-800 border-purple-200">
-                            {org.total_stove_ids || 0}
-                          </Badge>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-purple-700 font-medium" title="Total">{org.total_stove_ids ?? 0} received</span>
+                            <span className="text-gray-300">·</span>
+                            <span className="text-green-600" title="Available">{org.available_stove_ids ?? 0} available</span>
+                            <span className="text-gray-300">·</span>
+                            <span className="text-blue-600" title="Sold">{org.sold_stove_ids ?? 0} sold</span>
+                          </div>
                         </TableCell>
-                        <TableCell>
-                          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                            {org.sold_stove_ids || 0}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className="bg-green-100 text-green-800 border-green-200">
-                            {org.available_stove_ids || 0}
-                          </Badge>
-                        </TableCell>
+
                         <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1">
+                          <div className="flex items-center justify-center gap-1.5">
+                            {/* Assign Payment Models */}
                             <Button
                               size="sm"
-                              onClick={() => handleViewStoveIds(org)}
-                              className="bg-brand hover:bg-brand/90"
+                              variant="outline"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => { setPaymentModelsOrg(org); setShowPaymentModelsModal(true); }}
                             >
-                              View Stove IDs
+                              <Layers className="h-3 w-3 mr-1" />
+                              Assign Model
                             </Button>
+                            {/* View Details */}
+                            <Button
+                              size="sm"
+                              className="bg-brand hover:bg-brand/90 text-white h-7 px-2 text-xs"
+                              onClick={() => handleViewDetails(org)}
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              Details
+                            </Button>
+                            {/* Dropdown: View Stove IDs, Edit, Delete */}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                  <MoreVertical className="h-4 w-4" />
+                                <Button variant="outline" size="sm" className="h-7 w-7 p-0">
+                                  <MoreVertical className="h-3.5 w-3.5" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => handleViewDetails(org)}
-                                >
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  View Partner Details
+                                <DropdownMenuItem onClick={() => handleViewStoveIds(org)}>
+                                  <Package className="mr-2 h-4 w-4" />
+                                  View Stove IDs
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleEdit(org)}
-                                >
+                                <DropdownMenuItem onClick={() => handleEdit(org)}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit
                                 </DropdownMenuItem>
-                                {userRole === "super_admin" && (
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setPaymentModelsOrg(org);
-                                      setShowPaymentModelsModal(true);
-                                    }}
-                                  >
-                                    <Layers className="mr-2 h-4 w-4" />
-                                    Assign Payment Models
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem
-                                  onClick={() => handleDelete(org)}
-                                  className="text-red-600"
-                                >
+                                <DropdownMenuItem onClick={() => handleDelete(org)} className="text-red-600">
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   Delete
                                 </DropdownMenuItem>
@@ -1127,97 +911,63 @@ const PartnersPage = () => {
               </Table>
             </div>
 
-            {/* Pagination */}
+            {/* Pagination footer */}
             {pagination.totalPages > 1 && (
-              <div className="flex justify-center">
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        onClick={() => handlePageChange(pagination.page - 1)}
-                        className={
-                          pagination.page <= 1
-                            ? "pointer-events-none opacity-50"
-                            : "cursor-pointer"
-                        }
-                      />
-                    </PaginationItem>
-
-                    {[...Array(Math.min(5, pagination.totalPages))].map(
-                      (_, index) => {
-                        const page = index + 1;
-                        return (
-                          <PaginationItem key={page}>
-                            <PaginationLink
-                              onClick={() => handlePageChange(page)}
-                              isActive={page === pagination.page}
-                              className="cursor-pointer"
-                            >
-                              {page}
-                            </PaginationLink>
-                          </PaginationItem>
-                        );
-                      },
-                    )}
-
-                    <PaginationItem>
-                      <PaginationNext
-                        onClick={() => handlePageChange(pagination.page + 1)}
-                        className={
-                          pagination.page >= pagination.totalPages
-                            ? "pointer-events-none opacity-50"
-                            : "cursor-pointer"
-                        }
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
+              <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
+                <p className="text-sm text-gray-600">
+                  Showing {startRecord} to {endRecord} of {pagination.total} partners
+                </p>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => handlePageChange(1)} disabled={pagination.page === 1}>
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handlePageChange(pagination.page - 1)} disabled={pagination.page === 1}>
+                    <ChevronLeft className="h-4 w-4 mr-1" />Prev
+                  </Button>
+                  {getVisiblePages().map((p) => (
+                    <Button key={p} variant={p === pagination.page ? "default" : "outline"} size="sm"
+                      className={`h-8 w-8 p-0 ${p === pagination.page ? "bg-brand text-white hover:bg-brand" : ""}`}
+                      onClick={() => handlePageChange(p)}
+                    >{p}</Button>
+                  ))}
+                  <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handlePageChange(pagination.page + 1)} disabled={pagination.page >= pagination.totalPages}>
+                    Next<ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => handlePageChange(pagination.totalPages)} disabled={pagination.page >= pagination.totalPages}>
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Modals */}
+        {/* ── Modals ────────────────────────────────────────────────────── */}
         <OrganizationFormModal
           isOpen={showFormModal}
-          onClose={() => {
-            setShowFormModal(false);
-            setEditingOrganization(null);
-            setFormSubmitLoading(false);
-          }}
+          onClose={() => { setShowFormModal(false); setEditingOrganization(null); setFormSubmitLoading(false); }}
           onSubmit={handleFormSubmit}
           initialData={editingOrganization}
           loading={loading}
           submitLoading={formSubmitLoading}
         />
 
-        {selectedOrganization && (
-          <OrganizationDetailSidebar
-            organization={selectedOrganization}
-            isOpen={!!selectedOrganization}
-            onClose={() => setSelectedOrganization(null)}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
-        )}
+        <PartnerDetailModal
+          organization={selectedOrganization}
+          isOpen={!!selectedOrganization}
+          onClose={() => setSelectedOrganization(null)}
+          onEdit={handleEdit}
+        />
 
-        {showStoveIdsSidebar && organizationForStoveIds && (
-          <StoveIdsSidebar
-            organization={organizationForStoveIds}
-            isOpen={showStoveIdsSidebar}
-            onClose={() => {
-              setShowStoveIdsSidebar(false);
-              setOrganizationForStoveIds(null);
-            }}
-          />
-        )}
+        <StoveIdsModal
+          organization={stoveIdsOrg}
+          isOpen={!!stoveIdsOrg}
+          onClose={() => setStoveIdsOrg(null)}
+        />
 
         <DeleteConfirmationModal
           isOpen={showDeleteModal}
-          onClose={() => {
-            setShowDeleteModal(false);
-            setOrganizationToDelete(null);
-          }}
+          onClose={() => { setShowDeleteModal(false); setOrganizationToDelete(null); }}
           onConfirm={handleDeleteConfirm}
           organizationName={organizationToDelete?.partner_name}
           loading={loading}
@@ -1225,29 +975,19 @@ const PartnersPage = () => {
 
         <OrganizationCSVImportModal
           isOpen={showOrgImportModal}
-          onClose={() => {
-            setShowOrgImportModal(false);
-            setOrgImportLoading(false);
-          }}
-          onImportComplete={handleOrgImportComplete}
-          loading={orgImportLoading}
+          onClose={() => setShowOrgImportModal(false)}
+          onImportComplete={() => fetchOrganizations()}
           supabase={supabase}
         />
 
         {showPaymentModelsModal && paymentModelsOrg && (
           <AssignPaymentModelsModal
             organization={paymentModelsOrg}
-            onClose={() => {
-              setShowPaymentModelsModal(false);
-              setPaymentModelsOrg(null);
-            }}
+            onClose={() => { setShowPaymentModelsModal(false); setPaymentModelsOrg(null); }}
             onSuccess={() => {
               setShowPaymentModelsModal(false);
               setPaymentModelsOrg(null);
-              toast({
-                variant: "success",
-                title: "Payment models assigned successfully",
-              });
+              toast({ variant: "success", title: "Payment models assigned successfully" });
             }}
           />
         )}
