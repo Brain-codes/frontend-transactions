@@ -1,12 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import DashboardLayout from "../../components/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -26,14 +31,21 @@ import {
   Users,
   Building2,
   Loader2,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Eye,
+  EyeOff,
 } from "lucide-react";
-import adminCredentialsService, {
-  Credential,
-} from "@/app/services/adminCredentialsService";
+import adminCredentialsService, { Credential } from "@/app/services/adminCredentialsService";
 import CredentialsTable from "../components/credentials/CredentialsTable";
 import ViewCredentialModal from "../components/credentials/ViewCredentialModal";
 import ResetPasswordModal from "../components/credentials/ResetPasswordModal";
 import { useAuth } from "../../contexts/AuthContext";
+
+type TabKey = "partners" | "saa" | "super-admins";
 
 interface UserCredential {
   id: string;
@@ -46,74 +58,289 @@ interface UserCredential {
   created_at: string;
 }
 
+const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
+  { key: "partners", label: "Partners", icon: Building2 },
+  { key: "saa", label: "Super Admin Agents", icon: Users },
+  { key: "super-admins", label: "Super Admins", icon: Shield },
+];
+
+const formatDate = (d: string) =>
+  new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+
+// ── Shared ERP user-credentials table (SAA + Super Admin tabs) ────────────────
+const UserCredentialsSection = ({
+  users,
+  loadingState,
+  onRefresh,
+  copiedField,
+  onCopy,
+}: {
+  users: UserCredential[];
+  loadingState: boolean;
+  onRefresh: () => void;
+  copiedField: string | null;
+  onCopy: (value: string, key: string) => void;
+}) => {
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all"); // all | with-password | no-password
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
+
+  const togglePwd = (id: string) =>
+    setVisiblePasswords((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+
+  const filtered = useMemo(() => {
+    let list = users;
+    if (search.trim()) {
+      const t = search.toLowerCase();
+      list = list.filter((u) =>
+        (u.partner_name || "").toLowerCase().includes(t) ||
+        u.email.toLowerCase().includes(t)
+      );
+    }
+    if (typeFilter === "with-password") list = list.filter((u) => !!u.password);
+    if (typeFilter === "no-password") list = list.filter((u) => !u.password);
+    return list;
+  }, [users, search, typeFilter]);
+
+  const totalRecords = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endRecord = Math.min(currentPage * pageSize, totalRecords);
+  const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const getVisiblePages = () => {
+    const pages: number[] = [];
+    let start = Math.max(1, currentPage - 2);
+    const end = Math.min(totalPages, start + 4);
+    start = Math.max(1, end - 4);
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  };
+
+  const withPwdCount = users.filter((u) => !!u.password).length;
+
+  return (
+    <div className="space-y-5">
+      {/* Stats cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg"><Users className="h-5 w-5 text-blue-700" /></div>
+            <div>
+              <p className="text-sm text-blue-600 font-medium">Total Users</p>
+              <p className="text-xl font-bold text-blue-900">{users.length}</p>
+              <p className="text-xs text-blue-500">In this group</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg"><Key className="h-5 w-5 text-green-700" /></div>
+            <div>
+              <p className="text-sm text-green-600 font-medium">With Password</p>
+              <p className="text-xl font-bold text-green-900">{withPwdCount}</p>
+              <p className="text-xs text-green-500">Credentials saved</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-100 rounded-lg"><Shield className="h-5 w-5 text-amber-700" /></div>
+            <div>
+              <p className="text-sm text-amber-600 font-medium">No Password</p>
+              <p className="text-xl font-bold text-amber-900">{users.length - withPwdCount}</p>
+              <p className="text-xs text-amber-500">Not yet set</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter bar */}
+      <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
+        <div className="w-1/4 min-w-[180px] relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search by name or email..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+            className="pl-9 bg-white h-9 text-sm"
+          />
+        </div>
+        <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-[160px] h-9 bg-white text-sm">
+            <SelectValue placeholder="All credentials" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Credentials</SelectItem>
+            <SelectItem value="with-password">With Password</SelectItem>
+            <SelectItem value="no-password">No Password</SelectItem>
+          </SelectContent>
+        </Select>
+        {(search || typeFilter !== "all") && (
+          <Button onClick={() => { setSearch(""); setTypeFilter("all"); setCurrentPage(1); }} size="sm" variant="outline" className="h-9">
+            <X className="h-4 w-4 mr-1" />Clear
+          </Button>
+        )}
+        <div className="ml-auto">
+          <Button variant="outline" size="sm" onClick={onRefresh} disabled={loadingState} className="h-9">
+            <RefreshCw className={`h-4 w-4 mr-2 ${loadingState ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* ERP table */}
+      <div className="space-y-0">
+        <div className="bg-blue-50 rounded-t-lg px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-gray-600">
+              Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
+              <span className="font-medium">{totalRecords}</span> users
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">per page:</span>
+              <Select value={pageSize.toString()} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1); }}>
+                <SelectTrigger className="w-[65px] h-7 bg-white text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <p className="text-sm font-bold text-green-500">Total: <span className="text-brand">{totalRecords}</span></p>
+        </div>
+
+        <div className="bg-white border-x border-gray-200 overflow-x-auto relative">
+          {loadingState && (
+            <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
+              <Loader2 className="h-6 w-6 animate-spin text-brand" />
+            </div>
+          )}
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-brand hover:bg-brand">
+                <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Name</TableHead>
+                <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Email</TableHead>
+                <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Password</TableHead>
+                <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Created</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className={loadingState ? "opacity-40" : ""}>
+              {paged.length === 0 && !loadingState ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-10 text-gray-500 text-sm">
+                    {users.length === 0
+                      ? "No credentials found. Create users in User Management."
+                      : "No users match your search."}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paged.map((u, idx) => (
+                  <TableRow key={u.id} className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50`}>
+                    <TableCell className="text-xs font-medium text-gray-900">{u.partner_name || "—"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-gray-700">{u.email}</span>
+                        <button onClick={() => onCopy(u.email, `email-${u.id}`)} className="text-gray-400 hover:text-brand">
+                          {copiedField === `email-${u.id}` ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                        </button>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {u.password ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-xs text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">
+                            {visiblePasswords.has(u.id) ? u.password : "•".repeat(Math.min(u.password.length, 12))}
+                          </span>
+                          <button onClick={() => togglePwd(u.id)} className="text-gray-400 hover:text-brand">
+                            {visiblePasswords.has(u.id) ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                          </button>
+                          <button onClick={() => onCopy(u.password!, `pwd-${u.id}`)} className="text-gray-400 hover:text-brand">
+                            {copiedField === `pwd-${u.id}` ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs text-gray-600">{formatDate(u.created_at)}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {totalPages > 1 && (
+          <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
+            <p className="text-sm text-gray-600">Showing {startRecord} to {endRecord} of {totalRecords}</p>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}><ChevronsLeft className="h-4 w-4" /></Button>
+              <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setCurrentPage((p) => p - 1)} disabled={currentPage === 1}><ChevronLeft className="h-4 w-4 mr-1" />Prev</Button>
+              {getVisiblePages().map((p) => (
+                <Button key={p} variant={p === currentPage ? "default" : "outline"} size="sm"
+                  className={`h-8 w-8 p-0 ${p === currentPage ? "bg-brand text-white hover:bg-brand" : ""}`}
+                  onClick={() => setCurrentPage(p)}>{p}</Button>
+              ))}
+              <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setCurrentPage((p) => p + 1)} disabled={currentPage >= totalPages}>Next<ChevronRight className="h-4 w-4 ml-1" /></Button>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setCurrentPage(totalPages)} disabled={currentPage >= totalPages}><ChevronsRight className="h-4 w-4" /></Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
 const CredentialsPage = () => {
   const { supabase } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<"partners" | "saa" | "super-admins">("partners");
+  const [activeTab, setActiveTab] = useState<TabKey>("partners");
 
-  // ── Partners tab state ──────────────────────────────────────────────────
+  // Partners tab
   const [credentials, setCredentials] = useState<Credential[]>([]);
-  const [filteredCredentials, setFilteredCredentials] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [selectedCredential, setSelectedCredential] = useState<Credential | null>(null);
 
-  // ── SAA / Super Admin tab state ─────────────────────────────────────────
+  // Partner filters
+  const [partnerSearch, setPartnerSearch] = useState("");
+  const [partnerTypeFilter, setPartnerTypeFilter] = useState("all"); // all | username | email
+
+  // SAA / Super Admin tabs
   const [saaUsers, setSaaUsers] = useState<UserCredential[]>([]);
   const [superAdminUsers, setSuperAdminUsers] = useState<UserCredential[]>([]);
   const [loadingSaa, setLoadingSaa] = useState(false);
   const [loadingSuperAdmins, setLoadingSuperAdmins] = useState(false);
-  const [saaSearch, setSaaSearch] = useState("");
-  const [superAdminSearch, setSuperAdminSearch] = useState("");
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  // ── Partner tab effects ─────────────────────────────────────────────────
-  useEffect(() => {
-    fetchCredentials();
-  }, []);
-
-  useEffect(() => {
-    if (!searchTerm.trim()) {
-      setFilteredCredentials(credentials);
-    } else {
-      const term = searchTerm.toLowerCase();
-      setFilteredCredentials(
-        credentials.filter(
-          (cred) =>
-            cred.partner_id.toLowerCase().includes(term) ||
-            cred.partner_name.toLowerCase().includes(term) ||
-            (cred.email && cred.email.toLowerCase().includes(term)) ||
-            (cred.username && cred.username.toLowerCase().includes(term))
-        )
-      );
-    }
-  }, [searchTerm, credentials]);
+  useEffect(() => { fetchCredentials(); }, []);
 
   const fetchCredentials = async () => {
+    setLoading(true);
+    setError("");
     try {
-      setLoading(true);
-      setError("");
       const response = await adminCredentialsService.getAllCredentials();
       if (response.success && response.data) {
         setCredentials(response.data);
-        setFilteredCredentials(response.data);
       } else {
-        setError(response.error || "Failed to fetch credentials. Please try again.");
+        setError(response.error || "Failed to fetch credentials");
       }
     } catch (err) {
-      console.error("Error fetching credentials:", err);
-      setError("An unexpected error occurred while fetching credentials");
+      setError("An unexpected error occurred");
     } finally {
       setLoading(false);
     }
   };
 
-  // ── User credential fetch helper (calls manage-credentials?role=...) ───
   const fetchUsersByRole = async (
     role: string,
     setUsers: (u: UserCredential[]) => void,
@@ -121,24 +348,14 @@ const CredentialsPage = () => {
   ) => {
     setLoadingState(true);
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error("No auth token");
-
-      const params = new URLSearchParams({ role });
-      const response = await fetch(
-        `${baseUrl}/functions/v1/manage-credentials?${params}`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-        }
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-credentials?role=${role}`,
+        { headers: { Authorization: `Bearer ${session.access_token}` } }
       );
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Failed to fetch credentials");
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to fetch credentials");
       setUsers(result.data || []);
     } catch (err) {
       console.error(`Error fetching ${role} credentials:`, err);
@@ -147,35 +364,18 @@ const CredentialsPage = () => {
     }
   };
 
-  const handleTabChange = (tab: "partners" | "saa" | "super-admins") => {
+  const handleTabChange = (tab: TabKey) => {
     setActiveTab(tab);
-    if (tab === "saa" && saaUsers.length === 0) {
-      fetchUsersByRole("super_admin_agent", setSaaUsers, setLoadingSaa);
-    }
-    if (tab === "super-admins" && superAdminUsers.length === 0) {
-      fetchUsersByRole("super_admin", setSuperAdminUsers, setLoadingSuperAdmins);
-    }
+    if (tab === "saa" && saaUsers.length === 0) fetchUsersByRole("super_admin_agent", setSaaUsers, setLoadingSaa);
+    if (tab === "super-admins" && superAdminUsers.length === 0) fetchUsersByRole("super_admin", setSuperAdminUsers, setLoadingSuperAdmins);
   };
 
-  // ── Copy to clipboard helper ────────────────────────────────────────────
   const copyToClipboard = async (value: string, key: string) => {
     try {
       await navigator.clipboard.writeText(value);
       setCopiedField(key);
       setTimeout(() => setCopiedField(null), 2000);
-    } catch {
-      /* ignore */
-    }
-  };
-
-  const handleViewDetails = (credential: Credential) => {
-    setSelectedCredential(credential);
-    setViewModalOpen(true);
-  };
-
-  const handleResetPassword = (credential: Credential) => {
-    setSelectedCredential(credential);
-    setResetModalOpen(true);
+    } catch { /* ignore */ }
   };
 
   const handleResetSuccess = () => {
@@ -184,350 +384,195 @@ const CredentialsPage = () => {
     fetchCredentials();
   };
 
+  // Partner stats
   const partnerStats = {
     total: credentials.length,
     usernameOnly: credentials.filter((c) => c.is_dummy_email).length,
     emailBased: credentials.filter((c) => !c.is_dummy_email).length,
   };
 
-  const formatDate = (d: string) =>
-    new Date(d).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+  // Filtered partner credentials
+  const filteredCredentials = useMemo(() => {
+    let list = credentials;
+    if (partnerSearch.trim()) {
+      const t = partnerSearch.toLowerCase();
+      list = list.filter((c) =>
+        c.partner_id.toLowerCase().includes(t) ||
+        c.partner_name.toLowerCase().includes(t) ||
+        (c.email && c.email.toLowerCase().includes(t)) ||
+        (c.username && c.username.toLowerCase().includes(t))
+      );
+    }
+    if (partnerTypeFilter === "username") list = list.filter((c) => c.is_dummy_email);
+    if (partnerTypeFilter === "email") list = list.filter((c) => !c.is_dummy_email);
+    return list;
+  }, [credentials, partnerSearch, partnerTypeFilter]);
 
-  // ── User credentials table (shared for SAA and Super Admin tabs) ────────
-  const UserCredentialsTable = ({
-    users,
-    loadingState,
-    search,
-  }: {
-    users: UserCredential[];
-    loadingState: boolean;
-    search: string;
-  }) => {
-    const filtered = search.trim()
-      ? users.filter(
-          (u) =>
-            (u.partner_name || "").toLowerCase().includes(search.toLowerCase()) ||
-            u.email.toLowerCase().includes(search.toLowerCase())
-        )
-      : users;
-
-    return (
-      <div className="bg-white rounded-lg border border-gray-200 relative overflow-hidden">
-        {loadingState && (
-          <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
-            <Loader2 className="animate-spin h-6 w-6 text-brand" />
-          </div>
-        )}
-        <Table>
-          <TableHeader className="bg-brand">
-            <TableRow className="hover:bg-brand">
-              <TableHead className="text-white py-4 first:rounded-tl-lg">Name</TableHead>
-              <TableHead className="text-white py-4">Email / Username</TableHead>
-              <TableHead className="text-white py-4">Password</TableHead>
-              <TableHead className="text-white py-4 last:rounded-tr-lg">Created At</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {!loadingState && filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-10 text-gray-500">
-                  {users.length === 0
-                    ? "No credentials found. Create users in User Management to populate this list."
-                    : "No users match your search."}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filtered.map((u, index) => (
-                <TableRow
-                  key={u.id}
-                  className={`${index % 2 === 0 ? "bg-white" : "bg-brand-light"} hover:bg-gray-50`}
-                >
-                  <TableCell className="font-medium text-gray-900">
-                    {u.partner_name || "—"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-700 text-sm">{u.email}</span>
-                      <button
-                        onClick={() => copyToClipboard(u.email, `email-${u.id}`)}
-                        className="text-gray-400 hover:text-brand transition-colors"
-                        title="Copy email"
-                      >
-                        {copiedField === `email-${u.id}` ? (
-                          <Check className="h-3.5 w-3.5 text-green-600" />
-                        ) : (
-                          <Copy className="h-3.5 w-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {u.password ? (
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
-                          {u.password}
-                        </span>
-                        <button
-                          onClick={() => copyToClipboard(u.password!, `pwd-${u.id}`)}
-                          className="text-gray-400 hover:text-brand transition-colors"
-                          title="Copy password"
-                        >
-                          {copiedField === `pwd-${u.id}` ? (
-                            <Check className="h-3.5 w-3.5 text-green-600" />
-                          ) : (
-                            <Copy className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400 text-sm">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-gray-600 text-sm">
-                    {formatDate(u.created_at)}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    );
-  };
+  const hasPartnerFilters = partnerSearch !== "" || partnerTypeFilter !== "all";
 
   return (
     <ProtectedRoute requireSuperAdmin={true}>
-      <DashboardLayout
-        currentRoute="admin-credentials"
-        title="Credentials Management"
-        description="View and manage organization credentials"
-      >
-        <div className="p-6 space-y-6">
+      <DashboardLayout currentRoute="admin-credentials" title="Credentials Management">
+        <div className="p-6 space-y-5">
+
+          {/* Notifications */}
           {successMessage && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-sm text-green-700">✓ {successMessage}</p>
-            </div>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">✓ {successMessage}</div>
           )}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">{error}</div>
           )}
 
-          {/* Tab Navigation */}
-          <div className="inline-flex rounded-lg border border-gray-200 bg-brand-light p-1 gap-1">
-            {(
-              [
-                { key: "partners", label: "Partners", icon: Building2 },
-                { key: "saa", label: "Super Admin Agents", icon: Users },
-                { key: "super-admins", label: "Super Admins", icon: Shield },
-              ] as const
-            ).map(({ key, label, icon: Icon }) => (
+          {/* ── Segment control (replaces tabs) ─────────────────────────── */}
+          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+            {TABS.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
                 onClick={() => handleTabChange(key)}
-                className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
                   activeTab === key
-                    ? "bg-brand text-white shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
+                    ? "bg-white text-brand shadow-sm border border-gray-200"
+                    : "text-gray-500 hover:text-gray-800 hover:bg-white/60"
                 }`}
               >
                 <Icon className="h-4 w-4" />
                 {label}
+                {/* Count pills */}
+                {key === "partners" && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-0.5 ${activeTab === key ? "bg-brand text-white" : "bg-gray-200 text-gray-600"}`}>
+                    {partnerStats.total}
+                  </span>
+                )}
+                {key === "saa" && saaUsers.length > 0 && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-0.5 ${activeTab === key ? "bg-brand text-white" : "bg-gray-200 text-gray-600"}`}>
+                    {saaUsers.length}
+                  </span>
+                )}
+                {key === "super-admins" && superAdminUsers.length > 0 && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-0.5 ${activeTab === key ? "bg-brand text-white" : "bg-gray-200 text-gray-600"}`}>
+                    {superAdminUsers.length}
+                  </span>
+                )}
               </button>
             ))}
           </div>
 
-            {/* ── Partners Tab ─────────────────────────────────────────── */}
-            {activeTab === "partners" && (
-              <div className="space-y-6 mt-6">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Total Credentials</CardTitle>
-                      <Database className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{partnerStats.total}</div>
-                      <p className="text-xs text-muted-foreground">Organization credentials</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Username-based</CardTitle>
-                      <Key className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{partnerStats.usernameOnly}</div>
-                      <p className="text-xs text-muted-foreground">Internal username accounts</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Email-based</CardTitle>
-                      <Shield className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{partnerStats.emailBased}</div>
-                      <p className="text-xs text-muted-foreground">Standard email accounts</p>
-                    </CardContent>
-                  </Card>
+          {/* ── Partners Tab ──────────────────────────────────────────────── */}
+          {activeTab === "partners" && (
+            <div className="space-y-5">
+              {/* Stats cards */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div
+                  className="bg-blue-50 border border-blue-200 rounded-lg p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all"
+                  onClick={() => setPartnerTypeFilter("all")}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg"><Database className="h-5 w-5 text-blue-700" /></div>
+                    <div>
+                      <p className="text-sm text-blue-600 font-medium">Total Credentials</p>
+                      <p className="text-xl font-bold text-blue-900">{partnerStats.total}</p>
+                      <p className="text-xs text-blue-500">All partner accounts</p>
+                    </div>
+                  </div>
                 </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Organization Credentials</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <Input
-                          placeholder="Search by Partner ID, Name, or Email..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10"
-                        />
-                      </div>
-                      <Button variant="outline" onClick={fetchCredentials} disabled={loading}>
-                        <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-                        Refresh
-                      </Button>
+                <div
+                  className={`bg-purple-50 border rounded-lg p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all ${partnerTypeFilter === "username" ? "border-purple-600 shadow-md" : "border-purple-200"}`}
+                  onClick={() => setPartnerTypeFilter((f) => f === "username" ? "all" : "username")}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 rounded-lg"><Key className="h-5 w-5 text-purple-700" /></div>
+                    <div>
+                      <p className="text-sm text-purple-600 font-medium">Username-based</p>
+                      <p className="text-xl font-bold text-purple-900">{partnerStats.usernameOnly}</p>
+                      <p className="text-xs text-purple-500">Click to filter</p>
                     </div>
-                    {searchTerm && (
-                      <div className="text-sm text-gray-600">
-                        Found {filteredCredentials.length} of {credentials.length} credentials
-                      </div>
-                    )}
-                    <CredentialsTable
-                      credentials={filteredCredentials}
-                      loading={loading}
-                      onViewDetails={handleViewDetails}
-                      onResetPassword={handleResetPassword}
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-blue-50 border-blue-200">
-                  <CardContent className="pt-6">
-                    <div className="flex items-start gap-3">
-                      <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-semibold text-blue-900">Super Admin Access Only</h4>
-                        <p className="text-xs text-blue-700">
-                          This page displays sensitive credential information. Only Super Admins can
-                          view and manage organization credentials. When resetting passwords, you will
-                          be required to verify your identity with your admin password.
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* ── Super Admin Agents Tab ───────────────────────────────── */}
-            {activeTab === "saa" && (
-              <div className="space-y-6 mt-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Total SAA Credentials</CardTitle>
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{saaUsers.length}</div>
-                      <p className="text-xs text-muted-foreground">Super admin agent accounts</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">With Password</CardTitle>
-                      <Key className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-green-600">
-                        {saaUsers.filter((u) => u.password).length}
-                      </div>
-                      <p className="text-xs text-muted-foreground">Credentials saved</p>
-                    </CardContent>
-                  </Card>
+                  </div>
+                  {partnerTypeFilter === "username" && (
+                    <p className="text-xs font-semibold mt-2 opacity-70 text-center text-purple-700">✓ Filter active</p>
+                  )}
                 </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Super Admin Agent Credentials</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex gap-4">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <Input
-                          placeholder="Search by name or email..."
-                          value={saaSearch}
-                          onChange={(e) => setSaaSearch(e.target.value)}
-                          className="pl-10"
-                        />
-                      </div>
-                      <Button
-                        variant="outline"
-                        onClick={() => fetchUsersByRole("super_admin_agent", setSaaUsers, setLoadingSaa)}
-                        disabled={loadingSaa}
-                      >
-                        <RefreshCw className={`h-4 w-4 mr-2 ${loadingSaa ? "animate-spin" : ""}`} />
-                        Refresh
-                      </Button>
+                <div
+                  className={`bg-green-50 border rounded-lg p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all ${partnerTypeFilter === "email" ? "border-green-600 shadow-md" : "border-green-200"}`}
+                  onClick={() => setPartnerTypeFilter((f) => f === "email" ? "all" : "email")}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 rounded-lg"><Shield className="h-5 w-5 text-green-700" /></div>
+                    <div>
+                      <p className="text-sm text-green-600 font-medium">Email-based</p>
+                      <p className="text-xl font-bold text-green-900">{partnerStats.emailBased}</p>
+                      <p className="text-xs text-green-500">Click to filter</p>
                     </div>
-                    <UserCredentialsTable users={saaUsers} loadingState={loadingSaa} search={saaSearch} />
-                    <p className="text-xs text-gray-500 mt-2">
-                      To reset a user&apos;s password or manage their account, use{" "}
-                      <a href="/user-management" className="text-brand underline">User Management</a>.
-                    </p>
-                  </CardContent>
-                </Card>
+                  </div>
+                  {partnerTypeFilter === "email" && (
+                    <p className="text-xs font-semibold mt-2 opacity-70 text-center text-green-700">✓ Filter active</p>
+                  )}
+                </div>
               </div>
-            )}
 
-            {/* ── Super Admins Tab ─────────────────────────────────────── */}
-            {activeTab === "super-admins" && (
-              <div className="space-y-6 mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Super Admin Credentials</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex gap-4">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <Input
-                          placeholder="Search by name or email..."
-                          value={superAdminSearch}
-                          onChange={(e) => setSuperAdminSearch(e.target.value)}
-                          className="pl-10"
-                        />
-                      </div>
-                      <Button
-                        variant="outline"
-                        onClick={() => fetchUsersByRole("super_admin", setSuperAdminUsers, setLoadingSuperAdmins)}
-                        disabled={loadingSuperAdmins}
-                      >
-                        <RefreshCw className={`h-4 w-4 mr-2 ${loadingSuperAdmins ? "animate-spin" : ""}`} />
-                        Refresh
-                      </Button>
-                    </div>
-                    <UserCredentialsTable
-                      users={superAdminUsers}
-                      loadingState={loadingSuperAdmins}
-                      search={superAdminSearch}
-                    />
-                  </CardContent>
-                </Card>
+              {/* Filter bar */}
+              <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
+                <div className="w-1/4 min-w-[180px] relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search by ID, name, or email..."
+                    value={partnerSearch}
+                    onChange={(e) => setPartnerSearch(e.target.value)}
+                    className="pl-9 bg-white h-9 text-sm"
+                  />
+                </div>
+                <Select value={partnerTypeFilter} onValueChange={setPartnerTypeFilter}>
+                  <SelectTrigger className="w-[150px] h-9 bg-white text-sm">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="username">Username-based</SelectItem>
+                    <SelectItem value="email">Email-based</SelectItem>
+                  </SelectContent>
+                </Select>
+                {hasPartnerFilters && (
+                  <Button onClick={() => { setPartnerSearch(""); setPartnerTypeFilter("all"); }} size="sm" variant="outline" className="h-9">
+                    <X className="h-4 w-4 mr-1" />Clear
+                  </Button>
+                )}
+                <div className="ml-auto">
+                  <Button variant="outline" size="sm" onClick={fetchCredentials} disabled={loading} className="h-9">
+                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                    Refresh
+                  </Button>
+                </div>
               </div>
-            )}
+
+              <CredentialsTable
+                credentials={filteredCredentials}
+                loading={loading}
+                onViewDetails={(c) => { setSelectedCredential(c); setViewModalOpen(true); }}
+                onResetPassword={(c) => { setSelectedCredential(c); setResetModalOpen(true); }}
+              />
+            </div>
+          )}
+
+          {/* ── Super Admin Agents Tab ─────────────────────────────────────── */}
+          {activeTab === "saa" && (
+            <UserCredentialsSection
+              users={saaUsers}
+              loadingState={loadingSaa}
+              onRefresh={() => fetchUsersByRole("super_admin_agent", setSaaUsers, setLoadingSaa)}
+              copiedField={copiedField}
+              onCopy={copyToClipboard}
+            />
+          )}
+
+          {/* ── Super Admins Tab ───────────────────────────────────────────── */}
+          {activeTab === "super-admins" && (
+            <UserCredentialsSection
+              users={superAdminUsers}
+              loadingState={loadingSuperAdmins}
+              onRefresh={() => fetchUsersByRole("super_admin", setSuperAdminUsers, setLoadingSuperAdmins)}
+              copiedField={copiedField}
+              onCopy={copyToClipboard}
+            />
+          )}
         </div>
 
         <ViewCredentialModal

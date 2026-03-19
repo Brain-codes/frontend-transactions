@@ -29,7 +29,7 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
     // Build base query — when no role specified, return both super_admin and super_admin_agent
     let query = supabase
       .from("profiles")
-      .select("id, full_name, email, phone, role, status, created_at", {
+      .select("id, full_name, email, phone, role, status, created_at, last_login", {
         count: "exact",
       });
 
@@ -131,7 +131,7 @@ export async function getUser(supabase: any, userId: string) {
     // Query for single user by ID (any role)
     const { data: user, error: userError } = await supabase
       .from("profiles")
-      .select("id, full_name, email, phone, role, status, created_at")
+      .select("id, full_name, email, phone, role, status, created_at, last_login")
       .eq("id", userId)
       .single();
 

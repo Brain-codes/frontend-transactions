@@ -49,6 +49,9 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import paymentModelService from "../services/paymentModelService";
 
@@ -95,6 +98,9 @@ export default function PaymentModelsPage() {
   const [statusFilter, setStatusFilter] = useState("all"); // all | active | inactive
   const [topModel, setTopModel] = useState<{ name: string; use_count: number } | null>(null);
 
+  // Sort
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -129,12 +135,17 @@ export default function PaymentModelsPage() {
     return () => clearTimeout(t);
   }, [fetchModels]);
 
-  // Client-side pagination
-  const totalRecords = models.length;
+  // Client-side sort + pagination
+  const sortedModels = [...models].sort((a, b) => {
+    const aVal = new Date(a.created_at).getTime();
+    const bVal = new Date(b.created_at).getTime();
+    return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+  });
+  const totalRecords = sortedModels.length;
   const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
   const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endRecord = Math.min(currentPage * pageSize, totalRecords);
-  const pagedModels = models.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pagedModels = sortedModels.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const getVisiblePages = () => {
     const pages: number[] = [];
@@ -438,7 +449,17 @@ export default function PaymentModelsPage() {
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Duration</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Min Down Payment</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Status</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Created</TableHead>
+                    <TableHead
+                      className="text-white font-semibold text-xs whitespace-nowrap cursor-pointer select-none"
+                      onClick={() => { setSortOrder((o) => o === "asc" ? "desc" : "asc"); setCurrentPage(1); }}
+                    >
+                      <div className="flex items-center">
+                        Created
+                        {sortOrder === "asc"
+                          ? <ArrowUp className="h-3 w-3 ml-1" />
+                          : <ArrowDown className="h-3 w-3 ml-1" />}
+                      </div>
+                    </TableHead>
                     <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
