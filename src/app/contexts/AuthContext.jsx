@@ -180,7 +180,7 @@ export const AuthProvider = ({ children }) => {
               const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(
                   () => reject(new Error("Profile fetch timeout")),
-                  8000
+                  50000
                 )
               );
 
@@ -281,7 +281,7 @@ export const AuthProvider = ({ children }) => {
         try {
           const profilePromise = profileService.fetchAndStoreProfile();
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Profile fetch timeout")), 8000)
+            setTimeout(() => reject(new Error("Profile fetch timeout")), 50000)
           );
 
           const profileResponse = await Promise.race([
@@ -352,7 +352,7 @@ export const AuthProvider = ({ children }) => {
         // Add timeout to profile fetch to prevent hanging
         const profilePromise = profileService.fetchAndStoreProfile();
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Profile fetch timeout")), 8000)
+          setTimeout(() => reject(new Error("Profile fetch timeout")), 50000)
         );
 
         const profileResponse = await Promise.race([
