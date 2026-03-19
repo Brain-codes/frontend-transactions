@@ -172,39 +172,22 @@ export const AuthProvider = ({ children }) => {
             tokenManager.setLoginData(session);
           }
 
+          // Sync role from stored profile immediately so routing works
           const storedProfile = profileService.getStoredProfileData();
-          if (!storedProfile) {
-            try {
-              // Add timeout to profile fetch to prevent hanging
-              const profilePromise = profileService.fetchAndStoreProfile();
-              const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(
-                  () => reject(new Error("Profile fetch timeout")),
-                  50000
-                )
-              );
+          if (storedProfile?.role) setStoredProfileRole(storedProfile.role);
 
-              const profileResponse = await Promise.race([
-                profilePromise,
-                timeoutPromise,
-              ]);
+          // Fetch profile in background if not cached — do NOT await
+          if (!storedProfile) {
+            profileService.fetchAndStoreProfile().then((profileResponse) => {
               if (!profileResponse.success) {
-                console.warn(
-                  "Failed to fetch user profile on session restore:",
-                  profileResponse.error
-                );
+                console.warn("Failed to fetch user profile on session restore:", profileResponse.error);
               }
-            } catch (profileError) {
-              console.error(
-                "Error fetching profile on session restore:",
-                profileError.message || profileError
-              );
-              // Continue with auth even if profile fetch fails
-            }
+              const latestProfile = profileService.getStoredProfileData();
+              if (latestProfile?.role) setStoredProfileRole(latestProfile.role);
+            }).catch((profileError) => {
+              console.error("Error fetching profile on session restore:", profileError.message || profileError);
+            });
           }
-          // Sync role from stored profile so routing works even if JWT metadata lacks the role
-          const latestProfile = profileService.getStoredProfileData();
-          if (latestProfile?.role) setStoredProfileRole(latestProfile.role);
         } else {
           console.log(
             "🔐 [AuthContext] No session found - user needs to log in"
@@ -277,33 +260,17 @@ export const AuthProvider = ({ children }) => {
         console.log("🔐 [AuthContext] Storing login session in tokenManager");
         tokenManager.setLoginData(session);
 
-        // Fetch profile on sign in with timeout protection
-        try {
-          const profilePromise = profileService.fetchAndStoreProfile();
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Profile fetch timeout")), 50000)
-          );
-
-          const profileResponse = await Promise.race([
-            profilePromise,
-            timeoutPromise,
-          ]);
+        // Fetch profile in background — do NOT await so loading clears immediately
+        profileService.fetchAndStoreProfile().then((profileResponse) => {
           if (!profileResponse.success) {
-            console.warn(
-              "Failed to fetch user profile on sign in:",
-              profileResponse.error
-            );
+            console.warn("Failed to fetch user profile on sign in:", profileResponse.error);
           }
-        } catch (profileError) {
-          console.error(
-            "Error fetching profile on sign in:",
-            profileError.message || profileError
-          );
-          // Continue with auth even if profile fetch fails
-        }
-        // Sync role from profile so routing works even if JWT metadata lacks the role
-        const signInProfile = profileService.getStoredProfileData();
-        if (signInProfile?.role) setStoredProfileRole(signInProfile.role);
+          // Sync role from profile so routing works even if JWT metadata lacks the role
+          const signInProfile = profileService.getStoredProfileData();
+          if (signInProfile?.role) setStoredProfileRole(signInProfile.role);
+        }).catch((profileError) => {
+          console.error("Error fetching profile on sign in:", profileError.message || profileError);
+        });
       } else if (event === "SIGNED_OUT") {
         // Clear profile and token data on sign out
         profileService.clearStoredProfileData();
@@ -348,30 +315,16 @@ export const AuthProvider = ({ children }) => {
         tokenManager.setLoginData(data.session);
       }
 
-      try {
-        // Add timeout to profile fetch to prevent hanging
-        const profilePromise = profileService.fetchAndStoreProfile();
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Profile fetch timeout")), 50000)
-        );
-
-        const profileResponse = await Promise.race([
-          profilePromise,
-          timeoutPromise,
-        ]);
+      // Fetch profile in background — do NOT await so login completes immediately
+      profileService.fetchAndStoreProfile().then((profileResponse) => {
         if (!profileResponse.success) {
           console.warn("Failed to fetch user profile:", profileResponse.error);
         }
-      } catch (profileError) {
-        console.error(
-          "Error fetching profile after login:",
-          profileError.message || profileError
-        );
-        // Continue with auth even if profile fetch fails
-      }
-      // Sync role from profile so routing works even if JWT metadata lacks the role
-      const loginProfile = profileService.getStoredProfileData();
-      if (loginProfile?.role) setStoredProfileRole(loginProfile.role);
+        const loginProfile = profileService.getStoredProfileData();
+        if (loginProfile?.role) setStoredProfileRole(loginProfile.role);
+      }).catch((profileError) => {
+        console.error("Error fetching profile after login:", profileError.message || profileError);
+      });
     }
 
     return { data, error };

@@ -124,7 +124,7 @@ export default function PaymentModelsPage() {
 
       if (!formData.name.trim()) { setFormError("Name is required"); return; }
       if (!formData.duration_months || parseInt(formData.duration_months) < 1) { setFormError("Duration must be at least 1 month"); return; }
-      if (!formData.fixed_price || parseFloat(formData.fixed_price) <= 0) { setFormError("Fixed price must be greater than 0"); return; }
+      if (!formData.fixed_price || parseFloat(formData.fixed_price) <= 0) { setFormError("Sales price must be greater than 0"); return; }
 
       await paymentModelService.createPaymentModel({
         name: formData.name.trim(),
@@ -332,15 +332,15 @@ export default function PaymentModelsPage() {
       {/* Table */}
       <div className="bg-white border rounded-lg overflow-hidden">
         <Table>
-          <TableHeader>
-            <TableRow className="bg-brand/5">
-              <TableHead className="font-semibold text-brand">Name</TableHead>
-              <TableHead className="font-semibold text-brand">Fixed Price</TableHead>
-              <TableHead className="font-semibold text-brand">Duration</TableHead>
-              <TableHead className="font-semibold text-brand">Min Down Payment</TableHead>
-              <TableHead className="font-semibold text-brand">Status</TableHead>
-              <TableHead className="font-semibold text-brand">Created</TableHead>
-              <TableHead className="font-semibold text-brand text-right">Actions</TableHead>
+          <TableHeader className="bg-brand-header">
+            <TableRow className="hover:bg-brand-header">
+              <TableHead className="font-semibold text-white">Name</TableHead>
+              <TableHead className="font-semibold text-white">Sales Price</TableHead>
+              <TableHead className="font-semibold text-white">Duration</TableHead>
+              <TableHead className="font-semibold text-white">Min Down Payment</TableHead>
+              <TableHead className="font-semibold text-white">Status</TableHead>
+              <TableHead className="font-semibold text-white">Created</TableHead>
+              <TableHead className="font-semibold text-white text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -362,7 +362,7 @@ export default function PaymentModelsPage() {
               models.map((model, idx) => (
                 <TableRow
                   key={model.id}
-                  className={`${idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"} ${
+                  className={`${idx % 2 === 0 ? "bg-white" : "bg-brand-light"} ${
                     !model.is_active ? "opacity-60" : ""
                   }`}
                 >
@@ -505,7 +505,7 @@ export default function PaymentModelsPage() {
                 <div className="space-y-2">
                   <Label htmlFor="model-price" className="flex items-center gap-1">
                     <CreditCardIcon className="h-3 w-3" />
-                    Price (₦) *
+                    Sales Price (₦) *
                   </Label>
                   <Input
                     id="model-price"
