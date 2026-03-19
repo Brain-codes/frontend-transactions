@@ -124,6 +124,14 @@ async function listModels(supabase: any, searchParams: URLSearchParams, userRole
   const showAll = searchParams.get("show_all") === "true";
   if (userRole !== "super_admin" || !showAll) {
     query = query.eq("is_active", true);
+  } else {
+    // Super admin with show_all=true — allow optional status filter
+    const statusFilter = searchParams.get("status");
+    if (statusFilter === "active") {
+      query = query.eq("is_active", true);
+    } else if (statusFilter === "inactive") {
+      query = query.eq("is_active", false);
+    }
   }
 
   const search = searchParams.get("search") || "";
@@ -138,10 +146,37 @@ async function listModels(supabase: any, searchParams: URLSearchParams, userRole
 
   console.log(`✅ Found ${data?.length || 0} payment models`);
 
+  // Find top used model from sales
+  let topModel: { name: string; use_count: number } | null = null;
+  try {
+    const { data: salesData } = await supabase
+      .from("sales")
+      .select("payment_model_id, payment_models!payment_model_id(name)")
+      .not("payment_model_id", "is", null);
+
+    if (salesData && salesData.length > 0) {
+      const counts: Record<string, { name: string; count: number }> = {};
+      for (const sale of salesData) {
+        const id = sale.payment_model_id;
+        if (!id) continue;
+        const name = sale.payment_models?.name ?? "Unknown";
+        if (!counts[id]) counts[id] = { name, count: 0 };
+        counts[id].count++;
+      }
+      const sorted = Object.values(counts).sort((a, b) => b.count - a.count);
+      if (sorted.length > 0) {
+        topModel = { name: sorted[0].name, use_count: sorted[0].count };
+      }
+    }
+  } catch (_) {
+    // non-critical
+  }
+
   return {
     message: `Found ${count || 0} payment models`,
     data: data || [],
     total: count || 0,
+    top_model: topModel,
   };
 }
 
