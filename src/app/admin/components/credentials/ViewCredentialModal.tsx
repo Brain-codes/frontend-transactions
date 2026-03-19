@@ -4,13 +4,11 @@ import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Copy, Eye, EyeOff, Check } from "lucide-react";
+import { Copy, Eye, EyeOff, Check, Building2, Key, Shield, Calendar } from "lucide-react";
 import { Credential } from "@/app/services/adminCredentialsService";
 
 interface ViewCredentialModalProps {
@@ -18,6 +16,40 @@ interface ViewCredentialModalProps {
   onClose: () => void;
   credential: Credential | null;
 }
+
+const DetailItem = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) => (
+  <div className="space-y-0">
+    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
+      {label}
+    </p>
+    <p className="text-xs font-medium">
+      {value ?? <span className="text-gray-400">N/A</span>}
+    </p>
+  </div>
+);
+
+const SectionCard = ({
+  title,
+  children,
+  className = "",
+}: {
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <div className={`bg-muted/30 rounded-lg p-3 border border-border/50 ${className}`}>
+    <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider border-b border-primary/20 pb-0.5 mb-2">
+      {title}
+    </h3>
+    {children}
+  </div>
+);
 
 const ViewCredentialModal: React.FC<ViewCredentialModalProps> = ({
   isOpen,
@@ -27,242 +59,176 @@ const ViewCredentialModal: React.FC<ViewCredentialModalProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const copyToClipboard = async (text: string, field: string) => {
+  const copy = async (text: string, field: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
+    } catch { /* ignore */ }
   };
-
-  const InfoRow = ({
-    label,
-    value,
-    copyable = false,
-    field = "",
-  }: {
-    label: string;
-    value: string | React.ReactNode;
-    copyable?: boolean;
-    field?: string;
-  }) => (
-    <div className="flex flex-col space-y-1 py-3 border-b border-gray-100 last:border-0">
-      <span className="text-xs text-gray-500 uppercase tracking-wide">
-        {label}
-      </span>
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-900">{value}</span>
-        {copyable && typeof value === "string" && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => copyToClipboard(value, field)}
-            className="h-8 w-8 p-0"
-          >
-            {copiedField === field ? (
-              <Check className="h-4 w-4 text-green-600" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-          </Button>
-        )}
-      </div>
-    </div>
-  );
 
   if (!credential) return null;
 
+  const loginValue = credential.is_dummy_email
+    ? credential.username ?? ""
+    : credential.email ?? credential.organizations?.email ?? "";
+
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleString("en-GB", {
+      day: "2-digit", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Credential Details</DialogTitle>
-          <DialogDescription>
-            View complete credential information for this organization
-          </DialogDescription>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Shield className="h-4 w-4 text-brand" />
+            Credential Details
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 mt-4">
-          {/* Basic Credential Information */}
-          <div className="bg-white border rounded-lg p-4 space-y-2">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
-              Credential Information
-            </h3>
+        <div className="space-y-3 mt-1">
+          {/* Identity */}
+          <SectionCard title="Partner Information">
+            <div className="grid grid-cols-2 gap-3">
+              <DetailItem label="Partner ID" value={<span className="font-mono text-xs">{credential.partner_id}</span>} />
+              <DetailItem label="Partner Name" value={credential.partner_name} />
+              <DetailItem
+                label="Credential Type"
+                value={
+                  <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                    credential.is_dummy_email
+                      ? "bg-purple-100 text-purple-700"
+                      : "bg-blue-100 text-blue-700"
+                  }`}>
+                    {credential.is_dummy_email ? "Username-based" : "Email-based"}
+                  </span>
+                }
+              />
+              {credential.organizations?.state && (
+                <DetailItem label="State" value={credential.organizations.state} />
+              )}
+            </div>
+          </SectionCard>
 
-            <InfoRow
-              label="Partner ID"
-              value={
-                <span className="font-mono">{credential.partner_id}</span>
-              }
-              copyable={true}
-              field="partner_id"
-            />
-
-            <InfoRow
-              label="Partner Name"
-              value={credential.partner_name}
-              copyable={true}
-              field="partner_name"
-            />
-
-            <InfoRow
-              label="Email / Username"
-              value={credential.email}
-              copyable={true}
-              field="email"
-            />
-
-            <div className="flex flex-col space-y-1 py-3 border-b border-gray-100">
-              <span className="text-xs text-gray-500 uppercase tracking-wide">
-                Password
-              </span>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-mono text-gray-900">
-                  {showPassword
-                    ? credential.password
-                    : "•".repeat(credential.password.length)}
-                </span>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="h-8 w-8 p-0"
+          {/* Login credentials */}
+          <SectionCard title="Login Credentials">
+            <div className="space-y-3">
+              {/* Email / Username */}
+              <div className="space-y-0">
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
+                  {credential.is_dummy_email ? "Username" : "Email"}
+                </p>
+                <div className="flex items-center justify-between mt-0.5">
+                  <span className="text-xs font-medium font-mono">{loginValue}</span>
+                  <button
+                    onClick={() => copy(loginValue, "login")}
+                    className="text-gray-400 hover:text-brand transition-colors"
+                    title="Copy"
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      copyToClipboard(credential.password, "password")
-                    }
-                    className="h-8 w-8 p-0"
-                  >
-                    {copiedField === "password" ? (
-                      <Check className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
+                    {copiedField === "login"
+                      ? <Check className="h-3.5 w-3.5 text-green-600" />
+                      : <Copy className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="space-y-0">
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Password</p>
+                <div className="flex items-center justify-between mt-0.5 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
+                  <span className="font-mono text-xs font-semibold text-brand tracking-widest">
+                    {showPassword ? credential.password : "•".repeat(Math.min(credential.password.length, 16))}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-gray-400 hover:text-brand transition-colors"
+                      title={showPassword ? "Hide" : "Show"}
+                    >
+                      {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
+                    <button
+                      onClick={() => copy(credential.password, "password")}
+                      className="text-gray-400 hover:text-brand transition-colors"
+                      title="Copy"
+                    >
+                      {copiedField === "password"
+                        ? <Check className="h-3.5 w-3.5 text-green-600" />
+                        : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
+          </SectionCard>
 
-            <InfoRow
-              label="Credential Type"
-              value={
-                <Badge
-                  variant={credential.is_dummy_email ? "secondary" : "default"}
-                >
-                  {credential.is_dummy_email
-                    ? "Username-based"
-                    : "Email-based"}
-                </Badge>
-              }
-            />
-          </div>
-
-          {/* Organization Details */}
+          {/* Organization details */}
           {credential.organizations && (
-            <div className="bg-white border rounded-lg p-4 space-y-2">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                Organization Details
-              </h3>
-
-              <InfoRow
-                label="Organization Name"
-                value={
-                  credential.organizations.partner_name ||
-                  credential.partner_name
-                }
-              />
-
-              {credential.organizations.contact_person && (
-                <InfoRow
-                  label="Contact Person"
-                  value={credential.organizations.contact_person}
-                />
-              )}
-
-              {credential.organizations.state && (
-                <InfoRow
-                  label="State"
-                  value={credential.organizations.state}
-                />
-              )}
-
-              {credential.organizations.branch && (
-                <InfoRow
-                  label="Branch"
-                  value={credential.organizations.branch}
-                />
-              )}
-            </div>
+            <SectionCard title="Organization Details">
+              <div className="grid grid-cols-2 gap-3">
+                {credential.organizations.partner_name && (
+                  <DetailItem label="Organization Name" value={credential.organizations.partner_name} />
+                )}
+                {credential.organizations.contact_person && (
+                  <DetailItem label="Contact Person" value={credential.organizations.contact_person} />
+                )}
+                {credential.organizations.branch && (
+                  <DetailItem label="Branch" value={credential.organizations.branch} />
+                )}
+                {credential.organizations.email && (
+                  <DetailItem label="Organization Email" value={credential.organizations.email} />
+                )}
+              </div>
+            </SectionCard>
           )}
 
-          {/* Metadata */}
-          <div className="bg-white border rounded-lg p-4 space-y-2">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
-              Metadata
-            </h3>
+          {/* Metadata + Quick Copy */}
+          <div className="grid grid-cols-2 gap-3">
+            <SectionCard title="Metadata">
+              <div className="space-y-2">
+                <DetailItem
+                  label="Created At"
+                  value={<span className="flex items-center gap-1"><Calendar className="h-3 w-3 text-gray-400" />{formatDate(credential.created_at)}</span>}
+                />
+                {credential.updated_at && (
+                  <DetailItem
+                    label="Last Updated"
+                    value={formatDate(credential.updated_at)}
+                  />
+                )}
+              </div>
+            </SectionCard>
 
-            <InfoRow
-              label="Created At"
-              value={new Date(credential.created_at).toLocaleString()}
-            />
-
-            {credential.updated_at && (
-              <InfoRow
-                label="Last Updated"
-                value={new Date(credential.updated_at).toLocaleString()}
-              />
-            )}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <h3 className="text-[10px] font-semibold text-blue-800 uppercase tracking-wider border-b border-blue-200 pb-0.5 mb-2">
+                Quick Copy
+              </h3>
+              <p className="text-xs text-blue-600 mb-2">Copy all credentials as formatted text</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const text = `Partner ID: ${credential.partner_id}\nPartner Name: ${credential.partner_name}\n${credential.is_dummy_email ? "Username" : "Email"}: ${loginValue}\nPassword: ${credential.password}`;
+                  copy(text, "all");
+                }}
+                className="w-full h-8 text-xs"
+              >
+                {copiedField === "all" ? (
+                  <><Check className="h-3.5 w-3.5 mr-1.5 text-green-600" />Copied!</>
+                ) : (
+                  <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy All Credentials</>
+                )}
+              </Button>
+            </div>
           </div>
+        </div>
 
-          {/* Copy All Credentials */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="text-sm font-semibold text-blue-900 mb-2">
-              Quick Copy
-            </h4>
-            <p className="text-xs text-blue-700 mb-3">
-              Copy all credentials in a formatted text for easy sharing
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const text = `Partner ID: ${credential.partner_id}\nPartner Name: ${credential.partner_name}\nEmail: ${credential.email}\nPassword: ${credential.password}`;
-                copyToClipboard(text, "all");
-              }}
-              className="w-full"
-            >
-              {copiedField === "all" ? (
-                <>
-                  <Check className="mr-2 h-4 w-4 text-green-600" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copy All Credentials
-                </>
-              )}
-            </Button>
-          </div>
-
-          {/* Close Button */}
-          <div className="flex justify-end pt-4">
-            <Button variant="outline" onClick={onClose}>
-              Close
-            </Button>
-          </div>
+        {/* Footer */}
+        <div className="flex justify-end pt-2 border-t border-gray-100">
+          <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
         </div>
       </DialogContent>
     </Dialog>

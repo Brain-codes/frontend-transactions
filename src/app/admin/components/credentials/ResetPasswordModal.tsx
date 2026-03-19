@@ -4,14 +4,13 @@ import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, RefreshCw, Copy, Check, Key, Wand2 } from "lucide-react";
+import { Eye, EyeOff, RefreshCw, Copy, Check, Key, Wand2, AlertTriangle, Shield } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import adminCredentialsService, {
   Credential,
@@ -23,6 +22,30 @@ interface ResetPasswordModalProps {
   credential: Credential | null;
   onSuccess: () => void;
 }
+
+const SectionCard = ({
+  title,
+  children,
+  className = "",
+}: {
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <div className={`bg-muted/30 rounded-lg p-3 border border-border/50 ${className}`}>
+    <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider border-b border-primary/20 pb-0.5 mb-2">
+      {title}
+    </h3>
+    {children}
+  </div>
+);
+
+const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div className="space-y-0">
+    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
+    <p className="text-xs font-medium">{value ?? <span className="text-gray-400">N/A</span>}</p>
+  </div>
+);
 
 const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
   isOpen,
@@ -39,14 +62,12 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [passwordMode, setPasswordMode] = useState("");
 
-  // Custom password mode
   const [useCustomPassword, setUseCustomPassword] = useState(false);
   const [customPassword, setCustomPassword] = useState("");
   const [showCustomPassword, setShowCustomPassword] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      // Reset form when modal opens
       setAdminPassword("");
       setError("");
       setSuccess(false);
@@ -63,9 +84,7 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
       await navigator.clipboard.writeText(newPassword);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      setError("Failed to copy password");
-    }
+    } catch { setError("Failed to copy password"); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,32 +92,19 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
     setError("");
 
     if (!credential) return;
-
-    if (!adminPassword) {
-      setError("Please enter your admin password");
-      return;
-    }
-
+    if (!adminPassword) { setError("Please enter your admin password"); return; }
     if (useCustomPassword) {
-      if (!customPassword) {
-        setError("Please enter a custom password");
-        return;
-      }
-      if (customPassword.length < 8) {
-        setError("Custom password must be at least 8 characters long");
-        return;
-      }
+      if (!customPassword) { setError("Please enter a custom password"); return; }
+      if (customPassword.length < 8) { setError("Custom password must be at least 8 characters long"); return; }
     }
 
     setLoading(true);
-
     try {
       const response = await adminCredentialsService.resetPassword(
         credential.partner_id,
         adminPassword,
         useCustomPassword ? customPassword : undefined
       );
-
       if (response.success && response.data) {
         setSuccess(true);
         setNewPassword(response.data.newPassword);
@@ -107,11 +113,8 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
       } else {
         setError(response.error || "Failed to reset password");
       }
-    } catch (err) {
-      setError("An unexpected error occurred");
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError("An unexpected error occurred"); }
+    finally { setLoading(false); }
   };
 
   const handleClose = () => {
@@ -130,72 +133,61 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
 
   if (!credential) return null;
 
+  const loginValue = credential.is_dummy_email
+    ? credential.username ?? ""
+    : credential.email ?? credential.organizations?.email ?? "";
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[550px]">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Reset Password</DialogTitle>
-          <DialogDescription>
-            Reset the password for {credential.partner_name} (
-            {credential.partner_id})
-          </DialogDescription>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Key className="h-4 w-4 text-amber-600" />
+            Reset Password
+          </DialogTitle>
         </DialogHeader>
 
         {!success ? (
-          // Step 1: Request Admin Password Verification
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-            {/* Organization Info */}
-            <div className="bg-gray-50 p-4 rounded-md space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Partner ID:</span>
-                <span className="font-medium">{credential.partner_id}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Email/Username:</span>
-                <span className="font-medium">
-                  {credential.is_dummy_email
-                    ? credential.username
-                    : credential.email || credential.organizations?.email}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Current Password:</span>
-                <span className="font-mono text-xs">{credential.password}</span>
-              </div>
-            </div>
-
-            {/* Password Mode Toggle */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  {useCustomPassword ? (
-                    <Key className="h-5 w-5 text-blue-600" />
-                  ) : (
-                    <Wand2 className="h-5 w-5 text-blue-600" />
-                  )}
-                  <Label className="font-semibold text-blue-900 cursor-pointer">
-                    {useCustomPassword
-                      ? "Custom Password"
-                      : "Auto-Generate Password"}
-                  </Label>
-                </div>
-                <Switch
-                  checked={useCustomPassword}
-                  onCheckedChange={setUseCustomPassword}
+          <form onSubmit={handleSubmit} className="space-y-3 mt-1">
+            {/* Partner summary */}
+            <SectionCard title="Partner Information">
+              <div className="grid grid-cols-3 gap-3">
+                <DetailItem label="Partner ID" value={<span className="font-mono">{credential.partner_id}</span>} />
+                <DetailItem label="Partner Name" value={credential.partner_name} />
+                <DetailItem
+                  label={credential.is_dummy_email ? "Username" : "Email"}
+                  value={loginValue}
                 />
               </div>
-              <p className="text-xs text-blue-700">
-                {useCustomPassword
-                  ? "You will provide a custom password for the organization"
-                  : "System will automatically generate a secure 16-character password"}
-              </p>
-            </div>
+            </SectionCard>
 
-            {/* Custom Password Field (shown only if toggle is ON) */}
+            {/* Password mode toggle */}
+            <SectionCard title="Password Mode">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {useCustomPassword
+                    ? <Key className="h-4 w-4 text-brand" />
+                    : <Wand2 className="h-4 w-4 text-brand" />}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-800">
+                      {useCustomPassword ? "Custom Password" : "Auto-Generate Password"}
+                    </p>
+                    <p className="text-[11px] text-gray-500">
+                      {useCustomPassword
+                        ? "You will provide the new password"
+                        : "System generates a secure 16-character password"}
+                    </p>
+                  </div>
+                </div>
+                <Switch checked={useCustomPassword} onCheckedChange={setUseCustomPassword} />
+              </div>
+            </SectionCard>
+
+            {/* Custom password input */}
             {useCustomPassword && (
-              <div className="space-y-2">
-                <Label htmlFor="customPassword">
-                  Custom Password for Organization *
+              <div className="space-y-1.5">
+                <Label htmlFor="customPassword" className="text-xs font-medium">
+                  Custom Password <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
                   <Input
@@ -205,32 +197,24 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
                     onChange={(e) => setCustomPassword(e.target.value)}
                     placeholder="Enter custom password (min 8 chars)"
                     required={useCustomPassword}
-                    className="pr-10"
+                    className="pr-10 h-9 text-sm"
                   />
                   <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
+                    type="button" variant="ghost" size="sm"
                     className="absolute right-0 top-0 h-full px-3"
                     onClick={() => setShowCustomPassword(!showCustomPassword)}
                   >
-                    {showCustomPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showCustomPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
-                <p className="text-xs text-gray-500">
-                  Password must be at least 8 characters long
-                </p>
+                <p className="text-[11px] text-gray-400">Minimum 8 characters</p>
               </div>
             )}
 
-            {/* Admin Password Verification */}
-            <div className="space-y-2">
-              <Label htmlFor="adminPassword" className="text-red-600">
-                Your Admin Password (Required) *
+            {/* Admin password verification */}
+            <div className="space-y-1.5">
+              <Label htmlFor="adminPassword" className="text-xs font-medium text-red-600">
+                Your Admin Password <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
                 <Input
@@ -238,177 +222,102 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
                   type={showAdminPassword ? "text" : "password"}
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
-                  placeholder="Enter your password to verify"
+                  placeholder="Enter your password to verify identity"
                   required
-                  className="pr-10"
+                  className="pr-10 h-9 text-sm"
                 />
                 <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
+                  type="button" variant="ghost" size="sm"
                   className="absolute right-0 top-0 h-full px-3"
                   onClick={() => setShowAdminPassword(!showAdminPassword)}
                 >
-                  {showAdminPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showAdminPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
-              <p className="text-xs text-gray-500">
-                For security, you must verify your identity
-              </p>
+              <p className="text-[11px] text-gray-400">Required to confirm your identity before making changes</p>
             </div>
 
-            {/* Error Message */}
+            {/* Error */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                <p className="text-sm text-red-600">{error}</p>
+              <div className="bg-red-50 border border-red-200 rounded-md p-2.5 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-red-600">{error}</p>
               </div>
             )}
 
             {/* Warning */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-              <p className="text-xs text-yellow-800">
-                ⚠️ This will immediately change the organization's login
-                password. Make sure to securely communicate the new password to
-                them.
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-2.5 flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-amber-800">
+                This will immediately change the organization's login password. Communicate the new password to them securely.
               </p>
             </div>
 
-            {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleClose}
-                disabled={loading}
-              >
+            <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+              <Button type="button" variant="outline" size="sm" onClick={handleClose} disabled={loading}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" size="sm" disabled={loading} className="bg-amber-600 hover:bg-amber-700 text-white">
                 {loading ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Resetting...
-                  </>
+                  <><RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />Resetting...</>
                 ) : (
-                  <>
-                    <Key className="mr-2 h-4 w-4" />
-                    Reset Password
-                  </>
+                  <><Key className="mr-1.5 h-3.5 w-3.5" />Reset Password</>
                 )}
               </Button>
             </div>
           </form>
         ) : (
-          // Step 2: Show Success with New Password
-          <div className="space-y-4 mt-4">
-            {/* Success Message */}
-            <div className="bg-green-50 border border-green-200 rounded-md p-4 text-center">
-              <div className="flex justify-center mb-2">
-                <div className="bg-green-500 rounded-full p-2">
-                  <Check className="h-6 w-6 text-white" />
-                </div>
+          <div className="space-y-3 mt-1">
+            {/* Success banner */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
+              <div className="bg-green-500 rounded-full p-1.5 flex-shrink-0">
+                <Check className="h-4 w-4 text-white" />
               </div>
-              <h3 className="text-lg font-semibold text-green-900 mb-1">
-                Password Reset Successfully!
-              </h3>
-              <p className="text-sm text-green-700">
-                A new{" "}
+              <div>
+                <p className="text-sm font-semibold text-green-900">Password Reset Successfully!</p>
+                <p className="text-xs text-green-700">
+                  A new {passwordMode === "auto-generated" ? "auto-generated secure" : "custom"} password has been set for <span className="font-medium">{credential.partner_name}</span>.
+                </p>
+              </div>
+              <div className={`ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                passwordMode === "auto-generated" ? "bg-blue-100 text-blue-800" : "bg-orange-100 text-orange-800"
+              }`}>
                 {passwordMode === "auto-generated"
-                  ? "auto-generated secure"
-                  : "custom"}{" "}
-                password has been set for {credential.partner_name}
-              </p>
-            </div>
-
-            {/* Password Mode Badge */}
-            <div className="flex justify-center">
-              <div
-                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
-                  passwordMode === "auto-generated"
-                    ? "bg-blue-100 text-blue-800"
-                    : "bg-orange-100 text-orange-800"
-                }`}
-              >
-                {passwordMode === "auto-generated" ? (
-                  <>
-                    <Wand2 className="h-4 w-4" />
-                    Auto-Generated
-                  </>
-                ) : (
-                  <>
-                    <Key className="h-4 w-4" />
-                    Custom Password
-                  </>
-                )}
+                  ? <><Wand2 className="h-3 w-3" />Auto-Generated</>
+                  : <><Key className="h-3 w-3" />Custom</>}
               </div>
             </div>
 
-            {/* New Password Display */}
-            <div className="bg-white border-2 border-brand rounded-lg p-4">
-              <Label className="text-sm font-semibold text-gray-700 mb-2 block">
-                New Password
-              </Label>
-              <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-mono text-lg font-semibold text-brand break-all">
-                    {newPassword}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCopyPassword}
-                    className="shrink-0"
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="h-4 w-4 mr-2 text-green-600" />
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Make sure to copy and securely communicate this password to the
-                organization
-              </p>
-            </div>
-
-            {/* Organization Info Reminder */}
-            <div className="bg-gray-50 p-4 rounded-md space-y-2">
-              <h4 className="text-sm font-semibold text-gray-700">
-                Organization Details
-              </h4>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Partner ID:</span>
-                <span className="font-medium">{credential.partner_id}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Partner Name:</span>
-                <span className="font-medium">{credential.partner_name}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Username/Email:</span>
-                <span className="font-medium">
-                  {credential.is_dummy_email
-                    ? credential.username
-                    : credential.email || credential.organizations?.email}
+            {/* New password display */}
+            <SectionCard title="New Password">
+              <div className="bg-white border-2 border-brand rounded-md px-4 py-3 flex items-center justify-between gap-3">
+                <span className="font-mono text-base font-bold text-brand tracking-widest break-all">
+                  {newPassword}
                 </span>
+                <Button variant="outline" size="sm" onClick={handleCopyPassword} className="shrink-0 h-8">
+                  {copied
+                    ? <><Check className="h-3.5 w-3.5 mr-1.5 text-green-600" />Copied!</>
+                    : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy</>}
+                </Button>
               </div>
-            </div>
+              <p className="text-[11px] text-gray-400 mt-1.5">
+                Copy and securely communicate this password to the organization.
+              </p>
+            </SectionCard>
 
-            {/* Action */}
-            <div className="flex justify-end pt-4">
-              <Button onClick={handleClose}>Done</Button>
+            {/* Partner reminder */}
+            <SectionCard title="Partner Details">
+              <div className="grid grid-cols-3 gap-3">
+                <DetailItem label="Partner ID" value={<span className="font-mono">{credential.partner_id}</span>} />
+                <DetailItem label="Partner Name" value={credential.partner_name} />
+                <DetailItem label={credential.is_dummy_email ? "Username" : "Email"} value={loginValue} />
+              </div>
+            </SectionCard>
+
+            <div className="flex justify-end pt-2 border-t border-gray-100">
+              <Button size="sm" onClick={handleClose} className="bg-brand hover:bg-brand/90 text-white">
+                <Shield className="h-3.5 w-3.5 mr-1.5" />Done
+              </Button>
             </div>
           </div>
         )}

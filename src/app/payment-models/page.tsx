@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import DashboardLayout from "../components/DashboardLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
@@ -16,7 +16,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -25,17 +24,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Layers,
   Plus,
   Search,
   Loader2,
-  MoreVertical,
   Pencil,
   Trash2,
   ToggleLeft,
@@ -44,8 +43,15 @@ import {
   Save,
   Calendar,
   CreditCard as CreditCardIcon,
-  Clock,
-  Building2,
+  Trophy,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import paymentModelService from "../services/paymentModelService";
 
@@ -80,6 +86,8 @@ const initialFormData: FormData = {
   min_down_payment: "0",
 };
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50];
+
 export default function PaymentModelsPage() {
   const { userRole } = useAuth();
   const { toast } = useToast();
@@ -87,7 +95,15 @@ export default function PaymentModelsPage() {
   const [models, setModels] = useState<PaymentModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showAll, setShowAll] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("all"); // all | active | inactive
+  const [topModel, setTopModel] = useState<{ name: string; use_count: number } | null>(null);
+
+  // Sort
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -101,31 +117,64 @@ export default function PaymentModelsPage() {
   const fetchModels = useCallback(async () => {
     try {
       setLoading(true);
-      const result = await paymentModelService.getPaymentModels({
-        show_all: showAll ? "true" : "false",
-        search: searchTerm,
-      });
+      const params: Record<string, string> = { show_all: "true" };
+      if (searchTerm.trim()) params.search = searchTerm.trim();
+      if (statusFilter !== "all") params.status = statusFilter;
+      const result = await paymentModelService.getPaymentModels(params);
       setModels(result.data || []);
+      if (result.top_model) setTopModel(result.top_model);
     } catch (err: any) {
       toast({ variant: "destructive", title: err.message || "Failed to load payment models" });
     } finally {
       setLoading(false);
     }
-  }, [showAll, searchTerm, toast]);
+  }, [searchTerm, statusFilter, toast]);
 
   useEffect(() => {
-    fetchModels();
+    const t = setTimeout(() => { fetchModels(); setCurrentPage(1); }, 300);
+    return () => clearTimeout(t);
   }, [fetchModels]);
+
+  // Client-side sort + pagination
+  const sortedModels = [...models].sort((a, b) => {
+    const aVal = new Date(a.created_at).getTime();
+    const bVal = new Date(b.created_at).getTime();
+    return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+  });
+  const totalRecords = sortedModels.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endRecord = Math.min(currentPage * pageSize, totalRecords);
+  const pagedModels = sortedModels.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const getVisiblePages = () => {
+    const pages: number[] = [];
+    let start = Math.max(1, currentPage - 2);
+    const end = Math.min(totalPages, start + 4);
+    start = Math.max(1, end - 4);
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  };
+
+  // Stats
+  const activeCount = models.filter((m) => m.is_active).length;
+  const inactiveCount = models.filter((m) => !m.is_active).length;
+
+  const hasActiveFilters = searchTerm !== "" || statusFilter !== "all";
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setCurrentPage(1);
+  };
 
   const handleCreate = async () => {
     try {
       setSaving(true);
       setFormError("");
-
       if (!formData.name.trim()) { setFormError("Name is required"); return; }
       if (!formData.duration_months || parseInt(formData.duration_months) < 1) { setFormError("Duration must be at least 1 month"); return; }
       if (!formData.fixed_price || parseFloat(formData.fixed_price) <= 0) { setFormError("Sales price must be greater than 0"); return; }
-
       await paymentModelService.createPaymentModel({
         name: formData.name.trim(),
         description: formData.description.trim() || null,
@@ -133,7 +182,6 @@ export default function PaymentModelsPage() {
         fixed_price: parseFloat(formData.fixed_price),
         min_down_payment: parseFloat(formData.min_down_payment) || 0,
       });
-
       toast({ variant: "success", title: "Payment model created successfully" });
       setShowCreateModal(false);
       setFormData(initialFormData);
@@ -150,7 +198,6 @@ export default function PaymentModelsPage() {
     try {
       setSaving(true);
       setFormError("");
-
       await paymentModelService.updatePaymentModel(selectedModel.id, {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
@@ -158,7 +205,6 @@ export default function PaymentModelsPage() {
         fixed_price: parseFloat(formData.fixed_price),
         min_down_payment: parseFloat(formData.min_down_payment) || 0,
       });
-
       toast({ variant: "success", title: "Payment model updated successfully" });
       setShowEditModal(false);
       setSelectedModel(null);
@@ -188,13 +234,8 @@ export default function PaymentModelsPage() {
 
   const handleToggleActive = async (model: PaymentModel) => {
     try {
-      await paymentModelService.updatePaymentModel(model.id, {
-        is_active: !model.is_active,
-      });
-      toast({
-        variant: "success",
-        title: `Payment model ${model.is_active ? "deactivated" : "activated"}`,
-      });
+      await paymentModelService.updatePaymentModel(model.id, { is_active: !model.is_active });
+      toast({ variant: "success", title: `Payment model ${model.is_active ? "deactivated" : "activated"}` });
       fetchModels();
     } catch (err: any) {
       toast({ variant: "destructive", title: err.message || "Failed to toggle status" });
@@ -223,416 +264,465 @@ export default function PaymentModelsPage() {
   const formatCurrency = (amount: number) =>
     `₦${amount.toLocaleString("en-NG", { minimumFractionDigits: 0 })}`;
 
-  // Format a raw number string with commas for display in inputs
   const formatAmountInput = (value: string) => {
     const digits = value.replace(/[^0-9]/g, "");
     if (!digits) return "";
     return Number(digits).toLocaleString("en-NG");
   };
 
-  // Strip commas to get raw number string for state
-  const parseAmountInput = (value: string) => {
-    return value.replace(/[^0-9]/g, "");
-  };
+  const parseAmountInput = (value: string) => value.replace(/[^0-9]/g, "");
 
   const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-
-  // Stats
-  const activeCount = models.filter((m) => m.is_active).length;
-  const inactiveCount = models.filter((m) => !m.is_active).length;
+    new Date(dateStr).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
   return (
     <ProtectedRoute requireSuperAdmin>
-      <DashboardLayout currentRoute="payment-models">
-        <div className="p-6 space-y-6">
-          {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Layers className="h-7 w-7 text-brand" />
-            Payment Models
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Manage installment payment plans for partner organizations
-          </p>
-        </div>
-        {userRole === "super_admin" && (
-          <Button onClick={openCreateModal} className="bg-brand hover:bg-brand/90 text-white">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Model
-          </Button>
-        )}
-      </div>
+      <DashboardLayout
+        currentRoute="payment-models"
+        title="Payment Models"
+        rightButton={
+          userRole === "super_admin" ? (
+            <Button
+              onClick={openCreateModal}
+              size="sm"
+              className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              Create Model
+            </Button>
+          ) : undefined
+        }
+      >
+        <div className="p-6 space-y-5">
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white border rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-brand/10 rounded-lg">
-              <Layers className="h-5 w-5 text-brand" />
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Total Models */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Layers className="h-5 w-5 text-blue-700" />
+                </div>
+                <div>
+                  <p className="text-sm text-blue-600 font-medium">Total Models</p>
+                  <p className="text-xl font-bold text-blue-900">{models.length}</p>
+                  <p className="text-xs text-blue-500">All payment plans</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Models</p>
-              <p className="text-xl font-bold text-gray-900">{models.length}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white border rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-50 rounded-lg">
-              <ToggleRight className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Active</p>
-              <p className="text-xl font-bold text-green-600">{activeCount}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white border rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gray-100 rounded-lg">
-              <ToggleLeft className="h-5 w-5 text-gray-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Inactive</p>
-              <p className="text-xl font-bold text-gray-400">{inactiveCount}</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Filters */}
-      <div className="bg-white border rounded-lg p-4">
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search models..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Button
-            variant={showAll ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowAll(!showAll)}
-            className={showAll ? "bg-brand hover:bg-brand/90 text-white" : ""}
-          >
-            {showAll ? "All Models" : "Active Only"}
-          </Button>
-        </div>
-      </div>
+            {/* Active */}
+            <div
+              className={`bg-green-50 border rounded-lg p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all ${statusFilter === "active" ? "border-green-600 shadow-md" : "border-green-200"}`}
+              onClick={() => { setStatusFilter((f) => f === "active" ? "all" : "active"); setCurrentPage(1); }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <ToggleRight className="h-5 w-5 text-green-700" />
+                </div>
+                <div>
+                  <p className="text-sm text-green-600 font-medium">Active</p>
+                  <p className="text-xl font-bold text-green-900">{activeCount}</p>
+                  <p className="text-xs text-green-500">Click to filter</p>
+                </div>
+              </div>
+              {statusFilter === "active" && (
+                <p className="text-xs font-semibold mt-2 opacity-70 text-center text-green-700">✓ Filter active — click again to clear</p>
+              )}
+            </div>
 
-      {/* Table */}
-      <div className="bg-white border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader className="bg-brand-header">
-            <TableRow className="hover:bg-brand-header">
-              <TableHead className="font-semibold text-white">Name</TableHead>
-              <TableHead className="font-semibold text-white">Sales Price</TableHead>
-              <TableHead className="font-semibold text-white">Duration</TableHead>
-              <TableHead className="font-semibold text-white">Min Down Payment</TableHead>
-              <TableHead className="font-semibold text-white">Status</TableHead>
-              <TableHead className="font-semibold text-white">Created</TableHead>
-              <TableHead className="font-semibold text-white text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-brand" />
-                  <p className="text-sm text-gray-500 mt-2">Loading payment models...</p>
-                </TableCell>
-              </TableRow>
-            ) : models.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-12">
-                  <Layers className="h-8 w-8 mx-auto text-gray-300 mb-2" />
-                  <p className="text-sm text-gray-500">No payment models found</p>
-                </TableCell>
-              </TableRow>
-            ) : (
-              models.map((model, idx) => (
-                <TableRow
-                  key={model.id}
-                  className={`${idx % 2 === 0 ? "bg-white" : "bg-brand-light"} ${
-                    !model.is_active ? "opacity-60" : ""
-                  }`}
-                >
-                  <TableCell>
-                    <div>
-                      <p className="font-medium text-gray-900">{model.name}</p>
-                      {model.description && (
-                        <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[200px]">
-                          {model.description}
-                        </p>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-semibold text-gray-900">
-                    {formatCurrency(model.fixed_price)}
-                  </TableCell>
-                  <TableCell>
-                    <span className="flex items-center gap-1 text-sm">
-                      <Clock className="h-3.5 w-3.5 text-gray-400" />
-                      {model.duration_months} month{model.duration_months !== 1 ? "s" : ""}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-600">
-                    {model.min_down_payment > 0
-                      ? formatCurrency(model.min_down_payment)
-                      : "None"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      className={
-                        model.is_active
-                          ? "bg-green-100 text-green-800 border-green-200"
-                          : "bg-gray-100 text-gray-500 border-gray-200"
-                      }
-                    >
-                      {model.is_active ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-500">
-                    {formatDate(model.created_at)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEditModal(model)}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleToggleActive(model)}>
-                          {model.is_active ? (
-                            <>
-                              <ToggleLeft className="h-4 w-4 mr-2" />
-                              Deactivate
-                            </>
-                          ) : (
-                            <>
-                              <ToggleRight className="h-4 w-4 mr-2" />
-                              Activate
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedModel(model);
-                            setShowDeleteModal(true);
-                          }}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+            {/* Inactive */}
+            <div
+              className={`bg-gray-50 border rounded-lg p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all ${statusFilter === "inactive" ? "border-gray-500 shadow-md" : "border-gray-200"}`}
+              onClick={() => { setStatusFilter((f) => f === "inactive" ? "all" : "inactive"); setCurrentPage(1); }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <ToggleLeft className="h-5 w-5 text-gray-500" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 font-medium">Inactive</p>
+                  <p className="text-xl font-bold text-gray-700">{inactiveCount}</p>
+                  <p className="text-xs text-gray-400">Click to filter</p>
+                </div>
+              </div>
+              {statusFilter === "inactive" && (
+                <p className="text-xs font-semibold mt-2 opacity-70 text-center text-gray-600">✓ Filter active — click again to clear</p>
+              )}
+            </div>
+
+            {/* Top Used Model */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <Trophy className="h-5 w-5 text-amber-700" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm text-amber-600 font-medium">Top Used Model</p>
+                  {topModel ? (
+                    <>
+                      <p className="text-sm font-bold text-amber-900 truncate" title={topModel.name}>{topModel.name}</p>
+                      <p className="text-xs text-amber-600">{topModel.use_count} sale{topModel.use_count !== 1 ? "s" : ""}</p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-amber-500">No sales yet</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Filter Bar */}
+          <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
+            {/* Search */}
+            <div className="w-1/4 min-w-[180px] relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search models..."
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                className="pl-9 bg-white h-9 text-sm"
+              />
+            </div>
+
+            {/* Status filter */}
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
+              <SelectTrigger className="w-[140px] h-9 bg-white text-sm">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Clear */}
+            {hasActiveFilters && (
+              <Button onClick={handleClearFilters} size="sm" variant="outline" className="h-9">
+                <X className="h-4 w-4 mr-1" />
+                Clear
+              </Button>
             )}
-          </TableBody>
-        </Table>
-      </div>
+          </div>
 
-      {/* Create/Edit Modal */}
-      {(showCreateModal || showEditModal) && (
-        <Dialog
-          open={showCreateModal || showEditModal}
-          onOpenChange={() => {
-            setShowCreateModal(false);
-            setShowEditModal(false);
-            setSelectedModel(null);
-            setFormError("");
-          }}
-        >
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Layers className="h-5 w-5 text-brand" />
-                {showCreateModal ? "Create Payment Model" : "Edit Payment Model"}
-              </DialogTitle>
-              <DialogDescription>
-                {showCreateModal
-                  ? "Define a new installment payment plan."
-                  : `Update "${selectedModel?.name}" payment model.`}
-              </DialogDescription>
-            </DialogHeader>
+          {/* Table */}
+          <div className="space-y-0">
+            {/* Pagination header */}
+            <div className="bg-blue-50 rounded-t-lg px-4 py-2 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-gray-600">
+                  Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
+                  <span className="font-medium">{totalRecords}</span> models
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">per page:</span>
+                  <Select value={pageSize.toString()} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1); }}>
+                    <SelectTrigger className="w-[65px] h-7 bg-white text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_SIZE_OPTIONS.map((s) => (
+                        <SelectItem key={s} value={s.toString()}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <p className="text-sm font-bold text-green-500">
+                Total Models: <span className="text-brand">{totalRecords}</span>
+              </p>
+            </div>
 
-            <div className="space-y-4 py-2">
-              {formError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
-                  <span className="text-red-700 text-sm">{formError}</span>
+            {/* Table */}
+            <div className="bg-white border-x border-gray-200 overflow-x-auto relative">
+              {loading && (
+                <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
+                  <Loader2 className="h-6 w-6 animate-spin text-brand" />
                 </div>
               )}
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-brand hover:bg-brand">
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Model Name</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Sales Price</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Duration</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Min Down Payment</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Status</TableHead>
+                    <TableHead
+                      className="text-white font-semibold text-xs whitespace-nowrap cursor-pointer select-none"
+                      onClick={() => { setSortOrder((o) => o === "asc" ? "desc" : "asc"); setCurrentPage(1); }}
+                    >
+                      <div className="flex items-center">
+                        Created
+                        {sortOrder === "asc"
+                          ? <ArrowUp className="h-3 w-3 ml-1" />
+                          : <ArrowDown className="h-3 w-3 ml-1" />}
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className={loading ? "opacity-40" : ""}>
+                  {pagedModels.length === 0 && !loading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-12">
+                        <Layers className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                        <p className="text-sm text-gray-500">No payment models found</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    pagedModels.map((model, idx) => (
+                      <TableRow
+                        key={model.id}
+                        className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700 ${!model.is_active ? "opacity-60" : ""}`}
+                      >
+                        <TableCell className="text-xs font-medium text-gray-900">
+                          {model.name}
+                          {model.description && (
+                            <p className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[180px]">{model.description}</p>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs font-semibold text-gray-900">
+                          {formatCurrency(model.fixed_price)}
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-600">
+                          {model.duration_months} month{model.duration_months !== 1 ? "s" : ""}
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-600">
+                          {model.min_down_payment > 0 ? formatCurrency(model.min_down_payment) : "None"}
+                        </TableCell>
+                        <TableCell>
+                          <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                            model.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                          }`}>
+                            {model.is_active ? "Active" : "Inactive"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-600">{formatDate(model.created_at)}</TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => openEditModal(model)}
+                            >
+                              <Pencil className="h-3 w-3 mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className={`h-7 px-2 text-xs ${model.is_active ? "text-amber-600 border-amber-200 hover:bg-amber-50" : "text-green-600 border-green-200 hover:bg-green-50"}`}
+                              onClick={() => handleToggleActive(model)}
+                            >
+                              {model.is_active
+                                ? <><ToggleLeft className="h-3 w-3 mr-1" />Deactivate</>
+                                : <><ToggleRight className="h-3 w-3 mr-1" />Activate</>}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                              onClick={() => { setSelectedModel(model); setShowDeleteModal(true); }}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="model-name">Model Name *</Label>
-                <Input
-                  id="model-name"
-                  placeholder="e.g., Amina Model"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
+            {/* Pagination footer */}
+            {totalPages > 1 && (
+              <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
+                <p className="text-sm text-gray-600">
+                  Showing {startRecord} to {endRecord} of {totalRecords} models
+                </p>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setCurrentPage((p) => p - 1)} disabled={currentPage === 1}>
+                    <ChevronLeft className="h-4 w-4 mr-1" />Prev
+                  </Button>
+                  {getVisiblePages().map((p) => (
+                    <Button
+                      key={p}
+                      variant={p === currentPage ? "default" : "outline"}
+                      size="sm"
+                      className={`h-8 w-8 p-0 ${p === currentPage ? "bg-brand text-white hover:bg-brand" : ""}`}
+                      onClick={() => setCurrentPage(p)}
+                    >{p}</Button>
+                  ))}
+                  <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setCurrentPage((p) => p + 1)} disabled={currentPage === totalPages}>
+                    Next<ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
+            )}
+          </div>
+        </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="model-desc">Description</Label>
-                <Input
-                  id="model-desc"
-                  placeholder="Optional description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
+        {/* Create/Edit Modal */}
+        {(showCreateModal || showEditModal) && (
+          <Dialog
+            open={showCreateModal || showEditModal}
+            onOpenChange={() => {
+              setShowCreateModal(false);
+              setShowEditModal(false);
+              setSelectedModel(null);
+              setFormError("");
+            }}
+          >
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>
+                  {showCreateModal ? "Create Payment Model" : "Edit Payment Model"}
+                </DialogTitle>
+                <DialogDescription>
+                  {showCreateModal
+                    ? "Define a new installment payment plan."
+                    : `Update "${selectedModel?.name}" payment model.`}
+                </DialogDescription>
+              </DialogHeader>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4 py-2">
+                {formError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                    <span className="text-red-700 text-sm">{formError}</span>
+                  </div>
+                )}
+
                 <div className="space-y-2">
-                  <Label htmlFor="model-price" className="flex items-center gap-1">
-                    <CreditCardIcon className="h-3 w-3" />
-                    Sales Price (₦) *
-                  </Label>
+                  <Label htmlFor="model-name">Model Name *</Label>
                   <Input
-                    id="model-price"
+                    id="model-name"
+                    placeholder="e.g., Amina Model"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="model-desc">Description</Label>
+                  <Input
+                    id="model-desc"
+                    placeholder="Optional description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="model-price">Sales Price (₦) *</Label>
+                    <Input
+                      id="model-price"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="e.g., 80,000"
+                      value={formatAmountInput(formData.fixed_price)}
+                      onChange={(e) => setFormData({ ...formData, fixed_price: parseAmountInput(e.target.value) })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="model-duration">Duration (months) *</Label>
+                    <Input
+                      id="model-duration"
+                      type="number"
+                      placeholder="e.g., 6"
+                      value={formData.duration_months}
+                      onChange={(e) => setFormData({ ...formData, duration_months: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="model-downpayment">Minimum Down Payment (₦)</Label>
+                  <Input
+                    id="model-downpayment"
                     type="text"
                     inputMode="numeric"
-                    placeholder="e.g., 80,000"
-                    value={formatAmountInput(formData.fixed_price)}
-                    onChange={(e) => setFormData({ ...formData, fixed_price: parseAmountInput(e.target.value) })}
+                    placeholder="0"
+                    value={formatAmountInput(formData.min_down_payment)}
+                    onChange={(e) => setFormData({ ...formData, min_down_payment: parseAmountInput(e.target.value) })}
                   />
+                  <p className="text-xs text-gray-500">Leave at 0 if no minimum is required</p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="model-duration" className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    Duration (months) *
-                  </Label>
-                  <Input
-                    id="model-duration"
-                    type="number"
-                    placeholder="e.g., 6"
-                    value={formData.duration_months}
-                    onChange={(e) => setFormData({ ...formData, duration_months: e.target.value })}
-                  />
-                </div>
+                {formData.fixed_price && formData.duration_months && (
+                  <div className="bg-brand/5 border border-brand/20 rounded-lg p-3">
+                    <p className="text-sm text-gray-700">
+                      Monthly payment:{" "}
+                      <span className="font-semibold text-brand">
+                        {formatCurrency(
+                          Math.ceil(
+                            parseFloat(formData.fixed_price) / parseInt(formData.duration_months)
+                          )
+                        )}
+                      </span>
+                      <span className="text-gray-500"> / month</span>
+                    </p>
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="model-downpayment">Minimum Down Payment (₦)</Label>
-                <Input
-                  id="model-downpayment"
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={formatAmountInput(formData.min_down_payment)}
-                  onChange={(e) => setFormData({ ...formData, min_down_payment: parseAmountInput(e.target.value) })}
-                />
-                <p className="text-xs text-gray-500">Leave at 0 if no minimum is required</p>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => { setShowCreateModal(false); setShowEditModal(false); }}
+                  disabled={saving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={showCreateModal ? handleCreate : handleEdit}
+                  disabled={saving}
+                  className="bg-brand hover:bg-brand/90 text-white"
+                >
+                  {saving ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+                  ) : (
+                    <><Save className="h-4 w-4 mr-2" />{showCreateModal ? "Create" : "Save Changes"}</>
+                  )}
+                </Button>
               </div>
+            </DialogContent>
+          </Dialog>
+        )}
 
-              {formData.fixed_price && formData.duration_months && (
-                <div className="bg-brand/5 border border-brand/20 rounded-lg p-3">
-                  <p className="text-sm text-gray-700">
-                    Monthly payment:{" "}
-                    <span className="font-semibold text-brand">
-                      {formatCurrency(
-                        Math.ceil(
-                          parseFloat(formData.fixed_price) /
-                            parseInt(formData.duration_months)
-                        )
-                      )}
-                    </span>
-                    <span className="text-gray-500"> / month</span>
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setShowEditModal(false);
-                }}
-                disabled={saving}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={showCreateModal ? handleCreate : handleEdit}
-                disabled={saving}
-                className="bg-brand hover:bg-brand/90 text-white"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    {showCreateModal ? "Create" : "Save Changes"}
-                  </>
-                )}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && selectedModel && (
-        <Dialog open onOpenChange={() => setShowDeleteModal(false)}>
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-red-600">
-                <Trash2 className="h-5 w-5" />
-                Delete Payment Model
-              </DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete &quot;{selectedModel.name}&quot;? If this
-                model has associated sales, it will be deactivated instead.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={() => setShowDeleteModal(false)} disabled={saving}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={saving}
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  "Delete"
-                )}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-        </div>
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && selectedModel && (
+          <Dialog open onOpenChange={() => setShowDeleteModal(false)}>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="text-red-600">Delete Payment Model</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete &quot;{selectedModel.name}&quot;? If this model has associated sales, it will be deactivated instead.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button variant="outline" onClick={() => setShowDeleteModal(false)} disabled={saving}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleDelete} disabled={saving}>
+                  {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Deleting...</> : "Delete"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </DashboardLayout>
     </ProtectedRoute>
   );

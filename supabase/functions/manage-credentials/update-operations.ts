@@ -86,9 +86,9 @@ export async function updateOrganizationPassword(
 
     console.log("✅ Auth password updated successfully");
 
-    // Step 4: Update password in credentials table
+    // Step 4: Update password in credentials table (use service role to bypass RLS)
     console.log("💾 Updating password in credentials table...");
-    const { error: updateCredError } = await supabase
+    const { error: updateCredError } = await adminClient
       .from("credentials")
       .update({
         password: new_password,
@@ -230,9 +230,9 @@ export async function resetOrganizationPassword(
 
     console.log("✅ Auth password updated successfully");
 
-    // Step 5: Update password in credentials table
+    // Step 5: Update password in credentials table (use service role to bypass RLS)
     console.log("💾 Updating password in credentials table...");
-    const { error: updateCredError } = await supabase
+    const { error: updateCredError } = await adminClient
       .from("credentials")
       .update({
         password: newPassword,
