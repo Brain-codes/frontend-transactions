@@ -19,6 +19,7 @@ import Link from "next/link";
 
 const TopNavigation = ({
   onToggleSidebar,
+  hideSidebarToggle,
   title,
   description,
   rightButton,
@@ -108,14 +109,16 @@ const TopNavigation = ({
       <div className="flex items-center justify-between gap-2 sm:gap-4">
         {/* Left side - Sidebar toggle + Title and description */}
         <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hover:bg-gray-100 flex-shrink-0"
-            onClick={onToggleSidebar}
-          >
-            <PanelLeft className="h-5 w-5 text-gray-700" />
-          </Button>
+          {!hideSidebarToggle && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hover:bg-gray-100 flex-shrink-0"
+              onClick={onToggleSidebar}
+            >
+              <PanelLeft className="h-5 w-5 text-gray-700" />
+            </Button>
+          )}
           <div className="min-w-0 flex-1">
             <img src="/logo.png" className="w-auto h-[65px]" />
             {/* <h1 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 truncate">
@@ -131,6 +134,17 @@ const TopNavigation = ({
         <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4 flex-shrink-0">
           {/* Optional right button */}
           {rightButton && <div className="hidden sm:block">{rightButton}</div>}
+
+          {/* Gear icon for agents — links to profile/settings */}
+          {isAgent && (
+            <Link
+              href="/profile"
+              className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+              title="Settings"
+            >
+              <Settings className="h-5 w-5" />
+            </Link>
+          )}
 
           <div className="relative" ref={dropdownRef}>
             <div

@@ -218,13 +218,13 @@ class AdminSalesService {
   // Get individual sale details
   async getSale(saleId) {
     try {
-      const payload = { saleId };
-
-      const response = await fetch(`${API_FUNCTIONS_URL}/get-sale`, {
-        method: "POST",
-        headers: await this.getHeaders(),
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        `${API_FUNCTIONS_URL}/get-sale?id=${saleId}`,
+        {
+          method: "GET",
+          headers: await this.getHeaders(),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -363,6 +363,7 @@ class AdminSalesService {
     paymentStatus,
     dateFrom,
     dateTo,
+    createdBy,
   } = {}) {
     try {
       const body = {
@@ -374,6 +375,7 @@ class AdminSalesService {
         ...(paymentStatus ? { paymentStatus } : {}),
         ...(dateFrom ? { dateFrom } : {}),
         ...(dateTo ? { dateTo } : {}),
+        ...(createdBy ? { createdBy } : {}),
       };
 
       const response = await fetch(
@@ -502,6 +504,37 @@ class AdminSalesService {
         data: [],
         pagination: null,
       };
+    }
+  }
+
+  // Delete a sale via edge function
+  async deleteSale(saleId) {
+    try {
+      const response = await fetch(
+        `${API_FUNCTIONS_URL}/delete-sale?id=${saleId}`,
+        {
+          method: "DELETE",
+          headers: await this.getHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `HTTP ${response.status}: ${response.statusText}`
+        );
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.message || "Failed to delete sale");
+      }
+
+      return { success: true, data: result.data };
+    } catch (error) {
+      console.error("Error deleting sale:", error);
+      return { success: false, error: error.message };
     }
   }
 

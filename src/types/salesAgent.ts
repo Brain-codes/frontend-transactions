@@ -7,6 +7,8 @@ export interface SalesAgent {
   organization_id: string;
   created_at: string;
   has_changed_password?: boolean; // Optional since it might not always be included in the response
+  total_sold?: number;
+  last_login?: string | null;
 }
 
 export interface SalesAgentResponse {
@@ -21,6 +23,7 @@ export interface CreateAgentRequest {
   name: string;
   email: string;
   password: string;
+  phone: string;
 }
 
 export interface CreateAgentResponse {

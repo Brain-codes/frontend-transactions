@@ -94,6 +94,18 @@ export async function createAgent(
       throw new Error("Failed to create agent profile");
     }
 
+    // Update phone on profile (trigger may not set it)
+    if (validatedData.phone) {
+      const { error: phoneUpdateError } = await supabase
+        .from("profiles")
+        .update({ phone: validatedData.phone })
+        .eq("id", createdUser.user?.id);
+
+      if (phoneUpdateError) {
+        console.warn("⚠️ Could not save phone to profile:", phoneUpdateError.message);
+      }
+    }
+
     console.log("✅ Agent created successfully:", profile.id);
 
     return {

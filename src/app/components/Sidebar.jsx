@@ -249,7 +249,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           // },
         },
         {
-          name: "Agents",
+          name: "Manage Agents",
           icon: Users,
           route: "admin-agents",
           href: "/admin/agents",
@@ -299,34 +299,14 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
       ];
     }
 
-    // Agent gets access to sales creation and viewing
+    // Agent gets access to sales creation and viewing only
     if (isAgent) {
       return [
-        {
-          name: "Dashboard",
-          icon: LayoutDashboard,
-          route: "agent",
-          href: "/agent",
-          badge: null,
-          requiresAuth: true,
-        },
         {
           name: "Manage Sales",
           icon: ShoppingCart,
           route: "admin-sales",
           href: "/admin/sales",
-          badge: null,
-          requiresAuth: true,
-          // children removed — merged into /admin/sales
-          // { name: "All Sales", route: "admin-sales", href: "/admin/sales" },
-          // { name: "Create Sale", route: "admin-create-sale", href: "/admin/sales/create" },
-          // { name: "Sales Financial Reports", route: "admin-financial-reports", href: "/admin/sales/financial-reports" },
-        },
-        {
-          name: "Profile",
-          icon: User,
-          route: "profile",
-          href: "/profile",
           badge: null,
           requiresAuth: true,
         },
