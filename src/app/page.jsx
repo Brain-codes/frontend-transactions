@@ -20,7 +20,7 @@ export default function Home() {
       } else if (isAdmin) {
         router.push("/admin");
       } else if (isAgent) {
-        router.push("/agent");
+        router.push("/admin/sales");
       } else {
         router.push("/unauthorized");
       }

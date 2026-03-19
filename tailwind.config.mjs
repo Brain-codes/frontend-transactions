@@ -43,7 +43,8 @@ const config = {
           800: "#3730a3",
           900: "#07376a",
           950: "#030f2e",
-          light: "#EFF6FF", // Light shade for filters and backgrounds
+          light: "#EFF6FF", // Light shade for filters and backgrounds — matches ERP #EFF6FF
+          header: "#194977", // Table header blue — matches ERP #194977
         },
         primary: {
           DEFAULT: "#0f172a",

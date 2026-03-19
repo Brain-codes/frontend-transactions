@@ -122,7 +122,7 @@ const ViewAgentModal: React.FC<ViewAgentModalProps> = ({
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency: "NGN",
     }).format(amount);
   };
 

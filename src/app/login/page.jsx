@@ -65,7 +65,7 @@ const LoginPage = () => {
       } else if (isAdmin) {
         router.push("/admin");
       } else if (isAgent) {
-        router.push("/agent");
+        router.push("/admin/sales");
       } else if (isSuperAdminAgent) {
         router.push("/super-admin-agent");
       } else {
