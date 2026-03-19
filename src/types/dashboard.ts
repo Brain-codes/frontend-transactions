@@ -7,6 +7,12 @@ export interface DashboardStats {
   stovesWithLandmark: number;
   pendingSales: number;
   totalSalesAmount: number;
+  // Financial summary
+  totalExpectedAmount: number;
+  totalAmountPaid: number;
+  totalAmountOwed: number;
+  totalCustomers: number;
+  customersOwing: number;
   organizationId: string;
   totalStovesReceived: number;
   totalStovesSold: number;

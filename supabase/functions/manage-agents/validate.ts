@@ -32,9 +32,9 @@ export function validateAgentData(data: any) {
     errors.push("Full name is required");
   }
 
-  // Optional fields validation
-  if (data.phone && typeof data.phone !== "string") {
-    errors.push("Phone must be a string");
+  // Phone is required
+  if (!data.phone || typeof data.phone !== "string" || !data.phone.trim()) {
+    errors.push("Phone number is required");
   }
 
   if (data.organization_id && typeof data.organization_id !== "string") {

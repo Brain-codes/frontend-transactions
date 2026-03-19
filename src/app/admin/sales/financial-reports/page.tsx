@@ -9,7 +9,7 @@ const loadSales = () => adminSalesService.getFinancialReportSales({ limit: 500 }
 
 const FinancialReportsPage = () => (
   <ProtectedRoute>
-    <DashboardLayout currentRoute="admin-financial-reports">
+    <DashboardLayout currentRoute="admin-financial-reports" title="Sales Financial Reports">
       <FinancialReportsView loadSales={loadSales} />
     </DashboardLayout>
   </ProtectedRoute>

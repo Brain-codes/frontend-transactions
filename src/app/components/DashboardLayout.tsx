@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { useSidebar } from "../contexts/SidebarContext";
 import Sidebar from "./Sidebar.jsx";
 import TopNavigation from "./TopNavigation";
+// DashboardLayout hides sidebar for agents (they only have one page)
 import FirstTimePasswordChangeModal from "./FirstTimePasswordChangeModal";
+import PageHeader from "./PageHeader";
 import profileService from "../services/profileService";
 
 type DashboardLayoutProps = {
@@ -24,7 +26,7 @@ const DashboardLayout = ({
   description = "Welcome to your dashboard",
   rightButton = null,
 }: DashboardLayoutProps) => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAgent } = useAuth() as any;
   const router = useRouter();
   const { sidebarOpen, toggleSidebar, closeSidebar } = useSidebar();
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -50,27 +52,38 @@ const DashboardLayout = ({
 
   return (
     <div className="min-h-screen bg-white">
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={closeSidebar}
-        currentRoute={currentRoute}
-      />
+      {/* Sidebar hidden for agents — they only have one page */}
+      {!isAgent && (
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={closeSidebar}
+          currentRoute={currentRoute}
+        />
+      )}
 
       {/* Main content */}
       <div
         className={`flex flex-col min-h-screen transition-all duration-300 ease-in-out
-          ${sidebarOpen ? "ml-0 lg:ml-72" : "ml-0 lg:ml-0"}`}
+          ${!isAgent && sidebarOpen ? "ml-0 lg:ml-72" : "ml-0 lg:ml-0"}`}
       >
         <TopNavigation
-          onToggleSidebar={toggleSidebar}
+          onToggleSidebar={!isAgent ? toggleSidebar : undefined}
+          hideSidebarToggle={isAgent}
           title={title}
           description={description}
-          rightButton={rightButton}
+          rightButton={null}
           user={user}
         />
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-white">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-white">
+          {title && (
+            <div className="px-6 pt-6">
+              <PageHeader title={title} right={rightButton} />
+            </div>
+          )}
+          {children}
+        </main>
       </div>
 
       {/* First-time password change modal */}

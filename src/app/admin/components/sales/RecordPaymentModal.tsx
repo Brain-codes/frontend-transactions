@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DollarSign,
+  CreditCard,
   Loader2,
   Save,
   AlertCircle,
@@ -100,7 +100,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-brand" />
+            <CreditCard className="h-5 w-5 text-brand" />
             Record Payment
           </DialogTitle>
           <DialogDescription>

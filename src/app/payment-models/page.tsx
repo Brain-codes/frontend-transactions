@@ -505,7 +505,7 @@ export default function PaymentModelsPage() {
                 <div className="space-y-2">
                   <Label htmlFor="model-price" className="flex items-center gap-1">
                     <CreditCardIcon className="h-3 w-3" />
-                    Fixed Price (₦) *
+                    Price (₦) *
                   </Label>
                   <Input
                     id="model-price"

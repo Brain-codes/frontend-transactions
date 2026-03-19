@@ -230,7 +230,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
             </FormFieldWrapper>
 
             <FormFieldWrapper fullWidth>
-              <Label htmlFor="updatePhone">Phone Number</Label>
+              <Label htmlFor="updatePhone">Phone Number *</Label>
               <Input
                 id="updatePhone"
                 type="tel"
@@ -241,7 +241,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
                     phone: e.target.value,
                   }))
                 }
-                placeholder="Enter agent's phone number (optional)"
+                placeholder="Enter agent's phone number"
               />
             </FormFieldWrapper>
           </FormGrid>

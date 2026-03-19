@@ -79,6 +79,45 @@ export async function getAgents(
       throw new Error(`Database error: ${agentsError.message}`);
     }
 
+    // Fetch total_sold counts for all agents in one query
+    let salesCountMap: Record<string, number> = {};
+    if (agents && agents.length > 0) {
+      const agentIds = agents.map((a: any) => a.id);
+      const { data: salesData, error: salesError } = await supabase
+        .from("sales")
+        .select("created_by")
+        .in("created_by", agentIds);
+
+      if (!salesError && salesData) {
+        salesCountMap = salesData.reduce((acc: Record<string, number>, sale: any) => {
+          acc[sale.created_by] = (acc[sale.created_by] || 0) + 1;
+          return acc;
+        }, {});
+      }
+    }
+
+    // Fetch last_login for all agents via auth admin
+    let lastLoginMap: Record<string, string | null> = {};
+    try {
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers({
+        perPage: 1000,
+      });
+      if (!authError && authUsers?.users) {
+        authUsers.users.forEach((u: any) => {
+          lastLoginMap[u.id] = u.last_sign_in_at || null;
+        });
+      }
+    } catch (authErr) {
+      console.warn("⚠️ Could not fetch last login data:", authErr);
+    }
+
+    // Merge total_sold and last_login into agent records
+    const enrichedAgents = (agents || []).map((agent: any) => ({
+      ...agent,
+      total_sold: salesCountMap[agent.id] || 0,
+      last_login: lastLoginMap[agent.id] || null,
+    }));
+
     // Calculate pagination metadata
     const totalPages = Math.ceil((count || 0) / limit);
     const hasNextPage = page < totalPages;
@@ -88,7 +127,7 @@ export async function getAgents(
 
     return {
       message: `Found ${count || 0} agents`,
-      data: agents || [],
+      data: enrichedAgents,
       pagination: {
         currentPage: page,
         totalPages,
@@ -157,11 +196,26 @@ export async function getAgent(
       throw new Error(`Database error: ${agentError.message}`);
     }
 
+    // Fetch total_sold for this agent
+    let total_sold = 0;
+    const { data: salesData } = await supabase
+      .from("sales")
+      .select("id", { count: "exact" })
+      .eq("created_by", agentId);
+    if (salesData) total_sold = salesData.length;
+
+    // Fetch last_login from auth
+    let last_login: string | null = null;
+    try {
+      const { data: authUser } = await supabase.auth.admin.getUserById(agentId);
+      last_login = authUser?.user?.last_sign_in_at || null;
+    } catch (_) {}
+
     console.log("✅ Agent found:", agent.id);
 
     return {
       message: "Agent retrieved successfully",
-      data: agent,
+      data: { ...agent, total_sold, last_login },
     };
   } catch (error) {
     console.error("❌ Error in getAgent:", error);

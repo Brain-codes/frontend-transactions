@@ -45,6 +45,7 @@ const CreateAgentModal: React.FC<CreateAgentModalProps> = ({
     name: "",
     email: "",
     password: "",
+    phone: "",
   });
   const [confirmPassword, setConfirmPassword] = useState("");
   const [createLoading, setCreateLoading] = useState<boolean>(false);
@@ -54,7 +55,7 @@ const CreateAgentModal: React.FC<CreateAgentModalProps> = ({
   const [copyMessage, setCopyMessage] = useState("");
 
   const resetForm = () => {
-    setCreateForm({ name: "", email: "", password: "" });
+    setCreateForm({ name: "", email: "", password: "", phone: "" });
     setConfirmPassword("");
     setCreateErrors({});
     setShowPassword(false);
@@ -134,6 +135,10 @@ const CreateAgentModal: React.FC<CreateAgentModalProps> = ({
       errors.push("Passwords do not match");
     }
 
+    if (!createForm.phone?.trim()) {
+      errors.push("Phone number is required");
+    }
+
     return { isValid: errors.length === 0, errors };
   };
 
@@ -159,7 +164,8 @@ const CreateAgentModal: React.FC<CreateAgentModalProps> = ({
       const response = await adminAgentService.createAgent(
         createForm.name,
         createForm.email,
-        createForm.password
+        createForm.password,
+        createForm.phone as any
       );
 
       if (response.success) {
@@ -238,7 +244,7 @@ const CreateAgentModal: React.FC<CreateAgentModalProps> = ({
           })}
 
           <FormGrid>
-            <FormFieldWrapper fullWidth>
+            <FormFieldWrapper>
               <Label htmlFor="agentName">Full Name *</Label>
               <Input
                 id="agentName"
@@ -253,7 +259,7 @@ const CreateAgentModal: React.FC<CreateAgentModalProps> = ({
               />
             </FormFieldWrapper>
 
-            <FormFieldWrapper fullWidth>
+            <FormFieldWrapper>
               <Label htmlFor="agentEmail">Email Address *</Label>
               <Input
                 id="agentEmail"
@@ -266,6 +272,22 @@ const CreateAgentModal: React.FC<CreateAgentModalProps> = ({
                   }))
                 }
                 placeholder="Enter agent's email address"
+              />
+            </FormFieldWrapper>
+
+            <FormFieldWrapper>
+              <Label htmlFor="agentPhone">Phone Number *</Label>
+              <Input
+                id="agentPhone"
+                type="tel"
+                value={createForm.phone}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    phone: e.target.value,
+                  }))
+                }
+                placeholder="Enter agent's phone number"
               />
             </FormFieldWrapper>
 

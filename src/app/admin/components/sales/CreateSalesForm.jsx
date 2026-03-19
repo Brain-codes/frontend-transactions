@@ -150,17 +150,19 @@ const CreateSalesForm = ({
           setOriginalFormData(populatedData);
 
           // Set image previews if they exist
-          if (initialData.stove_image_id?.url) {
-            setStoveImagePreview(initialData.stove_image_id.url);
-          } else if (initialData.stove_image) {
-            setStoveImagePreview(initialData.stove_image);
-          }
+          // get-sale returns stove_image / agreement_image as objects { url, ... }
+          // financial report list returns stove_image_id { url, ... }
+          const stoveUrl =
+            initialData.stove_image?.url ||
+            initialData.stove_image_id?.url ||
+            (typeof initialData.stove_image === "string" ? initialData.stove_image : null);
+          if (stoveUrl) setStoveImagePreview(stoveUrl);
 
-          if (initialData.agreement_image_id?.url) {
-            setAgreementImagePreview(initialData.agreement_image_id.url);
-          } else if (initialData.agreement_image) {
-            setAgreementImagePreview(initialData.agreement_image);
-          }
+          const agreementUrl =
+            initialData.agreement_image?.url ||
+            initialData.agreement_image_id?.url ||
+            (typeof initialData.agreement_image === "string" ? initialData.agreement_image : null);
+          if (agreementUrl) setAgreementImagePreview(agreementUrl);
 
           // Set stove search term to current stove serial
           if (initialData.stove_serial_no) {
@@ -861,6 +863,28 @@ const CreateSalesForm = ({
                 )}
               </div>
 
+              {/* Payment model read-only display in edit mode */}
+              {isEditMode && initialData?.is_installment && initialData?.payment_model && (
+                <div className="space-y-2">
+                  <Label>Payment Model</Label>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md">
+                    <Layers className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                    <span className="text-sm text-gray-700">
+                      {initialData.payment_model.name} — ₦{Number(initialData.payment_model.fixed_price).toLocaleString("en-NG")} / {initialData.payment_model.duration_months} months
+                    </span>
+                    <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Installment</span>
+                  </div>
+                </div>
+              )}
+              {isEditMode && !initialData?.is_installment && (
+                <div className="space-y-2">
+                  <Label>Payment Type</Label>
+                  <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-700">
+                    Full Payment
+                  </div>
+                </div>
+              )}
+
               {/* Payment Type dropdown — only in create mode when org has models */}
               {!isEditMode && paymentModels.length > 0 && (
                 <div className="space-y-2">
@@ -903,9 +927,9 @@ const CreateSalesForm = ({
                   onChange={(e) => handleInputChange("amount", parseAmountInput(e.target.value))}
                   placeholder="Enter sale amount"
                   className={`${errors.amount ? "border-red-500" : ""} ${
-                    isInstallment && selectedModel ? "bg-gray-50" : ""
+                    (isInstallment && selectedModel) || isEditMode ? "bg-gray-50" : ""
                   }`}
-                  readOnly={isInstallment && !!selectedModel}
+                  readOnly={(isInstallment && !!selectedModel) || isEditMode}
                 />
                 {errors.amount && (
                   <p className="text-sm text-red-600">{errors.amount}</p>
@@ -929,7 +953,7 @@ const CreateSalesForm = ({
                   <div className="grid grid-cols-3 gap-3 text-sm">
                     <div className="flex items-center gap-1.5">
                       <CreditCard className="h-3.5 w-3.5 text-gray-500" />
-                      <span className="text-gray-600">Fixed Price:</span>
+                      <span className="text-gray-600">Price:</span>
                       <span className="font-medium">
                         {formatCurrency(selectedModel.fixed_price)}
                       </span>
