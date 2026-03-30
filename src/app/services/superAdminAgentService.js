@@ -1,5 +1,5 @@
-// Super Admin Agent Service
-// Handles all API calls for super_admin_agent user management and their portal operations
+// ACSL Agent Service (formerly Super Admin Agent Service)
+// Handles all API calls for acsl_agent user management and their portal operations
 import tokenManager from "../../utils/tokenManager";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -162,5 +162,8 @@ class SuperAdminAgentService {
 }
 
 // Export singleton instance
-const superAdminAgentService = new SuperAdminAgentService();
+const acslAgentService = new SuperAdminAgentService();
+// Backward compat alias
+const superAdminAgentService = acslAgentService;
+export { acslAgentService };
 export default superAdminAgentService;

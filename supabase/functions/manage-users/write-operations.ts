@@ -136,7 +136,7 @@ export async function updateUser(
       .from("profiles")
       .select("id, role, email")
       .eq("id", userId)
-      .in("role", ["super_admin_agent", "super_admin"])
+      .in("role", ["acsl_agent", "super_admin_agent", "super_admin"])
       .single();
 
     if (checkError) {

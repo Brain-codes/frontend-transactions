@@ -52,7 +52,7 @@ const CreateSuperAdminAgentModal: React.FC<CreateSuperAdminAgentModalProps> = ({
   onSuccess,
 }) => {
   const [form, setForm] = useState({
-    role: "super_admin_agent",
+    role: "acsl_agent",
     full_name: "",
     email: "",
     password: "",
@@ -66,7 +66,7 @@ const CreateSuperAdminAgentModal: React.FC<CreateSuperAdminAgentModalProps> = ({
   const [copyMessage, setCopyMessage] = useState("");
 
   const resetForm = () => {
-    setForm({ role: "super_admin_agent", full_name: "", email: "", password: "", phone: "" });
+    setForm({ role: "acsl_agent", full_name: "", email: "", password: "", phone: "" });
     setConfirmPassword("");
     setErrors({});
     setShowPassword(false);
@@ -159,7 +159,7 @@ const CreateSuperAdminAgentModal: React.FC<CreateSuperAdminAgentModalProps> = ({
       <DialogContent size="xl">
         <DialogHeader>
           <DialogTitle>
-            {form.role === "super_admin" ? "Add Super Admin" : "Add Super Admin Agent"}
+            {form.role === "super_admin" ? "Add Super Admin" : "Add ACSL Agent"}
           </DialogTitle>
           <DialogDescription>
             {form.role === "super_admin"
@@ -197,7 +197,7 @@ const CreateSuperAdminAgentModal: React.FC<CreateSuperAdminAgentModalProps> = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="super_admin_agent">Super Admin Agent</SelectItem>
+                  <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
                   <SelectItem value="super_admin">Super Admin</SelectItem>
                 </SelectContent>
               </Select>

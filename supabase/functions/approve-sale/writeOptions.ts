@@ -25,8 +25,8 @@ export async function approveSale(
     throw new Error("Sale is already approved");
   }
 
-  // If caller is super_admin_agent, verify they are assigned to this sale's org
-  if (userRole === "super_admin_agent") {
+  // If caller is acsl_agent (formerly super_admin_agent), verify they are assigned to this sale's org
+  if (userRole === "acsl_agent" || userRole === "super_admin_agent") {
     const { assignedOrgIds } = await resolveAssignedOrgIds(supabase, userId);
     if (!assignedOrgIds.includes(sale.organization_id)) {
       throw new Error("Unauthorized: You are not assigned to this organization");

@@ -115,11 +115,11 @@ async function verifySaleAccess(supabase: any, saleId: string, auth: any) {
   }
 
   // Authorization check
-  if (auth.userRole === "admin" || auth.userRole === "agent") {
+  if (["partner", "admin", "partner_agent", "agent"].includes(auth.userRole)) {
     if (sale.organization_id !== auth.organizationId) {
       throw new Error("Unauthorized: You do not have access to this sale");
     }
-  } else if (auth.userRole === "super_admin_agent") {
+  } else if (auth.userRole === "acsl_agent" || auth.userRole === "super_admin_agent") {
     if (!auth.assignedOrgIds?.includes(sale.organization_id)) {
       throw new Error("Unauthorized: You are not assigned to this organization");
     }

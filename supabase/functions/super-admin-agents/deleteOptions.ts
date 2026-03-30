@@ -10,7 +10,7 @@ export async function deleteAgent(supabase: any, agentId: string, adminId: strin
     .from("profiles")
     .select("id, full_name, email")
     .eq("id", agentId)
-    .eq("role", "super_admin_agent")
+    .eq("role", "acsl_agent")
     .single();
 
   if (checkError) {
@@ -20,7 +20,7 @@ export async function deleteAgent(supabase: any, agentId: string, adminId: strin
 
   // Remove all org assignments first (also handled by CASCADE, but explicit is safer)
   await supabase
-    .from("super_admin_agent_organizations")
+    .from("acsl_agent_organizations")
     .delete()
     .eq("agent_id", agentId);
 

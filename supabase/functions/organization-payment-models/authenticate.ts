@@ -36,7 +36,7 @@ export async function authenticate(
     throw new Error("Unauthorized: User profile not found");
 
   if (
-    !["super_admin", "super_admin_agent", "admin", "agent"].includes(
+    !["super_admin", "acsl_agent", "super_admin_agent", "partner", "admin", "partner_agent", "agent"].includes(
       profile.role
     )
   ) {

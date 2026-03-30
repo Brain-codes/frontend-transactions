@@ -1,7 +1,7 @@
-// Read operations for super-admin-agents
+// Read operations for super-admin-agents (ACSL Agent management)
 
 export async function listAgents(supabase: any, searchParams: URLSearchParams) {
-  console.log("📋 Fetching super admin agents list...");
+  console.log("📋 Fetching ACSL agents list...");
 
   const page = parseInt(searchParams.get("page") || "1");
   const limit = Math.min(parseInt(searchParams.get("limit") || "25"), 100);
@@ -17,10 +17,12 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams) {
     .from("profiles")
     .select("id, full_name, email, phone, role, status, created_at", { count: "exact" });
 
-  if (roleParam && ["super_admin_agent", "super_admin"].includes(roleParam)) {
-    query = query.eq("role", roleParam);
+  if (roleParam && ["acsl_agent", "super_admin_agent", "super_admin"].includes(roleParam)) {
+    // Map legacy role param to new value
+    const mappedRole = roleParam === "super_admin_agent" ? "acsl_agent" : roleParam;
+    query = query.eq("role", mappedRole);
   } else {
-    query = query.in("role", ["super_admin_agent", "super_admin"]);
+    query = query.in("role", ["acsl_agent", "super_admin"]);
   }
 
   if (status && ["active", "disabled"].includes(status)) {
@@ -42,11 +44,11 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams) {
     (agents || []).map(async (agent: any) => {
       const [{ count: orgCount }, { count: stateCount }] = await Promise.all([
         supabase
-          .from("super_admin_agent_organizations")
+          .from("acsl_agent_organizations")
           .select("*", { count: "exact", head: true })
           .eq("agent_id", agent.id),
         supabase
-          .from("super_admin_agent_states")
+          .from("acsl_agent_states")
           .select("*", { count: "exact", head: true })
           .eq("agent_id", agent.id),
       ]);
@@ -83,7 +85,7 @@ export async function getAgent(supabase: any, agentId: string) {
     .from("profiles")
     .select("id, full_name, email, phone, role, status, created_at")
     .eq("id", agentId)
-    .in("role", ["super_admin_agent", "super_admin"])
+    .in("role", ["acsl_agent", "super_admin"])
     .single();
 
   if (error) {
@@ -93,7 +95,7 @@ export async function getAgent(supabase: any, agentId: string) {
 
   // Also fetch assigned organizations
   const { data: orgs } = await supabase
-    .from("super_admin_agent_organizations")
+    .from("acsl_agent_organizations")
     .select(`
       id,
       assigned_at,
@@ -115,7 +117,7 @@ export async function getAgent(supabase: any, agentId: string) {
 
   // Fetch assigned states
   const { data: stateRows } = await supabase
-    .from("super_admin_agent_states")
+    .from("acsl_agent_states")
     .select("id, state, assigned_at")
     .eq("agent_id", agentId)
     .order("state", { ascending: true });
@@ -142,7 +144,7 @@ export async function getAgentOrganizations(supabase: any, agentId: string) {
     .from("profiles")
     .select("id")
     .eq("id", agentId)
-    .in("role", ["super_admin_agent", "super_admin"])
+    .in("role", ["acsl_agent", "super_admin"])
     .single();
 
   if (agentError) {
@@ -151,7 +153,7 @@ export async function getAgentOrganizations(supabase: any, agentId: string) {
   }
 
   const { data: rows, error } = await supabase
-    .from("super_admin_agent_organizations")
+    .from("acsl_agent_organizations")
     .select(`
       id,
       assigned_at,
@@ -185,7 +187,7 @@ export async function getAgentOrganizations(supabase: any, agentId: string) {
 
   // Fetch assigned states
   const { data: stateRows } = await supabase
-    .from("super_admin_agent_states")
+    .from("acsl_agent_states")
     .select("id, state, assigned_at, assigned_by")
     .eq("agent_id", agentId)
     .order("state", { ascending: true });

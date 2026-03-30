@@ -5,7 +5,7 @@ import { useAuth } from "./contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const { isAuthenticated, isSuperAdmin, isSuperAdminAgent, isAdmin, isAgent, loading } =
+  const { isAuthenticated, isSuperAdmin, isSuperAdminAgent, isAcslAgent, isAdmin, isPartner, isAgent, isPartnerAgent, loading } =
     useAuth();
   const router = useRouter();
 
@@ -15,17 +15,17 @@ export default function Home() {
         router.push("/login");
       } else if (isSuperAdmin) {
         router.push("/dashboard");
-      } else if (isSuperAdminAgent) {
+      } else if (isAcslAgent || isSuperAdminAgent) {
         router.push("/super-admin-agent");
-      } else if (isAdmin) {
+      } else if (isPartner || isAdmin) {
         router.push("/admin");
-      } else if (isAgent) {
+      } else if (isPartnerAgent || isAgent) {
         router.push("/admin/sales");
       } else {
         router.push("/unauthorized");
       }
     }
-  }, [isAuthenticated, isSuperAdmin, isSuperAdminAgent, isAdmin, isAgent, loading, router]);
+  }, [isAuthenticated, isSuperAdmin, isSuperAdminAgent, isAcslAgent, isAdmin, isPartner, isAgent, isPartnerAgent, loading, router]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">

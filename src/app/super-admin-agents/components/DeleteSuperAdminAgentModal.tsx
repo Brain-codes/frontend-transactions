@@ -63,7 +63,7 @@ const DeleteSuperAdminAgentModal: React.FC<DeleteSuperAdminAgentModalProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-red-600" />
-            Delete Super Admin Agent
+            Delete ACSL Agent
           </DialogTitle>
           <DialogDescription>
             This action cannot be undone. The agent will permanently lose access

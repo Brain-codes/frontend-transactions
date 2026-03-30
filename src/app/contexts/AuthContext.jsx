@@ -113,21 +113,38 @@ export const AuthProvider = ({ children }) => {
     user?.app_metadata?.role === "super_admin" ||
     user?.user_metadata?.role === "super_admin" ||
     storedProfileRole === "super_admin";
-  const isSuperAdminAgent =
+  // ACSL Agent (formerly super_admin_agent) — accept both old and new role values for backward compat
+  const isAcslAgent =
+    user?.app_metadata?.role === "acsl_agent" ||
     user?.app_metadata?.role === "super_admin_agent" ||
+    user?.user_metadata?.role === "acsl_agent" ||
     user?.user_metadata?.role === "super_admin_agent" ||
+    storedProfileRole === "acsl_agent" ||
     storedProfileRole === "super_admin_agent";
-  const isAdmin =
-    user?.app_metadata?.role === "admin" ||
-    user?.user_metadata?.role === "admin" ||
-    storedProfileRole === "admin";
-  const isAgent =
-    user?.app_metadata?.role === "agent" ||
-    user?.user_metadata?.role === "agent" ||
-    storedProfileRole === "agent";
+  const isSuperAdminAgent = isAcslAgent; // backward compat alias
 
-  // Helper function to check if user has admin level access (admin, agent, super_admin, or super_admin_agent)
-  const hasAdminAccess = isSuperAdmin || isSuperAdminAgent || isAdmin || isAgent;
+  // Partner (formerly admin) — accept both old and new role values for backward compat
+  const isPartner =
+    user?.app_metadata?.role === "partner" ||
+    user?.app_metadata?.role === "admin" ||
+    user?.user_metadata?.role === "partner" ||
+    user?.user_metadata?.role === "admin" ||
+    storedProfileRole === "partner" ||
+    storedProfileRole === "admin";
+  const isAdmin = isPartner; // backward compat alias
+
+  // Partner Agent (formerly agent) — accept both old and new role values for backward compat
+  const isPartnerAgent =
+    user?.app_metadata?.role === "partner_agent" ||
+    user?.app_metadata?.role === "agent" ||
+    user?.user_metadata?.role === "partner_agent" ||
+    user?.user_metadata?.role === "agent" ||
+    storedProfileRole === "partner_agent" ||
+    storedProfileRole === "agent";
+  const isAgent = isPartnerAgent; // backward compat alias
+
+  // Helper function to check if user has admin level access (partner, partner_agent, super_admin, or acsl_agent)
+  const hasAdminAccess = isSuperAdmin || isAcslAgent || isPartner || isPartnerAgent;
 
   // Get user role
   const userRole =
@@ -500,8 +517,11 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated,
     isSuperAdmin,
     isSuperAdminAgent,
+    isAcslAgent,
     isAdmin,
+    isPartner,
     isAgent,
+    isPartnerAgent,
     hasAdminAccess,
     userRole,
     storedProfileRole,

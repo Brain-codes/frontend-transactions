@@ -5,7 +5,7 @@ import { authenticate } from "./authenticate.ts";
 import { resolveAssignedOrgIds } from "../_shared/resolveAssignedOrgIds.ts";
 
 serve(async (req) => {
-  console.log("🚀 Super Admin Agent Dashboard API started");
+  console.log("🚀 ACSL Agent Dashboard API started");
 
   if (req.method === "OPTIONS") {
     return withCors(new Response("ok", { status: 200 }));

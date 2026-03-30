@@ -102,14 +102,14 @@ serve(async (req) => {
     let organizationId: string | null = profile?.organization_id ?? null;
 
     if (!organizationId) {
-      // SAA case: org ID must come from the request body
-      if (profile?.role !== "super_admin_agent") {
+      // ACSL agent case: org ID must come from the request body
+      if (profile?.role !== "acsl_agent" && profile?.role !== "super_admin_agent") {
         return jsonError("User must belong to an organization");
       }
 
       if (!requestedOrgId) {
         return jsonError(
-          "Organization ID is required for super admin agents"
+          "Organization ID is required for ACSL agents"
         );
       }
 

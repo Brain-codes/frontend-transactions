@@ -1,5 +1,5 @@
 // Stove ID Management Edge Function
-// Supports both super_admin (all stove IDs) and admin (organization-specific) access
+// Supports super_admin (all stove IDs), partner/admin (organization-specific), and acsl_agent access
 // Provides pagination, filtering, and detailed stove ID information with sales data
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -73,18 +73,18 @@ serve(async (req) => {
     console.log("🏢 User organization:", userProfile.organization_id);
 
     // Check if user has permission
-    if (!["admin", "super_admin", "super_admin_agent"].includes(userProfile.role)) {
+    if (!["partner", "admin", "super_admin", "acsl_agent", "super_admin_agent"].includes(userProfile.role)) {
       console.log("❌ Insufficient permissions");
       throw new Error(
         "Unauthorized: Access denied. Admin or Super Admin role required."
       );
     }
 
-    // For super_admin_agent: fetch their assigned org IDs for scope enforcement
+    // For acsl_agent (formerly super_admin_agent): fetch their assigned org IDs for scope enforcement
     let allowedOrgIds: string[] | null = null;
-    if (userProfile.role === "super_admin_agent") {
+    if (userProfile.role === "acsl_agent" || userProfile.role === "super_admin_agent") {
       const { data: assignments } = await supabase
-        .from("super_admin_agent_organizations")
+        .from("acsl_agent_organizations")
         .select("organization_id")
         .eq("agent_id", userId);
       allowedOrgIds = assignments?.map((a: any) => a.organization_id) || [];

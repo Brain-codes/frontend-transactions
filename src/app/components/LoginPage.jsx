@@ -36,7 +36,9 @@ const LoginPage = () => {
           data.user?.app_metadata?.role === "super_admin" ||
           data.user?.user_metadata?.role === "super_admin";
         const isSuperAdminAgent =
+          data.user?.app_metadata?.role === "acsl_agent" ||
           data.user?.app_metadata?.role === "super_admin_agent" ||
+          data.user?.user_metadata?.role === "acsl_agent" ||
           data.user?.user_metadata?.role === "super_admin_agent";
         const isAtmosfairUser = data.user?.email?.includes("atmosfair.com");
 

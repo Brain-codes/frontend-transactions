@@ -18,7 +18,7 @@ export async function setAgentOrganizations(
     .from("profiles")
     .select("id")
     .eq("id", agentId)
-    .eq("role", "super_admin_agent")
+    .eq("role", "acsl_agent")
     .single();
 
   if (agentError) {
@@ -42,7 +42,7 @@ export async function setAgentOrganizations(
 
   // Delete all existing assignments for this agent
   const { error: deleteError } = await supabase
-    .from("super_admin_agent_organizations")
+    .from("acsl_agent_organizations")
     .delete()
     .eq("agent_id", agentId);
 
@@ -57,7 +57,7 @@ export async function setAgentOrganizations(
     }));
 
     const { error: insertError } = await supabase
-      .from("super_admin_agent_organizations")
+      .from("acsl_agent_organizations")
       .insert(inserts);
 
     if (insertError) throw new Error(`Failed to assign organizations: ${insertError.message}`);
@@ -67,7 +67,7 @@ export async function setAgentOrganizations(
 
   // Return the updated list
   const { data: rows } = await supabase
-    .from("super_admin_agent_organizations")
+    .from("acsl_agent_organizations")
     .select(`
       id, assigned_at,
       organizations ( id, partner_name, branch, state )
@@ -97,7 +97,7 @@ export async function removeAgentOrganization(
   console.log(`🔗 Removing org ${orgId} from agent ${agentId}`);
 
   const { error } = await supabase
-    .from("super_admin_agent_organizations")
+    .from("acsl_agent_organizations")
     .delete()
     .eq("agent_id", agentId)
     .eq("organization_id", orgId);

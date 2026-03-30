@@ -63,7 +63,7 @@ const SuperAdminAgentPartnersPage = () => {
     });
 
   return (
-    <ProtectedRoute allowedRoles={["super_admin_agent"]}>
+    <ProtectedRoute allowedRoles={["acsl_agent", "super_admin_agent"]}>
       <DashboardLayout currentRoute="super-admin-agent-partners">
         <div className="p-6 space-y-6">
           {/* Header */}

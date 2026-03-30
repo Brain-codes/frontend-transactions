@@ -32,9 +32,12 @@ const TopNavigation = ({
     getStoredProfile,
     isSuperAdmin,
     isAdmin,
+    isPartner,
     isAgent,
+    isPartnerAgent,
     isAuthenticated,
     isSuperAdminAgent,
+    isAcslAgent,
   } = useAuth();
   const router = useRouter();
 
@@ -85,16 +88,17 @@ const TopNavigation = ({
 
   const getUserRole = () => {
     if (isSuperAdmin) return "Super Admin";
-    if (isAdmin) return "Admin";
-    if (isAgent) return "Agent";
-    if (isSuperAdminAgent) return "Super Admin Agent";
+    if (isAcslAgent || isSuperAdminAgent) return "ACSL Agent";
+    if (isPartner || isAdmin) return "Partner";
+    if (isPartnerAgent || isAgent) return "Partner Agent";
     return "User";
   };
 
   const getRoleBadgeColor = () => {
     if (isSuperAdmin) return "bg-purple-100 text-purple-800 border-purple-200";
-    if (isAdmin) return "bg-blue-100 text-blue-800 border-blue-200";
-    if (isAgent) return "bg-green-100 text-green-800 border-green-200";
+    if (isAcslAgent || isSuperAdminAgent) return "bg-orange-100 text-orange-800 border-orange-200";
+    if (isPartner || isAdmin) return "bg-blue-100 text-blue-800 border-blue-200";
+    if (isPartnerAgent || isAgent) return "bg-green-100 text-green-800 border-green-200";
     return "bg-gray-100 text-gray-800 border-gray-200";
   };
 

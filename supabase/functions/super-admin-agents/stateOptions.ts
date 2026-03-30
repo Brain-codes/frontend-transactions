@@ -7,7 +7,7 @@ export async function getAgentStates(supabase: any, agentId: string) {
   console.log(`📍 Fetching state assignments for agent ${agentId}`);
 
   const { data, error } = await supabase
-    .from("super_admin_agent_states")
+    .from("acsl_agent_states")
     .select("id, state, assigned_at, assigned_by")
     .eq("agent_id", agentId)
     .order("state", { ascending: true });
@@ -33,12 +33,12 @@ export async function setAgentStates(
 ) {
   console.log(`📍 Setting state assignments for agent ${agentId}:`, states);
 
-  // Verify agent exists and is super_admin_agent
+  // Verify agent exists and is acsl_agent
   const { data: agent, error: agentError } = await supabase
     .from("profiles")
     .select("id")
     .eq("id", agentId)
-    .eq("role", "super_admin_agent")
+    .eq("role", "acsl_agent")
     .single();
 
   if (agentError) {
@@ -48,7 +48,7 @@ export async function setAgentStates(
 
   // Delete all existing state assignments for this agent
   const { error: deleteError } = await supabase
-    .from("super_admin_agent_states")
+    .from("acsl_agent_states")
     .delete()
     .eq("agent_id", agentId);
 
@@ -64,7 +64,7 @@ export async function setAgentStates(
     }));
 
     const { error: insertError } = await supabase
-      .from("super_admin_agent_states")
+      .from("acsl_agent_states")
       .insert(inserts);
 
     if (insertError)
@@ -75,7 +75,7 @@ export async function setAgentStates(
 
   // Return the updated list
   const { data: rows } = await supabase
-    .from("super_admin_agent_states")
+    .from("acsl_agent_states")
     .select("id, state, assigned_at")
     .eq("agent_id", agentId)
     .order("state", { ascending: true });
@@ -97,7 +97,7 @@ export async function removeAgentState(
   console.log(`📍 Removing state "${state}" from agent ${agentId}`);
 
   const { error } = await supabase
-    .from("super_admin_agent_states")
+    .from("acsl_agent_states")
     .delete()
     .eq("agent_id", agentId)
     .eq("state", state);

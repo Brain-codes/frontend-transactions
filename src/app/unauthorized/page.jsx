@@ -8,7 +8,7 @@ import { AlertCircle, Home, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function UnauthorizedPage() {
-  const { signOut, user, isSuperAdmin, isAdmin, getStoredProfile } = useAuth();
+  const { signOut, user, isSuperAdmin, isAdmin, isPartner, isAcslAgent, isSuperAdminAgent, getStoredProfile } = useAuth();
   const router = useRouter();
   const [userInfo, setUserInfo] = useState(null);
 
@@ -19,9 +19,11 @@ export default function UnauthorizedPage() {
       setUserInfo({
         role: isSuperAdmin
           ? "Super Admin"
-          : isAdmin
-            ? "Admin"
-            : profile.role || "User",
+          : (isAcslAgent || isSuperAdminAgent)
+            ? "ACSL Agent"
+            : (isPartner || isAdmin)
+              ? "Partner"
+              : profile.role || "User",
         organization: profile.organization_name || profile.organizations?.name,
       });
     }

@@ -293,7 +293,7 @@ const StoveManagementPage = () => {
   };
 
   return (
-    <ProtectedRoute allowedRoles={["super_admin", "admin"]}>
+    <ProtectedRoute allowedRoles={["super_admin", "partner", "admin"]}>
       <DashboardLayout currentRoute="stove-management" title="Stove ID Management">
         <div className="p-6 space-y-5">
 

@@ -26,19 +26,19 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
       sortOrder,
     });
 
-    // Build base query — when no role specified, return both super_admin and super_admin_agent
+    // Build base query — when no role specified, return both super_admin and acsl_agent (formerly super_admin_agent)
     let query = supabase
       .from("profiles")
       .select("id, full_name, email, phone, role, status, created_at, last_login", {
         count: "exact",
       });
 
-    if (role && ["super_admin_agent", "super_admin"].includes(role)) {
+    if (role && ["acsl_agent", "super_admin_agent", "super_admin"].includes(role)) {
       query = query.eq("role", role);
       console.log("🔍 Showing users with role:", role);
     } else {
-      query = query.in("role", ["super_admin_agent", "super_admin"]);
-      console.log("🔍 Showing all super admin users");
+      query = query.in("role", ["acsl_agent", "super_admin_agent", "super_admin"]);
+      console.log("🔍 Showing all super admin and ACSL agent users");
     }
 
     // Apply status filter
@@ -71,14 +71,14 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
     // Fetch assigned_organizations_count + assigned_states_count for each SAA user
     const usersWithCounts = await Promise.all(
       (users || []).map(async (user: any) => {
-        if (user.role === "super_admin_agent") {
+        if (user.role === "acsl_agent" || user.role === "super_admin_agent") {
           const [{ count: orgCount }, { count: stateCount }] = await Promise.all([
             supabase
-              .from("super_admin_agent_organizations")
+              .from("acsl_agent_organizations")
               .select("*", { count: "exact", head: true })
               .eq("agent_id", user.id),
             supabase
-              .from("super_admin_agent_states")
+              .from("acsl_agent_states")
               .select("*", { count: "exact", head: true })
               .eq("agent_id", user.id),
           ]);

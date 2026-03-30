@@ -1,4 +1,4 @@
-// Authentication module — requires super_admin_agent or super_admin role
+// Authentication module — requires acsl_agent (formerly super_admin_agent) or super_admin role
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 export interface AuthResult {
@@ -30,8 +30,8 @@ export async function authenticate(supabase: any, authHeader: string): Promise<A
 
   if (profileError || !profile) throw new Error("Unauthorized: User profile not found");
 
-  if (!["super_admin_agent", "super_admin"].includes(profile.role)) {
-    throw new Error("Unauthorized: Only super admin agents can approve sales");
+  if (!["acsl_agent", "super_admin_agent", "super_admin"].includes(profile.role)) {
+    throw new Error("Unauthorized: Only ACSL agents can approve sales");
   }
 
   if (profile.status !== "active") throw new Error("Unauthorized: Account is not active");

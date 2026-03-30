@@ -61,12 +61,12 @@ export async function getStoveIds(
   );
 
   // Apply role-based filtering
-  if (userRole === "admin" && organizationId) {
-    console.log(`🔒 Admin user - filtering by organization: ${organizationId}`);
+  if ((userRole === "partner" || userRole === "admin") && organizationId) {
+    console.log(`🔒 Partner user - filtering by organization: ${organizationId}`);
     query = query.eq("organization_id", organizationId);
   } else if (userRole === "super_admin") {
     console.log("🔓 Super admin - accessing all stove IDs");
-  } else if (userRole === "super_admin_agent") {
+  } else if (userRole === "acsl_agent" || userRole === "super_admin_agent") {
     // SAA: scope to their assigned orgs; intersect with client-provided org filter
     const effectiveOrgIds =
       allowedOrgIds && allowedOrgIds.length > 0
@@ -239,13 +239,13 @@ export async function getStoveIdById(
   }
 
   // Check authorization
-  if (userRole === "admin" && data.organization_id !== organizationId) {
+  if ((userRole === "partner" || userRole === "admin") && data.organization_id !== organizationId) {
     throw new Error(
       "Unauthorized: You can only view stove IDs from your organization"
     );
   }
   if (
-    userRole === "super_admin_agent" &&
+    (userRole === "acsl_agent" || userRole === "super_admin_agent") &&
     allowedOrgIds &&
     !allowedOrgIds.includes(data.organization_id)
   ) {

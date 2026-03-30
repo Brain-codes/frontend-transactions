@@ -100,7 +100,7 @@ const AdminDashboardPage = () => {
 
   if (loading && !dashboardData) {
     return (
-      <ProtectedRoute allowedRoles={["admin", "super_admin"]}>
+      <ProtectedRoute allowedRoles={["partner", "admin", "super_admin"]}>
         <DashboardLayout currentRoute="admin" title="Dashboard">
           <div className="h-full flex items-center justify-center">
             <div className="text-center">
@@ -115,7 +115,7 @@ const AdminDashboardPage = () => {
 
   if (error) {
     return (
-      <ProtectedRoute allowedRoles={["admin", "super_admin"]}>
+      <ProtectedRoute allowedRoles={["partner", "admin", "super_admin"]}>
         <DashboardLayout currentRoute="admin" title="Dashboard">
           <div className="h-full flex items-center justify-center">
             <div className="text-center">
@@ -130,7 +130,7 @@ const AdminDashboardPage = () => {
   }
 
   return (
-    <ProtectedRoute allowedRoles={["admin", "super_admin"]}>
+    <ProtectedRoute allowedRoles={["partner", "admin", "super_admin"]}>
       <DashboardLayout
         currentRoute="admin"
         title="Dashboard"

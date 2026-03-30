@@ -1,4 +1,4 @@
-// Authentication module for super-admin-agents operations
+// Authentication module for super-admin-agents (ACSL Agent management) operations
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 export interface AuthResult {
@@ -62,7 +62,7 @@ export async function authenticateSuperAdmin(
 }
 
 /**
- * Authenticates any valid caller (super_admin or super_admin_agent).
+ * Authenticates any valid caller (super_admin or acsl_agent).
  * Used for read operations where both roles are allowed.
  */
 export async function authenticateReadAccess(
@@ -96,7 +96,7 @@ export async function authenticateReadAccess(
     throw new Error("Unauthorized: User profile not found");
   }
 
-  const allowedRoles = ["super_admin", "super_admin_agent"];
+  const allowedRoles = ["super_admin", "acsl_agent", "super_admin_agent"];
   if (!allowedRoles.includes(profile.role)) {
     throw new Error("Unauthorized: Insufficient permissions");
   }
