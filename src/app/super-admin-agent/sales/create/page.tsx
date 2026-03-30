@@ -12,7 +12,7 @@ export default function SAACreateSalePage() {
   const router = useRouter();
 
   return (
-    <ProtectedRoute allowedRoles={["super_admin_agent"]}>
+    <ProtectedRoute allowedRoles={["acsl_agent", "super_admin_agent"]}>
       <DashboardLayout currentRoute="super-admin-agent-sales">
         <div className="p-6 space-y-4">
           <Button asChild variant="ghost" className="text-gray-600 hover:text-gray-900 -ml-2">

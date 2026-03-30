@@ -60,7 +60,7 @@ interface UserCredential {
 
 const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
   { key: "partners", label: "Partners", icon: Building2 },
-  { key: "saa", label: "Super Admin Agents", icon: Users },
+  { key: "saa", label: "ACSL Agents", icon: Users },
   { key: "super-admins", label: "Super Admins", icon: Shield },
 ];
 
@@ -366,7 +366,7 @@ const CredentialsPage = () => {
 
   const handleTabChange = (tab: TabKey) => {
     setActiveTab(tab);
-    if (tab === "saa" && saaUsers.length === 0) fetchUsersByRole("super_admin_agent", setSaaUsers, setLoadingSaa);
+    if (tab === "saa" && saaUsers.length === 0) fetchUsersByRole("acsl_agent", setSaaUsers, setLoadingSaa);
     if (tab === "super-admins" && superAdminUsers.length === 0) fetchUsersByRole("super_admin", setSuperAdminUsers, setLoadingSuperAdmins);
   };
 
@@ -552,12 +552,12 @@ const CredentialsPage = () => {
             </div>
           )}
 
-          {/* ── Super Admin Agents Tab ─────────────────────────────────────── */}
+          {/* ── ACSL Agents Tab ─────────────────────────────────────── */}
           {activeTab === "saa" && (
             <UserCredentialsSection
               users={saaUsers}
               loadingState={loadingSaa}
-              onRefresh={() => fetchUsersByRole("super_admin_agent", setSaaUsers, setLoadingSaa)}
+              onRefresh={() => fetchUsersByRole("acsl_agent", setSaaUsers, setLoadingSaa)}
               copiedField={copiedField}
               onCopy={copyToClipboard}
             />

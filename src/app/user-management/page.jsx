@@ -86,7 +86,9 @@ const formatDate = (dateString) => {
 
 const getRoleLabel = (role) => {
   if (role === "super_admin") return "Super Admin";
-  if (role === "super_admin_agent") return "Super Admin Agent";
+  if (role === "acsl_agent" || role === "super_admin_agent") return "ACSL Agent";
+  if (role === "partner" || role === "admin") return "Partner";
+  if (role === "partner_agent" || role === "agent") return "Partner Agent";
   return role;
 };
 
@@ -124,7 +126,7 @@ const UserManagementPage = () => {
     full_name: "",
     email: "",
     phone: "",
-    role: "super_admin_agent",
+    role: "acsl_agent",
     password: "",
     auto_generate_password: true,
   });
@@ -237,7 +239,7 @@ const UserManagementPage = () => {
   // ── Form helpers ───────────────────────────────────────────────────────────
 
   const resetForm = () => {
-    setUserForm({ full_name: "", email: "", phone: "", role: "super_admin_agent", password: "", auto_generate_password: true });
+    setUserForm({ full_name: "", email: "", phone: "", role: "acsl_agent", password: "", auto_generate_password: true });
     setFormErrors({});
     setShowPassword(false);
   };
@@ -255,7 +257,7 @@ const UserManagementPage = () => {
 
   const openEditModal = (user) => {
     setSelectedUser(user);
-    setUserForm({ full_name: user.full_name || "", email: user.email || "", phone: user.phone || "", role: user.role || "super_admin_agent", password: "", auto_generate_password: true });
+    setUserForm({ full_name: user.full_name || "", email: user.email || "", phone: user.phone || "", role: user.role || "acsl_agent", password: "", auto_generate_password: true });
     setFormErrors({});
     setShowEditModal(true);
   };
@@ -371,7 +373,7 @@ const UserManagementPage = () => {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <ProtectedRoute allowedRoles={["super_admin", "super_admin_agent"]}>
+    <ProtectedRoute allowedRoles={["super_admin", "acsl_agent", "super_admin_agent"]}>
       <DashboardLayout
         currentRoute="user-management"
         title="User Management"
@@ -421,7 +423,7 @@ const UserManagementPage = () => {
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="super_admin">Super Admin</SelectItem>
-                <SelectItem value="super_admin_agent">Super Admin Agent</SelectItem>
+                <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
               </SelectContent>
             </Select>
 
@@ -522,7 +524,7 @@ const UserManagementPage = () => {
 
                         {/* Assigned Partners — inline pattern, no badges */}
                         <TableCell>
-                          {u.role === "super_admin_agent" ? (
+                          {["acsl_agent", "super_admin_agent"].includes(u.role) ? (
                             <div className="flex items-center gap-1.5 text-xs">
                               <span className="text-blue-700 font-medium">
                                 {u.assigned_organizations_count ?? 0}{" "}
@@ -564,7 +566,7 @@ const UserManagementPage = () => {
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1.5 flex-wrap">
                             {/* Assign Partners — SAA only */}
-                            {u.role === "super_admin_agent" && (
+                            {["acsl_agent", "super_admin_agent"].includes(u.role) && (
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -669,7 +671,7 @@ const UserManagementPage = () => {
           <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create New User</DialogTitle>
-              <DialogDescription>Add a new super admin or super admin agent to the system</DialogDescription>
+              <DialogDescription>Add a new super admin or ACSL agent to the system</DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleCreateUser} className="space-y-4 pt-2">
@@ -720,7 +722,7 @@ const UserManagementPage = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="super_admin_agent">Super Admin Agent</SelectItem>
+                      <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
                       <SelectItem value="super_admin">Super Admin</SelectItem>
                     </SelectContent>
                   </Select>

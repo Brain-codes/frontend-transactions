@@ -263,9 +263,9 @@ function applyOrganizationFilters(
 ) {
   console.log("🏢 Applying organization filters...");
 
-  if (userRole === "super_admin_agent") {
+  if (userRole === "acsl_agent" || userRole === "super_admin_agent") {
     // Lock query to the agent's assigned organizations only
-    console.log("🔗 Super admin agent: restricting to assigned orgs");
+    console.log("🔗 ACSL agent: restricting to assigned orgs");
     const allowed = assignedOrgIds ?? [];
     if (allowed.length === 0) {
       // No assigned orgs — return no results

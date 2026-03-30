@@ -26,8 +26,8 @@ export async function createAgent(
         "🏢 Super admin specified organization:",
         targetOrganizationId
       );
-    } else if (userRole === "admin") {
-      // Admin creates agents in their own organization
+    } else if (userRole === "partner" || userRole === "admin") {
+      // Partner (formerly admin) creates agents in their own organization
       if (!organizationId) {
         throw new Error("Admin must have an organization to create agents");
       }
@@ -65,7 +65,7 @@ export async function createAgent(
         email_confirm: true,
         user_metadata: {
           full_name: validatedData.full_name,
-          role: "agent",
+          role: "partner_agent",
           organization_id: targetOrganizationId,
         },
       });
@@ -144,10 +144,10 @@ export async function updateAgent(
       .from("profiles")
       .select("id, organization_id, role")
       .eq("id", agentId)
-      .eq("role", "agent");
+      .in("role", ["partner_agent", "agent"]);
 
-    // Apply organization filter for admin users
-    if (userRole === "admin" && organizationId) {
+    // Apply organization filter for partner (formerly admin) users
+    if ((userRole === "partner" || userRole === "admin") && organizationId) {
       checkQuery = checkQuery.eq("organization_id", organizationId);
     } else if (userRole !== "super_admin") {
       throw new Error("Insufficient permissions to update agents");

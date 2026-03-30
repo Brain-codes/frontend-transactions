@@ -300,7 +300,7 @@ const SuperAdminAgentsPage = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Roles</SelectItem>
-                    <SelectItem value="super_admin_agent">Super Admin Agent</SelectItem>
+                    <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
                     <SelectItem value="super_admin">Super Admin</SelectItem>
                   </SelectContent>
                 </Select>
@@ -424,7 +424,7 @@ const SuperAdminAgentsPage = () => {
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-2">
-                          {agent.role === "super_admin_agent" && (
+                          {["acsl_agent", "super_admin_agent"].includes(agent.role) && (
                             <Button
                               size="sm"
                               className="bg-brand hover:bg-brand/90 text-white text-xs"

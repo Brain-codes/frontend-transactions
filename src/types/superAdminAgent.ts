@@ -1,15 +1,20 @@
-export interface SuperAdminAgent {
+// ACSL Agent types (formerly SuperAdminAgent)
+
+export interface AcslAgent {
   id: string;
   full_name: string;
   email: string;
   phone: string | null;
-  role: "super_admin_agent";
+  role: "acsl_agent";
   status: string;
-  organization_id: null; // SAA users never own an organization
+  organization_id: null; // ACSL Agent users never own an organization
   created_at: string;
   assigned_organizations_count?: number;
   assigned_organizations?: AssignedOrganization[];
 }
+
+// Backward compat alias
+export type SuperAdminAgent = AcslAgent;
 
 export interface AssignedOrganization {
   id: string;
@@ -24,7 +29,7 @@ export interface AssignedOrganization {
   assigned_by?: string;
 }
 
-export interface SuperAdminAgentDashboardStats {
+export interface AcslAgentDashboardStats {
   assignedPartnersCount: number;
   totalSales: number;
   pendingApprovals: number;
@@ -32,18 +37,27 @@ export interface SuperAdminAgentDashboardStats {
   salesCreatedByMe: number;
 }
 
-export interface CreateSuperAdminAgentPayload {
+// Backward compat alias
+export type SuperAdminAgentDashboardStats = AcslAgentDashboardStats;
+
+export interface CreateAcslAgentPayload {
   full_name: string;
   email: string;
   password: string;
   phone?: string;
 }
 
-export interface UpdateSuperAdminAgentPayload {
+// Backward compat alias
+export type CreateSuperAdminAgentPayload = CreateAcslAgentPayload;
+
+export interface UpdateAcslAgentPayload {
   full_name?: string;
   phone?: string;
   status?: "active" | "disabled";
 }
+
+// Backward compat alias
+export type UpdateSuperAdminAgentPayload = UpdateAcslAgentPayload;
 
 export interface SetAgentOrganizationsPayload {
   organization_ids: string[];

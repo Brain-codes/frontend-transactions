@@ -6,7 +6,7 @@ export interface AuthResult {
   userRole: string;
   userId: string;
   userOrgId: string | null;
-  assignedOrgIds?: string[]; // populated for super_admin_agent
+  assignedOrgIds?: string[]; // populated for acsl_agent (formerly super_admin_agent)
 }
 
 export async function authenticateUser(supabase: any): Promise<AuthResult> {
@@ -54,24 +54,24 @@ export async function authenticateUser(supabase: any): Promise<AuthResult> {
 
   console.log("✅ User role determined:", { userRole, userOrgId });
 
-  // Allow super_admin, admin, agent, and super_admin_agent roles
-  if (!["super_admin", "admin", "agent", "super_admin_agent"].includes(userRole)) {
+  // Allow super_admin, partner (admin), partner_agent (agent), and acsl_agent (super_admin_agent) roles
+  if (!["super_admin", "partner", "admin", "partner_agent", "agent", "acsl_agent", "super_admin_agent"].includes(userRole)) {
     console.log("❌ Access denied - Role:", userRole);
     throw new Error(
-      "Access denied. Admin, Agent, or Super Admin role required."
+      "Access denied. Partner, Partner Agent, or Super Admin role required."
     );
   }
 
   console.log("✅ Access confirmed for role:", userRole);
 
-  // For super_admin_agent, resolve assigned org IDs (direct + state-based)
+  // For acsl_agent (formerly super_admin_agent), resolve assigned org IDs (direct + state-based)
   let assignedOrgIds: string[] | undefined;
-  if (userRole === "super_admin_agent") {
-    console.log("🔗 Resolving assigned organizations for super_admin_agent...");
+  if (userRole === "acsl_agent" || userRole === "super_admin_agent") {
+    console.log("🔗 Resolving assigned organizations for acsl_agent...");
     const resolved = await resolveAssignedOrgIds(supabase, userData.user.id);
     assignedOrgIds = resolved.assignedOrgIds;
     console.log(
-      `✅ Super admin agent: ${resolved.directOrgIds.length} direct orgs + ${resolved.assignedStates.length} states (${resolved.stateResolvedOrgIds.length} state orgs) = ${assignedOrgIds.length} total`
+      `✅ ACSL agent: ${resolved.directOrgIds.length} direct orgs + ${resolved.assignedStates.length} states (${resolved.stateResolvedOrgIds.length} state orgs) = ${assignedOrgIds.length} total`
     );
   }
 

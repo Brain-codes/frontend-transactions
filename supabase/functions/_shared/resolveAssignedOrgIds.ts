@@ -1,14 +1,14 @@
 /**
- * Shared helper: resolves the full set of organization IDs an SAA has access to.
+ * Shared helper: resolves the full set of organization IDs an ACSL Agent has access to.
  * Merges direct org assignments + state-based assignments (dynamic resolution).
  */
 
 export interface ResolvedAssignments {
   /** Final merged, deduplicated org IDs */
   assignedOrgIds: string[];
-  /** Org IDs from direct super_admin_agent_organizations assignments */
+  /** Org IDs from direct acsl_agent_organizations assignments */
   directOrgIds: string[];
-  /** State names from super_admin_agent_states */
+  /** State names from acsl_agent_states */
   assignedStates: string[];
   /** Org IDs resolved from assigned states */
   stateResolvedOrgIds: string[];
@@ -20,7 +20,7 @@ export async function resolveAssignedOrgIds(
 ): Promise<ResolvedAssignments> {
   // 1. Fetch direct org assignments
   const { data: directAssignments } = await supabase
-    .from("super_admin_agent_organizations")
+    .from("acsl_agent_organizations")
     .select("organization_id")
     .eq("agent_id", agentId);
 
@@ -30,7 +30,7 @@ export async function resolveAssignedOrgIds(
 
   // 2. Fetch state assignments
   const { data: stateAssignments } = await supabase
-    .from("super_admin_agent_states")
+    .from("acsl_agent_states")
     .select("state")
     .eq("agent_id", agentId);
 

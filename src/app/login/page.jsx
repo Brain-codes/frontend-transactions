@@ -26,8 +26,11 @@ const LoginPage = () => {
     isAuthenticated,
     isSuperAdmin,
     isAdmin,
+    isPartner,
     isAgent,
+    isPartnerAgent,
     isSuperAdminAgent,
+    isAcslAgent,
     loading: authLoading,
     signOut,
   } = useAuth();
@@ -62,12 +65,12 @@ const LoginPage = () => {
       // Redirect based on role
       if (isSuperAdmin) {
         router.push("/dashboard");
-      } else if (isAdmin) {
-        router.push("/admin");
-      } else if (isAgent) {
-        router.push("/admin/sales");
-      } else if (isSuperAdminAgent) {
+      } else if (isAcslAgent || isSuperAdminAgent) {
         router.push("/super-admin-agent");
+      } else if (isPartner || isAdmin) {
+        router.push("/admin");
+      } else if (isPartnerAgent || isAgent) {
+        router.push("/admin/sales");
       } else {
         router.push("/unauthorized");
       }
@@ -79,7 +82,11 @@ const LoginPage = () => {
     loginAttempted,
     isSuperAdmin,
     isAdmin,
+    isPartner,
     isAgent,
+    isPartnerAgent,
+    isSuperAdminAgent,
+    isAcslAgent,
     router,
   ]);
 

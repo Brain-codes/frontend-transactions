@@ -106,7 +106,7 @@ const ViewSuperAdminAgentModal: React.FC<ViewSuperAdminAgentModalProps> = ({
               </h3>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <Badge className="bg-purple-100 text-purple-800 border-purple-200">
-                  Super Admin Agent
+                  ACSL Agent
                 </Badge>
                 <Badge
                   className={

@@ -1,7 +1,7 @@
-// Write operations for super-admin-agents (create and update)
+// Write operations for super-admin-agents (ACSL Agent create and update)
 
 export async function createAgent(supabase: any, data: any, adminId: string) {
-  console.log("➕ Creating new super admin agent...");
+  console.log("➕ Creating new ACSL agent...");
 
   // Validate required fields
   if (!data.full_name?.trim()) throw new Error("validation: full_name is required");
@@ -11,9 +11,11 @@ export async function createAgent(supabase: any, data: any, adminId: string) {
   }
 
   const email = data.email.trim().toLowerCase();
-  const role = ["super_admin_agent", "super_admin"].includes(data.role)
-    ? data.role
-    : "super_admin_agent";
+  // Accept both old and new role values; default to acsl_agent
+  const mappedRole = data.role === "super_admin_agent" ? "acsl_agent" : data.role;
+  const role = ["acsl_agent", "super_admin"].includes(mappedRole)
+    ? mappedRole
+    : "acsl_agent";
 
   // Check if email already exists
   const { data: existing } = await supabase
@@ -82,10 +84,10 @@ export async function createAgent(supabase: any, data: any, adminId: string) {
     organization_id: null,
   });
 
-  console.log("✅ Super admin agent created successfully:", profile.id);
+  console.log("✅ ACSL agent created successfully:", profile.id);
 
   return {
-    message: "Super admin agent created successfully",
+    message: "ACSL agent created successfully",
     data: { ...profile, phone: data.phone || profile.phone },
   };
 }
@@ -98,7 +100,7 @@ export async function updateAgent(supabase: any, agentId: string, data: any) {
     .from("profiles")
     .select("id")
     .eq("id", agentId)
-    .in("role", ["super_admin_agent", "super_admin"])
+    .in("role", ["acsl_agent", "super_admin"])
     .single();
 
   if (checkError) {

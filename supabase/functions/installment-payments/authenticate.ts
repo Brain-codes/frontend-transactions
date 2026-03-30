@@ -38,7 +38,7 @@ export async function authenticate(
     throw new Error("Unauthorized: User profile not found");
 
   if (
-    !["super_admin", "super_admin_agent", "admin", "agent"].includes(
+    !["super_admin", "acsl_agent", "super_admin_agent", "partner", "admin", "partner_agent", "agent"].includes(
       profile.role
     )
   ) {
@@ -48,9 +48,9 @@ export async function authenticate(
   if (profile.status !== "active")
     throw new Error("Unauthorized: Account is not active");
 
-  // For SAA, resolve assigned org IDs
+  // For ACSL agent (formerly SAA), resolve assigned org IDs
   let assignedOrgIds: string[] | undefined;
-  if (profile.role === "super_admin_agent") {
+  if (profile.role === "acsl_agent" || profile.role === "super_admin_agent") {
     const resolved = await resolveAssignedOrgIds(supabase, profile.id);
     assignedOrgIds = resolved.assignedOrgIds;
   }

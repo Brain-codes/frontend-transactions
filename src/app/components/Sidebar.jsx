@@ -30,7 +30,7 @@ import Link from "next/link";
 
 const Sidebar = ({ isOpen, onClose, currentRoute }) => {
   const router = useRouter();
-  const { isSuperAdmin, isSuperAdminAgent, isAdmin, isAgent, hasAdminAccess, isAtmosfairUser } =
+  const { isSuperAdmin, isSuperAdminAgent, isAcslAgent, isAdmin, isPartner, isAgent, isPartnerAgent, hasAdminAccess, isAtmosfairUser } =
     useAuth();
 
   // Track which sub-menus are expanded
@@ -166,8 +166,8 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
       ];
     }
 
-    // Super Admin Agent gets access to their assigned partners' sales
-    if (isSuperAdminAgent) {
+    // ACSL Agent gets access to their assigned partners' sales
+    if (isAcslAgent || isSuperAdminAgent) {
       return [
         {
           name: "Dashboard",
@@ -212,8 +212,8 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
       ];
     }
 
-    // Admin gets access to their organization's features
-    if (isAdmin) {
+    // Partner (formerly Admin) gets access to their organization's features
+    if (isPartner || isAdmin) {
       return [
         {
           name: "Dashboard",
@@ -298,8 +298,8 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
       ];
     }
 
-    // Agent gets access to sales creation and viewing only
-    if (isAgent) {
+    // Partner Agent (formerly Agent) gets access to sales creation and viewing only
+    if (isPartnerAgent || isAgent) {
       return [
         {
           name: "Manage Sales",

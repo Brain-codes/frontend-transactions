@@ -40,7 +40,7 @@ export async function handleRoute(req: Request, supabase: any) {
     // Both super_admin and the SAA themselves can read
     const auth = await authenticateReadAccess(supabase, authHeader);
     // SAA can only read their own assignments
-    if (auth.userRole === "super_admin_agent" && auth.userId !== agentId) {
+    if (["acsl_agent", "super_admin_agent"].includes(auth.userRole) && auth.userId !== agentId) {
       throw new Error("Unauthorized: You can only view your own assignments");
     }
     return await getAgentOrganizations(supabase, agentId);
@@ -49,7 +49,7 @@ export async function handleRoute(req: Request, supabase: any) {
   // ── GET /super-admin-agents/{id}/states
   if (method === "GET" && agentId && subResource === "states") {
     const auth = await authenticateReadAccess(supabase, authHeader);
-    if (auth.userRole === "super_admin_agent" && auth.userId !== agentId) {
+    if (["acsl_agent", "super_admin_agent"].includes(auth.userRole) && auth.userId !== agentId) {
       throw new Error("Unauthorized: You can only view your own assignments");
     }
     return await getAgentStates(supabase, agentId);

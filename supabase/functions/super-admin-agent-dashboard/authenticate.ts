@@ -1,4 +1,4 @@
-// Authentication module — requires super_admin_agent role
+// Authentication module — requires acsl_agent role
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 export interface AuthResult {
@@ -7,7 +7,7 @@ export interface AuthResult {
 }
 
 export async function authenticate(supabase: any, authHeader: string): Promise<AuthResult> {
-  console.log("🔐 Authenticating super admin agent for dashboard...");
+  console.log("🔐 Authenticating ACSL agent for dashboard...");
 
   if (!authHeader) throw new Error("Unauthorized: Authorization required");
 
@@ -30,8 +30,8 @@ export async function authenticate(supabase: any, authHeader: string): Promise<A
 
   if (profileError || !profile) throw new Error("Unauthorized: User profile not found");
 
-  // Allow both super_admin_agent and super_admin to access this dashboard
-  if (!["super_admin_agent", "super_admin"].includes(profile.role)) {
+  // Allow acsl_agent (and legacy super_admin_agent) and super_admin to access this dashboard
+  if (!["acsl_agent", "super_admin_agent", "super_admin"].includes(profile.role)) {
     throw new Error("Unauthorized: Insufficient permissions");
   }
 

@@ -106,7 +106,7 @@ const EditSuperAdminAgentModal: React.FC<EditSuperAdminAgentModalProps> = ({
     <Dialog open onOpenChange={handleClose}>
       <DialogContent size="xl">
         <DialogHeader>
-          <DialogTitle>Edit Super Admin Agent</DialogTitle>
+          <DialogTitle>Edit ACSL Agent</DialogTitle>
           <DialogDescription>
             Update agent profile information and status.
           </DialogDescription>
