@@ -28,7 +28,7 @@ export async function authenticate(supabase: any, authHeader: string) {
     throw new Error("Unauthorized: User profile not found");
   }
 
-  if (!["admin", "super_admin"].includes(profile.role)) {
+  if (!["partner", "partner_agent", "admin", "super_admin"].includes(profile.role)) {
     throw new Error("Unauthorized: Admin privileges required to delete sales");
   }
 

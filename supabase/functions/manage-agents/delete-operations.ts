@@ -14,10 +14,10 @@ export async function deleteAgent(
       .from("profiles")
       .select("id, organization_id, role, full_name, email")
       .eq("id", agentId)
-      .eq("role", "agent");
+      .in("role", ["partner_agent", "agent"]);
 
-    // Apply organization filter for admin users
-    if (userRole === "admin" && organizationId) {
+    // Apply organization filter for partner (formerly admin) users
+    if ((userRole === "partner" || userRole === "admin") && organizationId) {
       checkQuery = checkQuery.eq("organization_id", organizationId);
     } else if (userRole !== "super_admin") {
       throw new Error("Insufficient permissions to delete agents");

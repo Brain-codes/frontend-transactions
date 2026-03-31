@@ -46,7 +46,7 @@ serve(async (req) => {
 
     if (
       !profile ||
-      (profile.role !== "super_admin" && profile.role !== "admin")
+      (profile.role !== "super_admin" && profile.role !== "admin" && profile.role !== "partner")
     ) {
       throw new Error("Insufficient permissions");
     }
@@ -58,6 +58,11 @@ serve(async (req) => {
 
     // For admin users, force filter to their organization only
     if (profile.role === "admin" && profile.organization_id) {
+      organizationIds = [profile.organization_id];
+    }
+
+    // For partner users, force filter to their organization only
+    if (profile.role === "partner" && profile.organization_id) {
       organizationIds = [profile.organization_id];
     }
 

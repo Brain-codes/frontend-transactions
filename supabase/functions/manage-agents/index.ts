@@ -117,7 +117,7 @@ async function executeMainLogic(req: Request) {
     console.log("🏢 User organization:", userProfile.organization_id);
 
     // Check if user has permission to fetch agents (like original)
-    if (!["admin", "super_admin"].includes(userProfile.role)) {
+    if (!["partner", "admin", "super_admin"].includes(userProfile.role)) {
       console.log("❌ Insufficient permissions");
       throw new Error(
         "Unauthorized: Access denied. Admin or Super Admin role required."

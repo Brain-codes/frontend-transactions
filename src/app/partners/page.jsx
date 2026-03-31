@@ -61,7 +61,9 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Download,
 } from "lucide-react";
+import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AssignPaymentModelsModal from "./components/AssignPaymentModelsModal";
 import AdminSalesDetailModal from "../admin/components/sales/AdminSalesDetailModal";
 
@@ -798,9 +800,35 @@ const PartnersPage = () => {
                   </Select>
                 </div>
               </div>
-              <p className="text-sm font-bold text-green-500">
-                Total Partners: <span className="text-brand">{pagination.total}</span>
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold text-green-500">
+                  Total Partners: <span className="text-brand">{pagination.total}</span>
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-xs flex items-center gap-1"
+                  onClick={() => {
+                    const headers = ["Partner Name", "Type", "Branch", "State", "Contact Person", "Contact Phone", "Email", "Total Stoves", "Sold", "Available"];
+                    const rows = organizationsData.map((org) => [
+                      org.partner_name,
+                      org.partner_type || "",
+                      org.branch || "",
+                      org.state || "",
+                      org.contact_person || "",
+                      org.contact_phone || "",
+                      org.email || "",
+                      org.total_stove_ids ?? "",
+                      org.sold_stove_ids ?? "",
+                      org.available_stove_ids ?? "",
+                    ]);
+                    downloadTableAsCSV(headers, rows, `partners-${new Date().toISOString().slice(0, 10)}.csv`);
+                  }}
+                  disabled={organizationsData.length === 0}
+                >
+                  <Download className="h-3 w-3" />Download
+                </Button>
+              </div>
             </div>
 
             {/* Table */}

@@ -487,3 +487,16 @@ export const exportSalesDataToCSV = (salesData, filename = null) => {
   const csvContent = formatSalesDataToCSV(salesData);
   downloadCSV(csvContent, filename);
 };
+
+/**
+ * Generic table export — converts headers + rows to CSV and triggers download.
+ * @param {string[]} headers - Column header labels
+ * @param {(string|number|null|undefined)[][]} rows - 2D array of row values
+ * @param {string} filename - Download filename (should end with .csv)
+ */
+export const downloadTableAsCSV = (headers, rows, filename) => {
+  const headerRow = headers.map(cleanCSVValue).join(",");
+  const dataRows = rows.map((row) => row.map(cleanCSVValue).join(","));
+  const csvContent = [headerRow, ...dataRows].join("\n");
+  downloadCSV(csvContent, filename);
+};

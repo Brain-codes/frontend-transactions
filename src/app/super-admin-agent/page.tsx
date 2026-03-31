@@ -6,7 +6,6 @@ import DashboardLayout from "../components/DashboardLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import { useAuth } from "../contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -43,8 +42,6 @@ import superAdminAgentService from "../services/superAdminAgentService";
 import salesAdvancedAPIService from "../services/salesAdvancedAPIService";
 import ApproveSaleConfirmModal from "./sales/components/ApproveSaleConfirmModal";
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
-
 interface DashboardStats {
   assignedPartnersCount: number;
   totalSales: number;
@@ -78,8 +75,6 @@ interface PartnerStats extends AssignedOrg {
   approved: number;
   pending: number;
 }
-
-// ─── Helpers ───────────────────────────────────────────────────────────────────
 
 function buildChartData(salesInRange: SaleRecord[]) {
   return Array.from({ length: 14 }, (_, i) => {
@@ -115,8 +110,6 @@ function buildPartnerStats(
     .sort((a, b) => b.pending - a.pending);
 }
 
-// ─── Dashboard ─────────────────────────────────────────────────────────────────
-
 const SuperAdminAgentDashboard = () => {
   const { user } = useAuth();
 
@@ -126,12 +119,6 @@ const SuperAdminAgentDashboard = () => {
   const [partners, setPartners] = useState<AssignedOrg[]>([]);
   const [loading, setLoading] = useState(true);
   const [approvingSale, setApprovingSale] = useState<SaleRecord | null>(null);
-
-  const displayName =
-    (user as any)?.user_metadata?.full_name ||
-    (user as any)?.app_metadata?.full_name ||
-    user?.email ||
-    "";
 
   useEffect(() => {
     if (!user?.id) return;
@@ -212,18 +199,8 @@ const SuperAdminAgentDashboard = () => {
 
   return (
     <ProtectedRoute allowedRoles={["acsl_agent", "super_admin_agent"]}>
-      <DashboardLayout currentRoute="super-admin-agent">
+      <DashboardLayout currentRoute="super-admin-agent" title="Dashboard">
         <div className="p-6 space-y-6">
-          {/* Header */}
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Welcome back{displayName ? `, ${displayName}` : ""}
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Here&apos;s an overview of your activity
-            </p>
-          </div>
-
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-8 w-8 animate-spin text-brand" />
@@ -231,465 +208,262 @@ const SuperAdminAgentDashboard = () => {
             </div>
           ) : (
             <>
-              {/* ── ZONE 1: Stats Cards ────────────────────────────────── */}
-              <div className="flex flex-wrap gap-4">
-                {/* Total Sales */}
-                <Card className="w-fit">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
-                        <ShoppingCart className="h-6 w-6 text-blue-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm text-gray-600 mb-1 whitespace-nowrap">Total Sales</p>
-                        <p className="text-2xl font-bold text-blue-600">
-                          {(stats?.totalSales ?? 0).toLocaleString()}
-                        </p>
-                      </div>
+              {/* ── ZONE 1: Stats Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <ShoppingCart className="h-5 w-5 text-blue-700" />
                     </div>
-                  </CardContent>
-                </Card>
+                    <div>
+                      <p className="text-sm text-blue-600 font-medium">Total Sales</p>
+                      <p className="text-xl font-bold text-blue-900">
+                        {(stats?.totalSales ?? 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-blue-500">all time</p>
+                    </div>
+                  </div>
+                </div>
 
-                {/* Approved */}
-                <Card className="w-fit">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-green-100 p-3 rounded-full flex-shrink-0">
-                        <CheckCircle className="h-6 w-6 text-green-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm text-gray-600 mb-1 whitespace-nowrap">Approved</p>
-                        <p className="text-2xl font-bold text-green-600">
-                          {(stats?.approvedSales ?? 0).toLocaleString()}
-                        </p>
-                      </div>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <CheckCircle className="h-5 w-5 text-green-700" />
                     </div>
-                  </CardContent>
-                </Card>
+                    <div>
+                      <p className="text-sm text-green-600 font-medium">Approved</p>
+                      <p className="text-xl font-bold text-green-900">
+                        {(stats?.approvedSales ?? 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-green-500">approved sales</p>
+                    </div>
+                  </div>
+                </div>
 
-                {/* Pending */}
-                <Card className="w-fit">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-orange-100 p-3 rounded-full flex-shrink-0">
-                        <AlertCircle className="h-6 w-6 text-orange-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm text-gray-600 mb-1 whitespace-nowrap">Pending</p>
-                        <div className="flex items-center gap-1.5">
-                          {(stats?.pendingApprovals ?? 0) > 0 && (
-                            <span className="relative flex h-2 w-2 flex-shrink-0">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-400" />
-                            </span>
-                          )}
-                          <p className="text-2xl font-bold text-orange-600">
-                            {(stats?.pendingApprovals ?? 0).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-100 rounded-lg">
+                      <AlertCircle className="h-5 w-5 text-amber-700" />
                     </div>
-                  </CardContent>
-                </Card>
+                    <div>
+                      <p className="text-sm text-amber-600 font-medium">Pending</p>
+                      <p className="text-xl font-bold text-amber-900">
+                        {(stats?.pendingApprovals ?? 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-amber-500">need approval</p>
+                    </div>
+                  </div>
+                </div>
 
-                {/* Approval Rate */}
-                <Card className="w-fit">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-purple-100 p-3 rounded-full flex-shrink-0">
-                        <TrendingUp className="h-6 w-6 text-purple-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm text-gray-600 mb-1 whitespace-nowrap">Approval Rate</p>
-                        <p className={`text-2xl font-bold ${approvalRate >= 80 ? "text-green-600" : "text-orange-600"}`}>
-                          {approvalRate}%
-                        </p>
-                      </div>
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <TrendingUp className="h-5 w-5 text-purple-700" />
                     </div>
-                  </CardContent>
-                </Card>
+                    <div>
+                      <p className="text-sm text-purple-600 font-medium">Approval Rate</p>
+                      <p className="text-xl font-bold text-purple-900">
+                        {approvalRate}%
+                      </p>
+                      <p className="text-xs text-purple-500">of total sales</p>
+                    </div>
+                  </div>
+                </div>
 
-                {/* Partners */}
-                <Card className="w-fit">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-brand-light p-3 rounded-full flex-shrink-0">
-                        <Building2 className="h-6 w-6 text-brand" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm text-gray-600 mb-1 whitespace-nowrap">Partners</p>
-                        <p className="text-2xl font-bold text-brand">
-                          {(stats?.assignedPartnersCount ?? partners.length).toLocaleString()}
-                        </p>
-                      </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Building2 className="h-5 w-5 text-blue-700" />
                     </div>
-                  </CardContent>
-                </Card>
+                    <div>
+                      <p className="text-sm text-blue-600 font-medium">Partners</p>
+                      <p className="text-xl font-bold text-blue-900">
+                        {(stats?.assignedPartnersCount ?? partners.length).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-blue-500">assigned to you</p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* ── ZONE 2: Intelligence Row ───────────────────────────── */}
+              {/* ── ZONE 2: Intelligence Row */}
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                {/* Area Chart — 60% width */}
-                <Card className="lg:col-span-3 shadow-none border border-gray-200">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold text-gray-700">
-                      Sales Activity — Last 14 Days
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <AreaChart
-                        data={chartData}
-                        margin={{ top: 4, right: 4, left: -24, bottom: 0 }}
-                      >
-                        <defs>
-                          <linearGradient
-                            id="gradApproved"
-                            x1="0"
-                            y1="0"
-                            x2="0"
-                            y2="1"
-                          >
-                            <stop
-                              offset="5%"
-                              stopColor="#22c55e"
-                              stopOpacity={0.4}
-                            />
-                            <stop
-                              offset="95%"
-                              stopColor="#22c55e"
-                              stopOpacity={0}
-                            />
-                          </linearGradient>
-                          <linearGradient
-                            id="gradPending"
-                            x1="0"
-                            y1="0"
-                            x2="0"
-                            y2="1"
-                          >
-                            <stop
-                              offset="5%"
-                              stopColor="#f97316"
-                              stopOpacity={0.4}
-                            />
-                            <stop
-                              offset="95%"
-                              stopColor="#f97316"
-                              stopOpacity={0}
-                            />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          stroke="#f3f4f6"
-                        />
-                        <XAxis
-                          dataKey="date"
-                          tick={{ fontSize: 10, fill: "#9ca3af" }}
-                          tickLine={false}
-                          axisLine={false}
-                          interval={2}
-                        />
-                        <YAxis
-                          tick={{ fontSize: 10, fill: "#9ca3af" }}
-                          tickLine={false}
-                          axisLine={false}
-                          allowDecimals={false}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            background: "#fff",
-                            border: "1px solid #e5e7eb",
-                            borderRadius: "8px",
-                            fontSize: "12px",
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                          }}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="approved"
-                          name="Approved"
-                          stackId="1"
-                          stroke="#22c55e"
-                          strokeWidth={2}
-                          fill="url(#gradApproved)"
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="pending"
-                          name="Pending"
-                          stackId="1"
-                          stroke="#f97316"
-                          strokeWidth={2}
-                          fill="url(#gradPending)"
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                    <div className="flex gap-4 mt-1 justify-center">
-                      <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="h-2 w-4 rounded bg-green-500 inline-block" />
-                        Approved
-                      </span>
-                      <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="h-2 w-4 rounded bg-orange-500 inline-block" />
-                        Pending
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="lg:col-span-3 bg-white shadow-none border border-gray-200 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-gray-700 mb-3">
+                    Sales Activity — Last 14 Days
+                  </p>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="gradApproved" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#22c55e" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="gradPending" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f97316" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#9ca3af" }} tickLine={false} axisLine={false} interval={2} />
+                      <YAxis tick={{ fontSize: 10, fill: "#9ca3af" }} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "12px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }} />
+                      <Area type="monotone" dataKey="approved" name="Approved" stackId="1" stroke="#22c55e" strokeWidth={2} fill="url(#gradApproved)" />
+                      <Area type="monotone" dataKey="pending" name="Pending" stackId="1" stroke="#f97316" strokeWidth={2} fill="url(#gradPending)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                  <div className="flex gap-4 mt-1 justify-center">
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="h-2 w-4 rounded bg-green-500 inline-block" />Approved</span>
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="h-2 w-4 rounded bg-orange-500 inline-block" />Pending</span>
+                  </div>
+                </div>
 
-                {/* Donut — 40% width */}
-                <Card className="lg:col-span-2 shadow-none border border-gray-200">
-                  <CardHeader className="pb-0">
-                    <CardTitle className="text-sm font-semibold text-gray-700">
-                      Approval Rate
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex flex-col items-center justify-center pt-2">
+                <div className="lg:col-span-2 bg-white shadow-none border border-gray-200 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-gray-700 mb-2">Approval Rate</p>
+                  <div className="flex flex-col items-center justify-center pt-2">
                     <div className="relative w-40 h-40">
                       <PieChart width={160} height={160}>
-                        <Pie
-                          data={donutData}
-                          cx={75}
-                          cy={75}
-                          innerRadius={50}
-                          outerRadius={72}
-                          startAngle={90}
-                          endAngle={-270}
-                          dataKey="value"
-                          strokeWidth={0}
-                        >
-                          <Cell
-                            fill={
-                              approvalRate >= 80 ? "#22c55e" : "#f97316"
-                            }
-                          />
+                        <Pie data={donutData} cx={75} cy={75} innerRadius={50} outerRadius={72} startAngle={90} endAngle={-270} dataKey="value" strokeWidth={0}>
+                          <Cell fill={approvalRate >= 80 ? "#22c55e" : "#f97316"} />
                           <Cell fill="#e5e7eb" />
                         </Pie>
                       </PieChart>
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         <div className="text-center">
-                          <p
-                            className={`text-2xl font-bold ${
-                              approvalRate >= 80
-                                ? "text-green-600"
-                                : "text-orange-600"
-                            }`}
-                          >
-                            {approvalRate}%
-                          </p>
+                          <p className={`text-2xl font-bold ${approvalRate >= 80 ? "text-green-600" : "text-orange-600"}`}>{approvalRate}%</p>
                           <p className="text-xs text-gray-400">of total</p>
                         </div>
                       </div>
                     </div>
                     <div className="w-full space-y-2 mt-2 px-4">
                       <div className="flex justify-between items-center">
-                        <span className="flex items-center gap-1.5 text-xs text-gray-600">
-                          <CheckCircle className="h-3 w-3 text-green-500" />
-                          Approved
-                        </span>
-                        <span className="text-xs font-semibold text-gray-900">
-                          {(stats?.approvedSales ?? 0).toLocaleString()}
-                        </span>
+                        <span className="flex items-center gap-1.5 text-xs text-gray-600"><CheckCircle className="h-3 w-3 text-green-500" />Approved</span>
+                        <span className="text-xs font-semibold text-gray-900">{(stats?.approvedSales ?? 0).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="flex items-center gap-1.5 text-xs text-gray-600">
-                          <Clock className="h-3 w-3 text-orange-500" />
-                          Pending
-                        </span>
-                        <span className="text-xs font-semibold text-gray-900">
-                          {(stats?.pendingApprovals ?? 0).toLocaleString()}
-                        </span>
+                        <span className="flex items-center gap-1.5 text-xs text-gray-600"><Clock className="h-3 w-3 text-orange-500" />Pending</span>
+                        <span className="text-xs font-semibold text-gray-900">{(stats?.pendingApprovals ?? 0).toLocaleString()}</span>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </div>
 
-              {/* ── ZONE 3: Partner Scoreboard ─────────────────────────── */}
+              {/* ── ZONE 3: Partner Scoreboard */}
               {partnerStats.length > 0 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-base font-semibold text-gray-900">
-                      Partner Scoreboard
-                    </h2>
+                    <h2 className="text-base font-semibold text-gray-900">Partner Scoreboard</h2>
                     <span className="text-xs text-gray-400">Last 30 days</span>
                   </div>
-                  <div className="space-y-2">
-                    {partnerStats.slice(0, 5).map((p) => {
-                      const pct =
-                        p.total > 0
-                          ? Math.round((p.approved / p.total) * 100)
-                          : 0;
-                      return (
-                        <div
-                          key={p.id}
-                          className="bg-white border border-gray-200 rounded-lg px-4 py-3 flex items-center gap-3"
-                        >
-                          <div className="bg-brand-light p-2 rounded-lg flex-shrink-0">
-                            <Building2 className="h-4 w-4 text-brand" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {partnerStats.slice(0, 6).map((p) => (
+                      <div key={p.id} className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 hover:border-brand transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-semibold text-gray-900 text-sm">{p.partner_name}</p>
+                            {p.branch && <p className="text-xs text-gray-400 mt-0.5">{p.branch}{p.state ? ` · ${p.state}` : ""}</p>}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                              <p className="font-medium text-gray-900 text-sm">
-                                {p.partner_name}
-                              </p>
-                              {p.branch && (
-                                <span className="text-xs text-gray-400">
-                                  · {p.branch}
-                                </span>
-                              )}
-                              {p.pending > 0 && (
-                                <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 text-xs rounded font-medium">
-                                  {p.pending} pending
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                <div
-                                  className="h-full bg-green-500 rounded-full transition-all"
-                                  style={{ width: `${pct}%` }}
-                                />
-                              </div>
-                              <span className="text-xs text-gray-500 flex-shrink-0">
-                                {p.total} sales
-                              </span>
-                            </div>
-                          </div>
-                          <Button
-                            asChild
-                            variant="ghost"
-                            size="sm"
-                            className="text-brand hover:text-brand/80 flex-shrink-0 h-7 text-xs px-2"
-                          >
-                            <Link
-                              href={`/super-admin-agent/sales?org=${p.id}`}
-                            >
-                              View
-                              <ArrowRight className="h-3 w-3 ml-1" />
-                            </Link>
-                          </Button>
+                          {p.pending > 0 && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full font-medium">{p.pending} pending</span>}
                         </div>
-                      );
-                    })}
+                        <div className="grid grid-cols-3 gap-2 pt-1 border-t border-gray-100">
+                          <div className="text-center">
+                            <p className="text-xs text-gray-400">Total</p>
+                            <p className="font-bold text-gray-900">{p.total}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs text-green-500">Approved</p>
+                            <p className="font-bold text-green-700">{p.approved}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs text-amber-500">Pending</p>
+                            <p className="font-bold text-amber-700">{p.pending}</p>
+                          </div>
+                        </div>
+                        <Link href={`/super-admin-agent/sales?org=${p.id}`}>
+                          <Button variant="outline" size="sm" className="w-full h-7 text-xs text-brand border-brand/30 hover:bg-brand hover:text-white transition-colors mt-1">
+                            View Sales <ArrowRight className="h-3 w-3 ml-1" />
+                          </Button>
+                        </Link>
+                      </div>
+                    ))}
                   </div>
-                  {partnerStats.length > 5 && (
-                    <Link
-                      href="/super-admin-agent/partners"
-                      className="text-sm text-brand font-medium flex items-center gap-1 mt-1 hover:underline"
-                    >
-                      View all {partnerStats.length} partners
-                      <ArrowRight className="h-3 w-3" />
+                  {partnerStats.length > 6 && (
+                    <Link href="/super-admin-agent/partners" className="text-sm text-brand font-medium flex items-center gap-1 mt-1 hover:underline">
+                      View all {partnerStats.length} partners<ArrowRight className="h-3 w-3" />
                     </Link>
                   )}
                 </div>
               )}
 
-              {/* ── Quick Actions ──────────────────────────────────────── */}
+              {/* ── Quick Actions */}
               <div className="flex flex-wrap gap-3">
-                {(
-                  [
-                    { label: "View All Sales", href: "/super-admin-agent/sales", Icon: FileText },
-                    { label: "Stove IDs", href: "/super-admin-agent/stove-ids", Icon: Package },
-                    { label: "My Partners", href: "/super-admin-agent/partners", Icon: Building2 },
-                  ] as const
-                ).map(({ label, href, Icon }) => (
+                {([
+                  { label: "View All Sales", href: "/super-admin-agent/sales", Icon: FileText },
+                  { label: "Stove IDs", href: "/super-admin-agent/stove-ids", Icon: Package },
+                  { label: "My Partners", href: "/super-admin-agent/partners", Icon: Building2 },
+                ] as const).map(({ label, href, Icon }) => (
                   <Link key={href} href={href}>
-                    <div className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:border-brand hover:text-brand transition-colors cursor-pointer">
-                      <Icon className="h-4 w-4" />
-                      {label}
-                      <ArrowRight className="h-3 w-3 ml-1" />
-                    </div>
+                    <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5">
+                      <Icon className="h-4 w-4" />{label}<ArrowRight className="h-3 w-3" />
+                    </Button>
                   </Link>
                 ))}
               </div>
 
-              {/* ── ZONE 4: Pending Approval Queue ────────────────────── */}
+              {/* ── ZONE 4: Pending Approval Queue */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-base font-semibold text-gray-900">
-                    Needs Your Approval
-                  </h2>
+                  <h2 className="text-base font-semibold text-gray-900">Needs Your Approval</h2>
                   <div className="flex items-center gap-3">
                     {pendingQueue.length === 0 ? (
-                      <span className="flex items-center gap-1.5 text-sm text-green-600 font-medium">
-                        <CheckCircle className="h-4 w-4" />
-                        All caught up
-                      </span>
+                      <span className="flex items-center gap-1.5 text-sm text-green-600 font-medium"><CheckCircle className="h-4 w-4" />All caught up</span>
                     ) : (
-                      <Link
-                        href="/super-admin-agent/sales?approval=pending"
-                        className="flex items-center gap-1 text-xs font-medium text-brand hover:underline"
-                      >
-                        View all{" "}
-                        {(stats?.pendingApprovals ?? 0) > 0
-                          ? `${stats!.pendingApprovals} pending`
-                          : "pending"}
-                        <ArrowRight className="h-3 w-3" />
+                      <Link href="/super-admin-agent/sales?approval=pending" className="flex items-center gap-1 text-xs font-medium text-brand hover:underline">
+                        View all {(stats?.pendingApprovals ?? 0) > 0 ? `${stats!.pendingApprovals} pending` : "pending"}<ArrowRight className="h-3 w-3" />
                       </Link>
                     )}
                   </div>
                 </div>
                 {pendingQueue.length > 0 && (
-                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <Table>
-                      <TableHeader className="bg-brand">
-                        <TableRow className="hover:bg-brand">
-                          <TableHead className="text-white py-3 text-xs">
-                            Customer
-                          </TableHead>
-                          <TableHead className="text-white py-3 text-xs">
-                            Partner
-                          </TableHead>
-                          <TableHead className="text-white py-3 text-xs">
-                            Serial No
-                          </TableHead>
-                          <TableHead className="text-white py-3 text-xs">
-                            Date
-                          </TableHead>
-                          <TableHead className="text-white py-3 text-xs text-right">
-                            Action
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {pendingQueue.map((sale, index) => (
-                          <TableRow
-                            key={sale.id}
-                            className={
-                              index % 2 === 0 ? "bg-white" : "bg-brand-light"
-                            }
-                          >
-                            <TableCell className="font-medium text-gray-900 text-sm py-2.5">
-                              {sale.contact_person ||
-                                sale.end_user_name ||
-                                "—"}
-                            </TableCell>
-                            <TableCell className="text-gray-600 text-sm py-2.5">
-                              {sale.partner_name || "—"}
-                            </TableCell>
-                            <TableCell className="font-mono text-gray-600 text-sm py-2.5">
-                              {sale.stove_serial_no || "—"}
-                            </TableCell>
-                            <TableCell className="text-gray-600 text-sm py-2.5">
-                              {formatDate(sale.created_at)}
-                            </TableCell>
-                            <TableCell className="text-right py-2.5">
-                              <Button
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700 text-white h-7 text-xs px-3"
-                                onClick={() => setApprovingSale(sale)}
-                              >
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Approve
-                              </Button>
-                            </TableCell>
+                  <div className="space-y-0">
+                    <div className="bg-blue-50 rounded-t-lg px-4 py-2 flex items-center justify-between">
+                      <p className="text-sm text-gray-600">
+                        Showing <span className="font-medium">{pendingQueue.length}</span> pending sales
+                      </p>
+                      <p className="text-sm font-bold text-green-500">Total Pending: <span className="text-brand">{stats?.pendingApprovals ?? pendingQueue.length}</span></p>
+                    </div>
+                    <div className="bg-white border-x border-gray-200 overflow-x-auto relative">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-brand hover:bg-brand">
+                            <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Customer</TableHead>
+                            <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner</TableHead>
+                            <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Serial No</TableHead>
+                            <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Date</TableHead>
+                            <TableHead className="text-white font-semibold text-xs whitespace-nowrap text-right">Action</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {pendingQueue.map((sale, index) => (
+                            <TableRow key={sale.id} className={`${index % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}>
+                              <TableCell className="font-medium text-gray-900 text-sm py-2.5">{sale.contact_person || sale.end_user_name || "—"}</TableCell>
+                              <TableCell className="text-gray-600 text-sm py-2.5">{sale.partner_name || "—"}</TableCell>
+                              <TableCell className="font-mono text-gray-600 text-sm py-2.5">{sale.stove_serial_no || "—"}</TableCell>
+                              <TableCell className="text-gray-600 text-sm py-2.5">{formatDate(sale.created_at)}</TableCell>
+                              <TableCell className="text-right py-2.5">
+                                <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs px-3" onClick={() => setApprovingSale(sale)}>
+                                  <CheckCircle className="h-3 w-3 mr-1" />Approve
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-2 bg-white">
+                      <p className="text-sm text-gray-500">Showing {pendingQueue.length} most recent pending sales</p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -697,13 +471,8 @@ const SuperAdminAgentDashboard = () => {
           )}
         </div>
 
-        {/* Approve Modal */}
         {approvingSale && (
-          <ApproveSaleConfirmModal
-            sale={approvingSale}
-            onClose={() => setApprovingSale(null)}
-            onSuccess={handleApproveSuccess}
-          />
+          <ApproveSaleConfirmModal sale={approvingSale} onClose={() => setApprovingSale(null)} onSuccess={handleApproveSuccess} />
         )}
       </DashboardLayout>
     </ProtectedRoute>

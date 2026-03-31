@@ -38,7 +38,9 @@ import {
   ChevronsRight,
   Eye,
   EyeOff,
+  Download,
 } from "lucide-react";
+import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import adminCredentialsService, { Credential } from "@/app/services/adminCredentialsService";
 import CredentialsTable from "../components/credentials/CredentialsTable";
 import ViewCredentialModal from "../components/credentials/ViewCredentialModal";
@@ -211,7 +213,27 @@ const UserCredentialsSection = ({
               </Select>
             </div>
           </div>
-          <p className="text-sm font-bold text-green-500">Total: <span className="text-brand">{totalRecords}</span></p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-bold text-green-500">Total: <span className="text-brand">{totalRecords}</span></p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-xs flex items-center gap-1"
+              onClick={() => {
+                const headers = ["Name", "Email", "Role", "Created At"];
+                const rows = filtered.map((u) => [
+                  u.partner_name || "",
+                  u.email,
+                  u.role,
+                  u.created_at ? new Date(u.created_at).toLocaleDateString() : "",
+                ]);
+                downloadTableAsCSV(headers, rows, `credentials-${new Date().toISOString().slice(0, 10)}.csv`);
+              }}
+              disabled={filtered.length === 0}
+            >
+              <Download className="h-3 w-3" />Download
+            </Button>
+          </div>
         </div>
 
         <div className="bg-white border-x border-gray-200 overflow-x-auto relative">
