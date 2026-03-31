@@ -34,11 +34,13 @@ export async function getAgents(
         "id, full_name, email, phone, role, organization_id, created_at",
         { count: "exact" }
       )
-      .eq("role", "agent");
+      .in("role", ["partner_agent", "agent"]);
+
+    const isPartnerRole = ["partner", "admin", "partner_agent", "agent"].includes(userRole);
 
     // Apply organization filter based on user role
-    if ((userRole === "admin" || userRole === "agent") && organizationId) {
-      // Admin and Agent can only see agents from their organization
+    if (isPartnerRole && organizationId) {
+      // Partner/Admin and Agent can only see agents from their organization
       query = query.eq("organization_id", organizationId);
       console.log(
         "🔍 Admin/Agent access: filtering by organization",
@@ -47,10 +49,7 @@ export async function getAgents(
     } else if (userRole === "super_admin") {
       // Super admin can see all agents
       console.log("🔍 Super admin access: showing all agents");
-    } else if (
-      (userRole === "admin" || userRole === "agent") &&
-      !organizationId
-    ) {
+    } else if (isPartnerRole && !organizationId) {
       // Admin or Agent has no organization assigned
       console.log("❌ User has no organization assigned");
       throw new Error("User has no organization assigned");
@@ -162,11 +161,13 @@ export async function getAgent(
       .from("profiles")
       .select("id, full_name, email, phone, role, organization_id, created_at")
       .eq("id", agentId)
-      .eq("role", "agent");
+      .in("role", ["partner_agent", "agent"]);
+
+    const isPartnerRole = ["partner", "admin", "partner_agent", "agent"].includes(userRole);
 
     // Apply organization filter based on user role
-    if ((userRole === "admin" || userRole === "agent") && organizationId) {
-      // Admin and Agent can only see agents from their organization
+    if (isPartnerRole && organizationId) {
+      // Partner/Admin and Agent can only see agents from their organization
       query = query.eq("organization_id", organizationId);
       console.log(
         "🔍 Admin/Agent access: filtering by organization",
@@ -175,10 +176,7 @@ export async function getAgent(
     } else if (userRole === "super_admin") {
       // Super admin can see any agent
       console.log("🔍 Super admin access: no organization filter");
-    } else if (
-      (userRole === "admin" || userRole === "agent") &&
-      !organizationId
-    ) {
+    } else if (isPartnerRole && !organizationId) {
       // Admin or Agent has no organization assigned
       console.log("❌ User has no organization assigned");
       throw new Error("User has no organization assigned");

@@ -108,14 +108,6 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           requiresAuth: true,
         },
         {
-          name: "Payment Models",
-          icon: Layers,
-          route: "payment-models",
-          href: "/payment-models",
-          badge: null,
-          requiresAuth: true,
-        },
-        {
           name: "Stove ID Management",
           icon: Tag,
           route: "stove-management",
@@ -123,22 +115,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           badge: null,
           requiresAuth: true,
         },
-        {
-          name: "User Management",
-          icon: Users,
-          route: "user-management",
-          href: "/user-management",
-          badge: null,
-          requiresAuth: true,
-        },
-        {
-          name: "Credentials",
-          icon: Key,
-          route: "admin-credentials",
-          href: "/admin/credentials",
-          badge: null,
-          requiresAuth: true,
-        },
+
         {
           name: "Agreement Images",
           icon: FileImage,
@@ -147,13 +124,36 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           badge: null,
           requiresAuth: true,
         },
-        {
-          name: "Profile",
-          icon: User,
-          route: "profile",
-          href: "/profile",
-          badge: null,
+        // {
+        //   name: "Profile",
+        //   icon: User,
+        //   route: "profile",
+        //   href: "/profile",
+        //   badge: null,
+        //   requiresAuth: true,
+        // },
+                {
+          name: "Settings",
+          icon: Settings,
+          route: "settings-group",
           requiresAuth: true,
+          children: [
+            {
+              name: "Payment Models",
+              route: "payment-models",
+              href: "/payment-models",
+            },
+            {
+              name: "User Management",
+              route: "user-management",
+              href: "/user-management",
+            },
+            {
+              name: "Credentials",
+              route: "admin-credentials",
+              href: "/admin/credentials",
+            },
+          ],
         },
         // {
         //   name: "Admin Panel",

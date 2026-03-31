@@ -35,7 +35,9 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Download,
 } from "lucide-react";
+import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AdminSalesDetailModal from "../admin/components/sales/AdminSalesDetailModal";
 
 // Simple tooltip component
@@ -485,9 +487,39 @@ const StoveManagementPage = () => {
                   </Select>
                 </div>
               </div>
-              <p className="text-sm font-bold text-green-500">
-                Total Stove IDs: <span className="text-brand">{pagination.total_count}</span>
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold text-green-500">
+                  Total Stove IDs: <span className="text-brand">{pagination.total_count}</span>
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-xs flex items-center gap-1"
+                  onClick={() => {
+                    const headers = isSuperAdmin
+                      ? ["Stove ID", "Status", "Partner Name", "Branch", "State", "Date Sold", "Sold To"]
+                      : ["Stove ID", "Status", "Date Sold", "Sold To"];
+                    const rows = stoveIds.map((s) => {
+                      const base = [
+                        s.stove_id,
+                        s.status,
+                      ];
+                      if (isSuperAdmin) {
+                        base.push(s.organizations?.partner_name || s.partner_name || "");
+                        base.push(s.organizations?.branch || s.branch || "");
+                        base.push(s.organizations?.state || s.state || "");
+                      }
+                      base.push(s.date_sold ? new Date(s.date_sold).toLocaleDateString() : "");
+                      base.push(s.sold_to || s.contact_person || "");
+                      return base;
+                    });
+                    downloadTableAsCSV(headers, rows, `stove-ids-${new Date().toISOString().slice(0, 10)}.csv`);
+                  }}
+                  disabled={stoveIds.length === 0}
+                >
+                  <Download className="h-3 w-3" />Download
+                </Button>
+              </div>
             </div>
 
             {/* Table */}

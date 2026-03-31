@@ -101,7 +101,7 @@ serve(async (req) => {
 
     // Check if user has permission to fetch agents
     // Admin and Agent can fetch agents from their organization
-    if (!["admin", "agent", "super_admin"].includes(userProfile.role)) {
+    if (!["partner", "admin", "partner_agent", "agent", "super_admin"].includes(userProfile.role)) {
       console.log("❌ Insufficient permissions");
       return withCors(
         new Response(
@@ -119,11 +119,11 @@ serve(async (req) => {
     let agentsQuery = supabase
       .from("profiles")
       .select("id, full_name, email, phone, role, organization_id, created_at")
-      .eq("role", "agent");
+      .in("role", ["partner_agent", "agent"]);
 
-    // If admin or agent (not super_admin), only show agents from their organization
+    // If admin/partner or agent/partner_agent (not super_admin), only show agents from their organization
     if (
-      (userProfile.role === "admin" || userProfile.role === "agent") &&
+      (["partner", "admin", "partner_agent", "agent"].includes(userProfile.role)) &&
       userProfile.organization_id
     ) {
       console.log("🔍 Admin/Agent access: filtering by organization");

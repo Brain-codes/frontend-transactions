@@ -50,7 +50,7 @@ export async function authenticateAdmin(supabase: any, authHeader: string) {
   console.log(`🏢 User organization: ${profile.organization_id}`);
 
   // Check if user is admin, agent, or super_admin
-  if (!["admin", "agent", "super_admin"].includes(profile.role)) {
+  if (!["partner", "admin", "partner_agent", "agent", "super_admin"].includes(profile.role)) {
     console.log("❌ Access denied: User is not admin, agent, or super_admin");
     throw new Error(
       "Unauthorized: Admin, Agent, or Super Admin privileges required"

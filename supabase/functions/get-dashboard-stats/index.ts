@@ -80,8 +80,8 @@ serve(async (req) => {
       );
     }
 
-    // Allow admin and agent users to access dashboard stats
-    if (!["admin", "agent"].includes(profile.role)) {
+    // Allow admin/partner and agent/partner_agent users to access dashboard stats
+    if (!["partner", "admin", "partner_agent", "agent"].includes(profile.role)) {
       return withCors(
         new Response(
           JSON.stringify({
@@ -172,7 +172,7 @@ serve(async (req) => {
       .from("profiles")
       .select("*", { count: "exact", head: true })
       .eq("organization_id", organizationId)
-      .eq("role", "agent");
+      .in("role", ["partner_agent", "agent"]);
 
     if (agentsCountError) {
       console.error("Error fetching agents count:", agentsCountError);

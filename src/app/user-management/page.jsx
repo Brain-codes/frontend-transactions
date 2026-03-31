@@ -50,7 +50,9 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Download,
 } from "lucide-react";
+import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AssignOrganizationsModal from "../super-admin-agents/components/AssignOrganizationsModal";
 
 // Relative time formatter (same pattern as SalesAgentTable)
@@ -460,9 +462,31 @@ const UserManagementPage = () => {
                   </Select>
                 </div>
               </div>
-              <p className="text-sm font-bold text-green-500">
-                Total Users: <span className="text-brand">{pagination.total_count}</span>
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold text-green-500">
+                  Total Users: <span className="text-brand">{pagination.total_count}</span>
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-xs flex items-center gap-1"
+                  onClick={() => {
+                    const headers = ["Name", "Email", "Phone", "Role", "Status", "Created At"];
+                    const rows = users.map((u) => [
+                      u.full_name || "",
+                      u.email || "",
+                      u.phone || "",
+                      u.role || "",
+                      u.status || "",
+                      u.created_at ? new Date(u.created_at).toLocaleDateString() : "",
+                    ]);
+                    downloadTableAsCSV(headers, rows, `users-${new Date().toISOString().slice(0, 10)}.csv`);
+                  }}
+                  disabled={users.length === 0}
+                >
+                  <Download className="h-3 w-3" />Download
+                </Button>
+              </div>
             </div>
 
             {/* Table body */}

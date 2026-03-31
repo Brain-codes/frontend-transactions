@@ -569,7 +569,7 @@ const DashboardPage = () => {
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Total Sales */}
+              {/* Total Stoves Sold */}
               <Card className="border-l-4 border-l-blue-500">
                 <CardContent className="p-6">
                   {loadingKPIs ? (
@@ -580,10 +580,10 @@ const DashboardPage = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <p className="text-sm font-medium text-gray-600">
-                          Total Sales
+                          Total Stoves Sold
                         </p>
                         <h3 className="text-3xl font-bold text-gray-900 mt-2">
-                          {formatNumber(kpis.totalSales)}
+                          {formatNumber(kpis.soldStoves)}
                         </h3>
                         <div className="flex items-center mt-2">
                           {kpis.salesGrowth >= 0 ? (
@@ -614,12 +614,68 @@ const DashboardPage = () => {
                 </CardContent>
               </Card>
 
-              {/* Total Revenue */}
+              {/* Stove in Stock */}
               <Card className="border-l-4 border-l-green-500">
                 <CardContent className="p-6">
                   {loadingKPIs ? (
                     <div className="flex items-center justify-center h-28">
                       <Loader2 className="h-6 w-6 animate-spin text-green-600" />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-600">
+                          Stove in Stock
+                        </p>
+                        <h3 className="text-3xl font-bold text-gray-900 mt-2">
+                          {formatNumber(kpis.availableStoves)}
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Available stoves
+                        </p>
+                      </div>
+                      <div className="bg-green-100 p-3 rounded-full">
+                        <Package className="h-6 w-6 text-green-600" />
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Total Partners */}
+              <Card className="border-l-4 border-l-purple-500">
+                <CardContent className="p-6">
+                  {loadingKPIs ? (
+                    <div className="flex items-center justify-center h-28">
+                      <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-600">
+                          Total Partners
+                        </p>
+                        <h3 className="text-3xl font-bold text-gray-900 mt-2">
+                          {formatNumber(kpis.totalOrganizations)}
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Active organizations
+                        </p>
+                      </div>
+                      <div className="bg-purple-100 p-3 rounded-full">
+                        <Building2 className="h-6 w-6 text-purple-600" />
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Total Revenue */}
+              <Card className="border-l-4 border-l-orange-500">
+                <CardContent className="p-6">
+                  {loadingKPIs ? (
+                    <div className="flex items-center justify-center h-28">
+                      <Loader2 className="h-6 w-6 animate-spin text-orange-600" />
                     </div>
                   ) : (
                     <div className="flex items-center justify-between">
@@ -651,64 +707,8 @@ const DashboardPage = () => {
                           </span>
                         </div>
                       </div>
-                      <div className="bg-green-100 p-3 rounded-full">
-                        <CreditCard className="h-6 w-6 text-green-600" />
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Total Organizations */}
-              <Card className="border-l-4 border-l-purple-500">
-                <CardContent className="p-6">
-                  {loadingKPIs ? (
-                    <div className="flex items-center justify-center h-28">
-                      <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-600">
-                          Total Partners
-                        </p>
-                        <h3 className="text-3xl font-bold text-gray-900 mt-2">
-                          {formatNumber(kpis.totalOrganizations)}
-                        </h3>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Active organizations
-                        </p>
-                      </div>
-                      <div className="bg-purple-100 p-3 rounded-full">
-                        <Building2 className="h-6 w-6 text-purple-600" />
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Average Sale */}
-              <Card className="border-l-4 border-l-orange-500">
-                <CardContent className="p-6">
-                  {loadingKPIs ? (
-                    <div className="flex items-center justify-center h-28">
-                      <Loader2 className="h-6 w-6 animate-spin text-orange-600" />
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-600">
-                          Avg Sale Amount
-                        </p>
-                        <h3 className="text-3xl font-bold text-gray-900 mt-2">
-                          {formatCurrency(kpis.avgSaleAmount)}
-                        </h3>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Per transaction
-                        </p>
-                      </div>
                       <div className="bg-orange-100 p-3 rounded-full">
-                        <Activity className="h-6 w-6 text-orange-600" />
+                        <CreditCard className="h-6 w-6 text-orange-600" />
                       </div>
                     </div>
                   )}
