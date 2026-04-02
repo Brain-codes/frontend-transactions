@@ -352,7 +352,7 @@ const SuperAdminAgentDashboard = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h2 className="text-base font-semibold text-gray-900">Partner Scoreboard</h2>
-                    <span className="text-xs text-gray-400">Last 30 days</span>
+                    <span className="text-xs text-gray-400">All time</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {partnerStats.slice(0, 6).map((p) => (
@@ -366,7 +366,7 @@ const SuperAdminAgentDashboard = () => {
                         </div>
                         <div className="grid grid-cols-3 gap-2 pt-1 border-t border-gray-100">
                           <div className="text-center">
-                            <p className="text-xs text-gray-400">Total</p>
+                            <p className="text-xs text-gray-400">Total Stove IDs</p>
                             <p className="font-bold text-gray-900">{p.total}</p>
                           </div>
                           <div className="text-center">
