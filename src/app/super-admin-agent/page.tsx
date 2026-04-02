@@ -366,7 +366,7 @@ const SuperAdminAgentDashboard = () => {
                         </div>
                         <div className="grid grid-cols-3 gap-2 pt-1 border-t border-gray-100">
                           <div className="text-center">
-                            <p className="text-xs text-gray-400">Stove IDs</p>
+                            <p className="text-xs text-gray-400">Total Stove IDs</p>
                             <p className="font-bold text-gray-900">{p.total}</p>
                           </div>
                           <div className="text-center">
