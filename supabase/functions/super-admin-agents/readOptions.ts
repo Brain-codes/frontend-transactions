@@ -234,25 +234,28 @@ export async function getAgentOrganizations(supabase: any, agentId: string) {
   let orgStatsMap: Record<string, { total: number; approved: number; pending: number }> = {};
 
   if (allOrgIds.length > 0) {
-    const [totalRes, approvedRes, pendingRes] = await Promise.all([
+    const [stoveRes, approvedRes, pendingRes] = await Promise.all([
+      // Total stove IDs assigned to each org
       supabase
-        .from("sales")
-        .select("organization_id", { count: "exact" })
+        .from("stove_ids")
+        .select("organization_id")
         .in("organization_id", allOrgIds),
+      // Approved sales per org
       supabase
         .from("sales")
-        .select("organization_id", { count: "exact" })
+        .select("organization_id")
         .in("organization_id", allOrgIds)
         .eq("agent_approved", true),
+      // Pending sales per org
       supabase
         .from("sales")
-        .select("organization_id", { count: "exact" })
+        .select("organization_id")
         .in("organization_id", allOrgIds)
         .eq("agent_approved", false),
     ]);
 
     // Build per-org counts from individual rows
-    (totalRes.data || []).forEach((row: any) => {
+    (stoveRes.data || []).forEach((row: any) => {
       if (!orgStatsMap[row.organization_id]) {
         orgStatsMap[row.organization_id] = { total: 0, approved: 0, pending: 0 };
       }
@@ -272,10 +275,10 @@ export async function getAgentOrganizations(supabase: any, agentId: string) {
     });
   }
 
-  // Annotate each org with its sales stats
+  // Annotate each org with its stats (total = stove IDs, approved/pending = sales)
   const orgsWithStats = allOrganizations.map((o: any) => ({
     ...o,
-    total_sales: orgStatsMap[o.id]?.total ?? 0,
+    total_sales: orgStatsMap[o.id]?.total ?? 0,    // stove ID count
     approved_sales: orgStatsMap[o.id]?.approved ?? 0,
     pending_sales: orgStatsMap[o.id]?.pending ?? 0,
   }));
