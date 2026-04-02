@@ -94,19 +94,17 @@ function buildChartData(salesInRange: SaleRecord[]) {
 }
 
 function buildPartnerStats(
-  partners: AssignedOrg[],
-  salesInRange: SaleRecord[]
+  partners: any[],
+  _salesInRange: SaleRecord[]
 ): PartnerStats[] {
+  // Use server-side stats (total_sales, approved_sales, pending_sales) from getAgentOrganizations
   return partners
-    .map((p) => {
-      const ps = salesInRange.filter((s) => s.organization_id === p.id);
-      return {
-        ...p,
-        total: ps.length,
-        approved: ps.filter((s) => s.agent_approved).length,
-        pending: ps.filter((s) => !s.agent_approved).length,
-      };
-    })
+    .map((p) => ({
+      ...p,
+      total: p.total_sales ?? 0,
+      approved: p.approved_sales ?? 0,
+      pending: p.pending_sales ?? 0,
+    }))
     .sort((a, b) => b.pending - a.pending);
 }
 

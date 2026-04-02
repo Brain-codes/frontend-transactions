@@ -229,9 +229,62 @@ export async function getAgentOrganizations(supabase: any, agentId: string) {
     `✅ Found ${directOrgs.length} direct + ${stateOrgs.length} state-resolved organizations`
   );
 
+  // Fetch per-org sales stats in parallel
+  const allOrgIds = allOrganizations.map((o: any) => o.id).filter(Boolean);
+  let orgStatsMap: Record<string, { total: number; approved: number; pending: number }> = {};
+
+  if (allOrgIds.length > 0) {
+    const [totalRes, approvedRes, pendingRes] = await Promise.all([
+      supabase
+        .from("sales")
+        .select("organization_id", { count: "exact" })
+        .in("organization_id", allOrgIds),
+      supabase
+        .from("sales")
+        .select("organization_id", { count: "exact" })
+        .in("organization_id", allOrgIds)
+        .eq("agent_approved", true),
+      supabase
+        .from("sales")
+        .select("organization_id", { count: "exact" })
+        .in("organization_id", allOrgIds)
+        .eq("agent_approved", false),
+    ]);
+
+    // Build per-org counts from individual rows
+    (totalRes.data || []).forEach((row: any) => {
+      if (!orgStatsMap[row.organization_id]) {
+        orgStatsMap[row.organization_id] = { total: 0, approved: 0, pending: 0 };
+      }
+      orgStatsMap[row.organization_id].total += 1;
+    });
+    (approvedRes.data || []).forEach((row: any) => {
+      if (!orgStatsMap[row.organization_id]) {
+        orgStatsMap[row.organization_id] = { total: 0, approved: 0, pending: 0 };
+      }
+      orgStatsMap[row.organization_id].approved += 1;
+    });
+    (pendingRes.data || []).forEach((row: any) => {
+      if (!orgStatsMap[row.organization_id]) {
+        orgStatsMap[row.organization_id] = { total: 0, approved: 0, pending: 0 };
+      }
+      orgStatsMap[row.organization_id].pending += 1;
+    });
+  }
+
+  // Annotate each org with its sales stats
+  const orgsWithStats = allOrganizations.map((o: any) => ({
+    ...o,
+    total_sales: orgStatsMap[o.id]?.total ?? 0,
+    approved_sales: orgStatsMap[o.id]?.approved ?? 0,
+    pending_sales: orgStatsMap[o.id]?.pending ?? 0,
+  }));
+
+  console.log(`✅ Sales stats attached for ${allOrgIds.length} organizations`);
+
   return {
     message: `Found ${allOrganizations.length} assigned organizations`,
-    data: allOrganizations,
+    data: orgsWithStats,
     assigned_states: assignedStates,
     summary: {
       direct_count: directOrgs.length,
