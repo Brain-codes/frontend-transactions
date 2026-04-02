@@ -23,7 +23,7 @@ const QuickActions: React.FC = () => {
     {
       label: "Manage Stoves",
       icon: Package,
-      href: "/admin/branches",
+      href: "/stove-management",
       color: "text-purple-600",
       bg: "hover:bg-purple-50 border-purple-200",
     },

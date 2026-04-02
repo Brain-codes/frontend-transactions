@@ -264,19 +264,13 @@ function applyOrganizationFilters(
   console.log("🏢 Applying organization filters...");
 
   if (userRole === "acsl_agent" || userRole === "super_admin_agent") {
-    // Lock query to the agent's assigned organizations only
-    console.log("🔗 ACSL agent: restricting to assigned orgs");
-    const allowed = assignedOrgIds ?? [];
-    if (allowed.length === 0) {
-      // No assigned orgs — return no results
-      query = query.eq("organization_id", "00000000-0000-0000-0000-000000000000");
-    } else if (filters.organizationId && allowed.includes(filters.organizationId)) {
+    // ACSL agents have system-wide sales visibility (same as super_admin).
+    // assignedOrgIds is used for partner management scope, not for sales filtering.
+    console.log("🔗 ACSL agent: system-wide sales visibility");
+    if (filters.organizationId) {
       query = query.eq("organization_id", filters.organizationId);
     } else if (filters.organizationIds?.length) {
-      const intersection = filters.organizationIds.filter((id) => allowed.includes(id));
-      query = query.in("organization_id", intersection.length ? intersection : allowed);
-    } else {
-      query = query.in("organization_id", allowed);
+      query = query.in("organization_id", filters.organizationIds);
     }
   } else if (userRole !== "super_admin") {
     console.log("👤 Non-super-admin: applying org restrictions");

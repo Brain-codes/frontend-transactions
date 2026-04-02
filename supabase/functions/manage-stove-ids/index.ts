@@ -6,6 +6,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "./cors.ts";
 import { handleStoveIdRoute } from "./route-handler.ts";
+import { resolveAssignedOrgIds } from "../_shared/resolveAssignedOrgIds.ts";
 
 console.log("🚀 Stove ID Management function initialized");
 
@@ -80,15 +81,14 @@ serve(async (req) => {
       );
     }
 
-    // For acsl_agent (formerly super_admin_agent): fetch their assigned org IDs for scope enforcement
+    // For acsl_agent (formerly super_admin_agent): resolve assigned org IDs (direct + state-based)
     let allowedOrgIds: string[] | null = null;
     if (userProfile.role === "acsl_agent" || userProfile.role === "super_admin_agent") {
-      const { data: assignments } = await supabase
-        .from("acsl_agent_organizations")
-        .select("organization_id")
-        .eq("agent_id", userId);
-      allowedOrgIds = assignments?.map((a: any) => a.organization_id) || [];
-      console.log("🔒 SAA allowed org IDs:", allowedOrgIds);
+      const resolved = await resolveAssignedOrgIds(supabase, userId);
+      allowedOrgIds = resolved.assignedOrgIds;
+      console.log(
+        `🔒 SAA allowed org IDs: ${resolved.directOrgIds.length} direct + ${resolved.stateResolvedOrgIds.length} state-resolved = ${allowedOrgIds.length} total`
+      );
     }
 
     // Handle the stove ID route

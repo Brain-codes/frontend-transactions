@@ -84,6 +84,8 @@ async function executeMainLogic(req: Request) {
   }
 
   // Run all counts in parallel
+  // Note: ACSL agents have system-wide visibility of all sales (for monitoring).
+  // assignedOrgIds is only used for the partner scoreboard / partner-count display.
   const [
     totalSalesResult,
     pendingApprovalsResult,
@@ -92,19 +94,16 @@ async function executeMainLogic(req: Request) {
   ] = await Promise.all([
     supabase
       .from("sales")
-      .select("*", { count: "exact", head: true })
-      .in("organization_id", assignedOrgIds),
+      .select("*", { count: "exact", head: true }),
 
     supabase
       .from("sales")
       .select("*", { count: "exact", head: true })
-      .in("organization_id", assignedOrgIds)
       .eq("agent_approved", false),
 
     supabase
       .from("sales")
       .select("*", { count: "exact", head: true })
-      .in("organization_id", assignedOrgIds)
       .eq("agent_approved", true),
 
     supabase
