@@ -32,6 +32,9 @@ import {
   Clock,
   Layers,
   Info,
+  Flame,
+  ClipboardList,
+  ShieldCheck,
 } from "lucide-react";
 import DateRangePicker from "@/app/components/ui/date-range-picker";
 import GooglePlacesInput from "@/app/components/ui/google-places-input";
@@ -764,6 +767,16 @@ const CreateSalesForm = ({
                   <p className="text-sm text-red-600">{errors.phone}</p>
                 )}
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="retailerBranch">Retailer / Sales Branch / Agency / CSO</Label>
+                <Input
+                  id="retailerBranch"
+                  value={formData.retailerBranch}
+                  onChange={(e) => handleInputChange("retailerBranch", e.target.value)}
+                  placeholder="Enter retailer branch, agency, or CSO"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -1185,6 +1198,195 @@ const CreateSalesForm = ({
                   </div>
                 )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Stove Set & Payment Option */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Flame className="h-5 w-5" />
+              Stove Set &amp; Payment Option
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="potQuantity">Pots Quantity</Label>
+                <Select
+                  value={formData.potQuantity.toString()}
+                  onValueChange={(value) => handleInputChange("potQuantity", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select pots quantity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">0 pots</SelectItem>
+                    <SelectItem value="1">1 pot</SelectItem>
+                    <SelectItem value="2">2 pots</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Heat Retention Device</Label>
+                <div className="flex items-center gap-3 pt-2">
+                  <input
+                    type="checkbox"
+                    id="heatRetentionDevice"
+                    checked={formData.heatRetentionDevice}
+                    onChange={(e) => handleInputChange("heatRetentionDevice", e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-brand"
+                  />
+                  <Label htmlFor="heatRetentionDevice" className="font-normal cursor-pointer">
+                    Wonderbox (Heat Retention Device)
+                  </Label>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Cooking Habits */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              Cooking Habits
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Previous Stove Type (before Save80)</Label>
+              <div className="flex flex-wrap gap-4 pt-1">
+                {[
+                  { value: "charcoal", label: "Charcoal Stove" },
+                  { value: "wood_stove", label: "Wood Stove (3 stone or similar)" },
+                  { value: "other", label: "Other" },
+                ].map(({ value, label }) => (
+                  <label key={value} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="previousStoveType"
+                      value={value}
+                      checked={formData.previousStoveType === value}
+                      onChange={(e) => handleInputChange("previousStoveType", e.target.value)}
+                      className="h-4 w-4 text-brand"
+                    />
+                    <span className="text-sm">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {formData.previousStoveType === "other" && (
+              <div className="space-y-2">
+                <Label htmlFor="previousStoveOther">Please specify previous stove</Label>
+                <Input
+                  id="previousStoveOther"
+                  value={formData.previousStoveOther}
+                  onChange={(e) => handleInputChange("previousStoveOther", e.target.value)}
+                  placeholder="Describe the stove type"
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="mealsPerDay">How many meals per day on your stove?</Label>
+                <Input
+                  id="mealsPerDay"
+                  value={formData.mealsPerDay}
+                  onChange={(e) => handleInputChange("mealsPerDay", e.target.value)}
+                  placeholder="e.g., 2 meals"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="cookingFuelSource">Where do you get your cooking fuel?</Label>
+                <Input
+                  id="cookingFuelSource"
+                  value={formData.cookingFuelSource}
+                  onChange={(e) => handleInputChange("cookingFuelSource", e.target.value)}
+                  placeholder="e.g., Local market"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="cookingLocation">Where do you usually cook?</Label>
+                <Input
+                  id="cookingLocation"
+                  value={formData.cookingLocation}
+                  onChange={(e) => handleInputChange("cookingLocation", e.target.value)}
+                  placeholder="e.g., Outdoors, kitchen"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Terms & Conditions */}
+        <Card className={errors.termsAccepted ? "border-red-400" : ""}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5" />
+              Terms &amp; Conditions *
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-gray-500 mb-2">
+              All items below must be acknowledged before submitting.
+            </p>
+            {[
+              {
+                key: "poaGoverned",
+                label:
+                  "This stove is promoted and sold under the atmosfair Programme of Activities (PoA) which is governed by the UN Framework Convention on Climate Change (UNFCCC) and Gold Standard for the Global Goals. I hereby recognize that the stove is subsidised by Carbon Credits.",
+              },
+              {
+                key: "monitoring",
+                label:
+                  "I agree to cooperate with the distributor and the cooperating managing entity (atmosfair gGmbH) for monitoring purposes.",
+              },
+              {
+                key: "noResell",
+                label: "I agree not to resell the stove.",
+              },
+              {
+                key: "emissionReductions",
+                label:
+                  "I agree not to claim any emission reductions for the use of the efficient cook stove but cede the emission reductions the stove generates to the cooperating managing entity (atmosfair gGmbH) of the Programme of Activities (PoA).",
+              },
+              {
+                key: "noExport",
+                label: "I do not agree to take the stove outside of Nigeria.",
+              },
+              {
+                key: "demonstration",
+                label:
+                  "I have received a sufficient demonstration and explanation for efficient firewood usage.",
+              },
+            ].map(({ key, label }) => (
+              <label key={key} className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={formData.termsAccepted?.[key] ?? false}
+                  onChange={(e) =>
+                    handleInputChange("termsAccepted", {
+                      ...formData.termsAccepted,
+                      [key]: e.target.checked,
+                    })
+                  }
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-brand"
+                />
+                <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                  {label}
+                </span>
+              </label>
+            ))}
+            {errors.termsAccepted && (
+              <p className="text-sm text-red-600 mt-2">{errors.termsAccepted}</p>
+            )}
           </CardContent>
         </Card>
 

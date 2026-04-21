@@ -53,11 +53,23 @@ serve(async (req) => {
       phone,
       otherPhone,
       partnerName,
+      retailerBranch,
       amount,
       signature,
       addressData,
       stoveImageId,
       agreementImageId,
+      // New stove set fields
+      potQuantity,
+      heatRetentionDevice,
+      // New cooking habits fields
+      previousStoveType,
+      previousStoveOther,
+      mealsPerDay,
+      cookingFuelSource,
+      cookingLocation,
+      // Terms & conditions
+      termsAccepted,
       // SAA-specific: explicit organization override
       organizationId: requestedOrgId,
       // Installment payment fields
@@ -258,6 +270,7 @@ serve(async (req) => {
           phone,
           other_phone: otherPhone,
           partner_name: partnerName,
+          retailer_branch: retailerBranch || null,
           amount: saleAmount,
           signature,
           status: saleStatus,
@@ -270,6 +283,14 @@ serve(async (req) => {
           payment_model_id: installmentData?.modelId || null,
           total_paid: installmentData?.totalPaid || 0,
           payment_status: installmentData ? installmentData.paymentStatus : "not_applicable",
+          pot_quantity: potQuantity ?? null,
+          heat_retention_device: heatRetentionDevice ?? false,
+          previous_stove_type: previousStoveType || null,
+          previous_stove_other: previousStoveOther || null,
+          meals_per_day: mealsPerDay || null,
+          cooking_fuel_source: cookingFuelSource || null,
+          cooking_location: cookingLocation || null,
+          terms_accepted: termsAccepted ?? null,
         },
       ])
       .select("id")
