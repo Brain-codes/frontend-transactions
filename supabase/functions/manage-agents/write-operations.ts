@@ -2,6 +2,119 @@
 
 import { validateAgentData, validateUpdateData } from "./validate.ts";
 
+const SETTINGS_ROW_ID = "00000000-0000-0000-0000-000000000001";
+
+async function sendAgentWelcomeEmail(
+  supabase: any,
+  agentEmail: string,
+  agentName: string,
+  password: string
+) {
+  try {
+    // Fetch Brevo API key from app_settings
+    const { data: settings } = await supabase
+      .from("app_settings")
+      .select("brevo_api_key")
+      .eq("id", SETTINGS_ROW_ID)
+      .single();
+
+    const brevoKey = settings?.brevo_api_key;
+    if (!brevoKey) {
+      console.warn("⚠️ Brevo API key not configured — skipping welcome email");
+      return;
+    }
+
+    const appUrl = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "your platform";
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .header { background: #07376a; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #ffffff; margin: 0; font-size: 24px; }
+    .body { padding: 32px 40px; }
+    .body p { color: #374151; line-height: 1.6; margin: 0 0 16px; }
+    .credentials-box { background: #f0f7ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 20px; margin: 24px 0; }
+    .credentials-box p { margin: 8px 0; color: #1e3a5f; font-size: 15px; }
+    .credentials-box strong { color: #07376a; }
+    .warning-box { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; padding: 16px 20px; margin: 24px 0; }
+    .warning-box p { margin: 0; color: #92400e; font-size: 14px; }
+    .steps { padding-left: 20px; color: #374151; }
+    .steps li { margin-bottom: 8px; line-height: 1.5; }
+    .footer { background: #f9fafb; padding: 20px 40px; text-align: center; border-top: 1px solid #e5e7eb; }
+    .footer p { color: #6b7280; font-size: 13px; margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Welcome to Atmosfair Sales Platform</h1>
+    </div>
+    <div class="body">
+      <p>Hi <strong>${agentName}</strong>,</p>
+      <p>Your agent account has been created. Below are your login credentials to access the platform:</p>
+
+      <div class="credentials-box">
+        <p><strong>Login URL:</strong> ${appUrl}/login</p>
+        <p><strong>Email:</strong> ${agentEmail}</p>
+        <p><strong>Temporary Password:</strong> ${password}</p>
+      </div>
+
+      <div class="warning-box">
+        <p>🔒 <strong>Important:</strong> For your security, you are required to change your password immediately after your first login. Do not share your credentials with anyone.</p>
+      </div>
+
+      <p><strong>Getting started:</strong></p>
+      <ol class="steps">
+        <li>Go to <a href="${appUrl}/login">${appUrl}/login</a></li>
+        <li>Sign in using the email and temporary password above</li>
+        <li>You will be prompted to set a new password on first login</li>
+        <li>Once logged in, complete your profile in the Settings page</li>
+      </ol>
+
+      <p>If you have any issues logging in or need assistance, please contact your administrator.</p>
+
+      <p>Welcome aboard!<br><strong>Atmosfair Sales Team</strong></p>
+    </div>
+    <div class="footer">
+      <p>This is an automated message. Please do not reply to this email.</p>
+      <p>If you did not expect this account, please contact your administrator immediately.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": brevoKey,
+      },
+      body: JSON.stringify({
+        sender: { name: "Atmosfair Sales", email: "no-reply@atmosfair.com" },
+        to: [{ email: agentEmail, name: agentName }],
+        subject: "Your Atmosfair Agent Account Credentials",
+        htmlContent: emailHtml,
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn(`⚠️ Brevo email failed (${res.status}): ${errText}`);
+    } else {
+      console.log("✅ Welcome email sent to:", agentEmail);
+    }
+  } catch (err) {
+    // Never block agent creation due to email failure
+    console.warn("⚠️ Failed to send welcome email:", err);
+  }
+}
+
 export async function createAgent(
   supabase: any,
   agentData: any,
@@ -107,6 +220,14 @@ export async function createAgent(
     }
 
     console.log("✅ Agent created successfully:", profile.id);
+
+    // Send welcome email with credentials (non-blocking)
+    await sendAgentWelcomeEmail(
+      supabase,
+      validatedData.email,
+      validatedData.full_name,
+      validatedData.password
+    );
 
     return {
       message: "Agent created successfully",

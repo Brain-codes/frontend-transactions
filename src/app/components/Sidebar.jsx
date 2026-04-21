@@ -153,6 +153,11 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
               route: "admin-credentials",
               href: "/admin/credentials",
             },
+            {
+              name: "System Configuration",
+              route: "system-config",
+              href: "/admin/system-config",
+            },
           ],
         },
         // {

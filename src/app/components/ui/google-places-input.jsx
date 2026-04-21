@@ -19,38 +19,8 @@ const GooglePlacesInput = ({
   const autocompleteService = useRef(null);
   const placesService = useRef(null);
 
-  // Load Google Places API
+  // Load Google Places API — key fetched from server (DB or env fallback)
   useEffect(() => {
-    const loadGoogleMaps = () => {
-      if (window.google && window.google.maps && window.google.maps.places) {
-        initializeServices();
-        return;
-      }
-
-      if (document.querySelector('script[src*="maps.googleapis.com"]')) {
-        // Script already exists, wait for it to load
-        const checkGoogle = setInterval(() => {
-          if (
-            window.google &&
-            window.google.maps &&
-            window.google.maps.places
-          ) {
-            clearInterval(checkGoogle);
-            initializeServices();
-          }
-        }, 100);
-        return;
-      }
-
-      // Load the script
-      const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY}&libraries=places`;
-      script.async = true;
-      script.defer = true;
-      script.onload = initializeServices;
-      document.head.appendChild(script);
-    };
-
     const initializeServices = () => {
       if (window.google && window.google.maps && window.google.maps.places) {
         autocompleteService.current =
@@ -62,7 +32,38 @@ const GooglePlacesInput = ({
       }
     };
 
-    loadGoogleMaps();
+    const loadGoogleMaps = (apiKey) => {
+      if (window.google && window.google.maps && window.google.maps.places) {
+        initializeServices();
+        return;
+      }
+
+      if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+        const checkGoogle = setInterval(() => {
+          if (window.google && window.google.maps && window.google.maps.places) {
+            clearInterval(checkGoogle);
+            initializeServices();
+          }
+        }, 100);
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      script.onload = initializeServices;
+      document.head.appendChild(script);
+    };
+
+    fetch("/api/app-settings/google-key")
+      .then((r) => r.json())
+      .then(({ key }) => {
+        if (key) loadGoogleMaps(key);
+      })
+      .catch(() => {
+        // Silently fail — input will remain in text-only mode
+      });
   }, []);
 
   // Update input value when prop changes
@@ -248,10 +249,10 @@ const GooglePlacesInput = ({
         </div>
       )}
 
-      {/* No API key warning */}
-      {!process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY && (
+      {/* No API key warning — shown when Google Maps failed to load */}
+      {!isLoaded && !predictions.length && inputValue.length > 2 && (
         <div className="absolute top-full left-0 right-0 bg-yellow-50 border border-yellow-300 rounded-md mt-1 p-3 text-sm text-yellow-700 z-10">
-          Google Places API key not configured
+          Google Places not available — check API key in System Configuration
         </div>
       )}
     </div>
