@@ -89,6 +89,14 @@ export const validateSalesForm = (formData) => {
     errors.signature = "Customer signature is required";
   }
 
+  // Terms & Conditions — all 6 must be ticked
+  const tc = formData.termsAccepted || {};
+  const tcKeys = ["poaGoverned", "monitoring", "noResell", "emissionReductions", "noExport", "demonstration"];
+  const allTicked = tcKeys.every((k) => tc[k] === true);
+  if (!allTicked) {
+    errors.termsAccepted = "All terms and conditions must be accepted";
+  }
+
   return errors;
 };
 

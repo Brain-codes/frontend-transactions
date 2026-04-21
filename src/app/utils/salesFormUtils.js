@@ -23,6 +23,7 @@ export const createInitialFormData = () => ({
   phone: "",
   otherPhone: "",
   partnerName: "",
+  retailerBranch: "",
   amount: "",
   addressData: {
     fullAddress: "",
@@ -32,6 +33,24 @@ export const createInitialFormData = () => ({
     country: "Nigeria",
     latitude: null,
     longitude: null,
+  },
+  // Stove set fields
+  potQuantity: "",
+  heatRetentionDevice: false,
+  // Cooking habits
+  previousStoveType: "",
+  previousStoveOther: "",
+  mealsPerDay: "",
+  cookingFuelSource: "",
+  cookingLocation: "",
+  // Terms & Conditions (6 checkboxes — all required)
+  termsAccepted: {
+    poaGoverned: false,
+    monitoring: false,
+    noResell: false,
+    emissionReductions: false,
+    noExport: false,
+    demonstration: false,
   },
   signature: "",
   stoveImageId: "",
@@ -62,6 +81,7 @@ export const populateFormDataForEdit = (saleData) => {
     phone: saleData.phone || "",
     otherPhone: saleData.otherPhone || saleData.other_phone || "",
     partnerName: saleData.partnerName || saleData.partner_name || "",
+    retailerBranch: saleData.retailerBranch || saleData.retailer_branch || "",
     amount: saleData.amount ? saleData.amount.toString() : "",
     addressData: {
       fullAddress:
@@ -103,6 +123,24 @@ export const populateFormDataForEdit = (saleData) => {
     // For edit mode: API returns base64, convert to data URL for canvas display
     // For create mode: this will be empty string initially
     signature: saleData.signature ? base64ToDataURL(saleData.signature) : "",
+    // Stove set fields
+    potQuantity: saleData.potQuantity ?? saleData.pot_quantity ?? "",
+    heatRetentionDevice: saleData.heatRetentionDevice ?? saleData.heat_retention_device ?? false,
+    // Cooking habits
+    previousStoveType: saleData.previousStoveType || saleData.previous_stove_type || "",
+    previousStoveOther: saleData.previousStoveOther || saleData.previous_stove_other || "",
+    mealsPerDay: saleData.mealsPerDay || saleData.meals_per_day || "",
+    cookingFuelSource: saleData.cookingFuelSource || saleData.cooking_fuel_source || "",
+    cookingLocation: saleData.cookingLocation || saleData.cooking_location || "",
+    // Terms & Conditions
+    termsAccepted: saleData.termsAccepted || saleData.terms_accepted || {
+      poaGoverned: false,
+      monitoring: false,
+      noResell: false,
+      emissionReductions: false,
+      noExport: false,
+      demonstration: false,
+    },
     stoveImageId:
       saleData.stoveImageId ||
       saleData.stove_image_id?.id ||
@@ -139,12 +177,21 @@ export const transformFormDataForAPI = (formData, isEdit = false) => {
     phone: formData.phone,
     otherPhone: formData.otherPhone,
     partnerName: formData.partnerName,
+    retailerBranch: formData.retailerBranch,
     amount: parseFloat(formData.amount),
     stoveSerialNo: formData.stoveSerialNo,
     stateBackup: formData.stateBackup,
     lgaBackup: formData.lgaBackup,
     addressData: formData.addressData,
-    signature: processedSignature, // Always send pure base64 to API
+    potQuantity: formData.potQuantity !== "" ? parseInt(formData.potQuantity, 10) : null,
+    heatRetentionDevice: formData.heatRetentionDevice,
+    previousStoveType: formData.previousStoveType,
+    previousStoveOther: formData.previousStoveOther,
+    mealsPerDay: formData.mealsPerDay,
+    cookingFuelSource: formData.cookingFuelSource,
+    cookingLocation: formData.cookingLocation,
+    termsAccepted: formData.termsAccepted,
+    signature: processedSignature,
     stoveImageId: formData.stoveImageId,
     agreementImageId: formData.agreementImageId,
   };
@@ -190,10 +237,18 @@ export const hasFormDataChanged = (currentData, originalData) => {
     "phone",
     "otherPhone",
     "partnerName",
+    "retailerBranch",
     "amount",
     "stoveSerialNo",
     "stateBackup",
     "lgaBackup",
+    "potQuantity",
+    "heatRetentionDevice",
+    "previousStoveType",
+    "previousStoveOther",
+    "mealsPerDay",
+    "cookingFuelSource",
+    "cookingLocation",
     "signature",
     "stoveImageId",
     "agreementImageId",

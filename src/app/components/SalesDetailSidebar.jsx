@@ -566,6 +566,17 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                         </div>
                       )}
 
+                      {(sale.retailer_branch || sale.retailerBranch) && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">
+                            Retailer / Branch / Agency / CSO
+                          </label>
+                          <p className="text-sm text-gray-900 mt-1">
+                            {sale.retailer_branch || sale.retailerBranch}
+                          </p>
+                        </div>
+                      )}
+
                       {sale.contact_person &&
                         sale.contact_person !== sale.end_user_name && (
                           <div>
@@ -743,6 +754,95 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Stove Set Details */}
+                {(sale.pot_quantity != null || sale.heat_retention_device != null || sale.previous_stove_type) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center">
+                        <Package className="h-5 w-5 mr-2 text-orange-600" />
+                        Stove Set &amp; Cooking Habits
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {sale.pot_quantity != null && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Pots Quantity</label>
+                          <p className="text-sm text-gray-900 mt-1">{sale.pot_quantity} pot{sale.pot_quantity !== 1 ? "s" : ""}</p>
+                        </div>
+                      )}
+                      {sale.heat_retention_device != null && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Heat Retention Device (Wonderbox)</label>
+                          <p className="text-sm text-gray-900 mt-1">{sale.heat_retention_device ? "Yes" : "No"}</p>
+                        </div>
+                      )}
+                      {sale.previous_stove_type && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Previous Stove Type</label>
+                          <p className="text-sm text-gray-900 mt-1 capitalize">
+                            {sale.previous_stove_type === "wood_stove"
+                              ? "Wood Stove (3 stone or similar)"
+                              : sale.previous_stove_type === "other"
+                              ? `Other — ${sale.previous_stove_other || "not specified"}`
+                              : "Charcoal Stove"}
+                          </p>
+                        </div>
+                      )}
+                      {sale.meals_per_day && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Meals Per Day</label>
+                          <p className="text-sm text-gray-900 mt-1">{sale.meals_per_day}</p>
+                        </div>
+                      )}
+                      {sale.cooking_fuel_source && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Cooking Fuel Source</label>
+                          <p className="text-sm text-gray-900 mt-1">{sale.cooking_fuel_source}</p>
+                        </div>
+                      )}
+                      {sale.cooking_location && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Cooking Location</label>
+                          <p className="text-sm text-gray-900 mt-1">{sale.cooking_location}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Terms & Conditions */}
+                {sale.terms_accepted && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center">
+                        <CheckCircle className="h-5 w-5 mr-2 text-green-600" />
+                        Terms &amp; Conditions
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {[
+                          { key: "poaGoverned", label: "PoA / UNFCCC governed — acknowledged" },
+                          { key: "monitoring", label: "Agreed to cooperate for monitoring" },
+                          { key: "noResell", label: "Agreed not to resell the stove" },
+                          { key: "emissionReductions", label: "Ceded emission reductions to atmosfair gGmbH" },
+                          { key: "noExport", label: "Agreed not to take stove outside Nigeria" },
+                          { key: "demonstration", label: "Received sufficient demonstration on efficient use" },
+                        ].map(({ key, label }) => (
+                          <div key={key} className="flex items-center gap-2">
+                            {sale.terms_accepted[key] ? (
+                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                            ) : (
+                              <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
+                            )}
+                            <span className="text-sm text-gray-700">{label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Transaction Actions */}
                 <Card>

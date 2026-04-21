@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CreditCard, Clock, Plus, Loader2, Layers } from "lucide-react";
+import { CreditCard, Clock, Plus, Loader2, Layers, CheckCircle2, XCircle } from "lucide-react";
 import { AdminSales } from "@/types/adminSales";
 import type { SuperAdminSale } from "@/types/superAdminSales";
 import paymentModelService from "../../../services/paymentModelService";
@@ -258,6 +258,11 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
                   <DetailItem label="Other Phone" value={activeSale?.other_phone} />
                   <DetailItem label="Contact Person" value={activeSale?.contact_person} />
                   <DetailItem label="Contact Phone" value={activeSale?.contact_phone} />
+                  {activeSale?.retailer_branch && (
+                    <div className="col-span-2">
+                      <DetailItem label="Retailer / Branch / Agency / CSO" value={activeSale.retailer_branch} />
+                    </div>
+                  )}
                 </div>
               </SectionCard>
             </div>
@@ -378,6 +383,69 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Stove Set & Cooking Habits */}
+            {activeSale && (activeSale.pot_quantity != null || activeSale.heat_retention_device != null || activeSale.previous_stove_type) && (
+              <div className="grid grid-cols-2 gap-3">
+                <SectionCard title="Stove Set">
+                  <div className="grid grid-cols-2 gap-2">
+                    <DetailItem
+                      label="Pots Quantity"
+                      value={activeSale.pot_quantity != null ? `${activeSale.pot_quantity} pot${activeSale.pot_quantity !== 1 ? "s" : ""}` : undefined}
+                    />
+                    <DetailItem
+                      label="Wonderbox (Heat Retention)"
+                      value={activeSale.heat_retention_device != null ? (activeSale.heat_retention_device ? "Yes" : "No") : undefined}
+                    />
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Cooking Habits">
+                  <div className="grid grid-cols-1 gap-2">
+                    <DetailItem
+                      label="Previous Stove"
+                      value={
+                        activeSale.previous_stove_type === "wood_stove"
+                          ? "Wood Stove (3 stone)"
+                          : activeSale.previous_stove_type === "charcoal"
+                          ? "Charcoal Stove"
+                          : activeSale.previous_stove_type === "other"
+                          ? `Other — ${activeSale.previous_stove_other || "not specified"}`
+                          : activeSale.previous_stove_type
+                      }
+                    />
+                    <DetailItem label="Meals Per Day" value={activeSale.meals_per_day} />
+                    <DetailItem label="Fuel Source" value={activeSale.cooking_fuel_source} />
+                    <DetailItem label="Cooking Location" value={activeSale.cooking_location} />
+                  </div>
+                </SectionCard>
+              </div>
+            )}
+
+            {/* Terms & Conditions */}
+            {activeSale?.terms_accepted && (
+              <SectionCard title="Terms & Conditions">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                  {([
+                    { key: "poaGoverned", label: "PoA / UNFCCC governed" },
+                    { key: "monitoring", label: "Agreed to monitoring" },
+                    { key: "noResell", label: "Agreed not to resell" },
+                    { key: "emissionReductions", label: "Ceded emission reductions" },
+                    { key: "noExport", label: "Agreed not to export" },
+                    { key: "demonstration", label: "Received demonstration" },
+                  ] as const).map(({ key, label }) => (
+                    <div key={key} className="flex items-center gap-1.5">
+                      {activeSale.terms_accepted?.[key] ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                      ) : (
+                        <XCircle className="h-3.5 w-3.5 text-red-400 flex-shrink-0" />
+                      )}
+                      <span className="text-xs text-gray-700">{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+            )}
 
             {/* Installment Payments History */}
             {isInstallment && (

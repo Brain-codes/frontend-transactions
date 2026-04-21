@@ -195,6 +195,24 @@ export interface SuperAdminSale {
     fixed_price: number;
   };
 
+  // New fields from user agreement form
+  retailer_branch?: string;
+  pot_quantity?: number | null;
+  heat_retention_device?: boolean;
+  previous_stove_type?: string;
+  previous_stove_other?: string;
+  meals_per_day?: string;
+  cooking_fuel_source?: string;
+  cooking_location?: string;
+  terms_accepted?: {
+    poaGoverned?: boolean;
+    monitoring?: boolean;
+    noResell?: boolean;
+    emissionReductions?: boolean;
+    noExport?: boolean;
+    demonstration?: boolean;
+  } | null;
+
   // Related data (when included) - Updated to match new response structure
   addresses?: Address; // Changed from address to addresses
   stove_image?: ImageData;
