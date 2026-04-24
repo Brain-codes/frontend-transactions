@@ -158,6 +158,11 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
               route: "system-config",
               href: "/admin/system-config",
             },
+            // {
+            //   name: "Sync Logs",
+            //   route: "admin-logs",
+            //   href: "/admin/logs",
+            // },
           ],
         },
         // {
