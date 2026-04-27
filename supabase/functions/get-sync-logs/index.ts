@@ -31,14 +31,9 @@ serve(async (req) => {
     { auth: { autoRefreshToken: false, persistSession: false } },
   );
 
-  // Verify the caller's JWT and check their role
-  const anonClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: authHeader } } },
-  );
-
-  const { data: { user }, error: authError } = await anonClient.auth.getUser();
+  // Verify the caller's JWT — pass the raw token to getUser()
+  const token = authHeader.replace("Bearer ", "");
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
   if (authError || !user) return jsonError("Invalid or expired token", 401);
 
   const { data: profile } = await supabase

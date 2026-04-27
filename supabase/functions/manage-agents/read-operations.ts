@@ -18,6 +18,7 @@ export async function getAgents(
     const search = searchParams.get("search") || "";
     const sortBy = searchParams.get("sortBy") || "created_at";
     const sortOrder = searchParams.get("sortOrder") || "desc";
+    const filterOrgId = searchParams.get("organization_id") || "";
 
     console.log("📊 Query parameters:", {
       page,
@@ -27,13 +28,15 @@ export async function getAgents(
       sortOrder,
     });
 
-    // Build base query
+    // Build base query — join org name for super_admin cross-org view
+    const selectFields =
+      userRole === "super_admin"
+        ? "id, full_name, email, phone, role, organization_id, created_at, organizations(partner_name)"
+        : "id, full_name, email, phone, role, organization_id, created_at";
+
     let query = supabase
       .from("profiles")
-      .select(
-        "id, full_name, email, phone, role, organization_id, created_at",
-        { count: "exact" }
-      )
+      .select(selectFields, { count: "exact" })
       .in("role", ["partner_agent", "agent"]);
 
     const isPartnerRole = ["partner", "admin", "partner_agent", "agent"].includes(userRole);
@@ -47,8 +50,13 @@ export async function getAgents(
         organizationId
       );
     } else if (userRole === "super_admin") {
-      // Super admin can see all agents
-      console.log("🔍 Super admin access: showing all agents");
+      // Super admin can see all agents; optionally filter to a specific org
+      if (filterOrgId) {
+        query = query.eq("organization_id", filterOrgId);
+        console.log("🔍 Super admin: filtering by organization", filterOrgId);
+      } else {
+        console.log("🔍 Super admin access: showing all agents");
+      }
     } else if (isPartnerRole && !organizationId) {
       // Admin or Agent has no organization assigned
       console.log("❌ User has no organization assigned");
@@ -110,9 +118,11 @@ export async function getAgents(
       console.warn("⚠️ Could not fetch last login data:", authErr);
     }
 
-    // Merge total_sold and last_login into agent records
+    // Merge total_sold, last_login, and org name into agent records
     const enrichedAgents = (agents || []).map((agent: any) => ({
       ...agent,
+      organization_name: agent.organizations?.partner_name ?? null,
+      organizations: undefined,
       total_sold: salesCountMap[agent.id] || 0,
       last_login: lastLoginMap[agent.id] || null,
     }));

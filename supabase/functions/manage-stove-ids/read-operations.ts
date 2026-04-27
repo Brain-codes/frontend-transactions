@@ -25,6 +25,7 @@ export async function getStoveIds(
   const stateFilter = searchParams.get("state") || "";
   const dateFrom = searchParams.get("date_from") || "";
   const dateTo = searchParams.get("date_to") || "";
+  const showArchived = searchParams.get("show_archived") === "true";
 
   console.log(
     `Pagination: page=${page}, pageSize=${pageSize}, offset=${offset}`
@@ -32,7 +33,7 @@ export async function getStoveIds(
   console.log(
     `Filters: stoveId=${stoveIdFilter}, status=${statusFilter}, org=${organizationName}, orgIds=${organizationIds.join(
       ","
-    )}, branch=${branchFilter}, state=${stateFilter}, dateFrom=${dateFrom}, dateTo=${dateTo}`
+    )}, branch=${branchFilter}, state=${stateFilter}, dateFrom=${dateFrom}, dateTo=${dateTo}, showArchived=${showArchived}`
   );
 
   // Build the base query
@@ -43,6 +44,9 @@ export async function getStoveIds(
       sale_id,
       organization_id,
       status,
+      sales_reference,
+      is_archived,
+      archive_note,
       created_at,
       organizations!inner (
         id,
@@ -86,6 +90,18 @@ export async function getStoveIds(
     throw new Error("Unauthorized: Invalid role or missing organization");
   }
 
+  // Apply archive filter - default to showing only non-archived
+  if (!showArchived) {
+    query = query.eq("is_archived", false);
+  } else {
+    // If showArchived is true, we might want to show ONLY archived or BOTH.
+    // Usually, "Show Archived" means show everything including archived,
+    // or specifically just the archived ones.
+    // The user said: "until when i click my filter to show archived stove that is when it will show"
+    // I'll assume showArchived=true means show ONLY archived stove IDs.
+    query = query.eq("is_archived", true);
+  }
+
   // Apply filters
   if (stoveIdFilter) {
     query = query.ilike("stove_id", `%${stoveIdFilter}%`);
@@ -123,9 +139,22 @@ export async function getStoveIds(
     query = query.lte("created_at", `${dateTo}T23:59:59`);
   }
 
-  // Apply pagination and ordering
+  // Apply ordering
+  const sortByParam = searchParams.get("sort_by") || "created_at";
+  const sortDirParam = searchParams.get("sort_dir") || "desc";
+  const ascending = sortDirParam === "asc";
+
+  const sortColumnMap: Record<string, string> = {
+    stove_id: "stove_id",
+    date_sold: "created_at",
+    created_at: "created_at",
+    status: "status",
+    sales_reference: "sales_reference",
+  };
+  const sortColumn = sortColumnMap[sortByParam] || "created_at";
+
   query = query
-    .order("created_at", { ascending: false })
+    .order(sortColumn, { ascending })
     .range(offset, offset + pageSize - 1);
 
   // Execute query
@@ -162,6 +191,9 @@ export async function getStoveIds(
       sale_id: item.sale_id || sale?.id || null,
       sale_date: sale?.sales_date || sale?.created_at || null,
       sold_to: sale?.end_user_name || null,
+      sales_reference: item.sales_reference || null,
+      is_archived: item.is_archived || false,
+      archive_note: item.archive_note || null,
     };
   });
 
@@ -174,6 +206,112 @@ export async function getStoveIds(
       total_pages: Math.ceil((count || 0) / pageSize),
     },
   };
+}
+
+// Get stove IDs grouped by sales_reference
+export async function getGroupedBySalesReference(
+  supabase: any,
+  userRole: string,
+  organizationId: string | null,
+  searchParams: URLSearchParams,
+  allowedOrgIds: string[] | null = null
+) {
+  console.log("📊 Fetching stove IDs grouped by sales_reference...");
+
+  const organizationIds = searchParams.get("organization_ids")?.split(",").filter(Boolean) || [];
+
+  let query = supabase.from("stove_ids").select(`
+    id,
+    stove_id,
+    organization_id,
+    status,
+    sales_reference,
+    created_at,
+    is_archived,
+    organizations!inner (
+      id,
+      partner_name,
+      branch,
+      state
+    ),
+    sales!left (
+      id,
+      end_user_name,
+      sales_date,
+      created_at
+    )
+  `).eq("is_archived", false);
+
+  // Apply role-based filtering
+  if ((userRole === "partner" || userRole === "admin") && organizationId) {
+    query = query.eq("organization_id", organizationId);
+  } else if (userRole === "super_admin") {
+    if (organizationIds.length > 0) {
+      query = query.in("organization_id", organizationIds);
+    }
+  } else if (userRole === "acsl_agent" || userRole === "super_admin_agent") {
+    const effectiveOrgIds =
+      allowedOrgIds && allowedOrgIds.length > 0
+        ? organizationIds.length > 0
+          ? organizationIds.filter((id) => allowedOrgIds!.includes(id))
+          : allowedOrgIds
+        : [];
+    if (effectiveOrgIds.length === 0) return { data: [] };
+    query = query.in("organization_id", effectiveOrgIds);
+  } else {
+    throw new Error("Unauthorized: Invalid role or missing organization");
+  }
+
+  const { data, error } = await query.order("sales_reference", { ascending: true, nullsFirst: false }).order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("❌ Error fetching grouped stove IDs:", error);
+    throw new Error(`Failed to fetch grouped stove IDs: ${error.message}`);
+  }
+
+  // Group by sales_reference
+  const grouped: Record<string, any> = {};
+  for (const item of data || []) {
+    const ref = item.sales_reference || "__no_reference__";
+    if (!grouped[ref]) {
+      grouped[ref] = {
+        sales_reference: item.sales_reference || null,
+        stove_ids: [],
+        total: 0,
+        available: 0,
+        sold: 0,
+      };
+    }
+    const saleRaw = item.sales;
+    const sale = saleRaw
+      ? Array.isArray(saleRaw) ? saleRaw[0] || null : saleRaw
+      : null;
+
+    grouped[ref].stove_ids.push({
+      id: item.id,
+      stove_id: item.stove_id,
+      status: item.status,
+      organization_name: item.organizations?.partner_name || "N/A",
+      branch: item.organizations?.branch || "N/A",
+      location: item.organizations?.state || "N/A",
+      sale_date: sale?.sales_date || sale?.created_at || null,
+      sold_to: sale?.end_user_name || null,
+      created_at: item.created_at,
+    });
+    grouped[ref].total++;
+    if (item.status === "available") grouped[ref].available++;
+    else if (item.status === "sold") grouped[ref].sold++;
+  }
+
+  // Sort: named references first, then null references
+  const sortedGroups = Object.values(grouped).sort((a: any, b: any) => {
+    if (!a.sales_reference && b.sales_reference) return 1;
+    if (a.sales_reference && !b.sales_reference) return -1;
+    return (a.sales_reference || "").localeCompare(b.sales_reference || "");
+  });
+
+  console.log(`✅ Grouped into ${sortedGroups.length} sales reference groups`);
+  return { data: sortedGroups };
 }
 
 // Get single stove ID by ID
@@ -197,6 +335,8 @@ export async function getStoveIdById(
       sale_id,
       organization_id,
       status,
+      is_archived,
+      archive_note,
       created_at,
       organizations!inner (
         id,
@@ -278,6 +418,8 @@ export async function getStoveIdById(
     sale_id: data.sale_id || sale?.id || null,
     sale_date: sale?.sales_date || sale?.created_at || null,
     sold_to: sale?.end_user_name || null,
+    is_archived: data.is_archived || false,
+    archive_note: data.archive_note || null,
     // Pass full sale object so the modal can use it directly
     sale: sale || null,
   };

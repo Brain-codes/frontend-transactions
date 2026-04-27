@@ -69,17 +69,20 @@ serve(async (req) => {
     // Get stove ID statistics using count for better performance and no row limit
     let totalQuery = supabase
       .from("stove_ids")
-      .select("*", { count: "exact", head: true });
+      .select("*", { count: "exact", head: true })
+      .eq("is_archived", false);
 
     let availableQuery = supabase
       .from("stove_ids")
       .select("*", { count: "exact", head: true })
-      .eq("status", "available");
+      .eq("status", "available")
+      .eq("is_archived", false);
 
     let soldQuery = supabase
       .from("stove_ids")
       .select("*", { count: "exact", head: true })
-      .eq("status", "sold");
+      .eq("status", "sold")
+      .eq("is_archived", false);
 
     // If organization_ids are provided, filter by them
     // Otherwise, get stats for all organizations

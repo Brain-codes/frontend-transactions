@@ -1,6 +1,5 @@
-// Route handler for stove ID management operations
-
-import { getStoveIds, getStoveIdById } from "./read-operations.ts";
+import { getStoveIds, getStoveIdById, getGroupedBySalesReference } from "./read-operations.ts";
+import { archiveStoveId } from "./write-operations.ts";
 
 export async function handleStoveIdRoute(
   req: Request,
@@ -17,6 +16,7 @@ export async function handleStoveIdRoute(
     case "GET": {
       // Check if requesting a single stove ID by ID
       const stoveIdParam = url.searchParams.get("id");
+      const grouped = url.searchParams.get("grouped") === "true";
 
       if (stoveIdParam) {
         // Get single stove ID by ID
@@ -29,6 +29,17 @@ export async function handleStoveIdRoute(
         );
       }
 
+      if (grouped) {
+        // Get stove IDs grouped by sales_reference
+        return await getGroupedBySalesReference(
+          supabase,
+          userRole,
+          organizationId,
+          url.searchParams,
+          allowedOrgIds
+        );
+      }
+
       // Get stove IDs with pagination and filters
       return await getStoveIds(
         supabase,
@@ -37,6 +48,22 @@ export async function handleStoveIdRoute(
         url.searchParams,
         allowedOrgIds
       );
+    }
+
+    case "POST": {
+      const body = await req.json();
+      const { action } = body;
+
+      if (action === "archive") {
+        return await archiveStoveId(
+          supabase,
+          userRole,
+          organizationId,
+          body
+        );
+      }
+
+      throw new Error(`Action ${action} not supported`);
     }
 
     default:

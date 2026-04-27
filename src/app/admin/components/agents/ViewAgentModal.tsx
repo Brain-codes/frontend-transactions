@@ -11,13 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   User,
-  Loader2,
-  AlertCircle,
   Shield,
   Edit,
 } from "lucide-react";
 import { SalesAgent } from "@/types/salesAgent";
-import adminAgentService from "../../../services/adminAgentService.jsx";
 
 interface ViewAgentModalProps {
   isOpen: boolean;
@@ -74,37 +71,13 @@ const ViewAgentModal: React.FC<ViewAgentModalProps> = ({
   agent,
   onEdit,
 }) => {
-  const [loading, setLoading] = useState<boolean>(false);
   const [stats, setStats] = useState<AgentStats | null>(null);
-  const [statsError, setStatsError] = useState<string>("");
 
   useEffect(() => {
-    if (agent && isOpen) {
-      fetchAgentStats();
+    if (!isOpen) {
+      setStats(null);
     }
-  }, [agent, isOpen]);
-
-  const fetchAgentStats = async () => {
-    if (!agent) return;
-
-    try {
-      setLoading(true);
-      setStatsError("");
-
-      const response = await adminAgentService.getAgentStats(agent.id as any);
-
-      if (response.success) {
-        setStats(response.data);
-      } else {
-        setStatsError(response.error || "Failed to load agent statistics");
-      }
-    } catch (err) {
-      console.error("Error fetching agent stats:", err);
-      setStatsError("Unable to load agent statistics");
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [isOpen]);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
@@ -185,31 +158,26 @@ const ViewAgentModal: React.FC<ViewAgentModalProps> = ({
             </SectionCard>
 
             <SectionCard title="Performance Overview">
-              {loading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-brand-600 mr-2" />
-                  <span className="text-sm text-gray-600">Loading...</span>
-                </div>
-              ) : statsError ? (
-                <div className="flex items-center gap-2 text-red-600">
-                  <AlertCircle className="h-4 w-4" />
-                  <span className="text-xs">{statsError}</span>
-                </div>
-              ) : stats ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <DetailItem label="Total Stoves Sold" value={stats.totalSales.toLocaleString()} />
-                  <DetailItem label="Total Revenue" value={formatCurrency(stats.totalAmount)} />
-                  <DetailItem label="Avg Sale Amount" value={formatCurrency(stats.avgSaleAmount)} />
-                  <DetailItem
-                    label="Stoves Sold (Table)"
-                    value={
-                      agent.total_sold !== undefined && agent.total_sold !== null
-                        ? agent.total_sold.toLocaleString()
-                        : "N/A"
-                    }
-                  />
-                </div>
-              ) : null}
+              <div className="grid grid-cols-2 gap-3">
+                <DetailItem
+                  label="Total Stoves Sold"
+                  value={
+                    agent.total_sold !== undefined && agent.total_sold !== null
+                      ? agent.total_sold.toLocaleString()
+                      : "0"
+                  }
+                />
+                <DetailItem
+                  label="Last Login"
+                  value={agent.last_login ? formatDate(agent.last_login) : "Never"}
+                />
+                {stats && (
+                  <>
+                    <DetailItem label="Total Revenue" value={formatCurrency(stats.totalAmount)} />
+                    <DetailItem label="Avg Sale Amount" value={formatCurrency(stats.avgSaleAmount)} />
+                  </>
+                )}
+              </div>
             </SectionCard>
           </div>
 

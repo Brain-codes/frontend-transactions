@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import OrganizationFormModal from "../components/OrganizationFormModal";
@@ -42,6 +42,7 @@ import useOrganizations from "../hooks/useOrganizations";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import { lgaAndStates } from "../constants";
+import adminAgentService from "../services/adminAgentService.jsx";
 import {
   Plus,
   Search,
@@ -62,6 +63,9 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Download,
+  ChevronDown,
+  ChevronUp,
+  Tag,
 } from "lucide-react";
 import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AssignPaymentModelsModal from "./components/AssignPaymentModelsModal";
@@ -417,6 +421,17 @@ const PartnersPage = () => {
   const [paymentModelsOrg, setPaymentModelsOrg] = useState(null);
   const [showOrgImportModal, setShowOrgImportModal] = useState(false);
 
+  // Stove reference inline accordion
+  const [expandedOrgId, setExpandedOrgId] = useState(null);
+  const [orgGroupedData, setOrgGroupedData] = useState({}); // orgId -> grouped array
+  const [loadingOrgId, setLoadingOrgId] = useState(null);
+  const [expandedRefKeys, setExpandedRefKeys] = useState({}); // "orgId::refKey" -> bool
+
+  // Agent inline accordion
+  const [expandedAgentsOrgId, setExpandedAgentsOrgId] = useState(null);
+  const [orgAgentsData, setOrgAgentsData] = useState({}); // orgId -> agents array
+  const [loadingAgentsOrgId, setLoadingAgentsOrgId] = useState(null);
+
   // Filters
   const [filters, setFilters] = useState({ search: "", state: "all", partner_type: "all" });
   const [typeCardFilter, setTypeCardFilter] = useState("all"); // synced with partner_type filter
@@ -538,6 +553,55 @@ const PartnersPage = () => {
     start = Math.max(1, end - 4);
     for (let i = start; i <= end; i++) pages.push(i);
     return pages;
+  };
+
+  const handleToggleStoveBreakdown = async (org) => {
+    // Collapse if already open
+    if (expandedOrgId === org.id) { setExpandedOrgId(null); return; }
+    setExpandedOrgId(org.id);
+    // Use cache if already fetched
+    if (orgGroupedData[org.id]) return;
+    setLoadingOrgId(org.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const params = new URLSearchParams({ grouped: "true", organization_ids: org.id });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-stove-ids?${params}`,
+        { headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" } }
+      );
+      const result = await res.json();
+      setOrgGroupedData((prev) => ({ ...prev, [org.id]: result.data || [] }));
+    } catch {
+      setOrgGroupedData((prev) => ({ ...prev, [org.id]: [] }));
+    } finally {
+      setLoadingOrgId(null);
+    }
+  };
+
+  const handleToggleRef = (orgId, refKey) => {
+    const key = `${orgId}::${refKey}`;
+    setExpandedRefKeys((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleToggleAgents = async (org) => {
+    if (expandedAgentsOrgId === org.id) { setExpandedAgentsOrgId(null); return; }
+    setExpandedAgentsOrgId(org.id);
+    if (orgAgentsData[org.id]) return;
+    setLoadingAgentsOrgId(org.id);
+    try {
+      const response = await adminAgentService.getSalesAgents({ limit: 100, organization_id: org.id });
+      setOrgAgentsData((prev) => ({ ...prev, [org.id]: response.data || [] }));
+    } catch {
+      setOrgAgentsData((prev) => ({ ...prev, [org.id]: [] }));
+    } finally {
+      setLoadingAgentsOrgId(null);
+    }
+  };
+
+  const formatDate = (d) => {
+    if (!d) return "N/A";
+    try { return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }); }
+    catch { return "N/A"; }
   };
 
   // Action handlers
@@ -860,7 +924,8 @@ const PartnersPage = () => {
                     </TableRow>
                   ) : (
                     organizationsData.map((org, idx) => (
-                      <TableRow key={org.id} className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}>
+                      <React.Fragment key={org.id}>
+                      <TableRow className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}>
                         <TableCell className="text-xs font-medium text-gray-900">{org.partner_name}</TableCell>
                         <TableCell>
                           {org.partner_type ? (
@@ -876,15 +941,23 @@ const PartnersPage = () => {
                         <TableCell className="text-xs">{org.branch || "N/A"}</TableCell>
                         <TableCell className="text-xs">{org.state || "N/A"}</TableCell>
 
-                        {/* Stove IDs — compact 3-value inline */}
+                        {/* Stove IDs — clickable to expand reference breakdown */}
                         <TableCell>
-                          <div className="flex items-center gap-2 text-xs">
+                          <button
+                            onClick={() => handleToggleStoveBreakdown(org)}
+                            className="flex items-center gap-2 text-xs hover:opacity-80 transition-opacity group"
+                          >
                             <span className="text-purple-700 font-medium" title="Total">{org.total_stove_ids ?? 0} received</span>
                             <span className="text-gray-300">·</span>
                             <span className="text-green-600" title="Available">{org.available_stove_ids ?? 0} available</span>
                             <span className="text-gray-300">·</span>
                             <span className="text-blue-600" title="Sold">{org.sold_stove_ids ?? 0} sold</span>
-                          </div>
+                            {loadingOrgId === org.id
+                              ? <Loader2 className="h-3 w-3 animate-spin text-gray-400 ml-1" />
+                              : expandedOrgId === org.id
+                              ? <ChevronUp className="h-3 w-3 text-[#07376a] ml-1" />
+                              : <ChevronDown className="h-3 w-3 text-gray-400 ml-1 group-hover:text-[#07376a]" />}
+                          </button>
                         </TableCell>
 
                         <TableCell className="text-center">
@@ -916,6 +989,10 @@ const PartnersPage = () => {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleToggleAgents(org)}>
+                                  <Users className="mr-2 h-4 w-4" />
+                                  {expandedAgentsOrgId === org.id ? "Hide Agents" : "View Agents"}
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleViewStoveIds(org)}>
                                   <Package className="mr-2 h-4 w-4" />
                                   View Stove IDs
@@ -933,6 +1010,167 @@ const PartnersPage = () => {
                           </div>
                         </TableCell>
                       </TableRow>
+
+                      {/* Agent Inline Expand Row */}
+                      {expandedAgentsOrgId === org.id && (
+                        <TableRow key={`${org.id}-agents`} className="bg-indigo-50/40">
+                          <TableCell colSpan={6} className="p-0">
+                            <div className="px-4 py-3">
+                              {loadingAgentsOrgId === org.id ? (
+                                <div className="flex items-center gap-2 py-3 text-sm text-gray-500">
+                                  <Loader2 className="h-4 w-4 animate-spin" /> Loading agents...
+                                </div>
+                              ) : !orgAgentsData[org.id] || orgAgentsData[org.id].length === 0 ? (
+                                <p className="text-xs text-gray-500 py-2 italic">No agents found for this partner.</p>
+                              ) : (
+                                <div className="border border-indigo-200 rounded-md overflow-hidden">
+                                  <div className="bg-[#07376a] px-3 py-2 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <Users className="h-3.5 w-3.5 text-white/80" />
+                                      <span className="text-xs font-semibold text-white">
+                                        Sales Agents — {org.partner_name}
+                                      </span>
+                                    </div>
+                                    <span className="text-xs text-white/70">{orgAgentsData[org.id].length} agent{orgAgentsData[org.id].length !== 1 ? "s" : ""}</span>
+                                  </div>
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr className="bg-indigo-50 text-gray-600 border-b border-indigo-100">
+                                        <th className="text-left px-3 py-2 font-semibold">Agent Name</th>
+                                        <th className="text-left px-3 py-2 font-semibold">Email</th>
+                                        <th className="text-left px-3 py-2 font-semibold">Phone</th>
+                                        <th className="text-center px-3 py-2 font-semibold">Sales</th>
+                                        <th className="text-left px-3 py-2 font-semibold">Joined</th>
+                                        <th className="text-left px-3 py-2 font-semibold">Last Login</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {orgAgentsData[org.id].map((agent, ai) => {
+                                        const lastLoginDiff = agent.last_login ? Date.now() - new Date(agent.last_login).getTime() : null;
+                                        const lastLoginLabel = !agent.last_login
+                                          ? <span className="text-gray-400">Never</span>
+                                          : lastLoginDiff <= 7 * 86400000
+                                          ? <span className="text-green-600 font-medium">{Math.floor(lastLoginDiff / 86400000)}d ago</span>
+                                          : lastLoginDiff <= 30 * 86400000
+                                          ? <span className="text-amber-600 font-medium">{Math.floor(lastLoginDiff / 86400000)}d ago</span>
+                                          : <span className="text-red-500">{formatDate(agent.last_login)}</span>;
+                                        return (
+                                          <tr key={agent.id} className={ai % 2 === 0 ? "bg-white" : "bg-indigo-50/30"}>
+                                            <td className="px-3 py-2 font-medium text-gray-900">
+                                              <div className="flex items-center gap-1.5">
+                                                <div className="h-5 w-5 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-[10px] flex-shrink-0">
+                                                  {agent.full_name?.charAt(0).toUpperCase() ?? "?"}
+                                                </div>
+                                                {agent.full_name}
+                                              </div>
+                                            </td>
+                                            <td className="px-3 py-2 text-gray-500">{agent.email}</td>
+                                            <td className="px-3 py-2 text-gray-500">{agent.phone || "—"}</td>
+                                            <td className="px-3 py-2 text-center">
+                                              <span className={`px-2 py-0.5 rounded-full font-semibold ${(agent.total_sold ?? 0) > 0 ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                                                {agent.total_sold ?? 0}
+                                              </span>
+                                            </td>
+                                            <td className="px-3 py-2 text-gray-500">{formatDate(agent.created_at)}</td>
+                                            <td className="px-3 py-2">{lastLoginLabel}</td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+
+                      {/* Stove Reference Breakdown — inline accordion row */}
+                      {expandedOrgId === org.id && (
+                        <TableRow key={`${org.id}-breakdown`} className="bg-blue-50/40">
+                          <TableCell colSpan={6} className="p-0">
+                            <div className="px-4 py-3">
+                              {loadingOrgId === org.id ? (
+                                <div className="flex items-center gap-2 py-3 text-sm text-gray-500">
+                                  <Loader2 className="h-4 w-4 animate-spin" /> Loading stove reference breakdown...
+                                </div>
+                              ) : !orgGroupedData[org.id] || orgGroupedData[org.id].length === 0 ? (
+                                <p className="text-xs text-gray-500 py-2 italic">No stove IDs assigned to this partner yet.</p>
+                              ) : (
+                                <div className="border border-gray-200 rounded-md overflow-hidden">
+                                  {/* Section label */}
+                                  <div className="bg-[#07376a] px-3 py-2 flex items-center gap-2">
+                                    <Tag className="h-3.5 w-3.5 text-white/80" />
+                                    <span className="text-xs font-semibold text-white">Sales Reference Breakdown</span>
+                                  </div>
+
+                                  {orgGroupedData[org.id].map((group) => {
+                                    const refKey = group.sales_reference || "__none__";
+                                    const compositeKey = `${org.id}::${refKey}`;
+                                    const isRefExpanded = !!expandedRefKeys[compositeKey];
+                                    return (
+                                      <div key={refKey} className="border-b border-gray-100 last:border-b-0">
+                                        {/* Reference header */}
+                                        <button
+                                          onClick={() => handleToggleRef(org.id, refKey)}
+                                          className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-blue-50 transition-colors text-left"
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            {isRefExpanded
+                                              ? <ChevronUp className="h-3.5 w-3.5 text-[#07376a]" />
+                                              : <ChevronDown className="h-3.5 w-3.5 text-gray-400" />}
+                                            <span className="text-xs font-semibold text-[#07376a]">
+                                              {group.sales_reference || <span className="italic text-gray-400 font-normal">No Reference</span>}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="bg-purple-100 text-purple-800 text-[10px] px-2 py-0.5 rounded-full font-medium">{group.total} received</span>
+                                            <span className="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-medium">{group.available} available</span>
+                                            <span className="bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-full font-medium">{group.sold} sold</span>
+                                          </div>
+                                        </button>
+
+                                        {/* Stove IDs table */}
+                                        {isRefExpanded && (
+                                          <div className="bg-white border-t border-gray-100">
+                                            <table className="w-full text-xs">
+                                              <thead>
+                                                <tr className="bg-gray-50 text-gray-600 border-b border-gray-100">
+                                                  <th className="text-left px-3 py-2 font-semibold">Stove ID</th>
+                                                  <th className="text-left px-3 py-2 font-semibold">Status</th>
+                                                  <th className="text-left px-3 py-2 font-semibold">Assigned Date</th>
+                                                  <th className="text-left px-3 py-2 font-semibold">Date Sold</th>
+                                                  <th className="text-left px-3 py-2 font-semibold">Sold To</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                {(group.stove_ids || []).map((stove, si) => (
+                                                  <tr key={stove.id} className={si % 2 === 0 ? "bg-white" : "bg-blue-50/30"}>
+                                                    <td className="px-3 py-2 font-mono font-medium text-gray-900">{stove.stove_id}</td>
+                                                    <td className="px-3 py-2">
+                                                      <span className={`px-2 py-0.5 rounded-full font-medium ${stove.status === "sold" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
+                                                        {stove.status === "sold" ? "Sold" : "Available"}
+                                                      </span>
+                                                    </td>
+                                                    <td className="px-3 py-2 text-gray-500">{formatDate(stove.created_at)}</td>
+                                                    <td className="px-3 py-2 text-gray-500">{stove.sale_date ? formatDate(stove.sale_date) : "—"}</td>
+                                                    <td className="px-3 py-2 text-gray-500">{stove.sold_to || "—"}</td>
+                                                  </tr>
+                                                ))}
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      </React.Fragment>
                     ))
                   )}
                 </TableBody>

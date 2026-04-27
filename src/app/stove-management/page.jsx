@@ -36,6 +36,9 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Download,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AdminSalesDetailModal from "../admin/components/sales/AdminSalesDetailModal";
@@ -87,7 +90,7 @@ const StoveManagementPage = () => {
 
   const [loading, setLoading] = useState(false);
   const [stoveIds, setStoveIds] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, page_size: 25, total_count: 0, total_pages: 0 });
+  const [pagination, setPagination] = useState({ page: 1, page_size: 10, total_count: 0, total_pages: 0 });
   const [selectedOrgIds, setSelectedOrgIds] = useState(isAdmin && adminOrgId ? [adminOrgId] : []);
   const [organizations, setOrganizations] = useState([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
@@ -101,6 +104,16 @@ const StoveManagementPage = () => {
   const [selectedSale, setSelectedSale] = useState(null);
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [loadingStoveId, setLoadingStoveId] = useState(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [stoveToArchive, setStoveToArchive] = useState(null);
+  const [archiveNote, setArchiveNote] = useState("");
+  const [archiving, setArchiving] = useState(false);
+
+  // Group by / Sort by (client-side)
+  const [groupBy, setGroupBy] = useState("none");
+  const [sortBy, setSortBy] = useState("status");
+  const [sortDir, setSortDir] = useState("desc"); // desc = sold first by default
 
   const orgDropdownRef = useRef(null);
 
@@ -165,7 +178,43 @@ const StoveManagementPage = () => {
     }
   };
 
-  const fetchStoveIds = async (page = 1, pageSize = pagination.page_size, currentFilters = filters, orgIds = selectedOrgIds) => {
+  const handleArchiveStove = async () => {
+    if (!stoveToArchive) return;
+    setArchiving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-stove-ids`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "archive",
+            id: stoveToArchive.id,
+            note: archiveNote,
+          }),
+        }
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to archive stove ID");
+      
+      toast.success("Success", `Stove ID ${stoveToArchive.stove_id} archived successfully`);
+      setShowArchiveModal(false);
+      setStoveToArchive(null);
+      setArchiveNote("");
+      fetchStoveIds(pagination.page, pagination.page_size);
+      fetchStats(selectedOrgIds);
+    } catch (err) {
+      toast.error("Error", err.message);
+    } finally {
+      setArchiving(false);
+    }
+  };
+
+  const fetchStoveIds = async (page = 1, pageSize = pagination.page_size, currentFilters = filters, orgIds = selectedOrgIds, archived = showArchived, currentSortBy = sortBy, currentSortDir = sortDir) => {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -177,6 +226,9 @@ const StoveManagementPage = () => {
       if (currentFilters.state) params.append("state", currentFilters.state);
       if (currentFilters.date_from) params.append("date_from", currentFilters.date_from);
       if (currentFilters.date_to) params.append("date_to", currentFilters.date_to);
+      if (archived) params.append("show_archived", "true");
+      if (currentSortBy && currentSortBy !== "organization") params.append("sort_by", currentSortBy);
+      params.append("sort_dir", currentSortDir);
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-stove-ids?${params}`,
@@ -199,7 +251,7 @@ const StoveManagementPage = () => {
     if (cached?.length > 0) setOrganizations(cached);
     else fetchOrganizations();
     fetchStats([]);
-    fetchStoveIds(1, 25);
+    fetchStoveIds(1, 10);
   }, []);
 
   const handleSelectOrganization = (orgIds) => {
@@ -237,7 +289,13 @@ const StoveManagementPage = () => {
     fetchStoveIds(1, pagination.page_size, cleared);
   };
 
-  const hasActiveFilters = Object.values(filters).some(v => v !== "") || (isSuperAdmin && selectedOrgIds.length > 0);
+  const toggleArchived = () => {
+    const newVal = !showArchived;
+    setShowArchived(newVal);
+    fetchStoveIds(1, pagination.page_size, filters, selectedOrgIds, newVal);
+  };
+
+  const hasActiveFilters = Object.values(filters).some(v => v !== "") || (isSuperAdmin && selectedOrgIds.length > 0) || showArchived;
 
   // View stove details — fetches stove data, then opens AdminSalesDetailModal for sold stoves
   const handleViewStove = async (stove) => {
@@ -279,6 +337,38 @@ const StoveManagementPage = () => {
     try {
       return new Date(dateString).toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" });
     } catch { return "Invalid Date"; }
+  };
+
+  // Build flat display rows: { type: "group-header", label } | { type: "row", stove }
+  // Sorting is server-side; grouping is client-side (visual, current page only)
+  const displayRows = (() => {
+    if (groupBy === "none") return stoveIds.map(s => ({ type: "row", stove: s }));
+    const getGroupKey = (s) => groupBy === "sales_reference"
+      ? (s.sales_reference || "No Sales Reference")
+      : (s.organization_name || "No Organization");
+    const groups = [];
+    const seen = new Map();
+    for (const stove of stoveIds) {
+      const key = getGroupKey(stove);
+      if (!seen.has(key)) { seen.set(key, []); groups.push(key); }
+      seen.get(key).push(stove);
+    }
+    const rows = [];
+    for (const key of groups) {
+      rows.push({ type: "group-header", label: key, count: seen.get(key).length });
+      for (const stove of seen.get(key)) rows.push({ type: "row", stove });
+    }
+    return rows;
+  })();
+
+  const handleSortByChange = (val) => {
+    setSortBy(val);
+    fetchStoveIds(1, pagination.page_size, filters, selectedOrgIds, showArchived, val, sortDir);
+  };
+  const toggleSortDir = () => {
+    const newDir = sortDir === "asc" ? "desc" : "asc";
+    setSortDir(newDir);
+    fetchStoveIds(1, pagination.page_size, filters, selectedOrgIds, showArchived, sortBy, newDir);
   };
 
   // Pagination helpers
@@ -463,33 +553,85 @@ const StoveManagementPage = () => {
                   <X className="h-4 w-4 mr-1" /> Clear
                 </Button>
               )}
+
+              {/* Archived Toggle — super admin only */}
+              {/* {isSuperAdmin && (
+                <div className="flex items-center gap-2 ml-auto">
+                  <span className="text-sm text-gray-600 font-medium">Show Archived</span>
+                  <div
+                    className={`w-10 h-5 flex items-center rounded-full p-1 cursor-pointer transition-colors ${showArchived ? "bg-red-500" : "bg-gray-300"}`}
+                    onClick={toggleArchived}
+                  >
+                    <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform ${showArchived ? "translate-x-5" : ""}`} />
+                  </div>
+                </div>
+              )} */}
             </div>
           </div>
 
           {/* Table with ERP-style pagination */}
           <div className="space-y-0">
-            {/* Pagination header */}
-            <div className="bg-blue-50 rounded-t-lg px-4 py-2 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <p className="text-sm text-gray-600">
-                  Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
-                  <span className="font-medium">{pagination.total_count}</span> records
-                </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">per page:</span>
+            {/* Table toolbar */}
+            <div className="bg-blue-50 rounded-t-lg px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Per page */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Per page:</span>
                   <Select value={pagination.page_size.toString()} onValueChange={handlePageSizeChange}>
-                    <SelectTrigger className="w-[65px] h-7 bg-white text-sm"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-[60px] h-7 bg-white text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
                       <SelectItem value="25">25</SelectItem>
                       <SelectItem value="50">50</SelectItem>
                       <SelectItem value="100">100</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="w-px h-5 bg-gray-300" />
+
+                {/* Group by */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Group by:</span>
+                  <Select value={groupBy} onValueChange={setGroupBy}>
+                    <SelectTrigger className="h-7 bg-white text-xs w-[145px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="sales_reference">Sales Reference</SelectItem>
+                      <SelectItem value="organization">Organization</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="w-px h-5 bg-gray-300" />
+
+                {/* Sort by + direction */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Sort by:</span>
+                  <Select value={sortBy} onValueChange={handleSortByChange}>
+                    <SelectTrigger className="h-7 bg-white text-xs w-[140px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="status">Status (Sold)</SelectItem>
+                      <SelectItem value="stove_id">Stove ID</SelectItem>
+                      <SelectItem value="date_sold">Date Sold</SelectItem>
+                      <SelectItem value="organization">Organization</SelectItem>
+                      <SelectItem value="sales_reference">Sales Reference</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 bg-white text-xs flex items-center gap-1"
+                    onClick={toggleSortDir}
+                  >
+                    {sortDir === "asc" ? <><ArrowUp className="h-3 w-3" /><span>Asc</span></> : <><ArrowDown className="h-3 w-3" /><span>Desc</span></>}
+                  </Button>
+                </div>
               </div>
+
               <div className="flex items-center gap-2">
-                <p className="text-sm font-bold text-green-500">
-                  Total Stove IDs: <span className="text-brand">{pagination.total_count}</span>
+                <p className="text-xs font-semibold text-gray-600">
+                  Total: <span className="text-brand">{pagination.total_count}</span>
                 </p>
                 <Button
                   size="sm"
@@ -497,20 +639,17 @@ const StoveManagementPage = () => {
                   className="h-7 px-2 text-xs flex items-center gap-1"
                   onClick={() => {
                     const headers = isSuperAdmin
-                      ? ["Stove ID", "Status", "Partner Name", "Branch", "State", "Date Sold", "Sold To"]
-                      : ["Stove ID", "Status", "Date Sold", "Sold To"];
+                      ? ["Stove ID", "Sales Reference", "Status", "Partner Name", "Branch", "State", "Date Sold", "Sold To"]
+                      : ["Stove ID", "Sales Reference", "Status", "Date Sold", "Sold To"];
                     const rows = stoveIds.map((s) => {
-                      const base = [
-                        s.stove_id,
-                        s.status,
-                      ];
+                      const base = [s.stove_id, s.sales_reference || "", s.status];
                       if (isSuperAdmin) {
-                        base.push(s.organizations?.partner_name || s.partner_name || "");
-                        base.push(s.organizations?.branch || s.branch || "");
-                        base.push(s.organizations?.state || s.state || "");
+                        base.push(s.organization_name || "");
+                        base.push(s.branch || "");
+                        base.push(s.location || "");
                       }
-                      base.push(s.date_sold ? new Date(s.date_sold).toLocaleDateString() : "");
-                      base.push(s.sold_to || s.contact_person || "");
+                      base.push(s.sale_date ? new Date(s.sale_date).toLocaleDateString() : "");
+                      base.push(s.sold_to || "");
                       return base;
                     });
                     downloadTableAsCSV(headers, rows, `stove-ids-${new Date().toISOString().slice(0, 10)}.csv`);
@@ -533,6 +672,7 @@ const StoveManagementPage = () => {
                 <TableHeader>
                   <TableRow className="bg-brand hover:bg-brand">
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stove ID</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Sales Reference</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Status</TableHead>
                     {isSuperAdmin && (
                       <>
@@ -549,41 +689,80 @@ const StoveManagementPage = () => {
                 <TableBody className={loading ? "opacity-40" : ""}>
                   {stoveIds.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={isSuperAdmin ? 8 : 5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={isSuperAdmin ? 9 : 6} className="text-center py-8 text-gray-500">
                         {loading ? "Loading..." : "No stove IDs found"}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    stoveIds.map((stove, index) => (
-                      <TableRow key={stove.id} className={`${index % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50`}>
-                        <TableCell className="font-medium text-xs">{stove.stove_id}</TableCell>
-                        <TableCell>
-                          <Badge className={stove.status === "sold" ? "bg-blue-100 text-blue-800 border-blue-200 text-xs" : "bg-green-100 text-green-800 border-green-200 text-xs"}>
-                            {stove.status.charAt(0).toUpperCase() + stove.status.slice(1)}
-                          </Badge>
-                        </TableCell>
-                        {isSuperAdmin && (
-                          <>
-                            <TableCell className="text-xs">{stove.organization_name || "N/A"}</TableCell>
-                            <TableCell className="text-xs">{stove.branch || "N/A"}</TableCell>
-                            <TableCell className="text-xs">{stove.location || "N/A"}</TableCell>
-                          </>
-                        )}
-                        <TableCell className="text-xs">{stove.status === "sold" && stove.sale_date ? formatDate(stove.sale_date) : "—"}</TableCell>
-                        <TableCell className="text-xs">{stove.sold_to || "—"}</TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            size="sm"
-                            onClick={() => handleViewStove(stove)}
-                            disabled={loadingStoveId === stove.id}
-                            className="bg-brand hover:bg-brand/90 text-white h-7 px-3 text-xs"
-                          >
-                            {loadingStoveId === stove.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-                            View Details
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    (() => {
+                      let rowIndex = 0;
+                      return displayRows.map((item, i) => {
+                        if (item.type === "group-header") {
+                          rowIndex = 0;
+                          return (
+                            <TableRow key={`gh-${i}`} className="bg-brand/10 border-y border-brand/20">
+                              <TableCell colSpan={isSuperAdmin ? 9 : 6} className="py-1.5 px-4 text-xs font-semibold text-brand">
+                                {groupBy === "sales_reference" ? "Sales Ref: " : "Organization: "}
+                                {item.label}
+                                <span className="ml-2 text-gray-500 font-normal">({item.count} stove{item.count !== 1 ? "s" : ""})</span>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        }
+                        const stove = item.stove;
+                        const idx = rowIndex++;
+                        return (
+                          <TableRow key={stove.id} className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50`}>
+                            <TableCell className="font-medium text-xs">{stove.stove_id}</TableCell>
+                            <TableCell className="text-xs">{stove.sales_reference || "—"}</TableCell>
+                            <TableCell>
+                              <Badge className={stove.status === "sold" ? "bg-blue-100 text-blue-800 border-blue-200 text-xs" : "bg-green-100 text-green-800 border-green-200 text-xs"}>
+                                {stove.status.charAt(0).toUpperCase() + stove.status.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            {isSuperAdmin && (
+                              <>
+                                <TableCell className="text-xs">{stove.organization_name || "N/A"}</TableCell>
+                                <TableCell className="text-xs">{stove.branch || "N/A"}</TableCell>
+                                <TableCell className="text-xs">{stove.location || "N/A"}</TableCell>
+                              </>
+                            )}
+                            <TableCell className="text-xs">{stove.status === "sold" && stove.sale_date ? formatDate(stove.sale_date) : "—"}</TableCell>
+                            <TableCell className="text-xs">{stove.sold_to || "—"}</TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                {stove.status === "sold" && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleViewStove(stove)}
+                                    disabled={loadingStoveId === stove.id}
+                                    className="bg-brand hover:bg-brand/90 text-white h-7 px-3 text-xs"
+                                  >
+                                    {loadingStoveId === stove.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                                    Details
+                                  </Button>
+                                )}
+                                {/* {isSuperAdmin && !stove.is_archived && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => { setStoveToArchive(stove); setShowArchiveModal(true); }}
+                                    className="border-red-200 text-red-600 hover:bg-red-50 h-7 px-3 text-xs"
+                                  >
+                                    Archive
+                                  </Button>
+                                )} */}
+                                {stove.is_archived && (
+                                  <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-xs">
+                                    Archived
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      });
+                    })()
                   )}
                 </TableBody>
               </Table>
@@ -593,7 +772,7 @@ const StoveManagementPage = () => {
             {pagination.total_pages > 1 && (
               <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
                 <p className="text-sm text-gray-600">
-                  Showing {startRecord} to {endRecord} of {pagination.total_count} records
+                  Showing <span className="font-medium">{startRecord}–{endRecord}</span> of <span className="font-medium">{pagination.total_count}</span> records
                 </p>
                 <div className="flex items-center gap-1">
                   <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => handlePageChange(1)} disabled={pagination.page === 1}>
@@ -628,6 +807,55 @@ const StoveManagementPage = () => {
           sale={selectedSale}
           viewFrom="admin"
         />
+
+        {/* Archive Modal */}
+        {showArchiveModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+              <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-red-50">
+                <h3 className="font-bold text-red-800 flex items-center gap-2">
+                  <Package className="h-5 w-5" /> Archive Stove ID
+                </h3>
+                <button onClick={() => { setShowArchiveModal(false); setStoveToArchive(null); setArchiveNote(""); }} className="text-gray-400 hover:text-gray-600">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
+                  <p className="font-semibold">Warning:</p>
+                  <p>Archiving stove ID <strong>{stoveToArchive?.stove_id}</strong> will make it and any associated sales invisible in the regular dashboard views. This is a soft-delete action.</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Reason for Archiving (Note)</label>
+                  <textarea
+                    className="w-full min-h-[100px] p-3 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all"
+                    placeholder="Enter the reason for archiving this stove ID..."
+                    value={archiveNote}
+                    onChange={(e) => setArchiveNote(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="p-4 bg-gray-50 flex items-center justify-end gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={() => { setShowArchiveModal(false); setStoveToArchive(null); setArchiveNote(""); }}
+                  disabled={archiving}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={handleArchiveStove}
+                  disabled={archiving || !archiveNote.trim()}
+                >
+                  {archiving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Archive Stove
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <ToastContainer toasts={toasts} removeToast={removeToast} />
       </DashboardLayout>
