@@ -43,6 +43,7 @@ class AdminAgentService {
         search = "",
         sortBy = "created_at",
         sortOrder = "desc",
+        organization_id = "",
       } = options;
 
       // Build query parameters
@@ -55,6 +56,10 @@ class AdminAgentService {
 
       if (search) {
         queryParams.append("search", search);
+      }
+
+      if (organization_id) {
+        queryParams.append("organization_id", organization_id);
       }
 
       const response = await fetch(

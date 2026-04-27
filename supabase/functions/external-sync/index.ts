@@ -36,7 +36,7 @@ interface ExternalSyncRequest {
     state?: string;
     branch?: string;
   };
-  stove_ids?: Array<{ stove_id: string; factory: string }> | string[];
+  stove_ids?: Array<{ stove_id: string; factory: string; sales_reference?: string }> | string[];
   origin_url?: string;
 }
 
@@ -49,6 +49,7 @@ interface TokenValidationResult {
 interface StoveIdResult {
   stove_id: string;
   factory?: string;
+  sales_reference?: string;
   action: "created" | "already_exists";
 }
 
@@ -401,11 +402,11 @@ serve(async (req) => {
       entries,
       request_summary: {
         application_name: body.application_name,
-        partner_id: body.organization_data.partner_id,
-        partner_name: body.organization_data.partner_name,
-        email_provided: !!body.organization_data.email,
-        stove_ids_count: body.stove_ids?.length ?? 0,
         origin_url: body.origin_url,
+        // Full incoming payload (no token/secret_key)
+        organization_data: body.organization_data,
+        stove_ids: body.stove_ids ?? [],
+        stove_ids_count: body.stove_ids?.length ?? 0,
       },
     });
 
@@ -601,12 +602,14 @@ async function processOrganizationSync(
     for (const stoveData of stoveIds) {
       let stoveId: string;
       let factory: string | undefined;
+      let salesReference: string | undefined;
 
       if (typeof stoveData === "string") {
         stoveId = stoveData;
       } else if (typeof stoveData === "object" && stoveData.stove_id) {
         stoveId = stoveData.stove_id;
         factory = stoveData.factory;
+        salesReference = stoveData.sales_reference;
       } else {
         entries.push(mkEntry("stove-ids", "warn", `Skipping invalid stove entry`, { raw: stoveData }));
         continue;
@@ -626,20 +629,35 @@ async function processOrganizationSync(
       }
 
       if (!existingStove) {
-        const insertData: any = { stove_id: stoveId.trim(), organization_id: organization.id, status: "available", created_at: new Date().toISOString() };
+        const insertData: any = {
+          stove_id: stoveId.trim(),
+          organization_id: organization.id,
+          status: "available",
+          created_at: new Date().toISOString(),
+        };
         if (factory) insertData.factory = factory.trim();
+        if (salesReference) insertData.sales_reference = salesReference.trim();
 
         const { error: stoveError } = await supabase.from("stove_ids").insert(insertData).select().single();
         if (stoveError) {
           entries.push(mkEntry("stove-ids", "error", `Failed to create stove ${stoveId}: ${stoveError.message}`));
         } else {
-          stoveIdResults.push({ stove_id: stoveId.trim(), factory, action: "created" });
+          stoveIdResults.push({ stove_id: stoveId.trim(), factory, sales_reference: salesReference, action: "created" });
         }
       } else {
-        if (factory && existingStove.factory !== factory) {
-          await supabase.from("stove_ids").update({ factory: factory.trim() }).eq("id", existingStove.id);
+        // Update factory and/or sales_reference if changed
+        const updates: any = {};
+        if (factory && existingStove.factory !== factory) updates.factory = factory.trim();
+        if (salesReference && existingStove.sales_reference !== salesReference) updates.sales_reference = salesReference.trim();
+        if (Object.keys(updates).length > 0) {
+          await supabase.from("stove_ids").update(updates).eq("id", existingStove.id);
         }
-        stoveIdResults.push({ stove_id: stoveId.trim(), factory: factory || existingStove.factory, action: "already_exists" });
+        stoveIdResults.push({
+          stove_id: stoveId.trim(),
+          factory: factory || existingStove.factory,
+          sales_reference: salesReference || existingStove.sales_reference,
+          action: "already_exists",
+        });
       }
     }
 

@@ -39,12 +39,13 @@ interface ParsedOrganization {
   address?: string;
   state?: string;
   branch?: string;
-  stove_ids?: Array<{ stove_id: string; factory: string }>;
+  stove_ids?: Array<{ stove_id: string; factory: string; sales_reference?: string }>;
 }
 
 interface StoveIdResult {
   stove_id: string;
   factory?: string;
+  sales_reference?: string;
   action: "created" | "already_exists";
 }
 
@@ -116,7 +117,7 @@ function generatePassword(length = 16): string {
 // ─── CSV parsing ──────────────────────────────────────────────────────────────
 
 const REQUIRED_FIELDS = ["partner_id", "partner_name"];
-const OPTIONAL_FIELDS = ["email", "contact_person", "contact_phone", "alternative_phone", "address", "state", "branch", "partner_type", "stove_ids", "sales_factory"];
+const OPTIONAL_FIELDS = ["email", "contact_person", "contact_phone", "alternative_phone", "address", "state", "branch", "partner_type", "stove_ids", "sales_factory", "sales_reference"];
 
 const FIELD_MAPPINGS: Record<string, string[]> = {
   partner_id: ["partner_id", "partnerid", "partner_code", "partner-id"],
@@ -131,6 +132,7 @@ const FIELD_MAPPINGS: Record<string, string[]> = {
   state: ["state", "region", "province"],
   branch: ["branch", "branch_name", "office", "location_name"],
   stove_ids: ["stove_ids", "stove ids", "stoveids", "stove-ids", "stove_id_list", "serial_numbers", "stove_ids_with_factory"],
+  sales_reference: ["sales_reference", "sales reference", "salesreference", "sales-reference", "erp_sales_reference", "erp sales reference", "sales_ref", "sales ref", "transaction_id", "txn_id"],
 };
 
 function parseCSVLine(line: string): string[] {
@@ -205,6 +207,12 @@ function parseFlexibleCSV(csvData: string): {
         salesFactory = values[fieldMap.sales_factory].trim();
       }
 
+      // Row-level sales_reference — applied to all stove IDs in this row
+      let rowSalesReference = "";
+      if ("sales_reference" in fieldMap && values[fieldMap.sales_reference]) {
+        rowSalesReference = values[fieldMap.sales_reference].trim();
+      }
+
       for (const optionalField of OPTIONAL_FIELDS) {
         if (optionalField in fieldMap && values[fieldMap[optionalField]]) {
           const value = values[fieldMap[optionalField]];
@@ -212,11 +220,15 @@ function parseFlexibleCSV(csvData: string): {
             const stoveEntries = value.split(/[;|]/).map((e) => e.trim()).filter((e) => e);
             org.stove_ids = stoveEntries
               .map((entry) => {
-                if (entry.includes(":")) {
-                  const [stove_id, factory] = entry.split(":").map((s) => s.trim());
-                  return { stove_id, factory };
-                }
-                return { stove_id: entry, factory: salesFactory };
+                // Format options:
+                //   STOVE001                          → uses row factory + row sales_reference
+                //   STOVE001:FactoryA                 → uses inline factory + row sales_reference
+                //   STOVE001:FactoryA:REF-123         → uses inline factory + inline sales_reference
+                const parts = entry.split(":").map((s) => s.trim());
+                const stove_id = parts[0];
+                const factory = parts[1] || salesFactory;
+                const sales_reference = parts[2] || rowSalesReference || undefined;
+                return { stove_id, factory, sales_reference };
               })
               .filter((item) => item.stove_id);
           } else if (optionalField === "partner_type") {
@@ -224,7 +236,8 @@ function parseFlexibleCSV(csvData: string): {
             if (normalizedType === "partner" || normalizedType === "customer") {
               org.partner_type = normalizedType;
             }
-          } else if (optionalField !== "sales_factory") {
+          } else if (optionalField !== "sales_factory" && optionalField !== "sales_reference") {
+            // sales_reference is handled above at row level; skip here
             (org as any)[optionalField] = value;
           }
         }
@@ -538,12 +551,14 @@ async function processOrganizationSync(
     for (const stoveData of stoveIds) {
       let stoveId: string;
       let factory: string | undefined;
+      let salesReference: string | undefined;
 
       if (typeof stoveData === "string") {
         stoveId = stoveData;
       } else if (typeof stoveData === "object" && stoveData.stove_id) {
         stoveId = stoveData.stove_id;
         factory = stoveData.factory;
+        salesReference = stoveData.sales_reference;
       } else {
         entries.push(mkEntry("stove-ids", "warn", `Skipping invalid stove entry`, { raw: stoveData }));
         continue;
@@ -563,20 +578,35 @@ async function processOrganizationSync(
       }
 
       if (!existingStove) {
-        const insertData: any = { stove_id: stoveId.trim(), organization_id: organization.id, status: "available", created_at: new Date().toISOString() };
+        const insertData: any = {
+          stove_id: stoveId.trim(),
+          organization_id: organization.id,
+          status: "available",
+          created_at: new Date().toISOString(),
+        };
         if (factory) insertData.factory = factory.trim();
+        if (salesReference) insertData.sales_reference = salesReference.trim();
 
         const { error: stoveError } = await supabase.from("stove_ids").insert(insertData).select().single();
         if (stoveError) {
           entries.push(mkEntry("stove-ids", "error", `Failed to create stove ${stoveId}: ${stoveError.message}`));
         } else {
-          stoveIdResults.push({ stove_id: stoveId.trim(), factory, action: "created" });
+          stoveIdResults.push({ stove_id: stoveId.trim(), factory, sales_reference: salesReference, action: "created" });
         }
       } else {
-        if (factory && existingStove.factory !== factory) {
-          await supabase.from("stove_ids").update({ factory: factory.trim() }).eq("id", existingStove.id);
+        // Update factory and/or sales_reference if changed
+        const updates: any = {};
+        if (factory && existingStove.factory !== factory) updates.factory = factory.trim();
+        if (salesReference && existingStove.sales_reference !== salesReference) updates.sales_reference = salesReference.trim();
+        if (Object.keys(updates).length > 0) {
+          await supabase.from("stove_ids").update(updates).eq("id", existingStove.id);
         }
-        stoveIdResults.push({ stove_id: stoveId.trim(), factory: factory || existingStove.factory, action: "already_exists" });
+        stoveIdResults.push({
+          stove_id: stoveId.trim(),
+          factory: factory || existingStove.factory,
+          sales_reference: salesReference || existingStove.sales_reference,
+          action: "already_exists",
+        });
       }
     }
 
@@ -779,6 +809,10 @@ serve(async (req) => {
       total_partners: totalPartners,
       field_mappings_used: parseResult.mappings_used,
       origin_url: body.origin_url,
+      // Store raw CSV — truncate at 200KB to avoid bloating the DB
+      csv_data: body.csv_data.length > 200000
+        ? body.csv_data.substring(0, 200000) + "\n\n[TRUNCATED — original size: " + body.csv_data.length + " bytes]"
+        : body.csv_data,
     },
   });
 

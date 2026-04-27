@@ -80,6 +80,9 @@ export interface Filters {
   // Search
   search?: string;
 
+  // Archive
+  showArchived?: boolean;
+
   // Export
   export?: string;
   exportFields?: string[];

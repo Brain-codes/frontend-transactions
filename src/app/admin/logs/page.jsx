@@ -99,6 +99,147 @@ function EntryIcon({ level }) {
   return <Icon size={14} className={`flex-shrink-0 mt-0.5 ${cfg.color}`} />;
 }
 
+// ─── Copy to clipboard helper ─────────────────────────────────────────────────
+
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <button
+      onClick={copy}
+      className="text-xs px-2 py-1 rounded border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 transition-colors"
+    >
+      {copied ? "Copied!" : "Copy"}
+    </button>
+  );
+}
+
+// ─── Payload viewer ───────────────────────────────────────────────────────────
+
+function PayloadView({ detail, source }) {
+  const isCSV = source === "external-csv-sync";
+  const summary = detail?.request_summary ?? {};
+  const csvData = summary.csv_data;
+  const orgData = summary.organization_data;
+  const stoveIds = summary.stove_ids;
+
+  if (isCSV) {
+    return (
+      <div className="space-y-4">
+        {/* Meta info */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-gray-50 border rounded-lg p-3">
+            <div className="text-xs text-gray-500 mb-1">Application</div>
+            <div className="text-sm font-medium text-gray-900">{summary.application_name || "—"}</div>
+          </div>
+          <div className="bg-gray-50 border rounded-lg p-3">
+            <div className="text-xs text-gray-500 mb-1">Origin URL</div>
+            <div className="text-sm font-medium text-gray-900 break-all">{summary.origin_url || "—"}</div>
+          </div>
+        </div>
+
+        {/* Field mappings */}
+        {summary.field_mappings_used && (
+          <div>
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Column mappings detected</h4>
+            <div className="bg-gray-50 border rounded-lg p-3 flex flex-wrap gap-2">
+              {Object.entries(summary.field_mappings_used).map(([field, col]) => (
+                <div key={field} className="flex items-center gap-1 text-xs bg-white border rounded px-2 py-1">
+                  <span className="text-gray-400">{col}</span>
+                  <span className="text-gray-300">→</span>
+                  <span className="font-medium text-blue-700">{field}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Raw CSV */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Raw CSV payload</h4>
+            {csvData && <CopyButton text={csvData} />}
+          </div>
+          {csvData ? (
+            <pre className="text-xs bg-gray-900 text-green-300 rounded-lg p-4 overflow-auto max-h-96 whitespace-pre font-mono leading-relaxed">
+              {csvData}
+            </pre>
+          ) : (
+            <div className="bg-gray-50 border rounded-lg p-6 text-center text-sm text-gray-400">
+              CSV data not available — this log was created before payload capture was enabled.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // API Sync payload
+  return (
+    <div className="space-y-4">
+      {/* Meta info */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-gray-50 border rounded-lg p-3">
+          <div className="text-xs text-gray-500 mb-1">Application</div>
+          <div className="text-sm font-medium text-gray-900">{summary.application_name || "—"}</div>
+        </div>
+        <div className="bg-gray-50 border rounded-lg p-3">
+          <div className="text-xs text-gray-500 mb-1">Origin URL</div>
+          <div className="text-sm font-medium text-gray-900 break-all">{summary.origin_url || "—"}</div>
+        </div>
+      </div>
+
+      {/* Organization data */}
+      {orgData ? (
+        <div>
+          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Partner / Organization data</h4>
+          <div className="bg-gray-50 border rounded-lg divide-y">
+            {Object.entries(orgData).map(([key, val]) => (
+              <div key={key} className="flex items-start px-3 py-2 gap-3">
+                <span className="text-xs font-mono text-gray-400 w-36 flex-shrink-0 pt-0.5">{key}</span>
+                <span className="text-sm text-gray-900 break-all">{val == null || val === "" ? <span className="text-gray-300 italic">empty</span> : String(val)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-gray-50 border rounded-lg p-6 text-center text-sm text-gray-400">
+          Organization data not available — this log was created before payload capture was enabled.
+        </div>
+      )}
+
+      {/* Stove IDs */}
+      {stoveIds && stoveIds.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Stove IDs sent ({stoveIds.length})
+            </h4>
+            <CopyButton text={stoveIds.map((s) => (typeof s === "string" ? s : `${s.stove_id}${s.factory ? `:${s.factory}` : ""}`)).join("\n")} />
+          </div>
+          <div className="bg-gray-50 border rounded-lg p-3 flex flex-wrap gap-2 max-h-48 overflow-y-auto">
+            {stoveIds.map((s, i) => {
+              const id = typeof s === "string" ? s : s.stove_id;
+              const factory = typeof s === "object" ? s.factory : undefined;
+              return (
+                <div key={i} className="flex items-center gap-1 text-xs bg-white border rounded px-2 py-1">
+                  <span className="font-mono font-medium text-gray-800">{id}</span>
+                  {factory && <span className="text-gray-400">· {factory}</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Detail drawer ────────────────────────────────────────────────────────────
 
 function LogDetailPanel({ log, onClose }) {
@@ -106,10 +247,12 @@ function LogDetailPanel({ log, onClose }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedSteps, setExpandedSteps] = useState({});
+  const [activeTab, setActiveTab] = useState("steps");
 
   useEffect(() => {
     setLoading(true);
     setError(null);
+    setActiveTab("steps");
     syncLogsService.getLogDetail(log.id)
       .then(setDetail)
       .catch((e) => setError(e.message))
@@ -118,13 +261,14 @@ function LogDetailPanel({ log, onClose }) {
 
   const toggleStep = (idx) => setExpandedSteps((p) => ({ ...p, [idx]: !p[idx] }));
 
-  // Group entries by step for cleaner display
   const groupedEntries = detail?.entries
-    ? detail.entries.reduce((acc, entry, idx) => {
-        acc.push({ ...entry, idx });
-        return acc;
-      }, [])
+    ? detail.entries.map((entry, idx) => ({ ...entry, idx }))
     : [];
+
+  const tabs = [
+    { id: "steps", label: "Step-by-step log" },
+    { id: "payload", label: log.source === "external-csv-sync" ? "CSV Payload" : "JSON Payload" },
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/40" onClick={onClose}>
@@ -195,9 +339,25 @@ function LogDetailPanel({ log, onClose }) {
           )}
         </div>
 
-        {/* Log entries */}
-        <div className="px-6 py-4 flex-1">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Step-by-step log</h3>
+        {/* Tabs */}
+        <div className="px-6 border-b bg-white flex gap-1 pt-3">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+                activeTab === tab.id
+                  ? "border-blue-600 text-blue-700 bg-blue-50"
+                  : "border-transparent text-gray-500 hover:text-gray-800"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab content */}
+        <div className="px-6 py-5 flex-1">
 
           {loading && (
             <div className="flex items-center justify-center py-12">
@@ -212,7 +372,8 @@ function LogDetailPanel({ log, onClose }) {
             </div>
           )}
 
-          {!loading && !error && (
+          {/* Step-by-step log tab */}
+          {!loading && !error && activeTab === "steps" && (
             <div className="space-y-1">
               {groupedEntries.length === 0 && (
                 <p className="text-sm text-gray-400 text-center py-8">No detailed log entries available.</p>
@@ -258,6 +419,12 @@ function LogDetailPanel({ log, onClose }) {
               ))}
             </div>
           )}
+
+          {/* Payload tab */}
+          {!loading && !error && activeTab === "payload" && (
+            <PayloadView detail={detail} source={log.source} />
+          )}
+
         </div>
       </div>
     </div>

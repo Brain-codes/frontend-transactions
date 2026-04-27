@@ -46,6 +46,7 @@ interface StoveId {
   created_at: string;
 }
 
+
 interface AssignedOrg {
   id: string;
   partner_name: string;
@@ -72,6 +73,7 @@ const SuperAdminAgentStoveIdsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [orgFilter, setOrgFilter] = useState("all");
+
 
   // Fetch assigned orgs on mount
   useEffect(() => {

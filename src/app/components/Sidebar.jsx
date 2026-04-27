@@ -100,12 +100,27 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           // },
         },
         {
-          name: "Manage Partners",
+          name: "Partners & Agents",
           icon: UserCheck,
-          route: "partners",
-          href: "/partners",
-          badge: null,
+          route: "partners-group",
           requiresAuth: true,
+          children: [
+            {
+              name: "Partners",
+              route: "partners",
+              href: "/partners",
+            },
+            {
+              name: "Partner Agents",
+              route: "partner-agents",
+              href: "/admin/partner-agents",
+            },
+            {
+              name: "ACSL Agents",
+              route: "super-admin-agents",
+              href: "/super-admin-agents",
+            },
+          ],
         },
         {
           name: "Stove ID Management",

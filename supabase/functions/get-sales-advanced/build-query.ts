@@ -95,6 +95,7 @@ function buildOptimizedSelectFields(filters: Filters): string {
     "payment_model_id",
     "total_paid",
     "payment_status",
+    "is_archived",
   ];
 
   // Add joins based on what's requested to avoid N+1 queries
@@ -248,8 +249,14 @@ function applyStatusFilters(query: any, filters: Filters) {
     const boolVal = filters.isInstallment === true || (filters.isInstallment as any) === "true";
     query = query.eq("is_installment", boolVal);
   }
-  if (filters.paymentStatus) query = query.eq("payment_status", filters.paymentStatus);
   if (filters.paymentModelId) query = query.eq("payment_model_id", filters.paymentModelId);
+  
+  // Archive filter - default to hiding archived sales
+  if (filters.showArchived === true || (filters.showArchived as any) === "true") {
+    query = query.eq("is_archived", true);
+  } else {
+    query = query.eq("is_archived", false);
+  }
 
   return query;
 }
