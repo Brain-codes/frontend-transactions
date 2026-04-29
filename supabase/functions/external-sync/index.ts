@@ -314,15 +314,35 @@ serve(async (req) => {
 
   const entries: LogEntry[] = [];
 
+  // ── Auth: accept either Supabase JWT (internal/super_admin) or token+secret_key (external) ──
+  const authHeader = req.headers.get("Authorization") || "";
+  const jwtToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  let isInternalAuth = false;
+
+  if (jwtToken) {
+    // Validate JWT — must be a super_admin
+    const { data: { user }, error: jwtError } = await supabase.auth.getUser(jwtToken);
+    if (jwtError || !user) {
+      return withCors(new Response(JSON.stringify({ success: false, message: "Invalid session token" }), { status: 401, headers: { "Content-Type": "application/json" } }));
+    }
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    if (!profile || profile.role !== "super_admin") {
+      return withCors(new Response(JSON.stringify({ success: false, message: "Insufficient permissions — super_admin required" }), { status: 403, headers: { "Content-Type": "application/json" } }));
+    }
+    isInternalAuth = true;
+    body.application_name = body.application_name || "internal-dashboard";
+  }
+
   entries.push(mkEntry("request", "info", `Request received from application: ${body.application_name}`, {
     partner_id: body.organization_data?.partner_id,
     partner_name: body.organization_data?.partner_name,
     stove_ids_count: body.stove_ids?.length ?? 0,
     origin_url: body.origin_url,
+    auth_mode: isInternalAuth ? "jwt" : "token",
   }));
 
   // Validate required fields
-  if (!body.token || !body.secret_key || !body.application_name || !body.organization_data) {
+  if (!isInternalAuth && (!body.token || !body.secret_key || !body.application_name || !body.organization_data)) {
     const msg = "Missing required fields: token, secret_key, application_name, and organization_data are required";
     await writeSyncLog(supabase, {
       source: "external-sync",
@@ -339,7 +359,7 @@ serve(async (req) => {
     return withCors(new Response(JSON.stringify({ success: false, message: msg }), { status: 400, headers: { "Content-Type": "application/json" } }));
   }
 
-  if (!body.organization_data.partner_id || !body.organization_data.partner_name) {
+  if (!body.organization_data || !body.organization_data.partner_id || !body.organization_data.partner_name) {
     const msg = "partner_id and partner_name are required in organization_data";
     await writeSyncLog(supabase, {
       source: "external-sync",
@@ -356,32 +376,34 @@ serve(async (req) => {
     return withCors(new Response(JSON.stringify({ success: false, message: msg }), { status: 400, headers: { "Content-Type": "application/json" } }));
   }
 
-  // Validate token
-  const tokenValidation = await validateExternalToken(supabase, body.token, body.secret_key, body.application_name, body.origin_url);
-  if (!tokenValidation.isValid) {
-    const msg = tokenValidation.error || "Invalid authentication credentials";
-    entries.push(mkEntry("token-validation", "error", msg));
-    await writeSyncLog(supabase, {
-      source: "external-sync",
-      status: "failed",
-      application_name: body.application_name,
-      started_at: startedAt,
-      duration_ms: Date.now() - startMs,
-      total_partners: 1, partners_created: 0, partners_updated: 0, partners_failed: 1,
-      total_stove_ids: 0, stove_ids_created: 0, stove_ids_skipped: 0,
-      entries,
-      request_summary: { application_name: body.application_name },
-      error_message: msg,
-    });
-    return withCors(new Response(JSON.stringify({ success: false, message: msg }), { status: 401, headers: { "Content-Type": "application/json" } }));
+  // Validate token (external only)
+  if (!isInternalAuth) {
+    const tokenValidation = await validateExternalToken(supabase, body.token, body.secret_key, body.application_name, body.origin_url);
+    if (!tokenValidation.isValid) {
+      const msg = tokenValidation.error || "Invalid authentication credentials";
+      entries.push(mkEntry("token-validation", "error", msg));
+      await writeSyncLog(supabase, {
+        source: "external-sync",
+        status: "failed",
+        application_name: body.application_name,
+        started_at: startedAt,
+        duration_ms: Date.now() - startMs,
+        total_partners: 1, partners_created: 0, partners_updated: 0, partners_failed: 1,
+        total_stove_ids: 0, stove_ids_created: 0, stove_ids_skipped: 0,
+        entries,
+        request_summary: { application_name: body.application_name },
+        error_message: msg,
+      });
+      return withCors(new Response(JSON.stringify({ success: false, message: msg }), { status: 401, headers: { "Content-Type": "application/json" } }));
+    }
   }
 
-  entries.push(mkEntry("token-validation", "success", "Token validated successfully"));
+  entries.push(mkEntry("token-validation", "success", isInternalAuth ? "Internal JWT auth passed" : "Token validated successfully"));
 
   try {
     const syncResult = await processOrganizationSync(supabase, body.organization_data, body.stove_ids || [], entries);
 
-    await updateTokenUsage(supabase, body.token);
+    if (!isInternalAuth) await updateTokenUsage(supabase, body.token);
 
     const orgAction = syncResult.summary.organization_action as string;
     const status: "success" | "partial" = "success";

@@ -69,6 +69,7 @@ import {
 } from "lucide-react";
 import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AssignPaymentModelsModal from "./components/AssignPaymentModelsModal";
+import AddPartnerModal from "./components/AddPartnerModal";
 import AdminSalesDetailModal from "../admin/components/sales/AdminSalesDetailModal";
 
 // ── Stove IDs Modal ──────────────────────────────────────────────────────────
@@ -420,6 +421,7 @@ const PartnersPage = () => {
   const [showPaymentModelsModal, setShowPaymentModelsModal] = useState(false);
   const [paymentModelsOrg, setPaymentModelsOrg] = useState(null);
   const [showOrgImportModal, setShowOrgImportModal] = useState(false);
+  const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
 
   // Stove reference inline accordion
   const [expandedOrgId, setExpandedOrgId] = useState(null);
@@ -609,7 +611,7 @@ const PartnersPage = () => {
   const handleViewStoveIds = (org) => setStoveIdsOrg(org);
   const handleEdit = (org) => { setEditingOrganization(org); setShowFormModal(true); };
   const handleDelete = (org) => { setOrganizationToDelete(org); setShowDeleteModal(true); };
-  const handleCreateNew = () => { setEditingOrganization(null); setShowFormModal(true); };
+  const handleCreateNew = () => setShowAddPartnerModal(true);
 
   const handleFormSubmit = async (formData) => {
     setFormSubmitLoading(true);
@@ -672,14 +674,14 @@ const PartnersPage = () => {
         title="Manage Partners"
         rightButton={
           <div className="flex items-center gap-2">
-            <Button onClick={() => setShowOrgImportModal(true)} variant="outline" size="sm" className="flex items-center gap-1.5">
+            {/* <Button onClick={() => setShowOrgImportModal(true)} variant="outline" size="sm" className="flex items-center gap-1.5">
               <Upload className="h-4 w-4" />
               Import
             </Button>
             <Button onClick={handleCreateNew} size="sm" className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5">
               <Plus className="h-4 w-4" />
               Add Partner
-            </Button>
+            </Button> */}
           </div>
         }
       >
@@ -1001,10 +1003,10 @@ const PartnersPage = () => {
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDelete(org)} className="text-red-600">
+                                {/* <DropdownMenuItem onClick={() => handleDelete(org)} className="text-red-600">
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   Delete
-                                </DropdownMenuItem>
+                                </DropdownMenuItem> */}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -1209,6 +1211,13 @@ const PartnersPage = () => {
         </div>
 
         {/* ── Modals ────────────────────────────────────────────────────── */}
+        <AddPartnerModal
+          isOpen={showAddPartnerModal}
+          onClose={() => setShowAddPartnerModal(false)}
+          onSuccess={() => { fetchOrganizations(); fetchTypeCounts(); }}
+        />
+
+        {/* Edit-only: keep existing form for updates */}
         <OrganizationFormModal
           isOpen={showFormModal}
           onClose={() => { setShowFormModal(false); setEditingOrganization(null); setFormSubmitLoading(false); }}
