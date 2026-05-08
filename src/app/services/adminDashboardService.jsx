@@ -35,12 +35,16 @@ class AdminDashboardService {
   }
 
   // Get dashboard statistics for admin
-  async getDashboardStats({ date_from, date_to } = {}) {
+  async getDashboardStats({ date_from, date_to, year } = {}) {
     try {
       const response = await fetch(`${API_FUNCTIONS_URL}/get-dashboard-stats`, {
         method: "POST",
         headers: await this.getHeaders(),
-        body: JSON.stringify({ date_from: date_from || undefined, date_to: date_to || undefined }),
+        body: JSON.stringify({
+          year: year || undefined,
+          date_from: date_from || undefined,
+          date_to: date_to || undefined,
+        }),
       });
 
       if (!response.ok) {

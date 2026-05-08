@@ -65,7 +65,7 @@ const DashboardLayout = ({
       {/* Main content */}
       <div
         className={`flex flex-col min-h-screen transition-all duration-300 ease-in-out
-          ${!isAgent && sidebarOpen ? "ml-0 lg:ml-72" : "ml-0 lg:ml-0"}`}
+          ${!isAgent && sidebarOpen ? "ml-0 lg:ml-64" : "ml-0 lg:ml-0"}`}
       >
         <TopNavigation
           onToggleSidebar={!isAgent ? toggleSidebar : undefined}
@@ -78,11 +78,11 @@ const DashboardLayout = ({
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto bg-white">
-          {title && (
+          {/* {title && (
             <div className="px-6 pt-6">
               <PageHeader title={title} right={rightButton} />
             </div>
-          )}
+          )} */}
           {children}
         </main>
       </div>

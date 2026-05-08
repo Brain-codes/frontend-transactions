@@ -141,7 +141,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 h-screen z-50 w-72 border-r border-gray-200 flex flex-col
+        className={`fixed top-0 left-0 h-screen z-50 w-64 border-r border-gray-200 flex flex-col
           transition-all duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
         style={{ backgroundColor: "#fafafa" }}

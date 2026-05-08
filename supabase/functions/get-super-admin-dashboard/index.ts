@@ -3,8 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req) => {
@@ -44,66 +43,77 @@ serve(async (req) => {
     const startDate = `${year}-01-01`;
     const endDate = `${year}-12-31`;
 
-    // === KPI: Stove counts ===
+    // Run stove counts and sales fetch in parallel
+    const [
+      receivedResult,
+      soldResult,
+      availableResult,
+      salesResult,
+    ] = await Promise.all([
+      supabaseClient
+        .from("stove_ids")
+        .select("*", { count: "exact", head: true })
+        .not("organization_id", "is", null)
+        .gte("created_at", startDate)
+        .lte("created_at", endDate),
 
-    // Stoves received by partners = all stove_ids assigned to any organization
-    const { count: stovesReceivedByPartners } = await supabaseClient
-      .from("stove_ids")
-      .select("*", { count: "exact", head: true })
-      .not("organization_id", "is", null)
-      .gte("created_at", startDate)
-      .lte("created_at", endDate);
+      supabaseClient
+        .from("stove_ids")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "sold")
+        .gte("created_at", startDate)
+        .lte("created_at", endDate),
 
-    const { count: stovesSoldToEndUsers } = await supabaseClient
-      .from("stove_ids")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "sold")
-      .gte("created_at", startDate)
-      .lte("created_at", endDate);
+      supabaseClient
+        .from("stove_ids")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "available"),
 
-    const { count: availableStoves } = await supabaseClient
-      .from("stove_ids")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "available");
+      supabaseClient
+        .from("sales")
+        .select("id, amount, total_paid, state_backup, partner_name, retailer_branch, payment_model_id")
+        .gte("sales_date", startDate)
+        .lte("sales_date", endDate),
+    ]);
 
-    // === KPI: Financial metrics from sales ===
+    if (salesResult.error) throw new Error("Failed to fetch sales data");
 
-    const { data: salesData, error: salesError } = await supabaseClient
-      .from("sales")
-      .select("amount, total_paid, state_backup, payment_model_id")
-      .gte("sales_date", startDate)
-      .lte("sales_date", endDate);
+    const sales = salesResult.data || [];
 
-    if (salesError) throw new Error("Failed to fetch sales data");
-
-    const expectedReceivable = salesData?.reduce((sum, s) => sum + (Number(s.amount) || 0), 0) ?? 0;
-    const amountReceived = salesData?.reduce((sum, s) => sum + (Number(s.total_paid) || 0), 0) ?? 0;
+    const expectedReceivable = sales.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
+    const amountReceived = sales.reduce((sum, s) => sum + (Number(s.total_paid) || 0), 0);
     const outstandingBalance = expectedReceivable - amountReceived;
 
-    // Total partners
-    const { count: totalPartners } = await supabaseClient
-      .from("organizations")
-      .select("*", { count: "exact", head: true });
-
-    // === Sales by State ===
-
-    const salesByStateMap: Record<string, number> = {};
-    salesData?.forEach((s) => {
-      if (s.state_backup) {
-        salesByStateMap[s.state_backup] = (salesByStateMap[s.state_backup] || 0) + 1;
-      }
+    // Sales by state
+    const stateMap: Record<string, number> = {};
+    sales.forEach((s) => {
+      const st = s.state_backup || "Unknown";
+      stateMap[st] = (stateMap[st] || 0) + 1;
     });
+    const salesByState = Object.entries(stateMap)
+      .map(([state, count]) => ({ state, count }))
+      .sort((a, b) => b.count - a.count);
 
-    const salesByState = Object.entries(salesByStateMap)
-      .map(([state, count]) => ({ state, sales: count }))
-      .sort((a, b) => b.sales - a.sales)
-      .slice(0, 15);
+    // Top 5 partners
+    const partnerMap: Record<string, { name: string; branch: string | null; count: number }> = {};
+    sales.forEach((s) => {
+      const name = (s.partner_name || "Unknown").trim();
+      const branch = s.retailer_branch ? s.retailer_branch.trim() : null;
+      const key = `${name}|||${branch || ""}`;
+      if (!partnerMap[key]) partnerMap[key] = { name, branch, count: 0 };
+      partnerMap[key].count += 1;
+    });
+    const totalSales = sales.length;
+    const topPartners = Object.values(partnerMap)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+      .map((p) => ({
+        ...p,
+        percentage: totalSales > 0 ? ((p.count / totalSales) * 100).toFixed(1) : "0",
+      }));
 
-    // === Sales Model Analysis ===
-
-    const modelCountMap: Record<string, number> = {};
-    const modelIds = [...new Set(salesData?.map((s) => s.payment_model_id).filter(Boolean))];
-
+    // Sales model analysis
+    const modelIds = [...new Set(sales.map((s) => s.payment_model_id).filter(Boolean))];
     let modelNames: Record<string, string> = {};
     if (modelIds.length > 0) {
       const { data: models } = await supabaseClient
@@ -113,33 +123,32 @@ serve(async (req) => {
       models?.forEach((m) => { modelNames[m.id] = m.name; });
     }
 
-    salesData?.forEach((s) => {
+    const modelCountMap: Record<string, number> = {};
+    sales.forEach((s) => {
       const label = s.payment_model_id ? (modelNames[s.payment_model_id] || "Other") : "Outright";
       modelCountMap[label] = (modelCountMap[label] || 0) + 1;
     });
-
-    const totalSalesCount = salesData?.length || 0;
-    const salesModelData = Object.entries(modelCountMap).map(([model, count]) => ({
-      model,
-      count,
-      percentage: totalSalesCount > 0 ? (count / totalSalesCount) * 100 : 0,
-    })).sort((a, b) => b.count - a.count);
+    const salesModelData = Object.entries(modelCountMap)
+      .map(([model, count]) => ({
+        model,
+        count,
+        percentage: totalSales > 0 ? (count / totalSales) * 100 : 0,
+      }))
+      .sort((a, b) => b.count - a.count);
 
     return new Response(
       JSON.stringify({
         success: true,
         data: {
-          kpis: {
-            stovesReceivedByPartners: stovesReceivedByPartners ?? 0,
-            stovesSoldToEndUsers: stovesSoldToEndUsers ?? 0,
-            availableStoves: availableStoves ?? 0,
-            expectedReceivable,
-            amountReceived,
-            outstandingBalance,
-            totalPartners: totalPartners ?? 0,
-          },
+          stovesReceivedByPartners: receivedResult.count ?? 0,
+          stovesSoldToEndUsers: soldResult.count ?? 0,
+          availableStoves: availableResult.count ?? 0,
+          expectedReceivable,
+          amountReceived,
+          outstandingBalance,
           salesByState,
           salesModelData,
+          topPartners,
         },
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
