@@ -42,6 +42,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import { lgaAndStates } from "../../constants";
 import adminAgentService from "../../services/adminAgentService.jsx";
+import PageHeader from "../../components/PageHeader";
 import {
   Plus,
   Search,
@@ -649,7 +650,7 @@ export default function SuperAdminPartnersContent() {
       <DashboardLayout currentRoute="partners" title="Partners & Customers">
         <div className="p-6 space-y-5">
 
-          <h1 className="text-2xl font-bold text-gray-900">Partners & Customers</h1>
+          <PageHeader icon={Building2} title="Partners & Customers" />
 
           <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
             <div className="w-1/4 min-w-[180px] relative">

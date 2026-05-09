@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import salesAdvancedAPIService from "../../services/salesAdvancedAPIService";
 import superAdminAgentService from "../../services/superAdminAgentService";
+import PageHeader from "../../components/PageHeader";
 import { useAuth } from "../../contexts/AuthContext";
 import ApproveSaleConfirmModal from "../../super-admin-agent/sales/components/ApproveSaleConfirmModal";
 import AgentCreateSaleModal from "../../super-admin-agent/sales/components/AgentCreateSaleModal";
@@ -254,16 +255,17 @@ function AcslAgentSalesInner() {
   const endItem = pagination ? Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems) : 0;
 
   return (
-    <DashboardLayout
-      currentRoute="sales"
-      title="Sales"
-      rightButton={
-        <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5" onClick={() => setShowCreateModal(true)}>
-          <Plus className="h-4 w-4" />Create Sale
-        </Button>
-      }
-    >
+    <DashboardLayout currentRoute="sales" title="Sales">
       <div className="p-6 space-y-4">
+        <PageHeader
+          icon={ShoppingCart}
+          title="Sales"
+          right={
+            <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5" onClick={() => setShowCreateModal(true)}>
+              <Plus className="h-4 w-4" />Create Sale
+            </Button>
+          }
+        />
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">{error}</div>
         )}

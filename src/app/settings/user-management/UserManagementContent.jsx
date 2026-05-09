@@ -35,6 +35,7 @@ import {
   Search,
   X,
   UserPlus,
+  Users,
   Edit,
   Trash2,
   UserX,
@@ -52,6 +53,7 @@ import {
   ArrowDown,
   Download,
 } from "lucide-react";
+import PageHeader from "../../components/PageHeader";
 import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AssignOrganizationsModal from "../../super-admin-agents/components/AssignOrganizationsModal";
 
@@ -376,21 +378,23 @@ const UserManagementPage = () => {
 
   return (
     <ProtectedRoute allowedRoles={["super_admin", "acsl_agent", "super_admin_agent"]}>
-      <DashboardLayout
-        currentRoute="settings"
-        title="User Management"
-        rightButton={
-          <Button
-            size="sm"
-            className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
-            onClick={() => { resetForm(); setShowCreateModal(true); }}
-          >
-            <UserPlus className="h-4 w-4" />
-            Create User
-          </Button>
-        }
-      >
+      <DashboardLayout currentRoute="settings" title="User Management">
         <div className="p-6 space-y-5">
+
+          <PageHeader
+            icon={Users}
+            title="User Management"
+            right={
+              <Button
+                size="sm"
+                className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
+                onClick={() => { resetForm(); setShowCreateModal(true); }}
+              >
+                <UserPlus className="h-4 w-4" />
+                Create User
+              </Button>
+            }
+          />
 
           {/* Filter Bar */}
           <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
@@ -503,7 +507,7 @@ const UserManagementPage = () => {
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Email</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Role</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Assigned Partners</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Assigned to Partners</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Status</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Last Active</TableHead>
                     <TableHead

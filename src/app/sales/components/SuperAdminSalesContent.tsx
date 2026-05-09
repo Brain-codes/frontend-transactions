@@ -29,8 +29,10 @@ import {
   EyeOff,
   Loader2,
   Search,
+  ShoppingCart,
   X,
 } from "lucide-react";
+import PageHeader from "../../components/PageHeader";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -367,22 +369,23 @@ export default function SuperAdminSalesContent() {
   };
 
   return (
-    <DashboardLayout
-      currentRoute="sales"
-      title={pageTitle}
-      rightButton={
-        <Button
-          size="sm"
-          className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
-          onClick={handleExport}
-          disabled={exporting || loading}
-        >
-          {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-          Export
-        </Button>
-      }
-    >
+    <DashboardLayout currentRoute="sales" title="Sales">
       <div className="space-y-4 px-6 py-4">
+        <PageHeader
+          icon={ShoppingCart}
+          title="Sales"
+          right={
+            <Button
+              size="sm"
+              className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
+              onClick={handleExport}
+              disabled={exporting || loading}
+            >
+              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Export
+            </Button>
+          }
+        />
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>
         )}

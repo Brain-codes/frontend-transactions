@@ -163,8 +163,8 @@ const DashboardContent = ({ data, loading, year, onYearChange, role = "partner" 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <LayoutDashboard className="h-5 w-5 text-gray-700" />
-          <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
+          <LayoutDashboard className="h-6 w-6 text-gray-800" />
+          <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
         </div>
         <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
           <SelectTrigger className="w-[110px] h-8 text-sm">

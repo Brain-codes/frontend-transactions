@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import PageHeader from "../../components/PageHeader";
 import {
   Building2, Loader2, AlertCircle, ArrowRight, Search, X,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
@@ -93,7 +94,7 @@ export default function AcslAgentPartnersContent() {
   return (
     <DashboardLayout currentRoute="partners" title="Partners & Customers">
       <div className="p-6 space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">Partners & Customers</h1>
+        <PageHeader icon={Building2} title="Partners & Customers" />
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-2 text-red-700 text-sm">

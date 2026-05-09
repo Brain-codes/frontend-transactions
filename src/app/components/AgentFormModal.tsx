@@ -97,7 +97,8 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
   useEffect(() => {
     if (!isAcslRole) return;
     setOrgsLoading(true);
-    organizationsService.getAllOrganizations()
+    organizationsService
+      .getAllOrganizations()
       .then((result: any) => setOrgs(result.data || []))
       .finally(() => setOrgsLoading(false));
   }, [isAcslRole]);
@@ -106,7 +107,8 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
   useEffect(() => {
     if (mode !== "edit" || !agent?.id || !isAcslRole) return;
     setAssignmentLoading(true);
-    superAdminAgentService.getAgentOrganizations(agent.id)
+    superAdminAgentService
+      .getAgentOrganizations(agent.id)
       .then((result: any) => {
         const directIds = new Set<string>(
           (result.data || [])
@@ -122,14 +124,19 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const generatePassword = () => {
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+    const charset =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
     let pwd = "";
     pwd += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(Math.random() * 26)];
     pwd += "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)];
     pwd += "0123456789"[Math.floor(Math.random() * 10)];
     pwd += "!@#$%^&*"[Math.floor(Math.random() * 8)];
-    for (let i = 4; i < 12; i++) pwd += charset[Math.floor(Math.random() * charset.length)];
-    pwd = pwd.split("").sort(() => Math.random() - 0.5).join("");
+    for (let i = 4; i < 12; i++)
+      pwd += charset[Math.floor(Math.random() * charset.length)];
+    pwd = pwd
+      .split("")
+      .sort(() => Math.random() - 0.5)
+      .join("");
     setPassword(pwd);
     setConfirmPassword(pwd);
     copyToClipboard(pwd);
@@ -176,9 +183,11 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
     if (!fullName.trim()) errs.push("Full name is required");
     if (mode === "create") {
       if (!email.trim()) errs.push("Email is required");
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.push("Invalid email address");
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        errs.push("Invalid email address");
       if (!password) errs.push("Password is required");
-      else if (password.length < 8) errs.push("Password must be at least 8 characters");
+      else if (password.length < 8)
+        errs.push("Password must be at least 8 characters");
       if (!confirmPassword) errs.push("Please confirm the password");
       else if (password !== confirmPassword) errs.push("Passwords do not match");
     }
@@ -189,7 +198,10 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs = validate();
-    if (errs.length > 0) { setErrors(errs); return; }
+    if (errs.length > 0) {
+      setErrors(errs);
+      return;
+    }
 
     setSubmitting(true);
     setErrors([]);
@@ -204,19 +216,30 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
         });
         const newAgent: AcslAgent = result.data;
         if (isAcslRole && selectedOrgIds.size > 0) {
-          await superAdminAgentService.setAgentOrganizations(newAgent.id, [...selectedOrgIds]);
+          await superAdminAgentService.setAgentOrganizations(newAgent.id, [
+            ...selectedOrgIds,
+          ]);
         }
-        onSuccess({ ...newAgent, assigned_organizations_count: selectedOrgIds.size, assigned_states_count: 0 });
+        onSuccess({
+          ...newAgent,
+          assigned_organizations_count: selectedOrgIds.size,
+          assigned_states_count: 0,
+        });
       } else {
         // Build update payload — only changed fields
         const updates: Record<string, string> = {};
-        if (fullName.trim() !== agent!.full_name) updates.full_name = fullName.trim();
-        if ((phone.trim() || null) !== agent!.phone) updates.phone = phone.trim();
+        if (fullName.trim() !== agent!.full_name)
+          updates.full_name = fullName.trim();
+        if ((phone.trim() || null) !== agent!.phone)
+          updates.phone = phone.trim();
         if (status !== agent!.status) updates.status = status;
 
         let updatedAgent = { ...agent! };
         if (Object.keys(updates).length > 0) {
-          const result = await superAdminAgentService.updateSuperAdminAgent(agent!.id, updates);
+          const result = await superAdminAgentService.updateSuperAdminAgent(
+            agent!.id,
+            updates
+          );
           updatedAgent = { ...updatedAgent, ...result.data };
         }
 
@@ -226,18 +249,25 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
             [...selectedOrgIds].some((id) => !originalOrgIds.has(id)) ||
             [...originalOrgIds].some((id) => !selectedOrgIds.has(id));
           if (hasOrgChanges) {
-            await superAdminAgentService.setAgentOrganizations(agent!.id, [...selectedOrgIds]);
+            await superAdminAgentService.setAgentOrganizations(agent!.id, [
+              ...selectedOrgIds,
+            ]);
           }
         }
 
         onSuccess({
           ...updatedAgent,
-          assigned_organizations_count: isAcslRole ? selectedOrgIds.size : agent!.assigned_organizations_count,
+          assigned_organizations_count: isAcslRole
+            ? selectedOrgIds.size
+            : agent!.assigned_organizations_count,
           assigned_states_count: agent!.assigned_states_count,
         });
       }
     } catch (err: any) {
-      setErrors([err.message || `Failed to ${mode === "create" ? "create" : "update"} agent`]);
+      setErrors([
+        err.message ||
+          `Failed to ${mode === "create" ? "create" : "update"} agent`,
+      ]);
     } finally {
       setSubmitting(false);
     }
@@ -246,7 +276,9 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
   // ── Derived labels ────────────────────────────────────────────────────────
   const title =
     mode === "create"
-      ? role === "super_admin" ? "Add Super Admin" : "Create Agent"
+      ? role === "super_admin"
+        ? "Add Super Admin"
+        : "Create Agent"
       : "Edit Agent";
   const description =
     mode === "create"
@@ -255,7 +287,7 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent size="5xl" className="max-h-[90vh] overflow-y-auto">
+      <DialogContent size="full" className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -266,7 +298,10 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
           {errors.length > 0 && (
             <div className="space-y-1.5">
               {errors.map((err, i) => (
-                <div key={i} className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                <div
+                  key={i}
+                  className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2"
+                >
                   <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
                   <span className="text-red-700 text-sm">{err}</span>
                 </div>
@@ -280,7 +315,9 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
               <FormFieldWrapper fullWidth>
                 <Label>Role *</Label>
                 <Select value={role} onValueChange={setRole}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
                     <SelectItem value="super_admin">Super Admin</SelectItem>
@@ -336,7 +373,8 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
                     disabled={submitting}
                     className="text-blue-600 hover:text-blue-800 p-0 h-auto text-sm"
                   >
-                    <RefreshCw className="h-3 w-3 mr-1" />Auto Generate
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Auto Generate
                   </Button>
                 </div>
                 <div className="relative">
@@ -369,7 +407,11 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
                       disabled={submitting}
                       className="h-8 w-8 p-0 mr-1"
                     >
-                      {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      {showPassword ? (
+                        <EyeOff className="h-3 w-3" />
+                      ) : (
+                        <Eye className="h-3 w-3" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -394,7 +436,11 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
                     disabled={submitting}
                     className="absolute inset-y-0 right-0 h-8 w-8 p-0 mr-1"
                   >
-                    {showConfirmPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-3 w-3" />
+                    ) : (
+                      <Eye className="h-3 w-3" />
+                    )}
                   </Button>
                 </div>
               </FormFieldWrapper>
@@ -427,8 +473,13 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
 
               <FormFieldWrapper fullWidth>
                 <Label>Status</Label>
-                <Select value={status} onValueChange={(v) => setStatus(v as "active" | "disabled")}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={status}
+                  onValueChange={(v) => setStatus(v as "active" | "disabled")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="disabled">Disabled</SelectItem>
@@ -451,7 +502,9 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
               <div className="bg-blue-50 px-4 py-2.5 flex items-center justify-between border-b border-gray-200">
                 <div className="flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-semibold text-blue-900">Partner Assignment</span>
+                  <span className="text-sm font-semibold text-blue-900">
+                    Partner Assignment
+                  </span>
                   {selectedOrgIds.size > 0 && (
                     <span className="text-xs px-1.5 py-0.5 rounded-full bg-[#07376a] text-white font-medium">
                       {selectedOrgIds.size} selected
@@ -468,7 +521,8 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 flex items-start gap-2">
                     <AlertCircle className="h-3.5 w-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
                     <p className="text-amber-700 text-xs">
-                      An agent must belong to at least one partner or state. Deselecting all will block saving.
+                      An agent must belong to at least one partner or state.
+                      Deselecting all will block saving.
                     </p>
                   </div>
                 )}
@@ -483,18 +537,22 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
                   />
                 </div>
 
-                {(orgsLoading || assignmentLoading) ? (
+                {orgsLoading || assignmentLoading ? (
                   <div className="flex items-center justify-center py-6 gap-2">
                     <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
                     <span className="text-xs text-gray-500">
-                      {assignmentLoading ? "Loading current assignments..." : "Loading partners..."}
+                      {assignmentLoading
+                        ? "Loading current assignments..."
+                        : "Loading partners..."}
                     </span>
                   </div>
                 ) : (
                   <div className="max-h-52 overflow-y-auto space-y-1 pr-0.5">
                     {filteredOrgs.length === 0 ? (
                       <p className="text-center text-xs text-gray-400 py-5">
-                        {orgSearch ? "No partners match your search." : "No partners found."}
+                        {orgSearch
+                          ? "No partners match your search."
+                          : "No partners found."}
                       </p>
                     ) : (
                       filteredOrgs.map((org) => {
@@ -512,7 +570,9 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
                           >
                             <div
                               className={`h-4 w-4 rounded border flex-shrink-0 flex items-center justify-center ${
-                                isSelected ? "bg-[#07376a] border-[#07376a]" : "border-gray-300 bg-white"
+                                isSelected
+                                  ? "bg-[#07376a] border-[#07376a]"
+                                  : "border-gray-300 bg-white"
                               }`}
                             >
                               {isSelected && (
@@ -523,15 +583,23 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
                                   stroke="currentColor"
                                   strokeWidth={3}
                                 >
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M5 13l4 4L19 7"
+                                  />
                                 </svg>
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-gray-900 truncate">{org.partner_name}</p>
+                              <p className="text-xs font-medium text-gray-900 truncate">
+                                {org.partner_name}
+                              </p>
                               {(org.branch || org.state) && (
                                 <p className="text-[10px] text-gray-400 truncate">
-                                  {[org.branch, org.state].filter(Boolean).join(" · ")}
+                                  {[org.branch, org.state]
+                                    .filter(Boolean)
+                                    .join(" · ")}
                                 </p>
                               )}
                             </div>
@@ -547,7 +615,12 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
 
           {/* Footer */}
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={submitting}
+            >
               Cancel
             </Button>
             <Button

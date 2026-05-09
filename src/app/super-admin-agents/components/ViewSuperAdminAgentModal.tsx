@@ -176,7 +176,7 @@ const ViewSuperAdminAgentModal: React.FC<ViewSuperAdminAgentModalProps> = ({
                   <Building2 className="h-4 w-4 text-gray-400" />
                   <div>
                     <p className="text-sm font-medium text-gray-900">
-                      Assigned Partners
+                      Assigned to Partners
                     </p>
                     <p className="text-sm text-gray-600">
                       {agent.assigned_organizations_count ?? 0} organization
@@ -193,13 +193,13 @@ const ViewSuperAdminAgentModal: React.FC<ViewSuperAdminAgentModalProps> = ({
           {/* Assigned Organizations */}
           <div className="space-y-3">
             <h4 className="font-medium text-gray-900 border-b pb-2">
-              Assigned Organizations
+              Assigned to Partners
             </h4>
             {orgsLoading ? (
               <div className="flex items-center justify-center py-6">
                 <Loader2 className="h-6 w-6 animate-spin text-brand" />
                 <span className="ml-2 text-sm text-gray-600">
-                  Loading organizations...
+                  Loading partners...
                 </span>
               </div>
             ) : orgsError ? (

@@ -15,7 +15,7 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams) {
 
   let query = supabase
     .from("profiles")
-    .select("id, full_name, email, phone, role, status, created_at", { count: "exact" });
+    .select("id, full_name, email, phone, role, status, created_at, last_login, updated_at, updated_by", { count: "exact" });
 
   if (roleParam && ["acsl_agent", "super_admin_agent", "super_admin"].includes(roleParam)) {
     // Map legacy role param to new value
@@ -60,13 +60,32 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams) {
     })
   );
 
+  // Batch-resolve updated_by names
+  const updaterIds = [...new Set(
+    agentsWithCounts
+      .filter((a: any) => a.updated_by)
+      .map((a: any) => a.updated_by as string)
+  )];
+  const updaterMap: Record<string, string> = {};
+  if (updaterIds.length > 0) {
+    const { data: updaters } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", updaterIds);
+    (updaters || []).forEach((u: any) => { updaterMap[u.id] = u.full_name; });
+  }
+  const agentsWithModifier = agentsWithCounts.map((a: any) => ({
+    ...a,
+    updated_by_name: a.updated_by ? (updaterMap[a.updated_by] ?? null) : null,
+  }));
+
   const totalPages = Math.ceil((count || 0) / limit);
 
   console.log(`✅ Found ${agents?.length || 0} agents`);
 
   return {
     message: `Found ${count || 0} agents`,
-    data: agentsWithCounts,
+    data: agentsWithModifier,
     pagination: {
       currentPage: page,
       totalPages,
@@ -83,7 +102,7 @@ export async function getAgent(supabase: any, agentId: string) {
 
   const { data: agent, error } = await supabase
     .from("profiles")
-    .select("id, full_name, email, phone, role, status, created_at")
+    .select("id, full_name, email, phone, role, status, created_at, last_login, updated_at, updated_by")
     .eq("id", agentId)
     .in("role", ["acsl_agent", "super_admin"])
     .single();
