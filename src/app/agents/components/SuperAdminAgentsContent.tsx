@@ -497,15 +497,6 @@ export default function SuperAdminAgentsContent() {
                           <TableCell className="text-xs text-gray-600">{formatDate(agent.created_at)}</TableCell>
                           <TableCell className="text-center">
                             <div className="flex items-center justify-center gap-1.5">
-                              {["acsl_agent", "super_admin_agent"].includes(agent.role) && (
-                                <Button
-                                  size="sm"
-                                  className="bg-[#07376a] hover:bg-[#07376a]/90 text-white h-7 px-2 text-xs"
-                                  onClick={() => { setSelectedAcslAgent(agent); setShowAssignModal(true); }}
-                                >
-                                  <UserCheck className="h-3 w-3 mr-1" />Assign Partners
-                                </Button>
-                              )}
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="outline" size="sm" className="h-7 w-7 p-0">

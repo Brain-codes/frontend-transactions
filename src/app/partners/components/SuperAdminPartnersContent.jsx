@@ -55,7 +55,6 @@ import {
   Edit,
   Trash2,
   Eye,
-  Layers,
   Package,
   ChevronLeft,
   ChevronRight,
@@ -67,30 +66,40 @@ import {
   Tag,
 } from "lucide-react";
 import { downloadTableAsCSV } from "@/utils/csvExportUtils";
-import AssignPaymentModelsModal from "../components/AssignPaymentModelsModal";
 import AddPartnerModal from "../components/AddPartnerModal";
+import AssignAgentModal from "../components/AssignAgentModal";
 import AdminSalesDetailModal from "../../admin/components/sales/AdminSalesDetailModal";
 
 // ── Stove IDs Modal ──────────────────────────────────────────────────────────
 
-const StoveIdsModal = ({ organization, isOpen, onClose }) => {
+const FILTER_LABELS = { all: "All Stove IDs", available: "Available Stove IDs", sold: "Sold Stove IDs" };
+
+const StoveIdsModal = ({ organization, isOpen, onClose, initialFilter = "all" }) => {
   const { supabase } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [stoveIds, setStoveIds] = useState([]);
   const [totals, setTotals] = useState(null);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(initialFilter);
   const [search, setSearch] = useState("");
   const [error, setError] = useState(null);
   const [selectedSale, setSelectedSale] = useState(null);
   const [loadingSaleId, setLoadingSaleId] = useState(null);
 
+  // On open, reset to the requested filter and fetch
   useEffect(() => {
     if (isOpen && organization) {
       setSearch("");
-      fetchStoveIds(statusFilter);
+      setStatusFilter(initialFilter);
+      fetchStoveIds(initialFilter);
     }
-  }, [isOpen, organization, statusFilter]);
+  }, [isOpen, organization]);
+
+  // Re-fetch when user manually changes the filter dropdown
+  const handleStatusChange = (val) => {
+    setStatusFilter(val);
+    fetchStoveIds(val);
+  };
 
   const fetchStoveIds = async (sf) => {
     setLoading(true);
@@ -153,15 +162,79 @@ const StoveIdsModal = ({ organization, isOpen, onClose }) => {
   const soldPct = totalCount > 0 ? Math.round((sold / totalCount) * 100) : 0;
   const availPct = totalCount > 0 ? Math.round((available / totalCount) * 100) : 0;
 
+  const fileSlug = `${organization?.partner_name?.replace(/\s+/g, "-").toLowerCase() ?? "partner"}-${statusFilter}`;
+
+  const downloadCSV = () => {
+    const headers = ["Stove ID", "Status", "Assigned Date", "Sale Date"];
+    const rows = filtered.map((s) => [
+      s.stove_id,
+      s.status === "sold" ? "Sold" : "Available",
+      formatDate(s.created_at),
+      s.status === "sold" ? formatDate(s.sale_date) : "",
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) => row.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `stove-ids-${fileSlug}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadPDF = async () => {
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+      const doc = new jsPDF();
+      doc.setFontSize(13);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${FILTER_LABELS[statusFilter]}`, 14, 15);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Partner: ${organization?.partner_name}   |   Generated: ${new Date().toLocaleDateString("en-GB")}`, 14, 22);
+      autoTable(doc, {
+        head: [["Stove ID", "Status", "Assigned Date", "Sale Date"]],
+        body: filtered.map((s) => [
+          s.stove_id,
+          s.status === "sold" ? "Sold" : "Available",
+          formatDate(s.created_at),
+          s.status === "sold" ? formatDate(s.sale_date) : "—",
+        ]),
+        startY: 27,
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [7, 55, 106] },
+        alternateRowStyles: { fillColor: [240, 245, 255] },
+      });
+      doc.save(`stove-ids-${fileSlug}.pdf`);
+    } catch (err) {
+      toast({ variant: "error", title: "PDF export failed", description: err.message });
+    }
+  };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
           <DialogHeader className="px-5 py-3 bg-gradient-to-r from-blue-50/80 to-sky-50/80 border-b shrink-0">
-            <DialogTitle className="text-base font-bold">Stove IDs</DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              {organization?.partner_name} — all assigned stove IDs
-            </DialogDescription>
+            <div className="flex items-start justify-between">
+              <div>
+                <DialogTitle className="text-base font-bold">{FILTER_LABELS[statusFilter]}</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  {organization?.partner_name}
+                </DialogDescription>
+              </div>
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs gap-1.5" onClick={downloadCSV} disabled={loading || filtered.length === 0}>
+                  <Download className="h-3 w-3" />CSV
+                </Button>
+                <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs gap-1.5" onClick={downloadPDF} disabled={loading || filtered.length === 0}>
+                  <Download className="h-3 w-3" />PDF
+                </Button>
+              </div>
+            </div>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -194,7 +267,7 @@ const StoveIdsModal = ({ organization, isOpen, onClose }) => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                 <Input placeholder="Search stove ID..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-xs bg-white" />
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={handleStatusChange}>
                 <SelectTrigger className="w-[130px] h-8 text-xs bg-white"><SelectValue placeholder="All Status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
@@ -359,13 +432,13 @@ export default function SuperAdminPartnersContent() {
 
   const [selectedOrganization, setSelectedOrganization] = useState(null);
   const [stoveIdsOrg, setStoveIdsOrg] = useState(null);
+  const [stoveIdsFilter, setStoveIdsFilter] = useState("all");
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingOrganization, setEditingOrganization] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [organizationToDelete, setOrganizationToDelete] = useState(null);
   const [formSubmitLoading, setFormSubmitLoading] = useState(false);
-  const [showPaymentModelsModal, setShowPaymentModelsModal] = useState(false);
-  const [paymentModelsOrg, setPaymentModelsOrg] = useState(null);
+  const [assignAgentOrg, setAssignAgentOrg] = useState(null);
   const [showOrgImportModal, setShowOrgImportModal] = useState(false);
   const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
 
@@ -374,9 +447,8 @@ export default function SuperAdminPartnersContent() {
   const [loadingOrgId, setLoadingOrgId] = useState(null);
   const [expandedRefKeys, setExpandedRefKeys] = useState({});
 
-  const [expandedAgentsOrgId, setExpandedAgentsOrgId] = useState(null);
   const [orgAgentsData, setOrgAgentsData] = useState({});
-  const [loadingAgentsOrgId, setLoadingAgentsOrgId] = useState(null);
+  const loadingAgentOrgIdsRef = useRef(new Set());
 
   const [filters, setFilters] = useState({ search: "", state: "all", partner_type: "all" });
   const [typeCardFilter, setTypeCardFilter] = useState("all");
@@ -493,18 +565,24 @@ export default function SuperAdminPartnersContent() {
     setExpandedRefKeys((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleToggleAgents = async (org) => {
-    if (expandedAgentsOrgId === org.id) { setExpandedAgentsOrgId(null); return; }
-    setExpandedAgentsOrgId(org.id);
-    if (orgAgentsData[org.id]) return;
-    setLoadingAgentsOrgId(org.id);
-    try {
-      const response = await adminAgentService.getSalesAgents({ limit: 100, organization_id: org.id });
-      setOrgAgentsData((prev) => ({ ...prev, [org.id]: response.data || [] }));
-    } catch {
-      setOrgAgentsData((prev) => ({ ...prev, [org.id]: [] }));
-    } finally { setLoadingAgentsOrgId(null); }
-  };
+  useEffect(() => {
+    if (organizationsData.length === 0) return;
+    organizationsData.forEach((org) => {
+      if (orgAgentsData[org.id] !== undefined) return;
+      if (loadingAgentOrgIdsRef.current.has(org.id)) return;
+      loadingAgentOrgIdsRef.current.add(org.id);
+      adminAgentService.getSalesAgents({ limit: 100, organization_id: org.id })
+        .then((response) => {
+          setOrgAgentsData((prev) => ({ ...prev, [org.id]: response.data || [] }));
+        })
+        .catch(() => {
+          setOrgAgentsData((prev) => ({ ...prev, [org.id]: [] }));
+        })
+        .finally(() => {
+          loadingAgentOrgIdsRef.current.delete(org.id);
+        });
+    });
+  }, [organizationsData]);
 
   const formatDate = (d) => {
     if (!d) return "N/A";
@@ -513,7 +591,7 @@ export default function SuperAdminPartnersContent() {
   };
 
   const handleViewDetails = (org) => setSelectedOrganization(org);
-  const handleViewStoveIds = (org) => setStoveIdsOrg(org);
+  const handleViewStoveIds = (org, filter = "all") => { setStoveIdsOrg(org); setStoveIdsFilter(filter); };
   const handleEdit = (org) => { setEditingOrganization(org); setShowFormModal(true); };
   const handleDelete = (org) => { setOrganizationToDelete(org); setShowDeleteModal(true); };
 
@@ -548,7 +626,7 @@ export default function SuperAdminPartnersContent() {
   const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
 
   if (loading) return (
-    <DashboardLayout currentRoute="partners" title="Manage Partners">
+    <DashboardLayout currentRoute="partners" title="Partners & Customers">
       <div className="flex items-center justify-center h-64">
         <Loader2 className="animate-spin h-8 w-8 text-brand" />
       </div>
@@ -556,7 +634,7 @@ export default function SuperAdminPartnersContent() {
   );
 
   if (error && !error.includes("login")) return (
-    <DashboardLayout currentRoute="partners" title="Manage Partners">
+    <DashboardLayout currentRoute="partners" title="Partners & Customers">
       <div className="p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-600 text-sm">
           Error: {error}
@@ -568,75 +646,16 @@ export default function SuperAdminPartnersContent() {
 
   return (
     <>
-      <DashboardLayout currentRoute="partners" title="Manage Partners">
+      <DashboardLayout currentRoute="partners" title="Partners & Customers">
         <div className="p-6 space-y-5">
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg"><Building2 className="h-5 w-5 text-blue-700" /></div>
-                <div>
-                  <p className="text-sm text-blue-600 font-medium">Total Partners</p>
-                  <p className="text-xl font-bold text-blue-900">{loadingStats ? <Loader2 className="h-4 w-4 animate-spin" /> : pagination.total.toLocaleString()}</p>
-                  <p className="text-xs text-blue-500">Registered</p>
-                </div>
-              </div>
-            </div>
-
-            <div className={`bg-green-50 border rounded-lg p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all ${typeCardFilter === "customer" ? "border-green-600 shadow-md" : "border-green-200"}`} onClick={() => handleTypeCardClick("customer")}>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg"><Users className="h-5 w-5 text-green-700" /></div>
-                <div>
-                  <p className="text-sm text-green-600 font-medium">Customers</p>
-                  <p className="text-xl font-bold text-green-900">{loadingTypeCounts ? <Loader2 className="h-4 w-4 animate-spin" /> : typeCounts.customer.toLocaleString()}</p>
-                  <p className="text-xs text-green-500">Click to filter</p>
-                </div>
-              </div>
-              {typeCardFilter === "customer" && <p className="text-xs font-semibold mt-2 opacity-70 text-center text-green-700">✓ Filter active — click again to clear</p>}
-            </div>
-
-            <div className={`bg-amber-50 border rounded-lg p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all ${typeCardFilter === "partner" ? "border-amber-600 shadow-md" : "border-amber-200"}`} onClick={() => handleTypeCardClick("partner")}>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-100 rounded-lg"><UserCheck className="h-5 w-5 text-amber-700" /></div>
-                <div>
-                  <p className="text-sm text-amber-600 font-medium">Partners</p>
-                  <p className="text-xl font-bold text-amber-900">{loadingTypeCounts ? <Loader2 className="h-4 w-4 animate-spin" /> : typeCounts.partner.toLocaleString()}</p>
-                  <p className="text-xs text-amber-500">Click to filter</p>
-                </div>
-              </div>
-              {typeCardFilter === "partner" && <p className="text-xs font-semibold mt-2 opacity-70 text-center text-amber-700">✓ Filter active — click again to clear</p>}
-            </div>
-
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-purple-100 rounded-lg"><Package className="h-5 w-5 text-purple-700" /></div>
-                <p className="text-sm text-purple-600 font-medium">Stove Inventory</p>
-              </div>
-              {loadingStats ? <Loader2 className="h-4 w-4 animate-spin text-purple-400" /> : (
-                <div className="flex items-center gap-3 text-xs">
-                  <div><p className="text-[10px] text-purple-500 uppercase">Total</p><p className="font-bold text-purple-900">{stats.total_received.toLocaleString()}</p></div>
-                  <div className="h-5 w-px bg-purple-200" />
-                  <div><p className="text-[10px] text-green-500 uppercase">Available</p><p className="font-bold text-green-700">{stats.total_available.toLocaleString()}</p></div>
-                  <div className="h-5 w-px bg-purple-200" />
-                  <div><p className="text-[10px] text-blue-500 uppercase">Sold</p><p className="font-bold text-blue-700">{stats.total_sold.toLocaleString()}</p></div>
-                </div>
-              )}
-            </div>
-          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Partners & Customers</h1>
 
           <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
             <div className="w-1/4 min-w-[180px] relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input placeholder="Search by name, ID, branch..." value={filters.search} onChange={(e) => handleFilterChange("search", e.target.value)} className="pl-9 bg-white h-9 text-sm" />
             </div>
-            <Select value={filters.partner_type} onValueChange={(v) => { handleFilterChange("partner_type", v); setTypeCardFilter(v); }}>
-              <SelectTrigger className="w-[150px] h-9 bg-white text-sm"><SelectValue placeholder="All Types" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="customer">Customer</SelectItem>
-                <SelectItem value="partner">Partner</SelectItem>
-              </SelectContent>
-            </Select>
             <Select value={filters.state} onValueChange={(v) => handleFilterChange("state", v)}>
               <SelectTrigger className="w-[155px] h-9 bg-white text-sm"><SelectValue placeholder="All States" /></SelectTrigger>
               <SelectContent>
@@ -694,18 +713,21 @@ export default function SuperAdminPartnersContent() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-brand hover:bg-brand">
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner Name</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Type</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Branch</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner/Customer Name</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">State</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stove IDs</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Branch</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone Number</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stoves Received</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stoves Sold</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Unsold Stoves</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Agents Assigned</TableHead>
                     <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className={tableLoading ? "opacity-40" : ""}>
                   {organizationsData.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-10">
+                      <TableCell colSpan={9} className="text-center py-10">
                         <Building2 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                         <p className="text-gray-500 font-medium">No partners found</p>
                         <p className="text-gray-400 text-sm">Try adjusting your filters</p>
@@ -716,50 +738,63 @@ export default function SuperAdminPartnersContent() {
                       <React.Fragment key={org.id}>
                         <TableRow className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}>
                           <TableCell className="text-xs font-medium text-gray-900">{org.partner_name}</TableCell>
-                          <TableCell>
-                            {org.partner_type ? (
-                              <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${org.partner_type === "partner" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}>
-                                {org.partner_type === "partner" ? "Partner" : "Customer"}
-                              </span>
-                            ) : <span className="text-gray-400 text-xs">—</span>}
-                          </TableCell>
-                          <TableCell className="text-xs">{org.branch || "N/A"}</TableCell>
                           <TableCell className="text-xs">{org.state || "N/A"}</TableCell>
+                          <TableCell className="text-xs">{org.branch || "N/A"}</TableCell>
+                          <TableCell className="text-xs">{org.contact_phone || "—"}</TableCell>
                           <TableCell>
-                            <button onClick={() => handleToggleStoveBreakdown(org)} className="flex items-center gap-2 text-xs hover:opacity-80 transition-opacity group">
-                              <span className="text-purple-700 font-medium">{org.total_stove_ids ?? 0} received</span>
-                              <span className="text-gray-300">·</span>
-                              <span className="text-green-600">{org.available_stove_ids ?? 0} available</span>
-                              <span className="text-gray-300">·</span>
-                              <span className="text-blue-600">{org.sold_stove_ids ?? 0} sold</span>
-                              {loadingOrgId === org.id
-                                ? <Loader2 className="h-3 w-3 animate-spin text-gray-400 ml-1" />
-                                : expandedOrgId === org.id
-                                ? <ChevronUp className="h-3 w-3 text-[#07376a] ml-1" />
-                                : <ChevronDown className="h-3 w-3 text-gray-400 ml-1 group-hover:text-[#07376a]" />}
+                            <button onClick={() => handleViewStoveIds(org, "all")} className="text-xs font-medium text-purple-700 hover:underline hover:text-purple-900 transition-colors">
+                              {org.total_stove_ids ?? 0}
                             </button>
                           </TableCell>
+                          <TableCell>
+                            <button onClick={() => handleViewStoveIds(org, "sold")} className="text-xs font-medium text-blue-600 hover:underline hover:text-blue-800 transition-colors">
+                              {org.sold_stove_ids ?? 0}
+                            </button>
+                          </TableCell>
+                          <TableCell>
+                            <button onClick={() => handleViewStoveIds(org, "available")} className="text-xs font-medium text-green-600 hover:underline hover:text-green-800 transition-colors">
+                              {org.available_stove_ids ?? 0}
+                            </button>
+                          </TableCell>
+                          <TableCell>
+                            {orgAgentsData[org.id] === undefined ? (
+                              <Loader2 className="h-3 w-3 animate-spin text-gray-300" />
+                            ) : orgAgentsData[org.id].length === 0 ? (
+                              <span className="text-gray-400 text-xs">—</span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {orgAgentsData[org.id].map((agent) => (
+                                  <span key={agent.id} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 whitespace-nowrap">
+                                    {agent.full_name?.split(" ")[0] || agent.full_name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => { setPaymentModelsOrg(org); setShowPaymentModelsModal(true); }}>
-                                <Layers className="h-3 w-3 mr-1" />Assign Model
+                            <div className="flex items-center justify-center gap-1">
+                              <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="Edit" onClick={() => handleEdit(org)}>
+                                <Edit className="h-3.5 w-3.5" />
                               </Button>
-                              <Button size="sm" className="bg-brand hover:bg-brand/90 text-white h-7 px-2 text-xs" onClick={() => handleViewDetails(org)}>
-                                <Eye className="h-3 w-3 mr-1" />Details
+                              <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:border-red-300" title="Delete" onClick={() => handleDelete(org)}>
+                                <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="outline" size="sm" className="h-7 w-7 p-0"><MoreVertical className="h-3.5 w-3.5" /></Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleToggleAgents(org)}>
-                                    <Users className="mr-2 h-4 w-4" />{expandedAgentsOrgId === org.id ? "Hide Agents" : "View Agents"}
+                                  <DropdownMenuItem onClick={() => setAssignAgentOrg(org)}>
+                                    <Users className="mr-2 h-4 w-4" />Assign Agent
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleViewDetails(org)}>
+                                    <Eye className="mr-2 h-4 w-4" />Details
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleViewStoveIds(org)}>
                                     <Package className="mr-2 h-4 w-4" />View Stove IDs
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleEdit(org)}>
-                                    <Edit className="mr-2 h-4 w-4" />Edit
+                                  <DropdownMenuItem onClick={() => handleToggleStoveBreakdown(org)}>
+                                    <Tag className="mr-2 h-4 w-4" />{expandedOrgId === org.id ? "Hide Breakdown" : "View Breakdown"}
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -767,72 +802,9 @@ export default function SuperAdminPartnersContent() {
                           </TableCell>
                         </TableRow>
 
-                        {expandedAgentsOrgId === org.id && (
-                          <TableRow key={`${org.id}-agents`} className="bg-indigo-50/40">
-                            <TableCell colSpan={6} className="p-0">
-                              <div className="px-4 py-3">
-                                {loadingAgentsOrgId === org.id ? (
-                                  <div className="flex items-center gap-2 py-3 text-sm text-gray-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading agents...</div>
-                                ) : !orgAgentsData[org.id] || orgAgentsData[org.id].length === 0 ? (
-                                  <p className="text-xs text-gray-500 py-2 italic">No agents found for this partner.</p>
-                                ) : (
-                                  <div className="border border-indigo-200 rounded-md overflow-hidden">
-                                    <div className="bg-[#07376a] px-3 py-2 flex items-center justify-between">
-                                      <div className="flex items-center gap-2">
-                                        <Users className="h-3.5 w-3.5 text-white/80" />
-                                        <span className="text-xs font-semibold text-white">Sales Agents — {org.partner_name}</span>
-                                      </div>
-                                      <span className="text-xs text-white/70">{orgAgentsData[org.id].length} agent{orgAgentsData[org.id].length !== 1 ? "s" : ""}</span>
-                                    </div>
-                                    <table className="w-full text-xs">
-                                      <thead>
-                                        <tr className="bg-indigo-50 text-gray-600 border-b border-indigo-100">
-                                          <th className="text-left px-3 py-2 font-semibold">Agent Name</th>
-                                          <th className="text-left px-3 py-2 font-semibold">Email</th>
-                                          <th className="text-left px-3 py-2 font-semibold">Phone</th>
-                                          <th className="text-center px-3 py-2 font-semibold">Sales</th>
-                                          <th className="text-left px-3 py-2 font-semibold">Joined</th>
-                                          <th className="text-left px-3 py-2 font-semibold">Last Login</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {orgAgentsData[org.id].map((agent, ai) => {
-                                          const lastLoginDiff = agent.last_login ? Date.now() - new Date(agent.last_login).getTime() : null;
-                                          const lastLoginLabel = !agent.last_login
-                                            ? <span className="text-gray-400">Never</span>
-                                            : lastLoginDiff <= 7 * 86400000 ? <span className="text-green-600 font-medium">{Math.floor(lastLoginDiff / 86400000)}d ago</span>
-                                            : lastLoginDiff <= 30 * 86400000 ? <span className="text-amber-600 font-medium">{Math.floor(lastLoginDiff / 86400000)}d ago</span>
-                                            : <span className="text-red-500">{formatDate(agent.last_login)}</span>;
-                                          return (
-                                            <tr key={agent.id} className={ai % 2 === 0 ? "bg-white" : "bg-indigo-50/30"}>
-                                              <td className="px-3 py-2 font-medium text-gray-900">
-                                                <div className="flex items-center gap-1.5">
-                                                  <div className="h-5 w-5 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-[10px] flex-shrink-0">{agent.full_name?.charAt(0).toUpperCase() ?? "?"}</div>
-                                                  {agent.full_name}
-                                                </div>
-                                              </td>
-                                              <td className="px-3 py-2 text-gray-500">{agent.email}</td>
-                                              <td className="px-3 py-2 text-gray-500">{agent.phone || "—"}</td>
-                                              <td className="px-3 py-2 text-center">
-                                                <span className={`px-2 py-0.5 rounded-full font-semibold ${(agent.total_sold ?? 0) > 0 ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{agent.total_sold ?? 0}</span>
-                                              </td>
-                                              <td className="px-3 py-2 text-gray-500">{formatDate(agent.created_at)}</td>
-                                              <td className="px-3 py-2">{lastLoginLabel}</td>
-                                            </tr>
-                                          );
-                                        })}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )}
-
                         {expandedOrgId === org.id && (
                           <TableRow key={`${org.id}-breakdown`} className="bg-blue-50/40">
-                            <TableCell colSpan={6} className="p-0">
+                            <TableCell colSpan={9} className="p-0">
                               <div className="px-4 py-3">
                                 {loadingOrgId === org.id ? (
                                   <div className="flex items-center gap-2 py-3 text-sm text-gray-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading stove reference breakdown...</div>
@@ -925,12 +897,15 @@ export default function SuperAdminPartnersContent() {
         <AddPartnerModal isOpen={showAddPartnerModal} onClose={() => setShowAddPartnerModal(false)} onSuccess={() => { fetchOrganizations(); fetchTypeCounts(); }} />
         <OrganizationFormModal isOpen={showFormModal} onClose={() => { setShowFormModal(false); setEditingOrganization(null); setFormSubmitLoading(false); }} onSubmit={handleFormSubmit} initialData={editingOrganization} loading={loading} submitLoading={formSubmitLoading} />
         <PartnerDetailModal organization={selectedOrganization} isOpen={!!selectedOrganization} onClose={() => setSelectedOrganization(null)} onEdit={handleEdit} />
-        <StoveIdsModal organization={stoveIdsOrg} isOpen={!!stoveIdsOrg} onClose={() => setStoveIdsOrg(null)} />
+        <StoveIdsModal organization={stoveIdsOrg} isOpen={!!stoveIdsOrg} onClose={() => setStoveIdsOrg(null)} initialFilter={stoveIdsFilter} />
         <DeleteConfirmationModal isOpen={showDeleteModal} onClose={() => { setShowDeleteModal(false); setOrganizationToDelete(null); }} onConfirm={handleDeleteConfirm} organizationName={organizationToDelete?.partner_name} loading={loading} />
         <OrganizationCSVImportModal isOpen={showOrgImportModal} onClose={() => setShowOrgImportModal(false)} onImportComplete={() => fetchOrganizations()} supabase={supabase} />
-        {showPaymentModelsModal && paymentModelsOrg && (
-          <AssignPaymentModelsModal organization={paymentModelsOrg} onClose={() => { setShowPaymentModelsModal(false); setPaymentModelsOrg(null); }} onSuccess={() => { setShowPaymentModelsModal(false); setPaymentModelsOrg(null); toast({ variant: "success", title: "Payment models assigned successfully" }); }} />
-        )}
+        <AssignAgentModal
+          organization={assignAgentOrg}
+          isOpen={!!assignAgentOrg}
+          onClose={() => setAssignAgentOrg(null)}
+          onSuccess={() => { setAssignAgentOrg(null); setOrgAgentsData({}); }}
+        />
         <ToastContainer toasts={toasts} onRemove={removeToast} />
       </DashboardLayout>
     </>

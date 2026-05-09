@@ -36,19 +36,19 @@ const allNavItems = [
     href: "/dashboard",
   },
   {
+    name: "Partners & Customers",
+    icon: UserCheck,
+    route: "partners",
+    href: "/partners",
+  },
+  {
     name: "Sales",
     icon: ShoppingCart,
     route: "sales",
     href: "/sales",
   },
   {
-    name: "Partners",
-    icon: UserCheck,
-    route: "partners",
-    href: "/partners",
-  },
-  {
-    name: "Agents",
+    name: "Manage Agents",
     icon: Users,
     route: "agents",
     href: "/agents",

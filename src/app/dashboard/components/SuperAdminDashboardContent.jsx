@@ -38,6 +38,7 @@ const SuperAdminDashboardContent = () => {
     byState: (data.salesByState ?? []).map((s) => ({ state: s.state, count: s.sales ?? s.count ?? 0 })),
     salesModelData: data.salesModelData ?? [],
     topPartners: data.topPartners ?? [],
+    topAgents: data.topAgents ?? [],
   } : null;
 
   return (

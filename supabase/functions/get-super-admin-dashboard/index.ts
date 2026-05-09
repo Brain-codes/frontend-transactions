@@ -15,16 +15,23 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("Missing authorization header");
 
+    // User client — for auth verification only
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } },
     );
 
+    // Service-role client — bypasses RLS for data queries (profiles, etc.)
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) throw new Error("Invalid or expired token");
 
-    const { data: profile, error: profileError } = await supabaseClient
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("role")
       .eq("id", user.id)
@@ -40,43 +47,44 @@ serve(async (req) => {
     }
 
     const { year = new Date().getFullYear() } = await req.json().catch(() => ({}));
-    const startDate = `${year}-01-01`;
-    const endDate = `${year}-12-31`;
 
-    // Run stove counts and sales fetch in parallel
-    const [
-      receivedResult,
-      soldResult,
-      availableResult,
-      salesResult,
-    ] = await Promise.all([
-      supabaseClient
+    // Stove KPIs use a balance-sheet (snapshot) model: cumulative totals as of
+    // the END of the selected year. This gives different numbers per year while
+    // keeping Available = Received − Sold logically consistent.
+    // stove_ids has no transfer-date column; created_at is used as the best proxy.
+    //
+    // Financial metrics (amount, etc.) remain year-specific via sales_date.
+    const startDate = `${year}-01-01`;
+    const endOfYear = `${year + 1}-01-01`; // exclusive — captures all of Dec 31
+
+    const [receivedResult, soldCumulativeResult, salesResult] = await Promise.all([
+      // Stoves received by any partner as of end of selected year
+      serviceClient
         .from("stove_ids")
         .select("*", { count: "exact", head: true })
         .not("organization_id", "is", null)
-        .gte("created_at", startDate)
-        .lte("created_at", endDate),
+        .lt("created_at", endOfYear),
 
-      supabaseClient
-        .from("stove_ids")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "sold")
-        .gte("created_at", startDate)
-        .lte("created_at", endDate),
-
-      supabaseClient
-        .from("stove_ids")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "available"),
-
-      supabaseClient
+      // Total stoves sold to end users as of end of selected year (sales_date is authoritative)
+      serviceClient
         .from("sales")
-        .select("id, amount, total_paid, state_backup, partner_name, retailer_branch, payment_model_id")
+        .select("*", { count: "exact", head: true })
+        .lt("sales_date", endOfYear),
+
+      // Year-only sales for financial metrics and charts
+      serviceClient
+        .from("sales")
+        .select("id, amount, total_paid, state_backup, partner_name, retailer_branch, payment_model_id, created_by")
         .gte("sales_date", startDate)
-        .lte("sales_date", endDate),
+        .lt("sales_date", endOfYear),
     ]);
 
     if (salesResult.error) throw new Error("Failed to fetch sales data");
+
+    const stovesReceivedByPartners = receivedResult.count ?? 0;
+    const stovesSoldToEndUsers = soldCumulativeResult.count ?? 0; // cumulative as of year end
+    // Available = received up to year end minus sold up to year end
+    const availableStoves = Math.max(0, stovesReceivedByPartners - stovesSoldToEndUsers);
 
     const sales = salesResult.data || [];
 
@@ -84,7 +92,7 @@ serve(async (req) => {
     const amountReceived = sales.reduce((sum, s) => sum + (Number(s.total_paid) || 0), 0);
     const outstandingBalance = expectedReceivable - amountReceived;
 
-    // Sales by state
+    // Sales by state (year-filtered)
     const stateMap: Record<string, number> = {};
     sales.forEach((s) => {
       const st = s.state_backup || "Unknown";
@@ -94,7 +102,7 @@ serve(async (req) => {
       .map(([state, count]) => ({ state, count }))
       .sort((a, b) => b.count - a.count);
 
-    // Top 5 partners
+    // Top 5 partners by sales (year-filtered)
     const partnerMap: Record<string, { name: string; branch: string | null; count: number }> = {};
     sales.forEach((s) => {
       const name = (s.partner_name || "Unknown").trim();
@@ -112,11 +120,34 @@ serve(async (req) => {
         percentage: totalSales > 0 ? ((p.count / totalSales) * 100).toFixed(1) : "0",
       }));
 
-    // Sales model analysis
+    // Top 5 agents by sales count (year-filtered)
+    const agentCountMap: Record<string, number> = {};
+    sales.forEach((s) => {
+      if (s.created_by) agentCountMap[s.created_by] = (agentCountMap[s.created_by] || 0) + 1;
+    });
+    const topAgentIds = Object.entries(agentCountMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([id]) => id);
+    let agentNames: Record<string, string> = {};
+    if (topAgentIds.length > 0) {
+      const { data: agentProfiles } = await serviceClient
+        .from("profiles")
+        .select("id, full_name, email, username")
+        .in("id", topAgentIds);
+      agentProfiles?.forEach((p) => { agentNames[p.id] = p.full_name || p.username || p.email || "Unknown"; });
+    }
+    const topAgents = topAgentIds.map((id) => ({
+      name: agentNames[id] || "Unknown",
+      count: agentCountMap[id],
+      percentage: totalSales > 0 ? ((agentCountMap[id] / totalSales) * 100).toFixed(1) : "0",
+    }));
+
+    // Sales model analysis (year-filtered)
     const modelIds = [...new Set(sales.map((s) => s.payment_model_id).filter(Boolean))];
     let modelNames: Record<string, string> = {};
     if (modelIds.length > 0) {
-      const { data: models } = await supabaseClient
+      const { data: models } = await serviceClient
         .from("payment_models")
         .select("id, name")
         .in("id", modelIds);
@@ -140,15 +171,16 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         data: {
-          stovesReceivedByPartners: receivedResult.count ?? 0,
-          stovesSoldToEndUsers: soldResult.count ?? 0,
-          availableStoves: availableResult.count ?? 0,
+          stovesReceivedByPartners,
+          stovesSoldToEndUsers,
+          availableStoves,
           expectedReceivable,
           amountReceived,
           outstandingBalance,
           salesByState,
           salesModelData,
           topPartners,
+          topAgents,
         },
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },

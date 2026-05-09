@@ -21,7 +21,7 @@ serve(async (req) => {
     // Parse year from body
     const { year = new Date().getFullYear() } = await req.json().catch(() => ({}));
     const startDate = `${year}-01-01`;
-    const endDate = `${year}-12-31`;
+    const endOfYear = `${year + 1}-01-01`; // exclusive upper bound
 
     // Resolve org IDs assigned to this agent
     const resolved = await resolveAssignedOrgIds(supabase, userId);
@@ -43,35 +43,28 @@ serve(async (req) => {
       );
     }
 
-    // Stove counts (scoped to assigned orgs)
-    const [receivedResult, soldResult, availableResult, salesResult] = await Promise.all([
+    // Balance-sheet stove counts: cumulative as of end of selected year.
+    // created_at is used for received (no transfer-date column); sales_date
+    // is authoritative for sold. Financial metrics remain year-specific.
+    const [receivedResult, soldCumulativeResult, salesResult] = await Promise.all([
       supabase
         .from("stove_ids")
         .select("*", { count: "exact", head: true })
         .in("organization_id", assignedOrgIds)
-        .gte("created_at", startDate)
-        .lte("created_at", endDate),
+        .lt("created_at", endOfYear),
 
       supabase
-        .from("stove_ids")
+        .from("sales")
         .select("*", { count: "exact", head: true })
         .in("organization_id", assignedOrgIds)
-        .eq("status", "sold")
-        .gte("created_at", startDate)
-        .lte("created_at", endDate),
-
-      supabase
-        .from("stove_ids")
-        .select("*", { count: "exact", head: true })
-        .in("organization_id", assignedOrgIds)
-        .eq("status", "available"),
+        .lt("sales_date", endOfYear),
 
       supabase
         .from("sales")
         .select("amount, total_paid, state_backup, payment_model_id")
         .in("organization_id", assignedOrgIds)
         .gte("sales_date", startDate)
-        .lte("sales_date", endDate),
+        .lt("sales_date", endOfYear),
     ]);
 
     const sales = salesResult.data || [];
@@ -111,8 +104,8 @@ serve(async (req) => {
           success: true,
           data: {
             stovesReceived: receivedResult.count ?? 0,
-            stovesSold: soldResult.count ?? 0,
-            availableStoves: availableResult.count ?? 0,
+            stovesSold: soldCumulativeResult.count ?? 0,
+            availableStoves: Math.max(0, (receivedResult.count ?? 0) - (soldCumulativeResult.count ?? 0)),
             expectedReceivable,
             amountReceived,
             outstandingBalance: expectedReceivable - amountReceived,

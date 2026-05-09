@@ -91,36 +91,15 @@ export default function AcslAgentPartnersContent() {
   const handleSearch = (v: string) => { setSearchTerm(v); setCurrentPage(1); };
 
   return (
-    <DashboardLayout currentRoute="partners" title="My Partners">
+    <DashboardLayout currentRoute="partners" title="Partners & Customers">
       <div className="p-6 space-y-6">
+        <h1 className="text-2xl font-bold text-gray-900">Partners & Customers</h1>
+
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-2 text-red-700 text-sm">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />{error}
           </div>
         )}
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg"><Building2 className="h-5 w-5 text-blue-700" /></div>
-              <div>
-                <p className="text-sm text-blue-600 font-medium">Total Partners</p>
-                <p className="text-xl font-bold text-blue-900">{orgs.length}</p>
-                <p className="text-xs text-blue-500">Assigned to you</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg"><Building2 className="h-5 w-5 text-green-700" /></div>
-              <div>
-                <p className="text-sm text-green-600 font-medium">Active Partners</p>
-                <p className="text-xl font-bold text-green-900">{orgs.length}</p>
-                <p className="text-xs text-green-500">Available for sales</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
         <div className="bg-blue-50 p-3 rounded-lg border border-gray-200">
           <div className="flex flex-wrap items-center gap-3">
