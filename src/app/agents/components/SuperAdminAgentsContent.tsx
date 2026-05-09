@@ -29,8 +29,6 @@ import { useToast, ToastContainer } from "@/components/ui/toast";
 import {
   Users,
   UserCheck,
-  UserX,
-  TrendingUp,
   Search,
   X,
   Loader2,
@@ -42,7 +40,6 @@ import {
   Building2,
   Ban,
   CheckCircle2,
-  Map,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -53,8 +50,7 @@ import {
 } from "lucide-react";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import adminAgentService from "../../services/adminAgentService.jsx";
-import CreateSuperAdminAgentModal from "../../super-admin-agents/components/CreateSuperAdminAgentModal";
-import EditSuperAdminAgentModal from "../../super-admin-agents/components/EditSuperAdminAgentModal";
+import AgentFormModal from "../../components/AgentFormModal";
 import DeleteSuperAdminAgentModal from "../../super-admin-agents/components/DeleteSuperAdminAgentModal";
 import ViewSuperAdminAgentModal from "../../super-admin-agents/components/ViewSuperAdminAgentModal";
 import AssignOrganizationsModal from "../../super-admin-agents/components/AssignOrganizationsModal";
@@ -98,8 +94,7 @@ export default function SuperAdminAgentsContent() {
   const [acslRoleFilter, setAcslRoleFilter] = useState("all");
   const [acslPage, setAcslPage] = useState(1);
   const [acslPageSize, setAcslPageSize] = useState(25);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [agentFormMode, setAgentFormMode] = useState<"create" | "edit" | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showViewAcslModal, setShowViewAcslModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -272,23 +267,21 @@ export default function SuperAdminAgentsContent() {
   ];
 
   return (
-    <DashboardLayout
-      currentRoute="agents"
-      title="Agents"
-      rightButton={
-        activeTab === "acsl" ? (
-          <Button
-            size="sm"
-            className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <Plus className="h-4 w-4" />
-            Add ACSL Agent
-          </Button>
-        ) : undefined
-      }
-    >
+    <DashboardLayout currentRoute="agents" title="Agent Manager">
       <div className="p-6 space-y-5">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">Agent Manager</h1>
+          {activeTab === "acsl" && (
+            <Button
+              size="sm"
+              className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
+              onClick={() => setAgentFormMode("create")}
+            >
+              <Plus className="h-4 w-4" />
+              Create Agent
+            </Button>
+          )}
+        </div>
         {/* Tabs */}
         <div className="flex gap-1 border-b border-gray-200">
           {tabs.map((tab) => (
@@ -320,60 +313,6 @@ export default function SuperAdminAgentsContent() {
                 <Button variant="outline" size="sm" onClick={fetchAcslAgents} className="ml-auto">Retry</Button>
               </div>
             )}
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg"><Users className="h-5 w-5 text-blue-700" /></div>
-                  <div>
-                    <p className="text-sm text-blue-600 font-medium">Total ACSL Agents</p>
-                    <p className="text-xl font-bold text-blue-900">
-                      {acslLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : acslStats.total.toLocaleString()}
-                    </p>
-                    <p className="text-xs text-blue-500">Registered</p>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className={`bg-green-50 border rounded-lg p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all ${acslStatusFilter === "active" ? "border-green-600 shadow-md" : "border-green-200"}`}
-                onClick={() => setAcslStatusFilter((f) => f === "active" ? "all" : "active")}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg"><UserCheck className="h-5 w-5 text-green-700" /></div>
-                  <div>
-                    <p className="text-sm text-green-600 font-medium">Active Agents</p>
-                    <p className="text-xl font-bold text-green-900">{acslStats.active}</p>
-                    <p className="text-xs text-green-500">Click to filter</p>
-                  </div>
-                </div>
-                {acslStatusFilter === "active" && (
-                  <p className="text-xs font-semibold mt-2 opacity-70 text-center text-green-700">✓ Filter active — click again to clear</p>
-                )}
-              </div>
-
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-100 rounded-lg"><Building2 className="h-5 w-5 text-amber-700" /></div>
-                  <div>
-                    <p className="text-sm text-amber-600 font-medium">Org Assignments</p>
-                    <p className="text-xl font-bold text-amber-900">{acslStats.totalOrgs.toLocaleString()}</p>
-                    <p className="text-xs text-amber-500">Across all agents</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-100 rounded-lg"><Map className="h-5 w-5 text-purple-700" /></div>
-                  <div>
-                    <p className="text-sm text-purple-600 font-medium">State Assignments</p>
-                    <p className="text-xl font-bold text-purple-900">{acslStats.totalStates.toLocaleString()}</p>
-                    <p className="text-xs text-purple-500">Across all agents</p>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
               <div className="w-1/4 min-w-[180px] relative">
@@ -507,7 +446,7 @@ export default function SuperAdminAgentsContent() {
                                   <DropdownMenuItem onClick={() => { setSelectedAcslAgent(agent); setShowViewAcslModal(true); }}>
                                     <Eye className="h-4 w-4 mr-2" />View Details
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => { setSelectedAcslAgent(agent); setShowEditModal(true); }}>
+                                  <DropdownMenuItem onClick={() => { setSelectedAcslAgent(agent); setAgentFormMode("edit"); }}>
                                     <Edit className="h-4 w-4 mr-2" />Edit
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleToggleAcslStatus(agent)}>
@@ -559,55 +498,6 @@ export default function SuperAdminAgentsContent() {
                 <Button variant="outline" size="sm" onClick={fetchPartnerAgents} className="ml-auto">Try Again</Button>
               </div>
             )}
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg"><Users className="h-5 w-5 text-blue-700" /></div>
-                  <div>
-                    <p className="text-sm text-blue-600 font-medium">Total Agents</p>
-                    <p className="text-xl font-bold text-blue-900">{partnerStats.total.toLocaleString()}</p>
-                    <p className="text-xs text-blue-500">Across all partners</p>
-                  </div>
-                </div>
-              </div>
-              <div
-                className={`bg-green-50 border rounded-lg p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all ${partnerActivityFilter === "active" ? "border-green-600 shadow-md" : "border-green-200"}`}
-                onClick={() => setPartnerActivityFilter((f) => f === "active" ? "all" : "active")}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg"><UserCheck className="h-5 w-5 text-green-700" /></div>
-                  <div>
-                    <p className="text-sm text-green-600 font-medium">Active (7 days)</p>
-                    <p className="text-xl font-bold text-green-900">{partnerStats.activeCount}</p>
-                    <p className="text-xs text-green-500">Click to filter</p>
-                  </div>
-                </div>
-                {partnerActivityFilter === "active" && (
-                  <p className="text-xs font-semibold mt-2 opacity-70 text-center text-green-700">✓ Active — click to clear</p>
-                )}
-              </div>
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-red-100 rounded-lg"><UserX className="h-5 w-5 text-red-700" /></div>
-                  <div>
-                    <p className="text-sm text-red-600 font-medium">Zero Sales</p>
-                    <p className="text-xl font-bold text-red-900">{partnerStats.noSalesCount}</p>
-                    <p className="text-xs text-red-500">Need attention</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-100 rounded-lg"><TrendingUp className="h-5 w-5 text-amber-700" /></div>
-                  <div>
-                    <p className="text-sm text-amber-600 font-medium">Total Stoves Sold</p>
-                    <p className="text-xl font-bold text-amber-900">{partnerStats.totalSold.toLocaleString()}</p>
-                    <p className="text-xs text-amber-500">Across all agents</p>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
               <div className="w-1/4 min-w-[180px] relative">
@@ -757,17 +647,22 @@ export default function SuperAdminAgentsContent() {
       </div>
 
       {/* ACSL Modals */}
-      {showCreateModal && (
-        <CreateSuperAdminAgentModal
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={(newAgent) => { setShowCreateModal(false); toast({ variant: "success", title: `Agent "${newAgent.full_name}" created successfully` }); fetchAcslAgents(); }}
-        />
-      )}
-      {showEditModal && selectedAcslAgent && (
-        <EditSuperAdminAgentModal
-          agent={selectedAcslAgent}
-          onClose={() => { setShowEditModal(false); setSelectedAcslAgent(null); }}
-          onSuccess={(updated) => { setShowEditModal(false); setSelectedAcslAgent(null); toast({ variant: "success", title: `Agent "${updated.full_name}" updated` }); fetchAcslAgents(); }}
+      {agentFormMode && (
+        <AgentFormModal
+          mode={agentFormMode}
+          agent={agentFormMode === "edit" ? (selectedAcslAgent ?? undefined) : undefined}
+          onClose={() => { setAgentFormMode(null); setSelectedAcslAgent(null); }}
+          onSuccess={(result) => {
+            setAgentFormMode(null);
+            setSelectedAcslAgent(null);
+            toast({
+              variant: "success",
+              title: agentFormMode === "create"
+                ? `Agent "${result.full_name}" created successfully`
+                : `Agent "${result.full_name}" updated`,
+            });
+            fetchAcslAgents();
+          }}
         />
       )}
       {showDeleteModal && selectedAcslAgent && (
