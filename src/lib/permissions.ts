@@ -81,7 +81,7 @@ export const PERMISSIONS: Record<string, RolePermissions> = {
     features: ["manage-agents", "org-sales-view", "create-sale"],
   },
   partner_agent: {
-    routes: ["sales"],
+    routes: ["dashboard", "sales"],
     features: ["create-sale"],
   },
 };

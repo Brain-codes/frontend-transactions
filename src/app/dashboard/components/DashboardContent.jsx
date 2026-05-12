@@ -63,26 +63,26 @@ const formatCurrency = (value) => `₦${Math.round(value ?? 0).toLocaleString()}
 const KPI_CONFIG = [
   {
     key: "stovesReceived",
-    label: "Stoves Received By Partner(s)",
+    label: "Total Stoves Received By Partner(s)",
     icon: Package,
     gradient: "from-[#194977] to-[#2563EB]",
   },
   {
     key: "stovesSold",
-    label: "Stoves Sold to End Users",
+    label: "Total Stoves Sold to End Users",
     icon: ShoppingCart,
     gradient: "from-[#0F766E] to-[#14B8A6]",
   },
   {
     key: "availableStoves",
-    label: "Available Stoves for Sale",
+    label: "Available Stoves for Sale to End Users",
     icon: Boxes,
     gradient: "from-[#7C3AED] to-[#A78BFA]",
     sub: "Current inventory",
   },
   {
     key: "expectedReceivable",
-    label: "Expected Receivable",
+    label: "Expected Receivable Amount",
     icon: CreditCard,
     gradient: "from-[#B45309] to-[#F59E0B]",
     currency: true,
@@ -166,16 +166,19 @@ const DashboardContent = ({ data, loading, year, onYearChange, role = "partner" 
           <LayoutDashboard className="h-6 w-6 text-gray-800" />
           <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
         </div>
-        <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
-          <SelectTrigger className="w-[110px] h-8 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {YEARS.map((y) => (
-              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-700">Year:</span>
+          <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
+            <SelectTrigger className="w-[110px] h-8 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((y) => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Sales Report Section */}
@@ -204,6 +207,57 @@ const DashboardContent = ({ data, loading, year, onYearChange, role = "partner" 
             </div>
           ) : (
             <>
+              {/* Inventory Reconciliation — same card style as KPI cards */}
+              {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="relative overflow-hidden rounded-lg border bg-white px-4 py-3 shadow-sm transition-shadow hover:shadow-md">
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#194977] to-[#2563EB]" />
+                  <div className="flex items-start justify-between">
+                    <div className="mt-0.5 min-w-0 flex-1 pr-2">
+                      <p className="text-2xl font-bold text-gray-900 tracking-tight leading-tight break-all">
+                        {(data?.stovesReceived ?? 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs font-semibold text-gray-500 mt-0.5">Distributed to Partners</p>
+                      <p className="text-xs text-gray-400">Synced from Atmosphere</p>
+                    </div>
+                    <div className="rounded-lg p-2 bg-gradient-to-br from-[#194977] to-[#2563EB] text-white shadow-sm shrink-0">
+                      <Package className="h-4 w-4" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="relative overflow-hidden rounded-lg border bg-white px-4 py-3 shadow-sm transition-shadow hover:shadow-md">
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#0F766E] to-[#14B8A6]" />
+                  <div className="flex items-start justify-between">
+                    <div className="mt-0.5 min-w-0 flex-1 pr-2">
+                      <p className="text-2xl font-bold text-gray-900 tracking-tight leading-tight break-all">
+                        {(data?.stovesSold ?? 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs font-semibold text-gray-500 mt-0.5">Sold to End Users</p>
+                      <p className="text-xs text-gray-400">Partner sales reported</p>
+                    </div>
+                    <div className="rounded-lg p-2 bg-gradient-to-br from-[#0F766E] to-[#14B8A6] text-white shadow-sm shrink-0">
+                      <ShoppingCart className="h-4 w-4" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="relative overflow-hidden rounded-lg border bg-white px-4 py-3 shadow-sm transition-shadow hover:shadow-md">
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#7C3AED] to-[#A78BFA]" />
+                  <div className="flex items-start justify-between">
+                    <div className="mt-0.5 min-w-0 flex-1 pr-2">
+                      <p className="text-2xl font-bold text-gray-900 tracking-tight leading-tight break-all">
+                        {(data?.availableStoves ?? 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs font-semibold text-gray-500 mt-0.5">In-Hand with Partners</p>
+                      <p className="text-xs text-gray-400">Distributed − Sold</p>
+                    </div>
+                    <div className="rounded-lg p-2 bg-gradient-to-br from-[#7C3AED] to-[#A78BFA] text-white shadow-sm shrink-0">
+                      <Boxes className="h-4 w-4" />
+                    </div>
+                  </div>
+                </div>
+              </div> */}
+
               {/* KPI Cards — 3 per row, 2 rows */}
               {[KPI_CONFIG.slice(0, 3), KPI_CONFIG.slice(3)].map((row, rowIdx) => (
                 <div key={rowIdx} className="grid grid-cols-1 md:grid-cols-3 gap-3">

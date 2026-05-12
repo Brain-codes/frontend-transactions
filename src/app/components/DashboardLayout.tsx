@@ -23,7 +23,7 @@ const DashboardLayout = ({
   children,
   currentRoute = "dashboard",
   title = "Dashboard",
-  description = "Welcome to your dashboard",
+  description = "",
   rightButton = null,
 }: DashboardLayoutProps) => {
   const { user, signOut, isAgent, isPartnerAgent } = useAuth() as any;

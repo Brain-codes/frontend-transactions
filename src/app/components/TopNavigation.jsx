@@ -12,6 +12,7 @@ import {
   Mail,
   PanelLeft,
   Shield,
+  ShoppingCart,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -138,6 +139,17 @@ const TopNavigation = ({
         <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4 flex-shrink-0">
           {/* Optional right button */}
           {rightButton && <div className="hidden sm:block">{rightButton}</div>}
+
+          {/* Sell Stove — prominent CTA for partner agents */}
+          {isPartnerAgent && (
+            <Link
+              href="/admin/sales/create"
+              className="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors shadow-sm"
+            >
+              <ShoppingCart className="h-4 w-4" />
+              <span className="hidden sm:inline">Sell Stove</span>
+            </Link>
+          )}
 
           {/* Gear icon for agents — links to profile/settings */}
           {isAgent && (

@@ -56,6 +56,8 @@ import {
 import PageHeader from "../../components/PageHeader";
 import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AssignOrganizationsModal from "../../super-admin-agents/components/AssignOrganizationsModal";
+import organizationsService from "../../services/organizationsService";
+import superAdminAgentService from "../../services/superAdminAgentService";
 
 // Relative time formatter (same pattern as SalesAgentTable)
 const formatRelativeTime = (dateString) => {
@@ -136,6 +138,12 @@ const UserManagementPage = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+
+  // Partner assignment state for Create modal
+  const [allOrgs, setAllOrgs] = useState([]);
+  const [orgsLoading, setOrgsLoading] = useState(false);
+  const [partnerSearch, setPartnerSearch] = useState("");
+  const [selectedPartnerIds, setSelectedPartnerIds] = useState(new Set());
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -246,6 +254,27 @@ const UserManagementPage = () => {
     setUserForm({ full_name: "", email: "", phone: "", role: "acsl_agent", password: "", auto_generate_password: true });
     setFormErrors({});
     setShowPassword(false);
+    setPartnerSearch("");
+    setSelectedPartnerIds(new Set());
+  };
+
+  const needsPartnerAssignment = (role) => role === "acsl_agent" || role === "partner_agent";
+
+  const handleRoleChange = async (role) => {
+    setUserForm((prev) => ({ ...prev, role }));
+    setSelectedPartnerIds(new Set());
+    setPartnerSearch("");
+    if (needsPartnerAssignment(role) && allOrgs.length === 0) {
+      setOrgsLoading(true);
+      try {
+        const result = await organizationsService.getAllOrganizations();
+        setAllOrgs(result.data || []);
+      } catch {
+        // silently fail — user can still proceed without partner assignment
+      } finally {
+        setOrgsLoading(false);
+      }
+    }
   };
 
   const validateForm = () => {
@@ -289,6 +318,15 @@ const UserManagementPage = () => {
       );
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to create user");
+
+      const newUserId = result.user?.id || result.data?.id;
+      if (newUserId && selectedPartnerIds.size > 0) {
+        try {
+          await superAdminAgentService.setAgentOrganizations(newUserId, Array.from(selectedPartnerIds));
+        } catch {
+          // non-fatal — user was created, org assignment failed
+        }
+      }
 
       toast({
         variant: "success",
@@ -430,6 +468,8 @@ const UserManagementPage = () => {
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="super_admin">Super Admin</SelectItem>
                 <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
+                <SelectItem value="partner">Partner Admin</SelectItem>
+                <SelectItem value="partner_agent">Partner Agent</SelectItem>
               </SelectContent>
             </Select>
 
@@ -699,7 +739,7 @@ const UserManagementPage = () => {
           <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create New User</DialogTitle>
-              <DialogDescription>Add a new super admin or ACSL agent to the system</DialogDescription>
+              <DialogDescription>Add a new user to the system</DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleCreateUser} className="space-y-4 pt-2">
@@ -745,17 +785,87 @@ const UserManagementPage = () => {
                 {/* Role */}
                 <div className="space-y-2">
                   <Label htmlFor="role">Role <span className="text-red-500">*</span></Label>
-                  <Select value={userForm.role} onValueChange={(v) => setUserForm((prev) => ({ ...prev, role: v }))}>
+                  <Select value={userForm.role} onValueChange={handleRoleChange}>
                     <SelectTrigger id="role">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
+                      <SelectItem value="partner_agent">Partner Agent</SelectItem>
                       <SelectItem value="super_admin">Super Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
+              {/* Partner Assignment — shown for ACSL Agent and Partner Agent */}
+              {needsPartnerAssignment(userForm.role) && (
+                <div className="space-y-2 border border-blue-100 rounded-lg p-3 bg-blue-50/40">
+                  <Label className="text-sm font-medium flex items-center gap-1.5">
+                    <Building2 className="h-4 w-4 text-brand" />
+                    Assign Partners <span className="text-gray-400 font-normal text-xs">(optional)</span>
+                  </Label>
+
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                    <Input
+                      placeholder="Search partners..."
+                      value={partnerSearch}
+                      onChange={(e) => setPartnerSearch(e.target.value)}
+                      className="pl-8 h-8 text-sm bg-white"
+                    />
+                  </div>
+
+                  {orgsLoading ? (
+                    <div className="flex items-center gap-2 text-xs text-gray-500 py-2">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />Loading partners...
+                    </div>
+                  ) : (
+                    <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
+                      {allOrgs
+                        .filter((o) =>
+                          !partnerSearch ||
+                          (o.partner_name || "").toLowerCase().includes(partnerSearch.toLowerCase()) ||
+                          (o.state || "").toLowerCase().includes(partnerSearch.toLowerCase())
+                        )
+                        .map((org) => {
+                          const checked = selectedPartnerIds.has(org.id);
+                          return (
+                            <label
+                              key={org.id}
+                              className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-xs transition-colors ${checked ? "bg-blue-100 text-blue-800" : "hover:bg-white text-gray-700"}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => {
+                                  setSelectedPartnerIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(org.id)) next.delete(org.id);
+                                    else next.add(org.id);
+                                    return next;
+                                  });
+                                }}
+                                className="rounded"
+                              />
+                              <span className="flex-1 truncate font-medium">{org.partner_name}</span>
+                              {org.state && <span className="text-gray-400 shrink-0">{org.state}</span>}
+                            </label>
+                          );
+                        })}
+                      {allOrgs.length === 0 && (
+                        <p className="text-xs text-gray-400 py-2 text-center">No partners available</p>
+                      )}
+                    </div>
+                  )}
+
+                  {selectedPartnerIds.size > 0 && (
+                    <p className="text-xs text-blue-600 font-medium">
+                      {selectedPartnerIds.size} partner{selectedPartnerIds.size > 1 ? "s" : ""} selected
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Password Options */}
               <div className="space-y-3 border border-gray-100 rounded-lg p-3 bg-gray-50">
