@@ -6,8 +6,9 @@ import SalesFormModal from "../../admin/components/sales/SalesFormModal";
 import adminSalesService from "../../services/adminSalesService";
 import { AdminSales } from "@/types/adminSales";
 import { Button } from "@/components/ui/button";
-import { Plus, AlertCircle, Loader2 } from "lucide-react";
+import { Plus, AlertCircle, Loader2, ShoppingCart } from "lucide-react";
 import { useRouter } from "next/navigation";
+import PageHeader from "../../components/PageHeader";
 import { useState, useCallback, useMemo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -82,18 +83,22 @@ export default function PartnerSalesContent() {
       <DashboardLayout
         currentRoute="sales"
         title="Manage Sales"
-        rightButton={
-          <Button
-            size="sm"
-            className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
-            onClick={() => router.push("/admin/sales/create")}
-          >
-            <Plus className="h-4 w-4" />
-            Create Sale
-          </Button>
-        }
       >
-        <div className="pb-6">
+        <div className="p-6 space-y-6">
+          <PageHeader
+            icon={ShoppingCart}
+            title="Sales"
+            right={
+              <Button
+                size="sm"
+                className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
+                onClick={() => router.push("/admin/sales/create")}
+              >
+                <Plus className="h-4 w-4" />
+                Create Sale
+              </Button>
+            }
+          />
           <FinancialReportsView
             key={reloadKey}
             loadSales={loadSales}

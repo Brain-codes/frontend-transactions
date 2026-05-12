@@ -43,6 +43,7 @@ import {
   ClipboardList,
   Loader2,
 } from "lucide-react";
+import PageHeader from "../../components/PageHeader";
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: CURRENT_YEAR - 2023 }, (_, i) => 2024 + i);
@@ -161,25 +162,25 @@ const DashboardContent = ({ data, loading, year, onYearChange, role = "partner" 
   return (
     <div className="p-4 space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <LayoutDashboard className="h-6 w-6 text-gray-800" />
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">Year:</span>
-          <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
-            <SelectTrigger className="w-[110px] h-8 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {YEARS.map((y) => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <PageHeader
+        icon={LayoutDashboard}
+        title="Dashboard"
+        right={
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">Year:</span>
+            <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
+              <SelectTrigger className="w-[110px] h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {YEARS.map((y) => (
+                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        }
+      />
 
       {/* Sales Report Section */}
       <div className="rounded-lg border bg-gray-50 overflow-hidden">
@@ -372,7 +373,7 @@ const DashboardContent = ({ data, loading, year, onYearChange, role = "partner" 
                     ) : (
                       <div
                         className="overflow-y-auto"
-                        style={{ maxHeight: 300, height: chartHeight }}
+                        style={{ maxHeight: 300 }}
                       >
                         <ResponsiveContainer width="100%" height={chartHeight}>
                           <BarChart

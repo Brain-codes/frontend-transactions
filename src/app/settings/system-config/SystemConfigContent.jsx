@@ -16,25 +16,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  AlertCircle,
-  Shield,
-  Save,
-  CheckCircle2,
-  Eye,
-  EyeOff,
-  Loader2,
-  SlidersHorizontal,
-  CheckCheck,
-  Plus,
-  Trash2,
-  Pencil,
-  Link,
-  X,
-  Copy,
-  ToggleLeft,
-  ToggleRight,
-} from "lucide-react";
+import { SlidersHorizontal, Shield, Save, CheckCircle2, Eye, EyeOff, Loader2, CheckCheck, Plus, Trash2, Pencil, Link, X, Copy, ToggleLeft, ToggleRight, AlertCircle } from "lucide-react";
+import PageHeader from "../../components/PageHeader";
 import { useAuth } from "../../contexts/AuthContext";
 
 const FUNCTIONS_URL = process.env.NEXT_PUBLIC_SUPABASE_URL + "/functions/v1";
@@ -333,12 +316,12 @@ const SystemConfigPage = () => {
 
   return (
     <ProtectedRoute requireSuperAdmin={true}>
-      <DashboardLayout
-        currentRoute="settings"
-        title="System Configuration"
-        description="Manage sensitive system-level API keys and external application tokens"
-      >
+      <DashboardLayout currentRoute="settings" title="System Configuration">
         <div className="max-w-4xl mx-auto p-6 space-y-6">
+          <PageHeader
+            icon={SlidersHorizontal}
+            title="System Configuration"
+          />
 
           {/* ── API Keys Card ─────────────────────────────────── */}
           <Card>
@@ -496,7 +479,7 @@ const SystemConfigPage = () => {
           </Card>
 
           {/* ── External App Tokens Card ──────────────────────── */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
@@ -644,7 +627,7 @@ const SystemConfigPage = () => {
                 </div>
               )}
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
 
         {/* ── Create Token Modal ──────────────────────────────── */}

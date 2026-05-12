@@ -215,107 +215,152 @@ const StoveIdsModal = ({ organization, isOpen, onClose, initialFilter = "all" })
     }
   };
 
+  const SectionHeader = ({ title, children }) => (
+    <div className="flex items-center justify-between border-b border-primary/20 pb-0.5 mb-2">
+      <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider">{title}</h3>
+      {children}
+    </div>
+  );
+
+  const DetailItem = ({ label, value }) => (
+    <div className="space-y-0">
+      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
+      <p className="text-xs font-medium">{value ?? <span className="text-muted-foreground">N/A</span>}</p>
+    </div>
+  );
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
-          <DialogHeader className="px-5 py-3 bg-gradient-to-r from-blue-50/80 to-sky-50/80 border-b shrink-0">
-            <div className="flex items-start justify-between">
-              <div>
-                <DialogTitle className="text-base font-bold">{FILTER_LABELS[statusFilter]}</DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground">
-                  {organization?.partner_name}
-                </DialogDescription>
-              </div>
-              <div className="flex items-center gap-1.5 pt-0.5">
-                <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs gap-1.5" onClick={downloadCSV} disabled={loading || filtered.length === 0}>
-                  <Download className="h-3 w-3" />CSV
-                </Button>
-                <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs gap-1.5" onClick={downloadPDF} disabled={loading || filtered.length === 0}>
-                  <Download className="h-3 w-3" />PDF
-                </Button>
-              </div>
+          {/* Header */}
+          <DialogHeader className="px-5 py-3 bg-gradient-to-r from-primary/5 to-primary/10 border-b shrink-0">
+            <div>
+              <DialogTitle className="text-base font-bold text-foreground">{FILTER_LABELS[statusFilter]}</DialogTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Partner: <span className="font-semibold text-primary">{organization?.partner_name}</span>
+              </p>
             </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {/* Content */}
+          <div className="px-5 py-3 space-y-3 overflow-y-auto flex-1">
+            {/* Summary — mirrors Payment Details section style */}
             {totals && (
-              <div className="bg-muted/30 border border-border/50 rounded-lg p-4">
-                <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider border-b border-primary/20 pb-1 mb-3">
-                  Stove Summary
-                </h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-0.5">
-                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Total Assigned</p>
-                    <p className="text-xl font-bold text-gray-900">{totalCount.toLocaleString()}</p>
-                  </div>
-                  <div className="space-y-0.5">
-                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Available</p>
-                    <p className="text-xl font-bold text-green-700">{available.toLocaleString()}</p>
-                    <p className="text-[10px] text-green-600">{availPct}% of total</p>
-                  </div>
-                  <div className="space-y-0.5">
-                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Sold</p>
-                    <p className="text-xl font-bold text-blue-700">{sold.toLocaleString()}</p>
-                    <p className="text-[10px] text-blue-600">{soldPct}% of total</p>
-                  </div>
+              <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+                <SectionHeader title="Stove Summary" />
+                <div className="grid grid-cols-3 gap-2">
+                  <DetailItem label="Total Assigned" value={totalCount.toLocaleString()} />
+                  <DetailItem
+                    label="Available"
+                    value={
+                      <span className="text-green-700">
+                        {available.toLocaleString()}
+                        <span className="text-[10px] font-normal text-green-600 ml-1">({availPct}%)</span>
+                      </span>
+                    }
+                  />
+                  <DetailItem
+                    label="Sold"
+                    value={
+                      <span className="text-blue-700">
+                        {sold.toLocaleString()}
+                        <span className="text-[10px] font-normal text-blue-600 ml-1">({soldPct}%)</span>
+                      </span>
+                    }
+                  />
                 </div>
               </div>
             )}
 
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="relative flex-1 min-w-[180px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                <Input placeholder="Search stove ID..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-xs bg-white" />
+            {/* Filter */}
+            <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+              <SectionHeader title="Filter & Search" />
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="relative flex-1 min-w-[180px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search stove ID..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-8 h-8 text-xs bg-background"
+                  />
+                </div>
+                <Select value={statusFilter} onValueChange={handleStatusChange}>
+                  <SelectTrigger className="w-[130px] h-8 text-xs bg-background">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="available">Available</SelectItem>
+                    <SelectItem value="sold">Sold</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <Select value={statusFilter} onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-[130px] h-8 text-xs bg-white"><SelectValue placeholder="All Status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="available">Available</SelectItem>
-                  <SelectItem value="sold">Sold</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
-            {loading ? (
-              <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-brand" /></div>
-            ) : error ? (
-              <div className="text-center text-red-600 py-8 text-sm">{error}</div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center text-gray-500 py-8 text-sm">No stove IDs found.</div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {filtered.map((stove) => (
-                  <div key={stove.id} className={`bg-muted/30 border rounded-lg p-3 space-y-2 ${stove.status === "sold" ? "border-blue-200" : "border-green-200"}`}>
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-bold text-gray-900">{stove.stove_id}</p>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${stove.status === "sold" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
-                        {stove.status === "sold" ? "Sold" : "Available"}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Assigned</p>
-                        <p className="text-[11px] font-medium text-gray-700">{formatDate(stove.created_at)}</p>
-                      </div>
-                      {stove.status === "sold" && (
-                        <div>
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Sale Date</p>
-                          <p className="text-[11px] font-medium text-gray-700">{formatDate(stove.sale_date)}</p>
-                        </div>
-                      )}
-                    </div>
-                    {stove.sale_id && (
-                      <Button size="sm" variant="outline" className="w-full h-7 text-xs text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => handleViewSale(stove.sale_id)} disabled={!!loadingSaleId}>
-                        {loadingSaleId === stove.sale_id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-                        View Sale
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* Stove IDs */}
+            <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+              <SectionHeader title={`Stove IDs${!loading && filtered.length > 0 ? ` (${filtered.length})` : ""}`}>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] gap-1"
+                    onClick={downloadCSV}
+                    disabled={loading || filtered.length === 0}
+                  >
+                    <Download className="h-3 w-3" />CSV
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] gap-1"
+                    onClick={downloadPDF}
+                    disabled={loading || filtered.length === 0}
+                  >
+                    <Download className="h-3 w-3" />PDF
+                  </Button>
+                </div>
+              </SectionHeader>
+
+              {loading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                </div>
+              ) : error ? (
+                <div className="text-center py-6 space-y-2">
+                  <p className="text-red-600 text-sm">{error}</p>
+                  <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => fetchStoveIds(statusFilter)}>
+                    Retry
+                  </Button>
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="text-center text-muted-foreground py-6 text-sm">No stove IDs found.</div>
+              ) : (
+                <div className="grid grid-cols-4 md:grid-cols-6 gap-1.5 max-h-64 overflow-y-auto">
+                  {filtered.map((stove) => (
+                    <button
+                      key={stove.id}
+                      onClick={() => stove.sale_id && handleViewSale(stove.sale_id)}
+                      disabled={!!loadingSaleId || !stove.sale_id}
+                      className={[
+                        "px-2 py-1 text-xs rounded border text-center truncate transition-colors",
+                        stove.status === "sold"
+                          ? "bg-green-800 border-green-800 text-white hover:bg-green-700 cursor-pointer"
+                          : "bg-muted/50 border-border/50 text-foreground cursor-default",
+                        stove.sale_id && loadingSaleId === stove.sale_id ? "opacity-60" : "",
+                      ].join(" ")}
+                      title={stove.status === "sold" ? `${stove.stove_id} — Sold${stove.sale_id ? " (click to view sale)" : ""}` : `${stove.stove_id} — Available`}
+                    >
+                      {stove.sale_id && loadingSaleId === stove.sale_id
+                        ? <Loader2 className="h-3 w-3 animate-spin inline" />
+                        : stove.stove_id}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

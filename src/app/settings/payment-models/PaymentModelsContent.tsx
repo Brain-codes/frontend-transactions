@@ -53,6 +53,7 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
+import PageHeader from "../../components/PageHeader";
 import paymentModelService from "../../services/paymentModelService";
 
 interface PaymentModel {
@@ -277,23 +278,24 @@ export default function PaymentModelsPage() {
 
   return (
     <ProtectedRoute requireSuperAdmin>
-      <DashboardLayout
-        currentRoute="settings"
-        title="Payment Models"
-        rightButton={
-          userRole === "super_admin" ? (
-            <Button
-              onClick={openCreateModal}
-              size="sm"
-              className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
-            >
-              <Plus className="h-4 w-4" />
-              Create Model
-            </Button>
-          ) : undefined
-        }
-      >
+      <DashboardLayout currentRoute="settings" title="Payment Models">
         <div className="p-6 space-y-5">
+          <PageHeader
+            icon={Layers}
+            title="Payment Models"
+            right={
+              userRole === "super_admin" ? (
+                <Button
+                  onClick={openCreateModal}
+                  size="sm"
+                  className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Model
+                </Button>
+              ) : undefined
+            }
+          />
 
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

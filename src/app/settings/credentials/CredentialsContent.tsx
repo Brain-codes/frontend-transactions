@@ -45,6 +45,7 @@ import adminCredentialsService, { Credential } from "@/app/services/adminCredent
 import CredentialsTable from "../../admin/components/credentials/CredentialsTable";
 import ViewCredentialModal from "../../admin/components/credentials/ViewCredentialModal";
 import ResetPasswordModal from "../../admin/components/credentials/ResetPasswordModal";
+import PageHeader from "../../components/PageHeader";
 import { useAuth } from "../../contexts/AuthContext";
 
 type TabKey = "partners" | "saa" | "super-admins";
@@ -436,6 +437,10 @@ const CredentialsPage = () => {
     <ProtectedRoute requireSuperAdmin={true}>
       <DashboardLayout currentRoute="settings" title="Credentials Management">
         <div className="p-6 space-y-5">
+          <PageHeader
+            icon={Key}
+            title="Credentials Management"
+          />
 
           {/* Notifications */}
           {successMessage && (

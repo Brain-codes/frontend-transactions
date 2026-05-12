@@ -17,7 +17,9 @@ import {
   Loader2,
   AlertCircle,
   Key,
+  User,
 } from "lucide-react";
+import PageHeader from "../components/PageHeader";
 import manageProfileService from "../services/manageProfileService";
 import ChangePasswordModal from "./components/ChangePasswordModal";
 
@@ -304,6 +306,10 @@ export default function ProfilePage() {
     <ProtectedRoute>
       <DashboardLayout currentRoute="profile" title="My Profile">
         <div className="p-6 space-y-4 max-w-4xl mx-auto">
+          <PageHeader
+            icon={User}
+            title="My Profile"
+          />
 
           {/* ── Profile Information ─────────────────────────────────────── */}
           <SectionCard

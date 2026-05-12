@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AdminSalesDetailModal from "../../admin/components/sales/AdminSalesDetailModal";
+import PageHeader from "../../components/PageHeader";
 import superAdminAgentService from "../../services/superAdminAgentService";
 
 const SimpleTooltip = ({ children, text }) => {
@@ -417,6 +418,10 @@ export default function StoveManagementContent() {
   return (
     <DashboardLayout currentRoute="stove-management" title="Stove ID Management">
       <div className="p-6 space-y-5">
+        <PageHeader
+          icon={Package}
+          title="Stove ID Management"
+        />
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">

@@ -41,6 +41,7 @@ import {
   Loader2,
 } from "lucide-react";
 import MapPage from "./MapPage";
+import PageHeader from "../components/PageHeader";
 import salesAdvancedService from "../services/salesAdvancedAPIService";
 
 export default function HeatmapPage() {
@@ -352,35 +353,38 @@ export default function HeatmapPage() {
 
   return (
     <ProtectedRoute requireSuperAdmin={true}>
-      <DashboardLayout
-        currentRoute="map"
-        title="Sales Heatmap Analytics"
-        description="Geographic visualization of sales distribution across Nigeria"
-        rightButton={
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={exportData}
-              disabled={loading}
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-              disabled={loading}
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-            >
-              <RefreshCw
-                className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
-              />
-              Refresh
-            </Button>
-          </div>
-        }
-      >
+      <DashboardLayout currentRoute="map" title="Sales Heatmap Analytics">
+        <div className="p-6 space-y-6">
+          <PageHeader
+            icon={MapIcon}
+            title="Sales Heatmap Analytics"
+            description="Geographic visualization of sales distribution across Nigeria"
+            right={
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  variant="outline"
+                  onClick={exportData}
+                  disabled={loading}
+                  className="bg-brand-50 border-brand-200 text-brand-700 hover:bg-brand-100"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  className="bg-brand-50 border-brand-200 text-brand-700 hover:bg-brand-100"
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+                  />
+                  Refresh
+                </Button>
+              </div>
+            }
+          />
+        </div>
         <div className="h-full flex flex-col bg-gray-50">
           {/* Statistics Cards */}
           <div className="p-3 lg:p-6 bg-white border-b border-gray-200">
