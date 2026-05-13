@@ -3,14 +3,25 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
 import DashboardContent from "./DashboardContent";
+import { useAuth } from "../../contexts/AuthContext";
 import superAdminAgentService from "../../services/superAdminAgentService";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
 const AcslAgentDashboardContent = () => {
+  const { user } = useAuth();
   const [year, setYear] = useState(CURRENT_YEAR);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
+  const [partners, setPartners] = useState<any>([]);
+
+  useEffect(() => {
+    if (user?.id) {
+      superAdminAgentService.getAgentOrganizations(user.id)
+        .then(r => { if (r.success) setPartners(r.data || []); })
+        .catch(err => console.error("Error fetching agent partners:", err));
+    }
+  }, [user?.id]);
 
   const fetchData = async (y: number) => {
     setLoading(true);
@@ -48,6 +59,7 @@ const AcslAgentDashboardContent = () => {
           year={year}
           onYearChange={setYear}
           role="acsl_agent"
+          partners={partners as any}
         />
       </div>
     </DashboardLayout>

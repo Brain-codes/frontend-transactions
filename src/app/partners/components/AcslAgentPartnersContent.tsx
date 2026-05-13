@@ -92,9 +92,9 @@ export default function AcslAgentPartnersContent() {
   const handleSearch = (v: string) => { setSearchTerm(v); setCurrentPage(1); };
 
   return (
-    <DashboardLayout currentRoute="partners" title="Partners & Customers">
+    <DashboardLayout currentRoute="partners" title="My Partners">
       <div className="p-6 space-y-6">
-        <PageHeader icon={Building2} title="Partners & Customers" />
+        <PageHeader icon={Building2} title="My Partners" />
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-2 text-red-700 text-sm">
@@ -148,12 +148,11 @@ export default function AcslAgentPartnersContent() {
               <TableHeader>
                 <TableRow className="bg-brand hover:bg-brand">
                   <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner Name</TableHead>
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Branch</TableHead>
                   <TableHead className="text-white font-semibold text-xs whitespace-nowrap">State</TableHead>
+                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Branch</TableHead>
                   <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Contact Person</TableHead>
                   <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone</TableHead>
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Assigned At</TableHead>
-                  <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">Actions</TableHead>
+                  {/* <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Assigned At</TableHead> */}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -171,20 +170,11 @@ export default function AcslAgentPartnersContent() {
                   pagedOrgs.map((org, index) => (
                     <TableRow key={org.id} className={`${index % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}>
                       <TableCell className="font-medium text-gray-900">{org.partner_name}</TableCell>
-                      <TableCell className="text-gray-600">{org.branch || "—"}</TableCell>
                       <TableCell className="text-gray-600">{org.state || "—"}</TableCell>
+                      <TableCell className="text-gray-600">{org.branch || "—"}</TableCell>
                       <TableCell className="text-gray-600">{org.contact_person || "—"}</TableCell>
                       <TableCell className="text-gray-600">{org.contact_phone || "—"}</TableCell>
-                      <TableCell className="text-gray-600 text-sm">{formatDate(org.assigned_at)}</TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          size="sm"
-                          className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5 text-xs"
-                          onClick={() => router.push(`/sales?org=${org.id}`)}
-                        >
-                          View Sales<ArrowRight className="h-3 w-3" />
-                        </Button>
-                      </TableCell>
+                      {/* <TableCell className="text-gray-600 text-sm">{formatDate(org.assigned_at)}</TableCell> */}
                     </TableRow>
                   ))
                 )}

@@ -135,7 +135,7 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
               <p className="font-bold">{formatCurrency(saleAmount)}</p>
             </div>
             <div>
-              <span className="text-gray-500">Balance Payment</span>
+              <span className="text-gray-500">Outstanding Balance</span>
               <p className="font-bold text-red-600">
                 {formatCurrency(amountOwed)}
               </p>

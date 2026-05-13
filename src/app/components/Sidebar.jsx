@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import {
   ShoppingCart,
@@ -102,6 +103,7 @@ const allNavItems = [
 
 const Sidebar = ({ isOpen, onClose, currentRoute }) => {
   const router = useRouter();
+  const { userRole, isAcslAgent, isPartnerAgent } = useAuth();
   const { canRoute } = usePermissions();
 
   const [expandedItems, setExpandedItems] = useState({});
@@ -110,7 +112,30 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
     setExpandedItems((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const navItems = allNavItems.filter((item) => canRoute(item.route));
+  let navItems = allNavItems
+    .filter((item) => canRoute(item.route))
+    .map((item) => {
+      if (item.route === "partners" && isAcslAgent) {
+        return { ...item, name: "My Partners" };
+      }
+      return item;
+    });
+
+  // Specific order for ACSL Agent and Partner Agent
+  if (isAcslAgent || isPartnerAgent) {
+    const agentOrder = isAcslAgent 
+      ? ["dashboard", "sales", "partners", "stove-management", "profile"]
+      : ["dashboard", "sales", "profile"];
+      
+    navItems = [...navItems].sort((a, b) => {
+      const indexA = agentOrder.indexOf(a.route);
+      const indexB = agentOrder.indexOf(b.route);
+      if (indexA === -1 && indexB === -1) return 0;
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+  }
 
   const navigateToRoute = (href) => {
     router.push(href);

@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 export interface AuthResult {
   userId: string;
   userRole: string;
+  organizationId?: string;
 }
 
 export async function authenticate(supabase: any, authHeader: string): Promise<AuthResult> {
@@ -24,19 +25,19 @@ export async function authenticate(supabase: any, authHeader: string): Promise<A
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, role, status")
+    .select("id, role, status, organization_id")
     .eq("id", userData.user.id)
     .single();
 
   if (profileError || !profile) throw new Error("Unauthorized: User profile not found");
 
-  // Allow acsl_agent (and legacy super_admin_agent) and super_admin to access this dashboard
-  if (!["acsl_agent", "super_admin_agent", "super_admin"].includes(profile.role)) {
+  // Allow acsl_agent (and legacy super_admin_agent), super_admin, and partner_agent (and legacy agent) to access this dashboard
+  if (!["acsl_agent", "super_admin_agent", "super_admin", "partner_agent", "agent"].includes(profile.role)) {
     throw new Error("Unauthorized: Insufficient permissions");
   }
 
   if (profile.status !== "active") throw new Error("Unauthorized: Account is not active");
 
   console.log("✅ Authenticated:", profile.id, profile.role);
-  return { userId: profile.id, userRole: profile.role };
+  return { userId: profile.id, userRole: profile.role, organizationId: profile.organization_id };
 }

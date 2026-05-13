@@ -24,6 +24,7 @@ interface FinancialReportsTableProps {
   onViewDetails: (sale: AdminSales) => void;
   onViewHistory: (sale: AdminSales) => void;
   onRecordPayment: (sale: AdminSales) => void;
+  onApproveSale?: (sale: AdminSales) => void;
   onEditSale?: (sale: AdminSales) => void;
   onDeleteSale?: (sale: AdminSales) => void;
   sortOrder: "asc" | "desc";
@@ -61,7 +62,7 @@ const getStatusBadge = (sale: AdminSales) => {
 const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
   data, loading, currentPage, pageSize, totalRecords,
   onPageChange, onPageSizeChange, onViewDetails, onViewHistory, onRecordPayment,
-  onEditSale, onDeleteSale, sortOrder, onToggleSort, viewFrom = "admin",
+  onApproveSale, onEditSale, onDeleteSale, sortOrder, onToggleSort, viewFrom = "admin",
 }) => {
   const totalPages = Math.ceil(totalRecords / pageSize);
   const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
@@ -132,7 +133,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                   Sales Date <ArrowUpDown className="h-3 w-3" />
                 </div>
               </TableHead>
-              <TableHead className="text-white font-semibold text-xs text-center whitespace-nowrap">Status</TableHead>
+              <TableHead className="text-white font-semibold text-xs text-center whitespace-nowrap">Payment Status</TableHead>
               {viewFrom === "admin" && (
                 <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Sales Rep</TableHead>
               )}
@@ -140,8 +141,8 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                 <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner</TableHead>
               )}
               <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Payment Model</TableHead>
+              <TableHead className="text-white font-semibold text-xs text-right whitespace-nowrap">Expected Amount</TableHead>
               <TableHead className="text-white font-semibold text-xs text-right whitespace-nowrap">Amount Paid</TableHead>
-              <TableHead className="text-white font-semibold text-xs text-right whitespace-nowrap">Total Amount</TableHead>
               <TableHead className="text-white font-semibold text-xs text-right whitespace-nowrap">Amount Owed</TableHead>
               <TableHead className="text-white font-semibold text-xs text-center whitespace-nowrap">Action</TableHead>
             </TableRow>
@@ -175,11 +176,11 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                     ? (sale.payment_model?.name || "Installment")
                     : "Full Payment"}
                 </TableCell>
-                <TableCell className="text-right text-green-700 font-medium text-xs">
-                  {formatCurrency(getAmountPaid(sale))}
-                </TableCell>
                 <TableCell className="text-right font-bold text-xs">
                   {formatCurrency(sale.amount ?? 0)}
+                </TableCell>
+                <TableCell className="text-right text-green-700 font-medium text-xs">
+                  {formatCurrency(getAmountPaid(sale))}
                 </TableCell>
                 <TableCell className="text-right text-red-700 font-medium text-xs">
                   {formatCurrency(getAmountOwed(sale))}
@@ -190,8 +191,10 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                     onViewDetails={onViewDetails}
                     onViewHistory={onViewHistory}
                     onRecordPayment={onRecordPayment}
+                    onApproveSale={onApproveSale}
                     onEditSale={onEditSale}
                     onDeleteSale={onDeleteSale}
+                    viewFrom={viewFrom}
                   />
                 </TableCell>
               </TableRow>

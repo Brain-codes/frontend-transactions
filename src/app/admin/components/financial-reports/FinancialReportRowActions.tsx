@@ -14,12 +14,14 @@ interface FinancialReportRowActionsProps {
   onViewDetails: (sale: AdminSales) => void;
   onViewHistory: (sale: AdminSales) => void;
   onRecordPayment: (sale: AdminSales) => void;
+  onApproveSale?: (sale: AdminSales) => void;
   onEditSale?: (sale: AdminSales) => void;
   onDeleteSale?: (sale: AdminSales) => void;
+  viewFrom?: "admin" | "superAdmin" | "agent" | "partner";
 }
 
 const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
-  sale, onViewDetails, onViewHistory, onRecordPayment, onEditSale, onDeleteSale,
+  sale, onViewDetails, onViewHistory, onRecordPayment, onApproveSale, onEditSale, onDeleteSale, viewFrom = "admin",
 }) => {
   const isInstallment = sale.is_installment === true;
   const isFullyPaid = sale.payment_status === "fully_paid";
@@ -47,6 +49,19 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
         </Button>
       )}
 
+      {/* Approve button (ACSL Agent only) */}
+      {onApproveSale && !sale.agent_approved && (
+        <Button
+          variant="default"
+          size="sm"
+          className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+          onClick={() => onApproveSale(sale)}
+        >
+          <CheckCircle2 className="h-3 w-3" />
+          Approve
+        </Button>
+      )}
+
       {/* More dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -55,16 +70,19 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60">
-          {/* View Details */}
-          <DropdownMenuItem
-            onClick={() => onViewDetails(sale)}
-            className="py-2 px-3 rounded-md hover:!bg-brand hover:!text-white cursor-pointer"
-          >
-            <Eye className="mr-2 h-4 w-4" />
-            View Details
-          </DropdownMenuItem>
-
-          <DropdownMenuSeparator />
+          {/* View Details - Hide for agents */}
+          {viewFrom !== "agent" && (
+            <>
+              <DropdownMenuItem
+                onClick={() => onViewDetails(sale)}
+                className="py-2 px-3 rounded-md hover:!bg-brand hover:!text-white cursor-pointer"
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                View Details
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
 
           {/* Payment History */}
           <DropdownMenuItem
@@ -77,30 +95,35 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
 
           <DropdownMenuSeparator />
 
-          {/* Edit */}
-          <DropdownMenuItem
-            onClick={() => onEditSale?.(sale)}
-            className="py-2 px-3 rounded-md hover:!bg-blue-600 hover:!text-white cursor-pointer"
-          >
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit Sale
-          </DropdownMenuItem>
+          {/* Edit - Hide for agents */}
+          {(viewFrom === "admin" || viewFrom === "partner") && onEditSale && (
+            <DropdownMenuItem
+              onClick={() => onEditSale(sale)}
+              className="py-2 px-3 rounded-md hover:!bg-blue-600 hover:!text-white cursor-pointer"
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit Sale
+            </DropdownMenuItem>
+          )}
 
-          {/* Delete */}
-          <DropdownMenuItem
-            onClick={() => onDeleteSale?.(sale)}
-            className="py-2 px-3 rounded-md hover:!bg-red-600 hover:!text-white cursor-pointer text-red-600"
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete Sale
-          </DropdownMenuItem>
+          {/* Delete - Only visible to partner (admin) */}
+          {(viewFrom === "admin" || viewFrom === "partner") && onDeleteSale && (
+            <DropdownMenuItem
+              onClick={() => onDeleteSale(sale)}
+              className="py-2 px-3 rounded-md hover:!bg-red-600 hover:!text-white cursor-pointer text-red-600"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Sale
+            </DropdownMenuItem>
+          )}
 
           {/* Payment Information Section */}
           <DropdownMenuSeparator />
           <div className="px-3 py-1.5">
             <p className="text-xs font-semibold text-gray-400 uppercase mb-1.5">Payment Info</p>
             <div className="space-y-1.5 text-sm">
-              <div className="flex items-center gap-2 text-gray-600">
+              {/* Hide Plan as per request */}
+              {/* <div className="flex items-center gap-2 text-gray-600">
                 <Calendar className="h-3.5 w-3.5 text-gray-400" />
                 <span className="font-medium">Plan:</span>
                 <span>
@@ -108,7 +131,7 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
                     ? (sale.payment_model?.name ?? `Monthly (${durationMonths} installments)`)
                     : "Full Payment"}
                 </span>
-              </div>
+              </div> */}
               {isInstallment && (
                 <>
                   <div className="flex items-center gap-2 text-gray-600">

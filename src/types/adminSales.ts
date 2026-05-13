@@ -25,6 +25,9 @@ export interface AdminSales {
   created_at: string; // ISO timestamp
   status: string; // could be "completed" | "pending" | ...
   address: Address;
+  agent_approved?: boolean;
+  partner_id?: string;
+  partner_name?: string;
 
   // Agent info (joined from profiles via created_by)
   agent_name?: string;

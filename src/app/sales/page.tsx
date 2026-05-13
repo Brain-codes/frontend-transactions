@@ -3,16 +3,10 @@
 import { Suspense } from "react";
 import ProtectedRoute from "../components/ProtectedRoute";
 import { usePermissions } from "../hooks/usePermissions";
-import SuperAdminSalesContent from "./components/SuperAdminSalesContent";
-import AcslAgentSalesContent from "./components/AcslAgentSalesContent";
-import PartnerSalesContent from "./components/PartnerSalesContent";
+import UnifiedSalesContent from "./components/UnifiedSalesContent";
 
 function SalesRouter() {
-  const { can } = usePermissions();
-
-  if (can("global-filters")) return <SuperAdminSalesContent />;
-  if (can("my-partners-filter")) return <AcslAgentSalesContent />;
-  return <PartnerSalesContent />;
+  return <UnifiedSalesContent />;
 }
 
 export default function SalesPage() {

@@ -16,7 +16,7 @@ serve(async (req) => {
     );
 
     const authHeader = req.headers.get("Authorization") ?? "";
-    const { userId } = await authenticate(supabase, authHeader);
+    const { userId, organizationId } = await authenticate(supabase, authHeader);
 
     // Parse year from body
     const { year = new Date().getFullYear() } = await req.json().catch(() => ({}));
@@ -25,7 +25,7 @@ serve(async (req) => {
 
     // Resolve org IDs assigned to this agent
     const resolved = await resolveAssignedOrgIds(supabase, userId);
-    const assignedOrgIds = resolved.assignedOrgIds;
+    const assignedOrgIds = [...new Set([...resolved.assignedOrgIds, ...(organizationId ? [organizationId] : [])])];
 
     if (assignedOrgIds.length === 0) {
       return withCors(
