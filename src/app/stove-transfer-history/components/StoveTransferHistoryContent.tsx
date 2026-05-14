@@ -346,6 +346,9 @@ export default function StoveTransferHistoryContent() {
                       <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                         Branch
                       </TableHead>
+                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
+                        Sales Factory
+                      </TableHead>
                       <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">
                         Stoves
                       </TableHead>
@@ -360,7 +363,7 @@ export default function StoveTransferHistoryContent() {
                   <TableBody className={loading ? "opacity-40" : ""}>
                     {records.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-10">
+                        <TableCell colSpan={9} className="text-center py-10">
                           <ArrowLeftRight className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                           <p className="text-gray-500 font-medium">No transfer records found</p>
                           <p className="text-gray-400 text-sm">Try adjusting your search</p>
@@ -383,6 +386,7 @@ export default function StoveTransferHistoryContent() {
                           </TableCell>
                           <TableCell className="text-xs">{record.state || "—"}</TableCell>
                           <TableCell className="text-xs">{record.branch || "—"}</TableCell>
+                          <TableCell className="text-xs">{record.sales_factory || "—"}</TableCell>
                           <TableCell className="text-center">
                             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
                               {record.stove_count}

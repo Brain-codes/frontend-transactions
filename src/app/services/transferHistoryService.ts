@@ -16,6 +16,7 @@ export interface TransferRecord {
   partner_id: string;
   state: string | null;
   branch: string | null;
+  sales_factory: string | null;
   stove_count: number;
   stove_ids: StoveEntry[];
   source: "external-sync" | "external-csv-sync";

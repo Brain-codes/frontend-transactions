@@ -254,6 +254,7 @@ async function writeTransferHistory(
     partner_id: string;
     state?: string;
     branch?: string;
+    sales_factory?: string;
     stove_ids: Array<{ stove_id: string; factory?: string; sales_reference?: string }>;
     source: "external-sync" | "external-csv-sync";
     application_name?: string;
@@ -269,6 +270,7 @@ async function writeTransferHistory(
       partner_id: data.partner_id,
       state: data.state || null,
       branch: data.branch || null,
+      sales_factory: data.sales_factory || null,
       stove_count: data.stove_ids.length,
       stove_ids: data.stove_ids,
       source: data.source,
@@ -450,6 +452,7 @@ serve(async (req) => {
         partner_id: body.organization_data.partner_id,
         state: body.organization_data.state,
         branch: body.organization_data.branch,
+        sales_factory: newStoves[0]?.factory || undefined,
         stove_ids: newStoves.map((s: any) => ({ stove_id: s.stove_id, factory: s.factory, sales_reference: s.sales_reference })),
         source: "external-sync",
         application_name: body.application_name,

@@ -374,6 +374,7 @@ async function writeTransferHistory(
     partner_id: string;
     state?: string;
     branch?: string;
+    sales_factory?: string;
     stove_ids: Array<{ stove_id: string; factory?: string; sales_reference?: string }>;
     source: "external-sync" | "external-csv-sync";
     application_name?: string;
@@ -389,6 +390,7 @@ async function writeTransferHistory(
       partner_id: data.partner_id,
       state: data.state || null,
       branch: data.branch || null,
+      sales_factory: data.sales_factory || null,
       stove_count: data.stove_ids.length,
       stove_ids: data.stove_ids,
       source: data.source,
@@ -808,14 +810,15 @@ serve(async (req) => {
       stoveIdsSkipped += stoveSkipped;
 
       // Write transfer history for newly created stove IDs
-      const newStoves = syncResult.result.stove_ids.filter((s: any) => s.action === "created");
+      const newStoves = syncResult.stove_ids.filter((s: any) => s.action === "created");
       if (newStoves.length > 0) {
         await writeTransferHistory(supabase, {
-          organization_id: syncResult.result.organization.id,
+          organization_id: syncResult.organization.id,
           partner_name: orgData.partner_name,
           partner_id: orgData.partner_id,
           state: orgData.state,
           branch: orgData.branch,
+          sales_factory: newStoves[0]?.factory || undefined,
           stove_ids: newStoves.map((s: any) => ({ stove_id: s.stove_id, factory: s.factory, sales_reference: s.sales_reference })),
           source: "external-csv-sync",
           application_name: body.application_name,
