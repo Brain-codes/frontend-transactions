@@ -89,16 +89,16 @@ const allNavItems = [
         route: "settings-payment-models",
         href: "/payment-models",
       },
-      {
-        name: "User Management",
-        route: "settings-user-management",
-        href: "/user-management",
-      },
-      {
-        name: "Credentials",
-        route: "settings-credentials",
-        href: "/admin/credentials",
-      },
+      // {
+      //   name: "User Management",
+      //   route: "settings-user-management",
+      //   href: "/user-management",
+      // },
+      // {
+      //   name: "Credentials",
+      //   route: "settings-credentials",
+      //   href: "/admin/credentials",
+      // },
       {
         name: "System Configuration",
         route: "settings-system-config",
@@ -106,12 +106,12 @@ const allNavItems = [
       },
     ],
   },
-  {
-    name: "Profile",
-    icon: User,
-    route: "profile",
-    href: "/profile",
-  },
+  // {
+  //   name: "Profile",
+  //   icon: User,
+  //   route: "profile",
+  //   href: "/profile",
+  // },
 ];
 
 const Sidebar = ({ isOpen, onClose, currentRoute }) => {
