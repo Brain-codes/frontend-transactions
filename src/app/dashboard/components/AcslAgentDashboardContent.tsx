@@ -60,6 +60,9 @@ const AcslAgentDashboardContent = () => {
           onYearChange={setYear}
           role="acsl_agent"
           partners={partners as any}
+          onFilterChange={() => {}}
+          onClearFilters={() => {}}
+          onPartnerSearch={() => {}}
         />
       </div>
     </DashboardLayout>
