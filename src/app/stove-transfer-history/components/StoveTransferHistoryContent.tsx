@@ -100,9 +100,9 @@ function StoveIdsModal({
           </div>
         </DialogHeader>
 
-        <div className="px-5 py-3 space-y-3 overflow-y-auto flex-1">
+        <div className="space-y-3 overflow-y-auto flex-1">
           {/* Summary */}
-          <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+          {/* <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
             <SectionHeader title="Transfer Details" />
             <div className="grid grid-cols-3 gap-2">
               <div className="space-y-0">
@@ -120,7 +120,7 @@ function StoveIdsModal({
                 </p>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Search */}
           <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
