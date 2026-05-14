@@ -90,6 +90,7 @@ interface FinancialReportsViewProps {
   selectedYear?: number;
   onYearChange?: (year: number) => void;
   availableYears?: number[];
+  onExportReady?: (fn: () => void) => void;
 }
 
 const getAmountPaid = (sale: AdminSales): number =>
@@ -98,7 +99,7 @@ const getAmountPaid = (sale: AdminSales): number =>
 const getAmountOwed = (sale: AdminSales): number =>
   sale.is_installment ? sale.amount - (sale.total_paid ?? 0) : 0;
 
-const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, onEditSale, onDeleteSale, onApproveSale, viewFrom = "admin", selectedYear: externalSelectedYear, onYearChange: externalOnYearChange, availableYears: externalAvailableYears }) => {
+const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, onEditSale, onDeleteSale, onApproveSale, viewFrom = "admin", selectedYear: externalSelectedYear, onYearChange: externalOnYearChange, availableYears: externalAvailableYears, onExportReady }) => {
   const [allSales, setAllSales] = useState<AdminSales[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -273,6 +274,11 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
     setPaymentStatusFilter((prev) => prev === filter ? "all" : filter);
   };
 
+  useEffect(() => {
+    if (onExportReady) onExportReady(handleExport);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredSales]);
+
   const handlePaymentSuccess = () => { setPaymentModalSale(null); fetchSales(); };
 
   const toggleBtn = (show: boolean, onToggle: () => void) => (
@@ -319,7 +325,7 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
   };
 
   return (
-    <div className="space-y-4 px-6">
+    <div className="space-y-4">
       {/* Error */}
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>
@@ -333,48 +339,6 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
         </div>
       ) : (
         <>
-          {/* Financial Summary */}
-          {viewFrom !== "agent" && viewFrom !== "acsl_agent" && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm font-semibold text-gray-700 uppercase">Financial Summary</h2>
-                <div className="flex items-center gap-2">
-                  {viewFrom === "superAdmin" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs flex items-center gap-1.5"
-                      onClick={handleExport}
-                      disabled={exporting || loading}
-                    >
-                      {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                      Export
-                    </Button>
-                  )}
-                  {toggleBtn(showFinancialSummary, () => setShowFinancialSummary(!showFinancialSummary))}
-                </div>
-              </div>
-              {showFinancialSummary && <FinancialSummaryCards summary={financialSummary} />}
-            </div>
-          )}
-
-          {/* Payment Status Breakdown — clickable */}
-          {viewFrom !== "agent" && viewFrom !== "acsl_agent" && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm font-semibold text-gray-700 uppercase">Payment Status Breakdown</h2>
-                {toggleBtn(showStatusBreakdown, () => setShowStatusBreakdown(!showStatusBreakdown))}
-              </div>
-              {showStatusBreakdown && (
-                <PaymentStatusCards
-                  breakdown={paymentBreakdown}
-                  activeFilter={paymentStatusFilter}
-                  onFilterClick={handleCardFilterClick}
-                />
-              )}
-            </div>
-          )}
-
           {/* Filters */}
           <FinancialReportsFilters
             searchTerm={searchTerm}
@@ -433,7 +397,7 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
         open={!!detailModalSale}
         onClose={() => setDetailModalSale(null)}
         sale={detailModalSale}
-        viewFrom="admin"
+        viewFrom={viewFrom === "superAdmin" ? "superAdmin" : "admin"}
         onSaleUpdated={fetchSales}
       />
 

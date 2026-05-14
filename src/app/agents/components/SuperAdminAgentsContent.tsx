@@ -92,6 +92,24 @@ interface PartnerOrg {
 
 const ALL_STATES = Object.keys(lgaAndStates).sort();
 
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return "just now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} min ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} hour${h !== 1 ? "s" : ""} ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d} day${d !== 1 ? "s" : ""} ago`;
+  const w = Math.floor(d / 7);
+  if (w < 5) return `${w} week${w !== 1 ? "s" : ""} ago`;
+  const mo = Math.floor(d / 30);
+  if (mo < 12) return `${mo} month${mo !== 1 ? "s" : ""} ago`;
+  const y = Math.floor(d / 365);
+  return `${y} year${y !== 1 ? "s" : ""} ago`;
+}
+
 // ── Assign Partner Modal ───────────────────────────────────────────────────────
 
 interface OrgOption {
@@ -1020,18 +1038,13 @@ export default function SuperAdminAgentsContent() {
                         {(() => {
                           const hasEdit = !!agent.updated_at && agent.updated_at !== agent.created_at;
                           const ts = hasEdit ? agent.updated_at! : agent.created_at;
-                          const d = new Date(ts);
-                          const dateLine = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-                          const byName = agent.updated_by_name ?? "Admin";
+                          const fullDate = new Date(ts).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
                           return (
-                            <div className="space-y-0.5 min-w-[140px]">
-                              <p className="text-xs font-semibold text-gray-800 truncate">{byName}</p>
-                              <div className="flex items-center gap-1">
-                                <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${hasEdit ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>
-                                  {hasEdit ? "Modified" : "Created"}
-                                </span>
-                                <p className="text-[11px] text-gray-500">{dateLine}</p>
-                              </div>
+                            <div title={fullDate}>
+                              <p className="text-xs text-gray-700 font-medium whitespace-nowrap">{timeAgo(ts)}</p>
+                              <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${hasEdit ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>
+                                {hasEdit ? "Modified" : "Created"}
+                              </span>
                             </div>
                           );
                         })()}

@@ -37,16 +37,16 @@ const allNavItems = [
     href: "/dashboard",
   },
   {
+    name: "Agent Manager",
+    icon: Users,
+    route: "agents",
+    href: "/agents",
+  },
+  {
     name: "Manage Partners",
     icon: UserCheck,
     route: "partners",
     href: "/partners",
-  },
-  {
-    name: "Manage Agents",
-    icon: Users,
-    route: "agents",
-    href: "/agents",
   },
   {
     name: "Sales",
@@ -66,12 +66,12 @@ const allNavItems = [
     route: "stove-manager",
     href: "/stove-manager",
   },
-  {
-    name: "Agreement Images",
-    icon: FileImage,
-    route: "agreement-images",
-    href: "/agreement-images",
-  },
+  // {
+  //   name: "Agreement Images",
+  //   icon: FileImage,
+  //   route: "agreement-images",
+  //   href: "/agreement-images",
+  // },
   {
     name: "Settings",
     icon: Settings,

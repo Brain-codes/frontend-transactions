@@ -200,7 +200,7 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
               </div>
               <div className="flex items-center gap-2">
                 {activeSale && getStatusBadge(activeSale)}
-                {isInstallment && !isFullyPaid && (
+                {isInstallment && !isFullyPaid && viewFrom !== "superAdmin" && (
                   <Button
                     size="sm"
                     className="bg-brand hover:bg-brand/90 text-white gap-1.5"
@@ -215,7 +215,7 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
           </DialogHeader>
 
           {/* Scrollable content */}
-          <div className="px-5 py-3 space-y-3 overflow-y-auto flex-1">
+          <div className="space-y-3 overflow-y-auto flex-1">
             {/* Loading overlay while fetching full details */}
             {fullSaleLoading && (
               <div className="flex items-center gap-2 text-xs text-gray-500 py-1">

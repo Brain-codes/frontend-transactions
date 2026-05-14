@@ -132,7 +132,7 @@ export default function AgentFormModal({
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [orgsLoading, setOrgsLoading] = useState(false);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
-  const [partnersOpen, setPartnersOpen] = useState(true);
+  const [partnersOpen, setPartnersOpen] = useState(mode === "create");
 
   // Assignment state — direct orgs + state-level
   const [selectedDirectOrgIds, setSelectedDirectOrgIds] = useState<Set<string>>(new Set());
@@ -445,7 +445,7 @@ export default function AgentFormModal({
 
           {/* ── Create fields ── */}
           {mode === "create" && (
-            <div className="mx-4 border border-border/60 rounded-md overflow-hidden">
+            <div className="border border-border/60 rounded-md overflow-hidden">
               <div className="px-3 py-1.5 bg-muted/40 border-b border-border/60">
                 <p className="text-[11px] font-semibold text-foreground">Agent Details</p>
               </div>
@@ -526,7 +526,7 @@ export default function AgentFormModal({
 
           {/* ── Edit fields ── */}
           {mode === "edit" && (
-            <div className="mx-4 border border-border/60 rounded-md overflow-hidden">
+            <div className=" border border-border/60 rounded-md overflow-hidden">
               <div className="px-3 py-1.5 bg-muted/40 border-b border-border/60">
                 <p className="text-[11px] font-semibold text-foreground">Agent Details</p>
               </div>
@@ -554,7 +554,7 @@ export default function AgentFormModal({
 
           {/* ── Partner Assignment ── */}
           {isAcslRole && (
-            <div className="mx-4 border border-border/60 rounded-md overflow-hidden">
+            <div className=" border border-border/60 rounded-md overflow-hidden">
               {/* Section toggle header */}
               <button
                 type="button"
@@ -663,7 +663,7 @@ export default function AgentFormModal({
                               >
                                 <span className="text-[10px] font-semibold leading-tight truncate w-full">{state}</span>
                                 <span className="text-[9px] leading-tight mt-0.5 text-muted-foreground">
-                                  {count}p
+                                  {count} partner{count !== 1 ? "s" : ""}
                                 </span>
                               </button>
                             );
@@ -717,63 +717,64 @@ export default function AgentFormModal({
                     </div>
                   )}
 
-                  {/* Bottom: column-per-state with checkboxes */}
-                  {hasBottomContent && (
-                    <div className="border-t border-border/50 max-h-48 overflow-auto">
-                      <div className="flex divide-x divide-border/50 min-w-0">
-                        {selectedStatesWithPartners.map((s) => {
-                          const c = getStateColor(s);
-                          const statePartners = orgs.filter((o) => o.state === s);
-                          const selectedCount = statePartners.filter((o) => selectedDirectOrgIds.has(o.id)).length;
-                          return (
-                            <div key={s} className="flex-1 min-w-[140px]">
-                              <div
-                                className="sticky top-0 px-2 py-1.5 flex items-center justify-between gap-1 border-b"
-                                style={{ backgroundColor: c.bg, borderColor: c.border }}
-                              >
-                                <div className="flex items-center gap-1 min-w-0">
-                                  <MapPin className="h-2.5 w-2.5 shrink-0" style={{ color: c.text }} />
-                                  <span className="text-[10px] font-bold uppercase tracking-wide truncate" style={{ color: c.text }}>{s}</span>
-                                </div>
-                                <span className="text-[9px] shrink-0" style={{ color: c.text, opacity: 0.7 }}>{selectedCount}/{statePartners.length}</span>
-                              </div>
-                              {statePartners.map((o, idx) => {
-                                const checked = selectedDirectOrgIds.has(o.id);
-                                return (
-                                  <button
-                                    key={o.id}
-                                    type="button"
-                                    onClick={() => toggleOrg(o.id)}
-                                    className={[
-                                      "w-full flex items-center gap-2 px-2 py-1.5 text-left transition-colors",
-                                      idx % 2 === 0 ? "bg-white" : "bg-blue-50/30",
-                                      "hover:bg-blue-50",
-                                    ].join(" ")}
-                                  >
-                                    <div className={[
-                                      "w-3.5 h-3.5 rounded border-2 shrink-0 flex items-center justify-center transition-colors",
-                                      checked ? "bg-[#07376a] border-[#07376a]" : "border-gray-300",
-                                    ].join(" ")}>
-                                      {checked && <Check className="h-2 w-2 text-white" />}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <p className={`text-[11px] font-medium truncate ${checked ? "text-gray-900" : "text-gray-500"}`}>
-                                        {o.partner_name}
-                                      </p>
-                                      {o.branch && (
-                                        <p className="text-[9px] text-muted-foreground truncate">{o.branch}</p>
-                                      )}
-                                    </div>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
                 </>
+              )}
+
+              {/* Bottom: column-per-state with checkboxes — always visible when states are selected */}
+              {hasBottomContent && (
+                <div className="border-t border-border/50 max-h-48 overflow-auto">
+                  <div className="flex divide-x divide-border/50 min-w-0">
+                    {selectedStatesWithPartners.map((s) => {
+                      const c = getStateColor(s);
+                      const statePartners = orgs.filter((o) => o.state === s);
+                      const selectedCount = statePartners.filter((o) => selectedDirectOrgIds.has(o.id)).length;
+                      return (
+                        <div key={s} className="flex-1 min-w-[140px]">
+                          <div
+                            className="sticky top-0 px-2 py-1.5 flex items-center justify-between gap-1 border-b"
+                            style={{ backgroundColor: c.bg, borderColor: c.border }}
+                          >
+                            <div className="flex items-center gap-1 min-w-0">
+                              <MapPin className="h-2.5 w-2.5 shrink-0" style={{ color: c.text }} />
+                              <span className="text-[10px] font-bold uppercase tracking-wide truncate" style={{ color: c.text }}>{s}</span>
+                            </div>
+                            <span className="text-[9px] shrink-0" style={{ color: c.text, opacity: 0.7 }}>{selectedCount}/{statePartners.length}</span>
+                          </div>
+                          {statePartners.map((o, idx) => {
+                            const checked = selectedDirectOrgIds.has(o.id);
+                            return (
+                              <button
+                                key={o.id}
+                                type="button"
+                                onClick={() => toggleOrg(o.id)}
+                                className={[
+                                  "w-full flex items-center gap-2 px-2 py-1.5 text-left transition-colors",
+                                  idx % 2 === 0 ? "bg-white" : "bg-blue-50/30",
+                                  "hover:bg-blue-50",
+                                ].join(" ")}
+                              >
+                                <div className={[
+                                  "w-3.5 h-3.5 rounded border-2 shrink-0 flex items-center justify-center transition-colors",
+                                  checked ? "bg-[#07376a] border-[#07376a]" : "border-gray-300",
+                                ].join(" ")}>
+                                  {checked && <Check className="h-2 w-2 text-white" />}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className={`text-[11px] font-medium truncate ${checked ? "text-gray-900" : "text-gray-500"}`}>
+                                    {o.partner_name}
+                                  </p>
+                                  {o.branch && (
+                                    <p className="text-[9px] text-muted-foreground truncate">{o.branch}</p>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
             </div>
           )}

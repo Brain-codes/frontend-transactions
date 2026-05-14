@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
 import FinancialReportsView from "../../admin/components/financial-reports/FinancialReportsView";
 import SalesFormModal from "../../admin/components/sales/SalesFormModal";
@@ -37,6 +37,9 @@ export default function UnifiedSalesContent() {
   const CURRENT_YEAR = new Date().getFullYear();
   const YEARS = Array.from({ length: CURRENT_YEAR - 2023 }, (_, i) => 2024 + i);
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
+
+  const exportFnRef = useRef<(() => void) | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const [editSale, setEditSale] = useState<AdminSales | null>(null);
   const [editLoading, setEditLoading] = useState(false);
@@ -130,6 +133,23 @@ export default function UnifiedSalesContent() {
                   </Select>
                 </>
               )}
+              {(isSuperAdmin || isPartner) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs flex items-center gap-1.5"
+                  disabled={exporting}
+                  onClick={() => {
+                    if (exportFnRef.current) {
+                      setExporting(true);
+                      Promise.resolve(exportFnRef.current()).finally(() => setExporting(false));
+                    }
+                  }}
+                >
+                  {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                  Export
+                </Button>
+              )}
               {can("create-sale") && (
                 <Button
                   size="sm"
@@ -154,6 +174,7 @@ export default function UnifiedSalesContent() {
           selectedYear={isSuperAdmin ? selectedYear : undefined}
           onYearChange={isSuperAdmin ? setSelectedYear : undefined}
           availableYears={isSuperAdmin ? YEARS : undefined}
+          onExportReady={(fn) => { exportFnRef.current = fn; }}
         />
       </div>
 

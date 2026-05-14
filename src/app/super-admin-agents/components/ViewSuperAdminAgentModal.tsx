@@ -141,7 +141,7 @@ const ViewSuperAdminAgentModal: React.FC<ViewSuperAdminAgentModalProps> = ({
         </DialogHeader>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto space-y-3">
           {/* Agent Information */}
           <SectionCard title="Agent Information">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
