@@ -244,6 +244,42 @@ async function saveCredentials(
   entries.push(mkEntry("save-credentials", "success", `Credentials saved for partner ${partnerId}`));
 }
 
+// ─── Transfer history ─────────────────────────────────────────────────────────
+
+async function writeTransferHistory(
+  supabase: any,
+  data: {
+    organization_id: string;
+    partner_name: string;
+    partner_id: string;
+    state?: string;
+    branch?: string;
+    stove_ids: Array<{ stove_id: string; factory?: string; sales_reference?: string }>;
+    source: "external-sync" | "external-csv-sync";
+    application_name?: string;
+  },
+): Promise<void> {
+  if (data.stove_ids.length === 0) return;
+  try {
+    const transactionId = `TRF-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    await supabase.from("stove_transfer_history").insert({
+      transaction_id: transactionId,
+      organization_id: data.organization_id,
+      partner_name: data.partner_name,
+      partner_id: data.partner_id,
+      state: data.state || null,
+      branch: data.branch || null,
+      stove_count: data.stove_ids.length,
+      stove_ids: data.stove_ids,
+      source: data.source,
+      application_name: data.application_name || null,
+      transfer_date: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error("Failed to write transfer history:", e);
+  }
+}
+
 // ─── DB logging ───────────────────────────────────────────────────────────────
 
 async function writeSyncLog(
@@ -404,6 +440,21 @@ serve(async (req) => {
     const syncResult = await processOrganizationSync(supabase, body.organization_data, body.stove_ids || [], entries);
 
     if (!isInternalAuth) await updateTokenUsage(supabase, body.token);
+
+    // Write transfer history for newly created stove IDs
+    const newStoves = syncResult.stove_ids.filter((s: any) => s.action === "created");
+    if (newStoves.length > 0) {
+      await writeTransferHistory(supabase, {
+        organization_id: syncResult.organization.id,
+        partner_name: body.organization_data.partner_name,
+        partner_id: body.organization_data.partner_id,
+        state: body.organization_data.state,
+        branch: body.organization_data.branch,
+        stove_ids: newStoves.map((s: any) => ({ stove_id: s.stove_id, factory: s.factory, sales_reference: s.sales_reference })),
+        source: "external-sync",
+        application_name: body.application_name,
+      });
+    }
 
     const orgAction = syncResult.summary.organization_action as string;
     const status: "success" | "partial" = "success";

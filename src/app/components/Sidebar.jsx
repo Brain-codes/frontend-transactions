@@ -23,6 +23,7 @@ import {
   Package,
   Tag,
   Layers,
+  ArrowLeftRight,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
@@ -65,6 +66,12 @@ const allNavItems = [
     icon: Package,
     route: "stove-manager",
     href: "/stove-manager",
+  },
+  {
+    name: "Transfer History",
+    icon: ArrowLeftRight,
+    route: "stove-transfer-history",
+    href: "/stove-transfer-history",
   },
   // {
   //   name: "Agreement Images",

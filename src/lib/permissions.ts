@@ -14,6 +14,7 @@ export type RouteKey =
   | "agents"
   | "stove-management"
   | "stove-manager"
+  | "stove-transfer-history"
   | "agreement-images"
   | "settings"
   | "profile";
@@ -54,6 +55,7 @@ export const PERMISSIONS: Record<string, RolePermissions> = {
       "agents",
       "stove-management",
       "stove-manager",
+      "stove-transfer-history",
       "agreement-images",
       "settings",
       "profile",
