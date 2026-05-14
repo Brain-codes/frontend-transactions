@@ -14,7 +14,6 @@ export interface AdminSales {
   lga_backup: string;
   phone: string;
   other_phone: string;
-  partner_name: string;
   amount: number;
   signature: string; // Base64 image string
   created_by: string;

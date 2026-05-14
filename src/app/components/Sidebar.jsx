@@ -37,16 +37,10 @@ const allNavItems = [
     href: "/dashboard",
   },
   {
-    name: "Partners & Customers",
+    name: "Manage Partners",
     icon: UserCheck,
     route: "partners",
     href: "/partners",
-  },
-  {
-    name: "Sales",
-    icon: ShoppingCart,
-    route: "sales",
-    href: "/sales",
   },
   {
     name: "Manage Agents",
@@ -55,10 +49,22 @@ const allNavItems = [
     href: "/agents",
   },
   {
-    name: "Stove Management",
-    icon: Tag,
-    route: "stove-management",
-    href: "/stove-management",
+    name: "Sales",
+    icon: ShoppingCart,
+    route: "sales",
+    href: "/sales",
+  },
+  // {
+  //   name: "Stove Management",
+  //   icon: Tag,
+  //   route: "stove-management",
+  //   href: "/stove-management",
+  // },
+  {
+    name: "Stove Manager",
+    icon: Package,
+    route: "stove-manager",
+    href: "/stove-manager",
   },
   {
     name: "Agreement Images",
@@ -123,9 +129,11 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
 
   // Specific order for ACSL Agent and Partner Agent
   if (isAcslAgent || isPartnerAgent) {
-    const agentOrder = isAcslAgent 
-      ? ["dashboard", "sales", "partners", "stove-management", "profile"]
-      : ["dashboard", "sales", "profile"];
+    const agentOrder = isAcslAgent
+      ? ["dashboard", "sales", "partners", 
+        // "stove-management", 
+        "stove-manager", "profile"]
+      : ["dashboard", "sales", "stove-manager", "profile"];
       
     navItems = [...navItems].sort((a, b) => {
       const indexA = agentOrder.indexOf(a.route);

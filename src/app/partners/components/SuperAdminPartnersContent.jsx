@@ -25,12 +25,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -44,18 +38,11 @@ import { lgaAndStates } from "../../constants";
 import adminAgentService from "../../services/adminAgentService.jsx";
 import PageHeader from "../../components/PageHeader";
 import {
-  Plus,
   Search,
   X,
   Building2,
-  Upload,
-  Users,
-  UserCheck,
   Loader2,
-  MoreVertical,
   Edit,
-  Trash2,
-  Eye,
   Package,
   ChevronLeft,
   ChevronRight,
@@ -70,6 +57,8 @@ import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AddPartnerModal from "../components/AddPartnerModal";
 import AssignAgentModal from "../components/AssignAgentModal";
 import AdminSalesDetailModal from "../../admin/components/sales/AdminSalesDetailModal";
+import ViewCredentialModal from "../../admin/components/credentials/ViewCredentialModal";
+import adminCredentialsService from "../../services/adminCredentialsService";
 
 // ── Stove IDs Modal ──────────────────────────────────────────────────────────
 
@@ -372,6 +361,77 @@ const StoveIdsModal = ({ organization, isOpen, onClose, initialFilter = "all" })
   );
 };
 
+// ── Assigned Agents Modal ─────────────────────────────────────────────────────
+
+const AssignedAgentsModal = ({ organization, agents, isOpen, onClose }) => {
+  if (!organization) return null;
+
+  const SectionHeader = ({ title }) => (
+    <div className="flex items-center justify-between border-b border-primary/20 pb-0.5 mb-2">
+      <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider">{title}</h3>
+    </div>
+  );
+
+  const DetailItem = ({ label, value }) => (
+    <div className="space-y-0">
+      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
+      <p className="text-xs font-medium">{value ?? <span className="text-muted-foreground">N/A</span>}</p>
+    </div>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+        <DialogHeader className="px-5 py-3 bg-gradient-to-r from-primary/5 to-primary/10 border-b shrink-0">
+          <div>
+            <DialogTitle className="text-base font-bold text-foreground">Assigned Agents</DialogTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Partner: <span className="font-semibold text-primary">{organization.partner_name}</span>
+              <span className="ml-2 bg-primary/10 text-primary text-[10px] font-semibold px-2 py-0.5 rounded-full">{agents.length} agent{agents.length !== 1 ? "s" : ""}</span>
+            </p>
+          </div>
+        </DialogHeader>
+        <div className="overflow-y-auto flex-1">
+          {agents.length === 0 ? (
+            <div className="text-center text-muted-foreground py-10 text-sm">No agents assigned to this partner.</div>
+          ) : (
+            <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-brand hover:bg-brand">
+                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Full Name</TableHead>
+                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone</TableHead>
+                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Email</TableHead>
+                      {/* <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Role</TableHead> */}
+                      {/* <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Status</TableHead> */}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {agents.map((agent, idx) => (
+                      <TableRow key={agent.id || idx} className={idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"}>
+                        <TableCell className="text-xs font-medium text-gray-900">{agent.full_name || agent.name || "—"}</TableCell>
+                        <TableCell className="text-xs">{agent.phone || "—"}</TableCell>
+                        <TableCell className="text-xs">{agent.email || "—"}</TableCell>
+                        {/* <TableCell className="text-xs">{agent.role || "—"}</TableCell> */}
+                        {/* <TableCell className="text-xs">
+                          {agent.status ? (
+                            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${agent.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                              {agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
+                            </span>
+                          ) : "—"}
+                        </TableCell> */}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // ── Partner Detail Modal ──────────────────────────────────────────────────────
 
 const DetailItem = ({ label, value, span2 = false }) => (
@@ -408,14 +468,11 @@ const PartnerDetailModal = ({ organization, isOpen, onClose, onEdit }) => {
               <DialogTitle className="text-base font-bold">Partner Details</DialogTitle>
               <p className="text-xs text-muted-foreground mt-0.5">{organization.partner_name}</p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${organization.status === "active" ? "bg-green-50 text-green-700 border-green-200" : organization.status === "inactive" ? "bg-gray-50 text-gray-600 border-gray-200" : "bg-red-50 text-red-700 border-red-200"}`}>
-                {organization.status ? organization.status.charAt(0).toUpperCase() + organization.status.slice(1) : "N/A"}
+            {organization.status && (
+              <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${organization.status === "active" ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-600 border-gray-200"}`}>
+                {organization.status.charAt(0).toUpperCase() + organization.status.slice(1)}
               </span>
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { onClose(); onEdit(organization); }}>
-                <Edit className="h-3 w-3 mr-1" />Edit
-              </Button>
-            </div>
+            )}
           </div>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
@@ -436,13 +493,6 @@ const PartnerDetailModal = ({ organization, isOpen, onClose, onEdit }) => {
               <DetailItem label="Alternative Phone" value={organization.alternative_phone} />
               <DetailItem label="Email" value={organization.email} />
               <DetailItem label="Address" value={organization.address} span2 />
-            </div>
-          </SectionCard>
-          <SectionCard title="Stove Summary">
-            <div className="grid grid-cols-3 gap-3">
-              <DetailItem label="Total Received" value={(organization.total_stove_ids || 0).toLocaleString()} />
-              <DetailItem label="Sold" value={(organization.sold_stove_ids || 0).toLocaleString()} />
-              <DetailItem label="Available" value={(organization.available_stove_ids || 0).toLocaleString()} />
             </div>
           </SectionCard>
         </div>
@@ -487,6 +537,10 @@ export default function SuperAdminPartnersContent() {
   const [assignAgentOrg, setAssignAgentOrg] = useState(null);
   const [showOrgImportModal, setShowOrgImportModal] = useState(false);
   const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
+  const [credentialOrg, setCredentialOrg] = useState(null);
+  const [viewingCredential, setViewingCredential] = useState(null);
+  const [agentsModalOrg, setAgentsModalOrg] = useState(null);
+  const [loadingCredentialOrgId, setLoadingCredentialOrgId] = useState(null);
 
   const [expandedOrgId, setExpandedOrgId] = useState(null);
   const [orgGroupedData, setOrgGroupedData] = useState({});
@@ -496,7 +550,14 @@ export default function SuperAdminPartnersContent() {
   const [orgAgentsData, setOrgAgentsData] = useState({});
   const loadingAgentOrgIdsRef = useRef(new Set());
 
-  const [filters, setFilters] = useState({ search: "", state: "all", partner_type: "all" });
+  const [filters, setFilters] = useState({ search: "", state: "all", partner_type: "all", assigned_agents: "all", branch: "" });
+  const [stateSearch, setStateSearch] = useState("");
+  const [stateDropdownOpen, setStateDropdownOpen] = useState(false);
+  const stateDropdownRef = useRef(null);
+  const [branchSearch, setBranchSearch] = useState("");
+  const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
+  const branchDropdownRef = useRef(null);
+  const [availableBranches, setAvailableBranches] = useState([]);
   const [typeCardFilter, setTypeCardFilter] = useState("all");
 
   const [stats, setStats] = useState({ total_received: 0, total_sold: 0, total_available: 0, total_partners: 0 });
@@ -518,6 +579,40 @@ export default function SuperAdminPartnersContent() {
     deleteOrganization,
     fetchOrganizations,
   } = useOrganizations();
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (stateDropdownRef.current && !stateDropdownRef.current.contains(e.target)) setStateDropdownOpen(false);
+      if (branchDropdownRef.current && !branchDropdownRef.current.contains(e.target)) setBranchDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Fetch distinct branches when state or search changes
+  useEffect(() => {
+    const shouldShow = filters.state !== "all" || filters.search.trim().length > 0;
+    if (!shouldShow) { setAvailableBranches([]); return; }
+    const timer = setTimeout(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const params = new URLSearchParams({ limit: "200", offset: "0" });
+        if (filters.state !== "all") params.set("state", filters.state);
+        if (filters.search) params.set("search", filters.search);
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
+          { headers: { Authorization: `Bearer ${session.access_token}` } }
+        );
+        const result = await res.json();
+        const branches = [...new Set((result.data || []).map((o) => o.branch).filter(Boolean))].sort();
+        setAvailableBranches(branches);
+      } catch { setAvailableBranches([]); }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [filters.state, filters.search]);
+
+  const showBranchFilter = filters.state !== "all" || filters.search.trim().length > 0;
 
   const fetchStats = async () => {
     setLoadingStats(true);
@@ -561,8 +656,9 @@ export default function SuperAdminPartnersContent() {
         search: filters.search || null,
         state: filters.state !== "all" ? filters.state : null,
         partner_type: filters.partner_type !== "all" ? filters.partner_type : null,
+        branch: filters.branch || null,
       });
-    }, 300);
+    }, 500);
     return () => clearTimeout(timer);
   }, [filters]);
 
@@ -572,8 +668,14 @@ export default function SuperAdminPartnersContent() {
     setTypeCardFilter(next);
     setFilters((prev) => ({ ...prev, partner_type: next }));
   };
-  const handleClearFilters = () => { setFilters({ search: "", state: "all", partner_type: "all" }); setTypeCardFilter("all"); };
-  const hasActiveFilters = filters.search || filters.state !== "all" || filters.partner_type !== "all";
+  const handleClearFilters = () => {
+    setFilters({ search: "", state: "all", partner_type: "all", assigned_agents: "all", branch: "" });
+    setTypeCardFilter("all");
+    setStateSearch("");
+    setBranchSearch("");
+    setAvailableBranches([]);
+  };
+  const hasActiveFilters = filters.search || filters.state !== "all" || filters.partner_type !== "all" || filters.assigned_agents !== "all" || filters.branch;
 
   const handlePageChange = (page) => applyFilters({ page });
   const handlePageSizeChange = (value) => applyFilters({ page: 1, limit: parseInt(value) });
@@ -638,6 +740,21 @@ export default function SuperAdminPartnersContent() {
 
   const handleViewDetails = (org) => setSelectedOrganization(org);
   const handleViewStoveIds = (org, filter = "all") => { setStoveIdsOrg(org); setStoveIdsFilter(filter); };
+  const handleViewCredentials = async (org) => {
+    setLoadingCredentialOrgId(org.id);
+    try {
+      const res = await adminCredentialsService.getCredentialByPartnerId(org.partner_id);
+      if (res.success && res.data) {
+        setViewingCredential(res.data);
+      } else {
+        toast({ variant: "error", title: "No credentials found", description: res.error || "This partner has no credentials." });
+      }
+    } catch (err) {
+      toast({ variant: "error", title: "Error", description: err.message });
+    } finally {
+      setLoadingCredentialOrgId(null);
+    }
+  };
   const handleEdit = (org) => { setEditingOrganization(org); setShowFormModal(true); };
   const handleDelete = (org) => { setOrganizationToDelete(org); setShowDeleteModal(true); };
 
@@ -668,11 +785,17 @@ export default function SuperAdminPartnersContent() {
     }
   };
 
+  const filteredOrgs = organizationsData.filter((o) => {
+    if (filters.assigned_agents === "assigned") return orgAgentsData[o.id] !== undefined && orgAgentsData[o.id].length > 0;
+    if (filters.assigned_agents === "unassigned") return orgAgentsData[o.id] !== undefined && orgAgentsData[o.id].length === 0;
+    return true;
+  });
+
   const startRecord = organizationsData.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
   const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
 
   if (loading) return (
-    <DashboardLayout currentRoute="partners" title="Partners & Customers">
+    <DashboardLayout currentRoute="partners" title="Manage Partners">
       <div className="flex items-center justify-center h-64">
         <Loader2 className="animate-spin h-8 w-8 text-brand" />
       </div>
@@ -680,7 +803,7 @@ export default function SuperAdminPartnersContent() {
   );
 
   if (error && !error.includes("login")) return (
-    <DashboardLayout currentRoute="partners" title="Partners & Customers">
+    <DashboardLayout currentRoute="partners" title="Manage Partners">
       <div className="p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-600 text-sm">
           Error: {error}
@@ -692,65 +815,156 @@ export default function SuperAdminPartnersContent() {
 
   return (
     <>
-      <DashboardLayout currentRoute="partners" title="Partners & Customers">
+      <DashboardLayout currentRoute="partners" title="Manage Partners">
         <div className="p-6 space-y-5">
 
-          <PageHeader icon={Building2} title="Partners & Customers" />
+          <PageHeader
+            icon={Building2}
+            title="Manage Partners"
+            right={
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 px-3 text-xs flex items-center gap-1"
+                onClick={() => {
+                  const headers = ["Partner Name", "Type", "Branch", "State", "Contact Person", "Contact Phone", "Email", "Total Stoves", "Sold", "Available"];
+                  const rows = organizationsData.map((org) => [org.partner_name, org.partner_type || "", org.branch || "", org.state || "", org.contact_person || "", org.contact_phone || "", org.email || "", org.total_stove_ids ?? "", org.sold_stove_ids ?? "", org.available_stove_ids ?? ""]);
+                  downloadTableAsCSV(headers, rows, `partners-${new Date().toISOString().slice(0, 10)}.csv`);
+                }}
+                disabled={organizationsData.length === 0}
+              >
+                <Download className="h-3.5 w-3.5 mr-1" />Download
+              </Button>
+            }
+          />
 
           <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
+            {/* Search */}
             <div className="w-1/4 min-w-[180px] relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input placeholder="Search by name, ID, branch..." value={filters.search} onChange={(e) => handleFilterChange("search", e.target.value)} className="pl-9 bg-white h-9 text-sm" />
             </div>
-            <Select value={filters.state} onValueChange={(v) => handleFilterChange("state", v)}>
-              <SelectTrigger className="w-[155px] h-9 bg-white text-sm"><SelectValue placeholder="All States" /></SelectTrigger>
+
+            {/* Searchable State Filter */}
+            <div className="relative w-[155px]" ref={stateDropdownRef}>
+              <button
+                onClick={() => setStateDropdownOpen((o) => !o)}
+                className="w-full h-9 px-3 flex items-center justify-between bg-white border border-input rounded-md text-sm text-left focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <span className={filters.state === "all" ? "text-muted-foreground" : ""}>
+                  {filters.state === "all" ? "All States" : nigerianStates.find((s) => s.toLowerCase() === filters.state) || filters.state}
+                </span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+              </button>
+              {stateDropdownOpen && (
+                <div className="absolute z-50 top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg">
+                  <div className="p-1.5 border-b border-gray-100">
+                    <Input
+                      autoFocus
+                      placeholder="Type to search..."
+                      value={stateSearch}
+                      onChange={(e) => setStateSearch(e.target.value)}
+                      className="h-7 text-xs"
+                    />
+                  </div>
+                  <div className="max-h-48 overflow-y-auto">
+                    <button
+                      onClick={() => { handleFilterChange("state", "all"); setStateSearch(""); setStateDropdownOpen(false); handleFilterChange("branch", ""); setBranchSearch(""); }}
+                      className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${filters.state === "all" ? "font-semibold text-brand" : ""}`}
+                    >All States</button>
+                    {nigerianStates.filter((s) => s.toLowerCase().includes(stateSearch.toLowerCase())).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => { handleFilterChange("state", s.toLowerCase()); setStateSearch(""); setStateDropdownOpen(false); handleFilterChange("branch", ""); setBranchSearch(""); }}
+                        className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${filters.state === s.toLowerCase() ? "font-semibold text-brand" : ""}`}
+                      >{s}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Branch Filter — only when state selected or partner name typed */}
+            {showBranchFilter && (
+              <div className="relative w-[155px]" ref={branchDropdownRef}>
+                <button
+                  onClick={() => setBranchDropdownOpen((o) => !o)}
+                  className="w-full h-9 px-3 flex items-center justify-between bg-white border border-input rounded-md text-sm text-left focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <span className={!filters.branch ? "text-muted-foreground" : ""}>
+                    {filters.branch || "All Branches"}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                </button>
+                {branchDropdownOpen && (
+                  <div className="absolute z-50 top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg">
+                    <div className="p-1.5 border-b border-gray-100">
+                      <Input
+                        autoFocus
+                        placeholder="Type to search..."
+                        value={branchSearch}
+                        onChange={(e) => setBranchSearch(e.target.value)}
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                    <div className="max-h-48 overflow-y-auto">
+                      <button
+                        onClick={() => { handleFilterChange("branch", ""); setBranchSearch(""); setBranchDropdownOpen(false); }}
+                        className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${!filters.branch ? "font-semibold text-brand" : ""}`}
+                      >All Branches</button>
+                      {availableBranches.filter((b) => b.toLowerCase().includes(branchSearch.toLowerCase())).map((b) => (
+                        <button
+                          key={b}
+                          onClick={() => { handleFilterChange("branch", b); setBranchSearch(""); setBranchDropdownOpen(false); }}
+                          className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${filters.branch === b ? "font-semibold text-brand" : ""}`}
+                        >{b}</button>
+                      ))}
+                      {availableBranches.filter((b) => b.toLowerCase().includes(branchSearch.toLowerCase())).length === 0 && (
+                        <p className="text-xs text-muted-foreground px-3 py-2">No branches found</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Assigned Agents Filter */}
+            <Select value={filters.assigned_agents} onValueChange={(v) => handleFilterChange("assigned_agents", v)}>
+              <SelectTrigger className="w-[155px] h-9 bg-white text-sm"><SelectValue placeholder="All Agents" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All States</SelectItem>
-                {nigerianStates.map((s) => (<SelectItem key={s} value={s.toLowerCase()}>{s}</SelectItem>))}
+                <SelectItem value="all">All Agents</SelectItem>
+                <SelectItem value="assigned">Assigned</SelectItem>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
               </SelectContent>
             </Select>
+
             {hasActiveFilters && (
               <Button onClick={handleClearFilters} size="sm" variant="outline" className="h-9">
                 <X className="h-4 w-4 mr-1" />Clear
               </Button>
             )}
+            <div className="flex items-center gap-3 ml-auto">
+              <p className="text-sm text-gray-600">
+                Showing <span className="font-medium">{startRecord}–{endRecord}</span> of <span className="font-medium">{pagination.total}</span> partners
+              </p>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm text-gray-500">per page:</span>
+                <Select value={pagination.limit?.toString() ?? "10"} onValueChange={handlePageSizeChange}>
+                  <SelectTrigger className="w-[65px] h-7 bg-white text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-sm font-bold text-green-500">Total: <span className="text-brand">{pagination.total}</span></p>
+            </div>
           </div>
 
           <div className="space-y-0">
-            <div className="bg-blue-50 rounded-t-lg px-4 py-2 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <p className="text-sm text-gray-600">
-                  Showing <span className="font-medium">{startRecord}–{endRecord}</span> of <span className="font-medium">{pagination.total}</span> partners
-                </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">per page:</span>
-                  <Select value={pagination.limit?.toString() ?? "10"} onValueChange={handlePageSizeChange}>
-                    <SelectTrigger className="w-[65px] h-7 bg-white text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="25">25</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-bold text-green-500">Total Partners: <span className="text-brand">{pagination.total}</span></p>
-                <Button size="sm" variant="outline" className="h-7 px-2 text-xs flex items-center gap-1"
-                  onClick={() => {
-                    const headers = ["Partner Name", "Type", "Branch", "State", "Contact Person", "Contact Phone", "Email", "Total Stoves", "Sold", "Available"];
-                    const rows = organizationsData.map((org) => [org.partner_name, org.partner_type || "", org.branch || "", org.state || "", org.contact_person || "", org.contact_phone || "", org.email || "", org.total_stove_ids ?? "", org.sold_stove_ids ?? "", org.available_stove_ids ?? ""]);
-                    downloadTableAsCSV(headers, rows, `partners-${new Date().toISOString().slice(0, 10)}.csv`);
-                  }}
-                  disabled={organizationsData.length === 0}
-                >
-                  <Download className="h-3 w-3" />Download
-                </Button>
-              </div>
-            </div>
-
-            <div className="bg-white border-x border-gray-200 overflow-x-auto relative">
+            <div className="bg-white border border-gray-200 overflow-x-auto relative">
               {tableLoading && (
                 <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
                   <Loader2 className="h-6 w-6 animate-spin text-brand" />
@@ -759,28 +973,26 @@ export default function SuperAdminPartnersContent() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-brand hover:bg-brand">
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner/Customer Name</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">State</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Branch</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone Number</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stoves Received</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stoves Sold</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Unsold Stoves</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stoves (Received / Sold / Available)</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Agents Assigned</TableHead>
                     <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className={tableLoading ? "opacity-40" : ""}>
-                  {organizationsData.length === 0 ? (
+                  {filteredOrgs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-10">
+                      <TableCell colSpan={7} className="text-center py-10">
                         <Building2 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                         <p className="text-gray-500 font-medium">No partners found</p>
                         <p className="text-gray-400 text-sm">Try adjusting your filters</p>
                       </TableCell>
                     </TableRow>
                   ) : (
-                    organizationsData.map((org, idx) => (
+                    filteredOrgs.map((org, idx) => (
                       <React.Fragment key={org.id}>
                         <TableRow className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}>
                           <TableCell className="text-xs font-medium text-gray-900">{org.partner_name}</TableCell>
@@ -788,69 +1000,50 @@ export default function SuperAdminPartnersContent() {
                           <TableCell className="text-xs">{org.branch || "N/A"}</TableCell>
                           <TableCell className="text-xs">{org.contact_phone || "—"}</TableCell>
                           <TableCell>
-                            <button onClick={() => handleViewStoveIds(org, "all")} className="text-xs font-medium text-purple-700 hover:underline hover:text-purple-900 transition-colors">
-                              {org.total_stove_ids ?? 0}
-                            </button>
-                          </TableCell>
-                          <TableCell>
-                            <button onClick={() => handleViewStoveIds(org, "sold")} className="text-xs font-medium text-blue-600 hover:underline hover:text-blue-800 transition-colors">
-                              {org.sold_stove_ids ?? 0}
-                            </button>
-                          </TableCell>
-                          <TableCell>
-                            <button onClick={() => handleViewStoveIds(org, "available")} className="text-xs font-medium text-green-600 hover:underline hover:text-green-800 transition-colors">
-                              {org.available_stove_ids ?? 0}
-                            </button>
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <button onClick={() => handleViewStoveIds(org, "all")} className="font-medium text-purple-700 hover:underline hover:text-purple-900 transition-colors" title="Total received">
+                                {org.total_stove_ids ?? 0}
+                              </button>
+                              <span className="text-gray-300">/</span>
+                              <button onClick={() => handleViewStoveIds(org, "sold")} className="font-medium text-blue-600 hover:underline hover:text-blue-800 transition-colors" title="Sold">
+                                {org.sold_stove_ids ?? 0}
+                              </button>
+                              <span className="text-gray-300">/</span>
+                              <button onClick={() => handleViewStoveIds(org, "available")} className="font-medium text-green-600 hover:underline hover:text-green-800 transition-colors" title="Available">
+                                {org.available_stove_ids ?? 0}
+                              </button>
+                            </div>
                           </TableCell>
                           <TableCell>
                             {orgAgentsData[org.id] === undefined ? (
                               <Loader2 className="h-3 w-3 animate-spin text-gray-300" />
                             ) : orgAgentsData[org.id].length === 0 ? (
-                              <span className="text-gray-400 text-xs">—</span>
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">0</span>
                             ) : (
-                              <div className="flex flex-wrap gap-1">
-                                {orgAgentsData[org.id].map((agent) => (
-                                  <span key={agent.id} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 whitespace-nowrap">
-                                    {agent.full_name?.split(" ")[0] || agent.full_name}
-                                  </span>
-                                ))}
-                              </div>
+                              <button
+                                onClick={() => setAgentsModalOrg(org)}
+                                className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 hover:bg-green-200 transition-colors cursor-pointer"
+                                title="Click to view assigned agents"
+                              >
+                                {orgAgentsData[org.id].length}
+                              </button>
                             )}
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex items-center justify-center gap-1">
-                              <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="Edit" onClick={() => handleEdit(org)}>
-                                <Edit className="h-3.5 w-3.5" />
+                              <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="View Details" onClick={() => handleViewDetails(org)}>
+                                Details
                               </Button>
-                              <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:border-red-300" title="Delete" onClick={() => handleDelete(org)}>
-                                <Trash2 className="h-3.5 w-3.5" />
+                              <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="View Credentials" onClick={() => handleViewCredentials(org)} disabled={loadingCredentialOrgId === org.id}>
+                                {loadingCredentialOrgId === org.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}Credentials
                               </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="outline" size="sm" className="h-7 w-7 p-0"><MoreVertical className="h-3.5 w-3.5" /></Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => setAssignAgentOrg(org)}>
-                                    <Users className="mr-2 h-4 w-4" />Assign Agent
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleViewDetails(org)}>
-                                    <Eye className="mr-2 h-4 w-4" />Details
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleViewStoveIds(org)}>
-                                    <Package className="mr-2 h-4 w-4" />View Stove IDs
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleToggleStoveBreakdown(org)}>
-                                    <Tag className="mr-2 h-4 w-4" />{expandedOrgId === org.id ? "Hide Breakdown" : "View Breakdown"}
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
                             </div>
                           </TableCell>
                         </TableRow>
 
                         {expandedOrgId === org.id && (
                           <TableRow key={`${org.id}-breakdown`} className="bg-blue-50/40">
-                            <TableCell colSpan={9} className="p-0">
+                            <TableCell colSpan={7} className="p-0">
                               <div className="px-4 py-3">
                                 {loadingOrgId === org.id ? (
                                   <div className="flex items-center gap-2 py-3 text-sm text-gray-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading stove reference breakdown...</div>
@@ -952,6 +1145,8 @@ export default function SuperAdminPartnersContent() {
           onClose={() => setAssignAgentOrg(null)}
           onSuccess={() => { setAssignAgentOrg(null); setOrgAgentsData({}); }}
         />
+        <ViewCredentialModal isOpen={!!viewingCredential} onClose={() => setViewingCredential(null)} credential={viewingCredential} />
+        <AssignedAgentsModal organization={agentsModalOrg} agents={agentsModalOrg ? (orgAgentsData[agentsModalOrg.id] || []) : []} isOpen={!!agentsModalOrg} onClose={() => setAgentsModalOrg(null)} />
         <ToastContainer toasts={toasts} onRemove={removeToast} />
       </DashboardLayout>
     </>

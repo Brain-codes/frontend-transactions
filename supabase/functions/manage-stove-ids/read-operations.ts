@@ -107,6 +107,11 @@ export async function getStoveIds(
     query = query.ilike("stove_id", `%${stoveIdFilter}%`);
   }
 
+  const salesReferenceFilter = searchParams.get("sales_reference") || "";
+  if (salesReferenceFilter) {
+    query = query.ilike("sales_reference", `%${salesReferenceFilter}%`);
+  }
+
   if (statusFilter) {
     query = query.eq("status", statusFilter);
   }

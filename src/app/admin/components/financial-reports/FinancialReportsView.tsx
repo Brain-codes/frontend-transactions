@@ -87,6 +87,9 @@ interface FinancialReportsViewProps {
   onDeleteSale?: (sale: AdminSales) => void;
   onApproveSale?: (sale: AdminSales) => void;
   viewFrom?: "admin" | "superAdmin" | "agent" | "acsl_agent";
+  selectedYear?: number;
+  onYearChange?: (year: number) => void;
+  availableYears?: number[];
 }
 
 const getAmountPaid = (sale: AdminSales): number =>
@@ -95,7 +98,7 @@ const getAmountPaid = (sale: AdminSales): number =>
 const getAmountOwed = (sale: AdminSales): number =>
   sale.is_installment ? sale.amount - (sale.total_paid ?? 0) : 0;
 
-const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, onEditSale, onDeleteSale, onApproveSale, viewFrom = "admin" }) => {
+const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, onEditSale, onDeleteSale, onApproveSale, viewFrom = "admin", selectedYear: externalSelectedYear, onYearChange: externalOnYearChange, availableYears: externalAvailableYears }) => {
   const [allSales, setAllSales] = useState<AdminSales[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -121,7 +124,12 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
   const [selectedLGA, setSelectedLGA] = useState("all");
   const [orgFilter, setOrgFilter] = useState("all");
   const [approvalFilter, setApprovalFilter] = useState("all");
-  const [selectedYears, setSelectedYears] = useState<number[]>(loadSelectedYears);
+  const [internalSelectedYears, setInternalSelectedYears] = useState<number[]>(loadSelectedYears);
+  const selectedYears = externalSelectedYear !== undefined ? [externalSelectedYear] : internalSelectedYears;
+  const setSelectedYears = (years: number[]) => {
+    setInternalSelectedYears(years);
+    saveSelectedYears(years);
+  };
   const [exporting, setExporting] = useState(false);
 
   const stateList = useMemo(() => Object.keys(lgaAndStates).sort(), []);
@@ -131,6 +139,7 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
   );
 
   const availableYears = useMemo(() => {
+    if (externalAvailableYears) return externalAvailableYears;
     if (allSales.length === 0) return [new Date().getFullYear()];
     const years = Array.from(
       new Set(
@@ -140,7 +149,7 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
       )
     ).sort((a, b) => a - b);
     return years.length > 0 ? years : [new Date().getFullYear()];
-  }, [allSales]);
+  }, [allSales, externalAvailableYears]);
 
   const fetchSales = useCallback(async () => {
     try {
@@ -175,11 +184,18 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
       );
     }
 
-    if (selectedYears.length > 0 && selectedYears.length < availableYears.length && viewFrom === "superAdmin") {
-      result = result.filter((s) => {
-        const d = s.sales_date || s.created_at;
-        return d && selectedYears.includes(new Date(d).getFullYear());
-      });
+    if (viewFrom === "superAdmin") {
+      if (externalSelectedYear !== undefined) {
+        result = result.filter((s) => {
+          const d = s.sales_date || s.created_at;
+          return d && new Date(d).getFullYear() === externalSelectedYear;
+        });
+      } else if (selectedYears.length > 0 && selectedYears.length < availableYears.length) {
+        result = result.filter((s) => {
+          const d = s.sales_date || s.created_at;
+          return d && selectedYears.includes(new Date(d).getFullYear());
+        });
+      }
     }
 
     if (paymentStatusFilter !== "all") {
@@ -357,15 +373,6 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
                 />
               )}
             </div>
-          )}
-
-          {/* Year Filter for Super Admin */}
-          {viewFrom === "superAdmin" && (
-            <YearFilterBar
-              selectedYears={selectedYears}
-              availableYears={availableYears}
-              onChange={setSelectedYears}
-            />
           )}
 
           {/* Filters */}

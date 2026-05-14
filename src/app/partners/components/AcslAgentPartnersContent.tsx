@@ -13,11 +13,12 @@ import {
 } from "@/components/ui/select";
 import PageHeader from "../../components/PageHeader";
 import {
-  Building2, Loader2, AlertCircle, ArrowRight, Search, X,
+  Building2, Loader2, AlertCircle, Search, X,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
 } from "lucide-react";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import { useAuth } from "../../contexts/AuthContext";
+import PartnerDetailsModal from "./PartnerDetailsModal";
 
 interface AssignedOrg {
   id: string;
@@ -39,8 +40,10 @@ export default function AcslAgentPartnersContent() {
   const [error, setError] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [stateFilter, setStateFilter] = useState("all");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedPartner, setSelectedPartner] = useState<AssignedOrg | null>(null);
 
   useEffect(() => {
     const fetchOrgs = async () => {
@@ -62,17 +65,26 @@ export default function AcslAgentPartnersContent() {
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
+  const uniqueStates = useMemo(() => {
+    const states = orgs.map((o) => o.state).filter(Boolean) as string[];
+    return Array.from(new Set(states)).sort();
+  }, [orgs]);
+
   const filteredOrgs = useMemo(() => {
-    if (!searchTerm.trim()) return orgs;
-    const q = searchTerm.toLowerCase();
-    return orgs.filter(
-      (o) =>
-        o.partner_name.toLowerCase().includes(q) ||
-        (o.branch || "").toLowerCase().includes(q) ||
-        (o.state || "").toLowerCase().includes(q) ||
-        (o.contact_person || "").toLowerCase().includes(q)
-    );
-  }, [orgs, searchTerm]);
+    let result = orgs;
+    if (stateFilter !== "all") result = result.filter((o) => o.state === stateFilter);
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      result = result.filter(
+        (o) =>
+          o.partner_name.toLowerCase().includes(q) ||
+          (o.branch || "").toLowerCase().includes(q) ||
+          (o.state || "").toLowerCase().includes(q) ||
+          (o.contact_person || "").toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [orgs, searchTerm, stateFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredOrgs.length / pageSize));
   const startItem = (currentPage - 1) * pageSize + 1;
@@ -103,27 +115,33 @@ export default function AcslAgentPartnersContent() {
         )}
 
         <div className="bg-blue-50 p-3 rounded-lg border border-gray-200">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="w-full md:w-64 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input placeholder="Search partner name, branch, state..." value={searchTerm} onChange={(e) => handleSearch(e.target.value)} className="pl-9 bg-white" />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="w-full sm:w-80 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input placeholder="Search partner name, branch, state." value={searchTerm} onChange={(e) => handleSearch(e.target.value)} className="pl-9 bg-white" />
+              </div>
+              <Select value={stateFilter} onValueChange={(v) => { setStateFilter(v); setCurrentPage(1); }}>
+                <SelectTrigger className="w-[160px] bg-white text-sm"><SelectValue placeholder="Filter by state" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All States</SelectItem>
+                  {uniqueStates.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(searchTerm || stateFilter !== "all") && (
+                <Button variant="outline" size="sm" onClick={() => { handleSearch(""); setStateFilter("all"); }} className="whitespace-nowrap">
+                  <X className="h-4 w-4 mr-2" />Clear
+                </Button>
+              )}
             </div>
-            {searchTerm && (
-              <Button variant="outline" size="sm" onClick={() => handleSearch("")} className="whitespace-nowrap">
-                <X className="h-4 w-4 mr-2" />Clear
-              </Button>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-0">
-          <div className="bg-blue-50 rounded-t-lg px-4 py-2 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <p className="text-sm text-gray-600">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+              <span>
                 Showing <span className="font-medium">{filteredOrgs.length > 0 ? startItem : 0}–{endItem}</span> of <span className="font-medium">{filteredOrgs.length}</span> partners
-              </p>
+              </span>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">per page:</span>
+                <span className="text-gray-500">per page:</span>
                 <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
                   <SelectTrigger className="w-[65px] h-7 bg-white text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -133,11 +151,13 @@ export default function AcslAgentPartnersContent() {
                   </SelectContent>
                 </Select>
               </div>
+              <span className="font-bold text-green-600">Total: <span className="text-brand">{orgs.length}</span></span>
             </div>
-            <p className="text-sm font-bold text-green-500">Total Partners: <span className="text-brand">{filteredOrgs.length}</span></p>
           </div>
+        </div>
 
-          <div className="bg-white border-x border-gray-200 overflow-x-auto relative">
+        <div className="space-y-0">
+          <div className="bg-white border border-gray-200 rounded-t-lg overflow-x-auto relative">
             {loading && (
               <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center z-10">
                 <Loader2 className="animate-spin h-8 w-8 mb-2 text-brand" />
@@ -152,6 +172,7 @@ export default function AcslAgentPartnersContent() {
                   <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Branch</TableHead>
                   <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Contact Person</TableHead>
                   <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone</TableHead>
+                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Action</TableHead>
                   {/* <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Assigned At</TableHead> */}
                 </TableRow>
               </TableHeader>
@@ -174,6 +195,15 @@ export default function AcslAgentPartnersContent() {
                       <TableCell className="text-gray-600">{org.branch || "—"}</TableCell>
                       <TableCell className="text-gray-600">{org.contact_person || "—"}</TableCell>
                       <TableCell className="text-gray-600">{org.contact_phone || "—"}</TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          className="text-xs h-7 px-3 bg-brand hover:bg-brand/90 text-white"
+                          onClick={() => setSelectedPartner(org)}
+                        >
+                          View Details
+                        </Button>
+                      </TableCell>
                       {/* <TableCell className="text-gray-600 text-sm">{formatDate(org.assigned_at)}</TableCell> */}
                     </TableRow>
                   ))
@@ -198,6 +228,13 @@ export default function AcslAgentPartnersContent() {
           )}
         </div>
       </div>
+
+      {selectedPartner && (
+        <PartnerDetailsModal
+          partner={selectedPartner}
+          onClose={() => setSelectedPartner(null)}
+        />
+      )}
     </DashboardLayout>
   );
 }

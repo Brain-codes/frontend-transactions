@@ -9,6 +9,7 @@ import salesAdvancedService from "../../services/salesAdvancedAPIService";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import { AdminSales } from "@/types/adminSales";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, ShoppingCart, Download, Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PageHeader from "../../components/PageHeader";
@@ -32,6 +33,10 @@ export default function UnifiedSalesContent() {
 
   const [reloadKey, setReloadKey] = useState(0);
   const reload = () => setReloadKey((k) => k + 1);
+
+  const CURRENT_YEAR = new Date().getFullYear();
+  const YEARS = Array.from({ length: CURRENT_YEAR - 2023 }, (_, i) => 2024 + i);
+  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
 
   const [editSale, setEditSale] = useState<AdminSales | null>(null);
   const [editLoading, setEditLoading] = useState(false);
@@ -109,7 +114,22 @@ export default function UnifiedSalesContent() {
           icon={ShoppingCart}
           title="Sales"
           right={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {isSuperAdmin && (
+                <>
+                  <span className="text-sm font-medium text-gray-700">Year:</span>
+                  <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+                    <SelectTrigger className="w-[110px] h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {YEARS.map((y) => (
+                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
               {can("create-sale") && (
                 <Button
                   size="sm"
@@ -131,6 +151,9 @@ export default function UnifiedSalesContent() {
           onDeleteSale={handleDeleteSale}
           onApproveSale={isAcslAgent ? setApproveSale : undefined}
           viewFrom={viewFrom as any}
+          selectedYear={isSuperAdmin ? selectedYear : undefined}
+          onYearChange={isSuperAdmin ? setSelectedYear : undefined}
+          availableYears={isSuperAdmin ? YEARS : undefined}
         />
       </div>
 

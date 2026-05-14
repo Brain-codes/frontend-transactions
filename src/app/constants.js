@@ -246,6 +246,14 @@ export const lgaAndStates = {
     "Udi",
     "Igbo Eze South"
   ],
+  "FCT": [
+    "Abaji",
+    "Abuja Municipal",
+    "Bwari",
+    "Gwagwalada",
+    "Kuje",
+    "Kwali"
+  ],
   "Gombe": [
     "Akko",
     "Balanga",

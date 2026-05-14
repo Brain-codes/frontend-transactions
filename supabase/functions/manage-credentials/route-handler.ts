@@ -52,38 +52,6 @@ export async function handleRequest(
       );
     }
 
-    // GET /manage-credentials - Get all credentials
-    if (method === "GET" && url.pathname.endsWith("/manage-credentials")) {
-      console.log("📋 Route matched: GET all credentials");
-      console.log("🔄 Fetching all credentials from database...");
-
-      const result = await getAllCredentials(supabase);
-
-      if (!result.success) {
-        console.error("❌ Failed to get credentials:", result.error);
-        return withCors(
-          new Response(
-            JSON.stringify({ success: false, error: result.error }),
-            { status: 400, headers: { "Content-Type": "application/json" } }
-          )
-        );
-      }
-
-      console.log("✅ Successfully retrieved credentials");
-      console.log("📊 Count:", result.count);
-
-      return withCors(
-        new Response(
-          JSON.stringify({
-            success: true,
-            data: result.data,
-            count: result.count,
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } }
-        )
-      );
-    }
-
     // GET /manage-credentials?partner_id=XXX - Get credential by partner ID
     if (method === "GET" && url.searchParams.has("partner_id")) {
       const partnerId = url.searchParams.get("partner_id")!;
@@ -125,6 +93,30 @@ export async function handleRequest(
           status: 200,
           headers: { "Content-Type": "application/json" },
         })
+      );
+    }
+
+    // GET /manage-credentials - Get all credentials (no filters)
+    if (method === "GET") {
+      console.log("📋 Route matched: GET all credentials");
+
+      const result = await getAllCredentials(supabase);
+
+      if (!result.success) {
+        console.error("❌ Failed to get credentials:", result.error);
+        return withCors(
+          new Response(
+            JSON.stringify({ success: false, error: result.error }),
+            { status: 400, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+
+      return withCors(
+        new Response(
+          JSON.stringify({ success: true, data: result.data, count: result.count }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
       );
     }
 

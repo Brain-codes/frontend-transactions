@@ -11,6 +11,7 @@ export async function getOrganization(supabase: any, organizationId: string) {
     .select(
       `
       id,
+      partner_id,
       partner_name,
       branch,
       state,
@@ -83,6 +84,8 @@ export async function getOrganizations(
   const search = searchParams.get("search");
   const status = searchParams.get("status");
   const partnerType = searchParams.get("partner_type");
+  const stateFilter = searchParams.get("state");
+  const branchFilter = searchParams.get("branch");
   const sortBy = searchParams.get("sortBy") || "created_at";
   const sortOrder = searchParams.get("sortOrder") || "desc";
   const includeAdminUsers = searchParams.get("include_admin_users") !== "false"; // Default to true
@@ -103,6 +106,7 @@ export async function getOrganizations(
   let query = supabase.from("organizations").select(
     `
       id,
+      partner_id,
       partner_name,
       partner_type,
       branch,
@@ -123,7 +127,7 @@ export async function getOrganizations(
   // Apply filters - updated for new 8-field structure
   if (search) {
     query = query.or(
-      `partner_name.ilike.%${search}%,branch.ilike.%${search}%,email.ilike.%${search}%,state.ilike.%${search}%`,
+      `partner_name.ilike.%${search}%,partner_id.ilike.%${search}%`,
     );
   }
 
@@ -133,6 +137,14 @@ export async function getOrganizations(
 
   if (partnerType) {
     query = query.eq("partner_type", partnerType);
+  }
+
+  if (stateFilter) {
+    query = query.ilike("state", stateFilter);
+  }
+
+  if (branchFilter) {
+    query = query.ilike("branch", `%${branchFilter}%`);
   }
 
   // Apply sorting and pagination with validated parameters
@@ -253,45 +265,28 @@ export async function getOrganizations(
     } catch (stoveCountError) {
       console.error("Error fetching stove ID counts, using fallback method:", stoveCountError);
       
-      // Fallback: Use individual count queries with proper aggregation
+      // Fallback: single bulk query, aggregate in JS
       try {
         const orgIds = organizations.map((org: any) => org.id);
-        
-        // Create count maps
-        const totalMap = new Map();
-        const soldMap = new Map();
-        const availableMap = new Map();
-        
-        // Get counts using count query instead of fetching all records
-        for (const orgId of orgIds) {
-          // Total count
-          const { count: totalCount } = await supabase
-            .from("stove_ids")
-            .select("*", { count: "exact", head: true })
-            .eq("organization_id", orgId);
-          
-          totalMap.set(orgId, totalCount || 0);
-          
-          // Sold count
-          const { count: soldCount } = await supabase
-            .from("stove_ids")
-            .select("*", { count: "exact", head: true })
-            .eq("organization_id", orgId)
-            .eq("status", "sold");
-          
-          soldMap.set(orgId, soldCount || 0);
-          
-          // Available count
-          const { count: availableCount } = await supabase
-            .from("stove_ids")
-            .select("*", { count: "exact", head: true })
-            .eq("organization_id", orgId)
-            .eq("status", "available");
-          
-          availableMap.set(orgId, availableCount || 0);
+
+        const { data: stoveRows, error: bulkErr } = await supabase
+          .from("stove_ids")
+          .select("organization_id, status")
+          .in("organization_id", orgIds);
+
+        if (bulkErr) throw bulkErr;
+
+        const totalMap = new Map<string, number>();
+        const soldMap = new Map<string, number>();
+        const availableMap = new Map<string, number>();
+
+        for (const row of stoveRows || []) {
+          const id = row.organization_id;
+          totalMap.set(id, (totalMap.get(id) || 0) + 1);
+          if (row.status === "sold") soldMap.set(id, (soldMap.get(id) || 0) + 1);
+          else availableMap.set(id, (availableMap.get(id) || 0) + 1);
         }
 
-        // Add stove ID counts to organizations
         organizationsWithAdmins = organizationsWithAdmins.map((org: any) => ({
           ...org,
           total_stove_ids: totalMap.get(org.id) || 0,

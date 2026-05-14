@@ -62,13 +62,15 @@ export async function createAgent(supabase: any, data: any, adminId: string) {
     throw new Error("Failed to create user profile");
   }
 
-  // Update profile with phone if provided, and ensure organization_id stays NULL
-  if (data.phone) {
-    await supabase
-      .from("profiles")
-      .update({ phone: data.phone, organization_id: null })
-      .eq("id", profile.id);
-  }
+  // Update profile with phone if provided, stamp created_by, and ensure organization_id stays NULL
+  await supabase
+    .from("profiles")
+    .update({
+      ...(data.phone ? { phone: data.phone } : {}),
+      organization_id: null,
+      updated_by: adminId,
+    })
+    .eq("id", profile.id);
 
   // Save credentials so they appear in the credentials management page
   await supabase.from("credentials").insert({

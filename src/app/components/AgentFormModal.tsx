@@ -1,17 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { FormGrid, FormFieldWrapper } from "@/components/ui/form-grid";
 import {
   Select,
   SelectContent,
@@ -30,9 +27,30 @@ import {
   RefreshCw,
   Search,
   Building2,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  Check,
+  X,
 } from "lucide-react";
 import superAdminAgentService from "../services/superAdminAgentService";
 import organizationsService from "../services/organizationsService";
+import { lgaAndStates } from "../constants";
+
+const ALL_STATES = Object.keys(lgaAndStates).sort();
+
+const STATE_COLORS = [
+  { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" },
+  { bg: "#e0e7ff", text: "#3730a3", border: "#a5b4fc" },
+  { bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" },
+  { bg: "#fce7f3", text: "#9d174d", border: "#f9a8d4" },
+  { bg: "#ede9fe", text: "#5b21b6", border: "#c4b5fd" },
+  { bg: "#cffafe", text: "#164e63", border: "#67e8f9" },
+  { bg: "#fef3c7", text: "#92400e", border: "#fcd34d" },
+  { bg: "#fee2e2", text: "#991b1b", border: "#fca5a5" },
+  { bg: "#f3e8ff", text: "#6b21a8", border: "#d8b4fe" },
+  { bg: "#dcfce7", text: "#14532d", border: "#86efac" },
+];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -62,67 +80,192 @@ interface AgentFormModalProps {
   onSuccess: (agent: AcslAgent) => void;
 }
 
+// ── Shared compact field ───────────────────────────────────────────────────────
+
+const Field = ({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) => (
+  <div className="space-y-0.5">
+    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+      {label}
+    </p>
+    {children}
+  </div>
+);
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function AgentFormModal({ mode, agent, onClose, onSuccess }: AgentFormModalProps) {
-  // ── Core form state ──────────────────────────────────────────────────────
-  const [role, setRole] = useState(mode === "edit" ? (agent?.role ?? "acsl_agent") : "acsl_agent");
-  const [fullName, setFullName] = useState(mode === "edit" ? (agent?.full_name ?? "") : "");
+export default function AgentFormModal({
+  mode,
+  agent,
+  onClose,
+  onSuccess,
+}: AgentFormModalProps) {
+  const [role, setRole] = useState(
+    mode === "edit" ? (agent?.role ?? "acsl_agent") : "acsl_agent"
+  );
+  const [fullName, setFullName] = useState(
+    mode === "edit" ? (agent?.full_name ?? "") : ""
+  );
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState(mode === "edit" ? (agent?.phone ?? "") : "");
+  const [phone, setPhone] = useState(
+    mode === "edit" ? (agent?.phone ?? "") : ""
+  );
   const [status, setStatus] = useState<"active" | "disabled">(
-    mode === "edit" ? ((agent?.status as "active" | "disabled") ?? "active") : "active"
+    mode === "edit"
+      ? ((agent?.status as "active" | "disabled") ?? "active")
+      : "active"
   );
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [copyMessage, setCopyMessage] = useState("");
-
-  // ── Submission ────────────────────────────────────────────────────────────
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 
-  // ── Partner assignment ────────────────────────────────────────────────────
+  // Partner assignment
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [orgsLoading, setOrgsLoading] = useState(false);
-  const [selectedOrgIds, setSelectedOrgIds] = useState<Set<string>>(new Set());
-  const [originalOrgIds, setOriginalOrgIds] = useState<Set<string>>(new Set());
-  const [orgSearch, setOrgSearch] = useState("");
   const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [partnersOpen, setPartnersOpen] = useState(true);
+
+  // Assignment state — direct orgs + state-level
+  const [selectedDirectOrgIds, setSelectedDirectOrgIds] = useState<Set<string>>(new Set());
+  const [originalOrgIds, setOriginalOrgIds] = useState<Set<string>>(new Set());
+  const [selectedStates, setSelectedStates] = useState<Set<string>>(new Set());
+  const [originalStates, setOriginalStates] = useState<Set<string>>(new Set());
+
+  // UI for assignment section
+  const [assignMode, setAssignMode] = useState<"state" | "partner">("state");
+  const [orgSearch, setOrgSearch] = useState("");
+  const [stateSearch, setStateSearch] = useState("");
+  const [stateColorMap, setStateColorMap] = useState<Record<string, number>>({});
 
   const isAcslRole = role === "acsl_agent";
 
-  // Load org list when role is acsl_agent
+  // Load all orgs
   useEffect(() => {
     if (!isAcslRole) return;
     setOrgsLoading(true);
     organizationsService
       .getAllOrganizations()
-      .then((result: any) => setOrgs(result.data || []))
+      .then((r: any) => setOrgs(r.data || []))
       .finally(() => setOrgsLoading(false));
   }, [isAcslRole]);
 
-  // In edit mode, load current direct assignments once
+  // Load existing assignments for edit
   useEffect(() => {
     if (mode !== "edit" || !agent?.id || !isAcslRole) return;
     setAssignmentLoading(true);
-    superAdminAgentService
-      .getAgentOrganizations(agent.id)
-      .then((result: any) => {
+    Promise.all([
+      superAdminAgentService.getAgentOrganizations(agent.id),
+      superAdminAgentService.getAgentStates(agent.id),
+    ])
+      .then(([orgsRes, statesRes]: any[]) => {
         const directIds = new Set<string>(
-          (result.data || [])
+          (orgsRes.data || [])
             .filter((o: any) => !o.source || o.source === "direct")
             .map((o: any) => o.id as string)
         );
-        setSelectedOrgIds(new Set(directIds));
+        const states = new Set<string>(
+          (statesRes.data || []).map((s: any) => s.state as string)
+        );
+        setSelectedDirectOrgIds(new Set(directIds));
         setOriginalOrgIds(new Set(directIds));
+        setSelectedStates(new Set(states));
+        setOriginalStates(new Set(states));
+        // Assign colors to pre-loaded states
+        const colorMap: Record<string, number> = {};
+        Array.from(states).forEach((s, i) => { colorMap[s] = i; });
+        setStateColorMap(colorMap);
       })
       .catch(() => {})
       .finally(() => setAssignmentLoading(false));
   }, [mode, agent?.id, isAcslRole]);
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  // ── Derived ──────────────────────────────────────────────────────────────────
+
+  const orgCountByState = useMemo(() => {
+    const counts: Record<string, number> = {};
+    orgs.forEach((o) => {
+      if (o.state) counts[o.state] = (counts[o.state] || 0) + 1;
+    });
+    return counts;
+  }, [orgs]);
+
+  const visibleStates = ALL_STATES.filter(
+    (s) => !selectedStates.has(s) && s.toLowerCase().includes(stateSearch.toLowerCase())
+  );
+
+  const filteredOrgsForPartnerMode = orgs.filter((o) => {
+    const q = orgSearch.toLowerCase();
+    return (
+      o.partner_name.toLowerCase().includes(q) ||
+      (o.branch || "").toLowerCase().includes(q) ||
+      (o.state || "").toLowerCase().includes(q)
+    );
+  });
+
+  const selectedStatesWithPartners = Array.from(selectedStates).filter(
+    (s) => orgs.some((o) => o.state === s)
+  );
+
+  const totalSelected = useMemo(() => {
+    const stateCovered = new Set<string>();
+    orgs.forEach((o) => { if (o.state && selectedStates.has(o.state)) stateCovered.add(o.id); });
+    return new Set([...selectedDirectOrgIds, ...stateCovered]).size;
+  }, [orgs, selectedStates, selectedDirectOrgIds]);
+
+  const hasBottomContent = selectedStatesWithPartners.length > 0;
+
+  // ── Color helpers ─────────────────────────────────────────────────────────────
+
+  const getStateColor = (s: string) =>
+    STATE_COLORS[(stateColorMap[s] ?? 0) % STATE_COLORS.length];
+
+  // ── Toggle helpers ────────────────────────────────────────────────────────────
+
+  const toggleState = (s: string) => {
+    const isSelected = selectedStates.has(s);
+    if (isSelected) {
+      const otherStates = new Set(Array.from(selectedStates).filter((st) => st !== s));
+      setSelectedStates(otherStates);
+      setSelectedDirectOrgIds((prev) => {
+        const next = new Set(prev);
+        orgs.forEach((o) => {
+          if (o.state === s && !otherStates.has(o.state ?? "")) next.delete(o.id);
+        });
+        return next;
+      });
+    } else {
+      const usedIndices = new Set(Object.values(stateColorMap));
+      let nextIdx = 0;
+      while (usedIndices.has(nextIdx)) nextIdx++;
+      setStateColorMap((prev) => ({ ...prev, [s]: nextIdx }));
+      setSelectedStates((prev) => new Set([...prev, s]));
+      const ids = orgs.filter((o) => o.state === s).map((o) => o.id);
+      setSelectedDirectOrgIds((prev) => {
+        const next = new Set(prev);
+        ids.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+  };
+
+  const toggleOrg = (id: string) =>
+    setSelectedDirectOrgIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  // ── Utilities ─────────────────────────────────────────────────────────────────
+
   const generatePassword = () => {
     const charset =
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
@@ -133,10 +276,7 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
     pwd += "!@#$%^&*"[Math.floor(Math.random() * 8)];
     for (let i = 4; i < 12; i++)
       pwd += charset[Math.floor(Math.random() * charset.length)];
-    pwd = pwd
-      .split("")
-      .sort(() => Math.random() - 0.5)
-      .join("");
+    pwd = pwd.split("").sort(() => Math.random() - 0.5).join("");
     setPassword(pwd);
     setConfirmPassword(pwd);
     copyToClipboard(pwd);
@@ -145,39 +285,13 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopyMessage("Copied to clipboard!");
+      setCopyMessage("Copied!");
     } catch {
       setCopyMessage("Failed to copy");
     }
-    setTimeout(() => setCopyMessage(""), 3000);
+    setTimeout(() => setCopyMessage(""), 2500);
   };
 
-  const toggleOrg = (orgId: string) => {
-    setSelectedOrgIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(orgId)) next.delete(orgId);
-      else next.add(orgId);
-      return next;
-    });
-  };
-
-  // Business rule: in edit mode, agent must keep at least one assignment (org or state)
-  const wouldHaveNoAssignment =
-    mode === "edit" &&
-    isAcslRole &&
-    selectedOrgIds.size === 0 &&
-    originalOrgIds.size > 0 &&
-    (agent?.assigned_states_count ?? 0) === 0;
-
-  const filteredOrgs = orgs.filter(
-    (o) =>
-      !orgSearch ||
-      o.partner_name.toLowerCase().includes(orgSearch.toLowerCase()) ||
-      (o.state ?? "").toLowerCase().includes(orgSearch.toLowerCase()) ||
-      (o.branch ?? "").toLowerCase().includes(orgSearch.toLowerCase())
-  );
-
-  // ── Validation ────────────────────────────────────────────────────────────
   const validate = (): string[] => {
     const errs: string[] = [];
     if (!fullName.trim()) errs.push("Full name is required");
@@ -194,14 +308,10 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
     return errs;
   };
 
-  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs = validate();
-    if (errs.length > 0) {
-      setErrors(errs);
-      return;
-    }
+    if (errs.length > 0) { setErrors(errs); return; }
 
     setSubmitting(true);
     setErrors([]);
@@ -215,438 +325,481 @@ export default function AgentFormModal({ mode, agent, onClose, onSuccess }: Agen
           role,
         });
         const newAgent: AcslAgent = result.data;
-        if (isAcslRole && selectedOrgIds.size > 0) {
-          await superAdminAgentService.setAgentOrganizations(newAgent.id, [
-            ...selectedOrgIds,
+        if (isAcslRole) {
+          await Promise.all([
+            selectedDirectOrgIds.size > 0
+              ? superAdminAgentService.setAgentOrganizations(newAgent.id, [...selectedDirectOrgIds])
+              : Promise.resolve(),
+            selectedStates.size > 0
+              ? superAdminAgentService.setAgentStates(newAgent.id, [...selectedStates])
+              : Promise.resolve(),
           ]);
         }
         onSuccess({
           ...newAgent,
-          assigned_organizations_count: selectedOrgIds.size,
-          assigned_states_count: 0,
+          assigned_organizations_count: selectedDirectOrgIds.size,
+          assigned_states_count: selectedStates.size,
         });
       } else {
-        // Build update payload — only changed fields
         const updates: Record<string, string> = {};
-        if (fullName.trim() !== agent!.full_name)
-          updates.full_name = fullName.trim();
-        if ((phone.trim() || null) !== agent!.phone)
-          updates.phone = phone.trim();
+        if (fullName.trim() !== agent!.full_name) updates.full_name = fullName.trim();
+        if ((phone.trim() || null) !== agent!.phone) updates.phone = phone.trim();
         if (status !== agent!.status) updates.status = status;
 
         let updatedAgent = { ...agent! };
         if (Object.keys(updates).length > 0) {
-          const result = await superAdminAgentService.updateSuperAdminAgent(
-            agent!.id,
-            updates
-          );
+          const result = await superAdminAgentService.updateSuperAdminAgent(agent!.id, updates);
           updatedAgent = { ...updatedAgent, ...result.data };
         }
 
-        // Apply org assignment changes (full replace with desired set)
         if (isAcslRole) {
-          const hasOrgChanges =
-            [...selectedOrgIds].some((id) => !originalOrgIds.has(id)) ||
-            [...originalOrgIds].some((id) => !selectedOrgIds.has(id));
-          if (hasOrgChanges) {
-            await superAdminAgentService.setAgentOrganizations(agent!.id, [
-              ...selectedOrgIds,
-            ]);
-          }
+          const orgsChanged =
+            [...selectedDirectOrgIds].some((id) => !originalOrgIds.has(id)) ||
+            [...originalOrgIds].some((id) => !selectedDirectOrgIds.has(id));
+          const statesChanged =
+            [...selectedStates].some((s) => !originalStates.has(s)) ||
+            [...originalStates].some((s) => !selectedStates.has(s));
+          await Promise.all([
+            orgsChanged
+              ? superAdminAgentService.setAgentOrganizations(agent!.id, [...selectedDirectOrgIds])
+              : Promise.resolve(),
+            statesChanged
+              ? superAdminAgentService.setAgentStates(agent!.id, [...selectedStates])
+              : Promise.resolve(),
+          ]);
         }
 
         onSuccess({
           ...updatedAgent,
           assigned_organizations_count: isAcslRole
-            ? selectedOrgIds.size
+            ? selectedDirectOrgIds.size
             : agent!.assigned_organizations_count,
-          assigned_states_count: agent!.assigned_states_count,
+          assigned_states_count: isAcslRole
+            ? selectedStates.size
+            : agent!.assigned_states_count,
         });
       }
     } catch (err: any) {
-      setErrors([
-        err.message ||
-          `Failed to ${mode === "create" ? "create" : "update"} agent`,
-      ]);
+      setErrors([err.message || `Failed to ${mode === "create" ? "create" : "update"} agent`]);
     } finally {
       setSubmitting(false);
     }
   };
 
-  // ── Derived labels ────────────────────────────────────────────────────────
-  const title =
-    mode === "create"
-      ? role === "super_admin"
-        ? "Add Super Admin"
-        : "Create Agent"
-      : "Edit Agent";
-  const description =
-    mode === "create"
-      ? "Fill in the details below to create a new agent account."
-      : `Update ${agent?.full_name ?? "agent"}'s profile and partner assignments.`;
+  const title = mode === "create"
+    ? role === "super_admin" ? "Add Super Admin" : "Create Agent"
+    : "Edit Agent";
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent size="full" className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+        {/* Header */}
+        <DialogHeader className="px-4 py-2.5 bg-gradient-to-r from-primary/5 to-primary/10 border-b shrink-0">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-sm font-bold text-foreground">
+              {title}
+            </DialogTitle>
+            {mode === "edit" && agent && (
+              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                agent.status === "active"
+                  ? "bg-green-50 text-green-700 border-green-200"
+                  : "bg-red-50 text-red-600 border-red-200"
+              }`}>
+                {agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
+              </span>
+            )}
+          </div>
+          {mode === "edit" && agent && (
+            <p className="text-[11px] text-muted-foreground mt-0.5">{agent.email}</p>
+          )}
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Error list */}
+        {/* Body */}
+        <form
+          id="agent-form"
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto space-y-2.5"
+        >
+          {/* Errors */}
           {errors.length > 0 && (
-            <div className="space-y-1.5">
+            <div className="space-y-1 px-4 pt-2">
               {errors.map((err, i) => (
                 <div
                   key={i}
-                  className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-red-50 border border-red-200 rounded text-[11px] text-red-700"
                 >
-                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
-                  <span className="text-red-700 text-sm">{err}</span>
+                  <AlertCircle className="h-3 w-3 shrink-0" />
+                  {err}
                 </div>
               ))}
             </div>
           )}
 
+          {copyMessage && (
+            <div className="px-4 pt-1">
+              <div className="px-2.5 py-1.5 bg-green-50 border border-green-200 rounded text-[11px] text-green-700">
+                {copyMessage}
+              </div>
+            </div>
+          )}
+
           {/* ── Create fields ── */}
           {mode === "create" && (
-            <FormGrid>
-              <FormFieldWrapper fullWidth>
-                <Label>Role *</Label>
-                <Select value={role} onValueChange={setRole}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
-                    <SelectItem value="super_admin">Super Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-                {role === "super_admin" && (
-                  <p className="text-xs text-orange-600 mt-1">
-                    Super Admin users have full system access. Use with caution.
-                  </p>
-                )}
-              </FormFieldWrapper>
-
-              <FormFieldWrapper fullWidth>
-                <Label htmlFor="af-name">Full Name *</Label>
-                <Input
-                  id="af-name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Enter full name"
-                />
-              </FormFieldWrapper>
-
-              <FormFieldWrapper>
-                <Label htmlFor="af-email">Email Address *</Label>
-                <Input
-                  id="af-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter email address"
-                />
-              </FormFieldWrapper>
-
-              <FormFieldWrapper>
-                <Label htmlFor="af-phone">Phone Number</Label>
-                <Input
-                  id="af-phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Optional"
-                />
-              </FormFieldWrapper>
-
-              <FormFieldWrapper>
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="af-password">Password *</Label>
-                  <Button
-                    type="button"
-                    variant="link"
-                    size="sm"
-                    onClick={generatePassword}
-                    disabled={submitting}
-                    className="text-blue-600 hover:text-blue-800 p-0 h-auto text-sm"
-                  >
-                    <RefreshCw className="h-3 w-3 mr-1" />
-                    Auto Generate
-                  </Button>
-                </div>
-                <div className="relative">
-                  <Input
-                    id="af-password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter password"
-                    className="pr-20"
-                  />
-                  <div className="absolute inset-y-0 right-0 flex items-center">
-                    {password && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(password)}
-                        disabled={submitting}
-                        className="h-8 w-8 p-0 mr-1"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
+            <div className="mx-4 border border-border/60 rounded-md overflow-hidden">
+              <div className="px-3 py-1.5 bg-muted/40 border-b border-border/60">
+                <p className="text-[11px] font-semibold text-foreground">Agent Details</p>
+              </div>
+              <div className="px-3 py-2.5 grid grid-cols-2 gap-2.5">
+                <div className="col-span-2">
+                  <Field label="Role *">
+                    <Select value={role} onValueChange={setRole}>
+                      <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
+                        <SelectItem value="super_admin">Super Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {role === "super_admin" && (
+                      <p className="text-[10px] text-orange-600 mt-0.5">
+                        Super Admin has full system access. Use with caution.
+                      </p>
                     )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowPassword(!showPassword)}
-                      disabled={submitting}
-                      className="h-8 w-8 p-0 mr-1"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-3 w-3" />
-                      ) : (
-                        <Eye className="h-3 w-3" />
+                  </Field>
+                </div>
+
+                <div className="col-span-2">
+                  <Field label="Full Name *">
+                    <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Enter full name" className="h-7 text-xs" />
+                  </Field>
+                </div>
+
+                <Field label="Email Address *">
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter email" className="h-7 text-xs" />
+                </Field>
+
+                <Field label="Phone Number">
+                  <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Optional" className="h-7 text-xs" />
+                </Field>
+
+                <Field label="Password *">
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter password"
+                      className="h-7 text-xs pr-16"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-0.5">
+                      {password && (
+                        <button type="button" onClick={() => copyToClipboard(password)} className="h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-foreground">
+                          <Copy className="h-3 w-3" />
+                        </button>
                       )}
-                    </Button>
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-foreground">
+                        {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </FormFieldWrapper>
+                  <button type="button" onClick={generatePassword} className="mt-0.5 text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-0.5">
+                    <RefreshCw className="h-2.5 w-2.5" />Auto-generate &amp; copy
+                  </button>
+                </Field>
 
-              <FormFieldWrapper>
-                <Label htmlFor="af-confirm">Confirm Password *</Label>
-                <div className="relative">
-                  <Input
-                    id="af-confirm"
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm password"
-                    className="pr-10"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    disabled={submitting}
-                    className="absolute inset-y-0 right-0 h-8 w-8 p-0 mr-1"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-3 w-3" />
-                    ) : (
-                      <Eye className="h-3 w-3" />
-                    )}
-                  </Button>
-                </div>
-              </FormFieldWrapper>
-            </FormGrid>
+                <Field label="Confirm Password *">
+                  <div className="relative">
+                    <Input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm password"
+                      className="h-7 text-xs pr-8"
+                    />
+                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute inset-y-0 right-0 h-full w-7 flex items-center justify-center text-muted-foreground hover:text-foreground">
+                      {showConfirmPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                    </button>
+                  </div>
+                </Field>
+              </div>
+            </div>
           )}
 
           {/* ── Edit fields ── */}
           {mode === "edit" && (
-            <FormGrid>
-              <FormFieldWrapper>
-                <Label htmlFor="af-edit-name">Full Name *</Label>
-                <Input
-                  id="af-edit-name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Enter full name"
-                />
-              </FormFieldWrapper>
-
-              <FormFieldWrapper>
-                <Label htmlFor="af-edit-phone">Phone Number</Label>
-                <Input
-                  id="af-edit-phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Optional"
-                />
-              </FormFieldWrapper>
-
-              <FormFieldWrapper fullWidth>
-                <Label>Status</Label>
-                <Select
-                  value={status}
-                  onValueChange={(v) => setStatus(v as "active" | "disabled")}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="disabled">Disabled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormFieldWrapper>
-            </FormGrid>
-          )}
-
-          {/* Copy confirmation */}
-          {copyMessage && (
-            <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-700">
-              {copyMessage}
+            <div className="mx-4 border border-border/60 rounded-md overflow-hidden">
+              <div className="px-3 py-1.5 bg-muted/40 border-b border-border/60">
+                <p className="text-[11px] font-semibold text-foreground">Agent Details</p>
+              </div>
+              <div className="px-3 py-2.5 grid grid-cols-2 gap-2.5">
+                <Field label="Full Name *">
+                  <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Enter full name" className="h-7 text-xs" />
+                </Field>
+                <Field label="Phone Number">
+                  <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Optional" className="h-7 text-xs" />
+                </Field>
+                <div className="col-span-2">
+                  <Field label="Status">
+                    <Select value={status} onValueChange={(v) => setStatus(v as "active" | "disabled")}>
+                      <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="disabled">Disabled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
+              </div>
             </div>
           )}
 
-          {/* ── Partner Assignment Section (ACSL role only) ── */}
+          {/* ── Partner Assignment ── */}
           {isAcslRole && (
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <div className="bg-blue-50 px-4 py-2.5 flex items-center justify-between border-b border-gray-200">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-semibold text-blue-900">
-                    Partner Assignment
-                  </span>
-                  {selectedOrgIds.size > 0 && (
-                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-[#07376a] text-white font-medium">
-                      {selectedOrgIds.size} selected
+            <div className="mx-4 border border-border/60 rounded-md overflow-hidden">
+              {/* Section toggle header */}
+              <button
+                type="button"
+                onClick={() => setPartnersOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-3 py-1.5 bg-muted/40 hover:bg-muted/60 transition-colors"
+              >
+                <span className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
+                  <Building2 className="h-3 w-3 text-primary" />
+                  Partner Assignment
+                  {totalSelected > 0 && (
+                    <span className="bg-[#07376a] text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                      {totalSelected} selected
                     </span>
                   )}
-                </div>
-                <span className="text-xs text-blue-500">
-                  {mode === "create" ? "Optional" : "Manage assignments"}
                 </span>
-              </div>
+                <span className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground">
+                    {mode === "create" ? "Optional" : "Manage"}
+                  </span>
+                  {partnersOpen
+                    ? <ChevronUp className="h-3 w-3 text-muted-foreground" />
+                    : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                </span>
+              </button>
 
-              <div className="p-3 space-y-2">
-                {wouldHaveNoAssignment && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 flex items-start gap-2">
-                    <AlertCircle className="h-3.5 w-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <p className="text-amber-700 text-xs">
-                      An agent must belong to at least one partner or state.
-                      Deselecting all will block saving.
-                    </p>
+              {partnersOpen && (
+                <>
+                  {/* Mode toggle */}
+                  <div className="px-3 pt-2 pb-0">
+                    <div className="flex gap-1 p-0.5 bg-muted/40 rounded-lg border border-border/50 w-fit">
+                      {(["state", "partner"] as const).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => { setAssignMode(m); setOrgSearch(""); setStateSearch(""); }}
+                          className={[
+                            "flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-semibold transition-all",
+                            assignMode === m
+                              ? "bg-[#07376a] text-white shadow-sm"
+                              : "text-muted-foreground hover:text-foreground",
+                          ].join(" ")}
+                        >
+                          {m === "state" ? <MapPin className="h-3 w-3" /> : <Building2 className="h-3 w-3" />}
+                          {m === "state" ? "By State" : "By Partner"}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                )}
 
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                  <Input
-                    placeholder="Search partners by name, state, or branch..."
-                    value={orgSearch}
-                    onChange={(e) => setOrgSearch(e.target.value)}
-                    className="pl-8 h-8 text-xs bg-white"
-                  />
-                </div>
-
-                {orgsLoading || assignmentLoading ? (
-                  <div className="flex items-center justify-center py-6 gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                    <span className="text-xs text-gray-500">
-                      {assignmentLoading
-                        ? "Loading current assignments..."
-                        : "Loading partners..."}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="max-h-52 overflow-y-auto space-y-1 pr-0.5">
-                    {filteredOrgs.length === 0 ? (
-                      <p className="text-center text-xs text-gray-400 py-5">
-                        {orgSearch
-                          ? "No partners match your search."
-                          : "No partners found."}
-                      </p>
-                    ) : (
-                      filteredOrgs.map((org) => {
-                        const isSelected = selectedOrgIds.has(org.id);
-                        return (
-                          <button
-                            key={org.id}
-                            type="button"
-                            onClick={() => toggleOrg(org.id)}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border text-left transition-all ${
-                              isSelected
-                                ? "border-[#07376a] bg-[#07376a]/5"
-                                : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
-                            }`}
-                          >
-                            <div
-                              className={`h-4 w-4 rounded border flex-shrink-0 flex items-center justify-center ${
-                                isSelected
-                                  ? "bg-[#07376a] border-[#07376a]"
-                                  : "border-gray-300 bg-white"
-                              }`}
-                            >
-                              {isSelected && (
-                                <svg
-                                  className="h-2.5 w-2.5 text-white"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                  strokeWidth={3}
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M5 13l4 4L19 7"
-                                  />
-                                </svg>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-gray-900 truncate">
-                                {org.partner_name}
-                              </p>
-                              {(org.branch || org.state) && (
-                                <p className="text-[10px] text-gray-400 truncate">
-                                  {[org.branch, org.state]
-                                    .filter(Boolean)
-                                    .join(" · ")}
+                  {orgsLoading || assignmentLoading ? (
+                    <div className="flex items-center justify-center py-8 gap-1.5">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                      <span className="text-[11px] text-muted-foreground">
+                        {assignmentLoading ? "Loading assignments..." : "Loading partners..."}
+                      </span>
+                    </div>
+                  ) : assignMode === "state" ? (
+                    /* ── By State ── */
+                    <div className="px-3 pt-2 pb-2 space-y-1.5">
+                      {/* Selected state pills */}
+                      {selectedStates.size > 0 && (
+                        <div className="flex flex-wrap gap-1 pb-0.5">
+                          {Array.from(selectedStates).map((s) => {
+                            const c = getStateColor(s);
+                            return (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => toggleState(s)}
+                                style={{ backgroundColor: c.bg, color: c.text, borderColor: c.border }}
+                                className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-opacity hover:opacity-80"
+                              >
+                                {s}
+                                <X className="h-2.5 w-2.5 ml-0.5" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {/* State search */}
+                      <div className="relative">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                        <Input
+                          placeholder="Search states..."
+                          value={stateSearch}
+                          onChange={(e) => setStateSearch(e.target.value)}
+                          className="pl-6 h-7 text-[11px]"
+                        />
+                      </div>
+                      {/* State grid */}
+                      {visibleStates.length === 0 ? (
+                        <p className="text-[11px] text-muted-foreground text-center py-3">
+                          {stateSearch ? "No states match your search." : "All states selected."}
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-6 gap-1 max-h-44 overflow-y-auto">
+                          {visibleStates.map((state) => {
+                            const count = orgCountByState[state] || 0;
+                            return (
+                              <button
+                                key={state}
+                                type="button"
+                                onClick={() => toggleState(state)}
+                                className="flex flex-col items-center px-1 py-1.5 rounded border text-center transition-colors bg-muted/30 border-border/50 text-gray-700 hover:bg-[#07376a]/10 hover:border-[#07376a]/40"
+                                title={`${state} — ${count} partner${count !== 1 ? "s" : ""}`}
+                              >
+                                <span className="text-[10px] font-semibold leading-tight truncate w-full">{state}</span>
+                                <span className="text-[9px] leading-tight mt-0.5 text-muted-foreground">
+                                  {count}p
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* ── By Partner ── */
+                    <div className="px-3 pt-2 pb-2 space-y-1.5">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                        <Input
+                          placeholder="Search partners by name, state or branch..."
+                          value={orgSearch}
+                          onChange={(e) => setOrgSearch(e.target.value)}
+                          className="pl-6 h-7 text-[11px]"
+                        />
+                      </div>
+                      {filteredOrgsForPartnerMode.length === 0 ? (
+                        <p className="text-[11px] text-muted-foreground text-center py-4">
+                          {orgSearch ? "No partners match your search." : "No partners found."}
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-1 max-h-44 overflow-y-auto">
+                          {filteredOrgsForPartnerMode.map((org) => {
+                            const selected = selectedDirectOrgIds.has(org.id);
+                            return (
+                              <button
+                                key={org.id}
+                                type="button"
+                                onClick={() => toggleOrg(org.id)}
+                                className={[
+                                  "flex flex-col items-start px-2 py-1.5 rounded border text-left transition-colors",
+                                  selected
+                                    ? "bg-[#07376a] border-[#07376a] hover:bg-[#07376a]/90"
+                                    : "bg-muted/30 border-border/50 hover:border-primary/40 hover:bg-muted/60",
+                                ].join(" ")}
+                              >
+                                <p className={`text-[11px] font-medium truncate w-full ${selected ? "text-white" : "text-gray-900"}`}>
+                                  {org.partner_name}
                                 </p>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+                                <p className={`text-[10px] truncate w-full ${selected ? "text-white/70" : "text-muted-foreground"}`}>
+                                  {[org.branch, org.state].filter(Boolean).join(" · ") || "—"}
+                                </p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-          {/* Footer */}
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={submitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={submitting || wouldHaveNoAssignment}
-              className="bg-brand hover:bg-brand-700 text-white"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {mode === "create" ? "Creating..." : "Saving..."}
-                </>
-              ) : mode === "create" ? (
-                <>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Create Agent
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Changes
+                  {/* Bottom: column-per-state with checkboxes */}
+                  {hasBottomContent && (
+                    <div className="border-t border-border/50 max-h-48 overflow-auto">
+                      <div className="flex divide-x divide-border/50 min-w-0">
+                        {selectedStatesWithPartners.map((s) => {
+                          const c = getStateColor(s);
+                          const statePartners = orgs.filter((o) => o.state === s);
+                          const selectedCount = statePartners.filter((o) => selectedDirectOrgIds.has(o.id)).length;
+                          return (
+                            <div key={s} className="flex-1 min-w-[140px]">
+                              <div
+                                className="sticky top-0 px-2 py-1.5 flex items-center justify-between gap-1 border-b"
+                                style={{ backgroundColor: c.bg, borderColor: c.border }}
+                              >
+                                <div className="flex items-center gap-1 min-w-0">
+                                  <MapPin className="h-2.5 w-2.5 shrink-0" style={{ color: c.text }} />
+                                  <span className="text-[10px] font-bold uppercase tracking-wide truncate" style={{ color: c.text }}>{s}</span>
+                                </div>
+                                <span className="text-[9px] shrink-0" style={{ color: c.text, opacity: 0.7 }}>{selectedCount}/{statePartners.length}</span>
+                              </div>
+                              {statePartners.map((o, idx) => {
+                                const checked = selectedDirectOrgIds.has(o.id);
+                                return (
+                                  <button
+                                    key={o.id}
+                                    type="button"
+                                    onClick={() => toggleOrg(o.id)}
+                                    className={[
+                                      "w-full flex items-center gap-2 px-2 py-1.5 text-left transition-colors",
+                                      idx % 2 === 0 ? "bg-white" : "bg-blue-50/30",
+                                      "hover:bg-blue-50",
+                                    ].join(" ")}
+                                  >
+                                    <div className={[
+                                      "w-3.5 h-3.5 rounded border-2 shrink-0 flex items-center justify-center transition-colors",
+                                      checked ? "bg-[#07376a] border-[#07376a]" : "border-gray-300",
+                                    ].join(" ")}>
+                                      {checked && <Check className="h-2 w-2 text-white" />}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className={`text-[11px] font-medium truncate ${checked ? "text-gray-900" : "text-gray-500"}`}>
+                                        {o.partner_name}
+                                      </p>
+                                      {o.branch && (
+                                        <p className="text-[9px] text-muted-foreground truncate">{o.branch}</p>
+                                      )}
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
-            </Button>
-          </div>
+            </div>
+          )}
         </form>
+
+        {/* Footer */}
+        <div className="px-4 py-2 border-t bg-muted/20 flex items-center justify-end gap-2 shrink-0">
+          <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={onClose} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="agent-form"
+            size="sm"
+            className="h-7 text-xs bg-[#07376a] hover:bg-[#07376a]/90 text-white"
+            disabled={submitting}
+          >
+            {submitting ? (
+              <><Loader2 className="h-3 w-3 mr-1 animate-spin" />{mode === "create" ? "Creating..." : "Saving..."}</>
+            ) : mode === "create" ? (
+              <><UserPlus className="h-3 w-3 mr-1" />Create Agent</>
+            ) : (
+              <><Save className="h-3 w-3 mr-1" />Save Changes</>
+            )}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

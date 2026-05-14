@@ -13,6 +13,7 @@ export type RouteKey =
   | "partners"
   | "agents"
   | "stove-management"
+  | "stove-manager"
   | "agreement-images"
   | "settings"
   | "profile";
@@ -52,6 +53,7 @@ export const PERMISSIONS: Record<string, RolePermissions> = {
       "partners",
       "agents",
       "stove-management",
+      "stove-manager",
       "agreement-images",
       "settings",
       "profile",
@@ -73,15 +75,15 @@ export const PERMISSIONS: Record<string, RolePermissions> = {
     ],
   },
   acsl_agent: {
-    routes: ["dashboard", "sales", "partners", "stove-management", "profile"],
+    routes: ["dashboard", "sales", "partners", "stove-management", "stove-manager", "profile"],
     features: ["my-partners-filter", "stove-allocation", "create-sale"],
   },
   partner: {
-    routes: ["dashboard", "sales", "agents", "stove-management", "profile"],
+    routes: ["dashboard", "sales", "agents", "stove-management", "stove-manager", "profile"],
     features: ["manage-agents", "org-sales-view", "create-sale"],
   },
   partner_agent: {
-    routes: ["dashboard", "sales"],
+    routes: ["dashboard", "sales", "stove-manager"],
     features: ["create-sale"],
   },
 };

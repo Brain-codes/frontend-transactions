@@ -4,21 +4,10 @@ import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  User,
-  Mail,
-  Phone,
-  Calendar,
-  Building2,
-  Loader2,
-  AlertCircle,
-} from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import superAdminAgentService from "../../services/superAdminAgentService";
 
 interface Agent {
@@ -38,6 +27,7 @@ interface AssignedOrg {
   partner_name: string;
   branch: string | null;
   state: string | null;
+  source?: string;
   assigned_at: string;
 }
 
@@ -45,6 +35,38 @@ interface ViewSuperAdminAgentModalProps {
   agent: Agent;
   onClose: () => void;
 }
+
+const DetailItem = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) => (
+  <div className="space-y-0.5">
+    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
+      {label}
+    </p>
+    <p className="text-xs font-medium text-gray-900">
+      {value ?? <span className="text-gray-400">N/A</span>}
+    </p>
+  </div>
+);
+
+const SectionCard = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) => (
+  <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+    <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider border-b border-primary/20 pb-1 mb-2.5">
+      {title}
+    </h3>
+    {children}
+  </div>
+);
 
 const ViewSuperAdminAgentModal: React.FC<ViewSuperAdminAgentModalProps> = ({
   agent,
@@ -59,9 +81,7 @@ const ViewSuperAdminAgentModal: React.FC<ViewSuperAdminAgentModalProps> = ({
       try {
         setOrgsLoading(true);
         setOrgsError("");
-        const result = await superAdminAgentService.getAgentOrganizations(
-          agent.id
-        );
+        const result = await superAdminAgentService.getAgentOrganizations(agent.id);
         setOrgs(result.data || []);
       } catch (err: any) {
         setOrgsError(err.message || "Failed to load organizations");
@@ -72,173 +92,148 @@ const ViewSuperAdminAgentModal: React.FC<ViewSuperAdminAgentModalProps> = ({
     fetchOrgs();
   }, [agent.id]);
 
-  const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+  const formatDate = (d: string) => {
+    try {
+      return new Date(d).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return "N/A";
+    }
+  };
+
+  const directOrgs = orgs.filter((o) => !o.source || o.source === "direct");
+  const stateOrgs = orgs.filter((o) => o.source === "state");
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Agent Details
-          </DialogTitle>
-          <DialogDescription>
-            View super admin agent profile and assigned organizations.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-6">
-          {/* Agent Header */}
-          <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-            <div className="bg-gradient-to-br from-brand-800 to-brand-900 w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-semibold text-xl">
-                {agent.full_name?.charAt(0)?.toUpperCase() || "A"}
-              </span>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-semibold text-gray-900">
-                {agent.full_name}
-              </h3>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <Badge className="bg-purple-100 text-purple-800 border-purple-200">
-                  ACSL Agent
-                </Badge>
-                <Badge
-                  className={
-                    agent.status === "active"
-                      ? "bg-green-100 text-green-800 border-green-200"
-                      : "bg-red-100 text-red-800 border-red-200"
-                  }
-                >
-                  {agent.status}
-                </Badge>
-              </div>
-            </div>
-          </div>
-
-          {/* Contact & Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-4">
-              <h4 className="font-medium text-gray-900 border-b pb-2">
-                Contact Information
-              </h4>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Email</p>
-                    <p className="text-sm text-gray-600">{agent.email}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Phone className="h-4 w-4 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Phone</p>
-                    <p className="text-sm text-gray-600">
-                      {agent.phone || "Not provided"}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-4 w-4 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      Created
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {formatDate(agent.created_at)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h4 className="font-medium text-gray-900 border-b pb-2">
-                System Information
-              </h4>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <Building2 className="h-4 w-4 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Agent ID</p>
-                    <p className="text-sm text-gray-600 font-mono break-all">
-                      {agent.id}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Building2 className="h-4 w-4 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      Assigned to Partners
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {agent.assigned_organizations_count ?? 0} organization
-                      {(agent.assigned_organizations_count ?? 0) !== 1
-                        ? "s"
-                        : ""}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Assigned Organizations */}
-          <div className="space-y-3">
-            <h4 className="font-medium text-gray-900 border-b pb-2">
-              Assigned to Partners
-            </h4>
-            {orgsLoading ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-6 w-6 animate-spin text-brand" />
-                <span className="ml-2 text-sm text-gray-600">
-                  Loading partners...
+      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+        {/* Header */}
+        <DialogHeader className="px-5 py-3 bg-gradient-to-r from-blue-50/80 to-sky-50/80 border-b shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-[#07376a] w-9 h-9 rounded-full flex items-center justify-center shrink-0">
+                <span className="text-white font-bold text-sm">
+                  {agent.full_name?.charAt(0)?.toUpperCase() || "A"}
                 </span>
               </div>
+              <div>
+                <DialogTitle className="text-sm font-bold text-foreground">
+                  {agent.full_name}
+                </DialogTitle>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {agent.email}
+                </p>
+              </div>
+            </div>
+            <span
+              className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border ${
+                agent.status === "active"
+                  ? "bg-green-50 text-green-700 border-green-200"
+                  : "bg-red-50 text-red-600 border-red-200"
+              }`}
+            >
+              {agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
+            </span>
+          </div>
+        </DialogHeader>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+          {/* Agent Information */}
+          <SectionCard title="Agent Information">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <DetailItem label="Full Name" value={agent.full_name} />
+              <DetailItem label="Email" value={agent.email} />
+              <DetailItem label="Phone" value={agent.phone || "—"} />
+              <DetailItem
+                label="Role"
+                value={
+                  <span className="bg-purple-100 text-purple-700 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                    ACSL Agent
+                  </span>
+                }
+              />
+              <DetailItem label="Date Joined" value={formatDate(agent.created_at)} />
+              <DetailItem
+                label="Partners Assigned"
+                value={
+                  <span className="flex items-center gap-1">
+                    <span className="bg-amber-100 text-amber-700 text-[10px] font-medium px-1.5 py-0.5 rounded-full">
+                      {agent.assigned_organizations_count ?? 0} direct
+                    </span>
+                    {(agent.assigned_states_count ?? 0) > 0 && (
+                      <span className="bg-purple-100 text-purple-700 text-[10px] font-medium px-1.5 py-0.5 rounded-full">
+                        {agent.assigned_states_count} state{agent.assigned_states_count !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </span>
+                }
+              />
+            </div>
+          </SectionCard>
+
+          {/* Assigned Partners */}
+          <SectionCard title={`Assigned Partners${!orgsLoading ? ` (${orgs.length})` : ""}`}>
+            {orgsLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              </div>
             ) : orgsError ? (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-red-600" />
-                <span className="text-red-700 text-sm">{orgsError}</span>
+              <div className="flex items-center gap-2 px-2.5 py-2 bg-red-50 border border-red-200 rounded text-[11px] text-red-700">
+                <AlertCircle className="h-3 w-3 shrink-0" />
+                {orgsError}
               </div>
             ) : orgs.length === 0 ? (
-              <p className="text-sm text-gray-500 py-4 text-center">
-                No organizations assigned yet.
+              <p className="text-[11px] text-muted-foreground py-4 text-center">
+                No partners assigned yet.
               </p>
             ) : (
-              <div className="space-y-2">
-                {orgs.map((org) => (
-                  <div
-                    key={org.id}
-                    className="flex items-center justify-between p-3 bg-brand-light rounded-lg border border-gray-200"
-                  >
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">
-                        {org.partner_name}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {[org.branch, org.state].filter(Boolean).join(" · ") ||
-                          "No branch/state info"}
-                      </p>
-                    </div>
-                    <p className="text-xs text-gray-400">
-                      Assigned {formatDate(org.assigned_at)}
-                    </p>
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-[#07376a] text-white">
+                      <th className="text-left px-2.5 py-1.5 font-semibold text-[11px]">Partner Name</th>
+                      <th className="text-left px-2.5 py-1.5 font-semibold text-[11px]">State</th>
+                      <th className="text-left px-2.5 py-1.5 font-semibold text-[11px]">Branch</th>
+                      <th className="text-left px-2.5 py-1.5 font-semibold text-[11px]">Assignment</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orgs.map((org, idx) => (
+                      <tr
+                        key={org.id}
+                        className={idx % 2 === 0 ? "bg-white" : "bg-blue-50/40"}
+                      >
+                        <td className="px-2.5 py-1.5 font-medium text-gray-900">
+                          {org.partner_name}
+                        </td>
+                        <td className="px-2.5 py-1.5 text-gray-600">
+                          {org.state || "—"}
+                        </td>
+                        <td className="px-2.5 py-1.5 text-gray-600">
+                          {org.branch || "—"}
+                        </td>
+                        <td className="px-2.5 py-1.5">
+                          <span
+                            className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                              org.source === "state"
+                                ? "bg-purple-100 text-purple-700"
+                                : "bg-amber-100 text-amber-700"
+                            }`}
+                          >
+                            {org.source === "state" ? "Via State" : "Direct"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
-          </div>
-
-          <div className="flex justify-end pt-2 border-t">
-            <Button onClick={onClose}>Close</Button>
-          </div>
+          </SectionCard>
         </div>
       </DialogContent>
     </Dialog>

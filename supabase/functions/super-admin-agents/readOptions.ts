@@ -39,23 +39,41 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams) {
   const { data: agents, error, count } = await query;
   if (error) throw new Error(`Database error: ${error.message}`);
 
-  // For each agent, fetch their assigned org count + state count
+  // For each agent, compute the total unique partner count:
+  // direct org assignments + orgs covered by state assignments (excluding duplicates)
   const agentsWithCounts = await Promise.all(
     (agents || []).map(async (agent: any) => {
-      const [{ count: orgCount }, { count: stateCount }] = await Promise.all([
+      const [{ data: directOrgs }, { data: stateRows }] = await Promise.all([
         supabase
           .from("acsl_agent_organizations")
-          .select("*", { count: "exact", head: true })
+          .select("organization_id")
           .eq("agent_id", agent.id),
         supabase
           .from("acsl_agent_states")
-          .select("*", { count: "exact", head: true })
+          .select("state")
           .eq("agent_id", agent.id),
       ]);
+
+      const directOrgIds = new Set((directOrgs || []).map((r: any) => r.organization_id));
+      const assignedStates = (stateRows || []).map((r: any) => r.state);
+
+      let stateOrgCount = 0;
+      if (assignedStates.length > 0) {
+        const { data: stateOrgRows } = await supabase
+          .from("organizations")
+          .select("id")
+          .in("state", assignedStates);
+        // Only count orgs not already directly assigned
+        stateOrgCount = (stateOrgRows || []).filter((o: any) => !directOrgIds.has(o.id)).length;
+      }
+
+      const totalPartners = directOrgIds.size + stateOrgCount;
+
       return {
         ...agent,
-        assigned_organizations_count: orgCount || 0,
-        assigned_states_count: stateCount || 0,
+        assigned_organizations_count: directOrgIds.size,
+        assigned_states_count: assignedStates.length,
+        total_partners_count: totalPartners,
       };
     })
   );

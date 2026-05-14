@@ -17,23 +17,6 @@ interface ViewCredentialModalProps {
   credential: Credential | null;
 }
 
-const DetailItem = ({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) => (
-  <div className="space-y-0">
-    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
-      {label}
-    </p>
-    <p className="text-xs font-medium">
-      {value ?? <span className="text-gray-400">N/A</span>}
-    </p>
-  </div>
-);
-
 const SectionCard = ({
   title,
   children,
@@ -90,29 +73,6 @@ const ViewCredentialModal: React.FC<ViewCredentialModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-3 mt-1">
-          {/* Identity */}
-          <SectionCard title="Partner Information">
-            <div className="grid grid-cols-2 gap-3">
-              <DetailItem label="Partner ID" value={<span className="font-mono text-xs">{credential.partner_id}</span>} />
-              <DetailItem label="Partner Name" value={credential.partner_name} />
-              <DetailItem
-                label="Credential Type"
-                value={
-                  <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                    credential.is_dummy_email
-                      ? "bg-purple-100 text-purple-700"
-                      : "bg-blue-100 text-blue-700"
-                  }`}>
-                    {credential.is_dummy_email ? "Username-based" : "Email-based"}
-                  </span>
-                }
-              />
-              {credential.organizations?.state && (
-                <DetailItem label="State" value={credential.organizations.state} />
-              )}
-            </div>
-          </SectionCard>
-
           {/* Login credentials */}
           <SectionCard title="Login Credentials">
             <div className="space-y-3">
@@ -140,7 +100,7 @@ const ViewCredentialModal: React.FC<ViewCredentialModalProps> = ({
                 <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Password</p>
                 <div className="flex items-center justify-between mt-0.5 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
                   <span className="font-mono text-xs font-semibold text-brand tracking-widest">
-                    {showPassword ? credential.password : "•".repeat(Math.min(credential.password.length, 16))}
+                    {showPassword ? credential.password : "•".repeat(Math.min((credential.password ?? "").length, 16))}
                   </span>
                   <div className="flex items-center gap-1">
                     <button
@@ -166,7 +126,7 @@ const ViewCredentialModal: React.FC<ViewCredentialModalProps> = ({
           </SectionCard>
 
           {/* Organization details */}
-          {credential.organizations && (
+          {/* {credential.organizations && (
             <SectionCard title="Organization Details">
               <div className="grid grid-cols-2 gap-3">
                 {credential.organizations.partner_name && (
@@ -183,10 +143,10 @@ const ViewCredentialModal: React.FC<ViewCredentialModalProps> = ({
                 )}
               </div>
             </SectionCard>
-          )}
+          )} */}
 
           {/* Metadata + Quick Copy */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* <div className="grid grid-cols-2 gap-3">
             <SectionCard title="Metadata">
               <div className="space-y-2">
                 <DetailItem
@@ -223,7 +183,28 @@ const ViewCredentialModal: React.FC<ViewCredentialModalProps> = ({
                 )}
               </Button>
             </div>
-          </div>
+          </div> */}
+            <div>
+            <h3 className="text-[10px] font-semibold text-blue-800 uppercase tracking-wider border-b border-blue-200 pb-0.5 mb-2">
+                Quick Copy
+              </h3>
+              <p className="text-xs text-blue-600 mb-2">Copy all credentials as formatted text</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const text = `Partner ID: ${credential.partner_id}\nPartner Name: ${credential.partner_name}\n${credential.is_dummy_email ? "Username" : "Email"}: ${loginValue}\nPassword: ${credential.password}`;
+                  copy(text, "all");
+                }}
+                className="w-full h-8 text-xs"
+              >
+                {copiedField === "all" ? (
+                  <><Check className="h-3.5 w-3.5 mr-1.5 text-green-600" />Copied!</>
+                ) : (
+                  <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy All Credentials</>
+                )}
+              </Button>
+            </div>
         </div>
 
         {/* Footer */}
