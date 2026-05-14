@@ -1,21 +1,88 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
 import DashboardContent from "./DashboardContent";
 import superAdminDashboardService from "../../services/superAdminDashboardService";
+import { useAuth } from "../../contexts/AuthContext";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
 const SuperAdminDashboardContent = () => {
+  const { supabase } = useAuth();
   const [year, setYear] = useState(CURRENT_YEAR);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
 
-  const fetchData = async (y) => {
+  // filters: { selectedGroup: { base_name, organization_ids, branches } | null, state, branch }
+  const [filters, setFilters] = useState({ selectedGroup: null, state: null, branch: null });
+  const [groupedPartners, setGroupedPartners] = useState([]);
+  const [loadingPartners, setLoadingPartners] = useState(false);
+
+  // Fetch grouped partners via get-organizations-grouped
+  const fetchPartners = useCallback(async (search = "") => {
+    setLoadingPartners(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const params = new URLSearchParams({ page_size: "200" });
+      if (search) params.set("search", search);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-organizations-grouped?${params}`,
+        { headers: { Authorization: `Bearer ${session.access_token}` } }
+      );
+      const result = await res.json();
+      setGroupedPartners(result.data || []);
+    } catch (err) {
+      console.error("Failed to fetch grouped partners:", err);
+    } finally {
+      setLoadingPartners(false);
+    }
+  }, [supabase]);
+
+  useEffect(() => { fetchPartners(); }, [fetchPartners]);
+
+  // Branches available for the selected partner group, optionally filtered by state
+  const availableBranches = (() => {
+    if (!filters.selectedGroup) return [];
+    const branches = filters.selectedGroup.branches || [];
+    const filtered = filters.state
+      ? branches.filter((b) => b.state?.toLowerCase() === filters.state.toLowerCase())
+      : branches;
+    return [...new Set(filtered.map((b) => b.branch).filter(Boolean))].sort();
+  })();
+
+  const fetchData = async (y, f = filters) => {
     setLoading(true);
     try {
-      const response = await superAdminDashboardService.getDashboardStats({ year: y });
+      const payload = { year: y };
+
+      if (f.selectedGroup?.organization_ids?.length) {
+        const allBranches = f.selectedGroup.branches || [];
+        let orgIds = f.selectedGroup.organization_ids;
+
+        // Narrow to orgs in the selected state
+        if (f.state) {
+          const stateIds = allBranches
+            .filter((b) => b.state?.toLowerCase() === f.state.toLowerCase())
+            .map((b) => b.id);
+          if (stateIds.length) orgIds = stateIds;
+        }
+
+        // Narrow further to the specific branch org
+        if (f.branch) {
+          const branchIds = allBranches
+            .filter((b) => b.branch === f.branch)
+            .map((b) => b.id);
+          if (branchIds.length) orgIds = branchIds;
+        }
+
+        payload.organization_ids = orgIds;
+      }
+
+      if (f.state) payload.state = f.state;
+      if (f.branch) payload.branch = f.branch;
+
+      const response = await superAdminDashboardService.getDashboardStats(payload);
       if (response.success) setData(response.data);
       else console.error("Super admin dashboard failed:", response.error);
     } catch (err) {
@@ -25,9 +92,8 @@ const SuperAdminDashboardContent = () => {
     }
   };
 
-  useEffect(() => { fetchData(year); }, [year]);
+  useEffect(() => { fetchData(year, filters); }, [year, filters]);
 
-  // Normalise edge function shape → shared component shape
   const normalized = data ? {
     stovesReceived: data.stovesReceivedByPartners ?? 0,
     stovesSold: data.stovesSoldToEndUsers ?? 0,
@@ -41,6 +107,17 @@ const SuperAdminDashboardContent = () => {
     topAgents: data.topAgents ?? [],
   } : null;
 
+  const handleFilterChange = (field, value) => {
+    setFilters((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === "selectedGroup") { next.state = null; next.branch = null; }
+      if (field === "state") next.branch = null;
+      return next;
+    });
+  };
+
+  const handleClearFilters = () => setFilters({ selectedGroup: null, state: null, branch: null });
+
   return (
     <DashboardLayout currentRoute="dashboard">
       <div className="flex-1 overflow-y-auto bg-white">
@@ -50,6 +127,13 @@ const SuperAdminDashboardContent = () => {
           year={year}
           onYearChange={setYear}
           role="super_admin"
+          dashboardFilters={filters}
+          onFilterChange={handleFilterChange}
+          onClearFilters={handleClearFilters}
+          partnersList={groupedPartners}
+          loadingPartners={loadingPartners}
+          onPartnerSearch={fetchPartners}
+          availableBranches={availableBranches}
         />
       </div>
     </DashboardLayout>

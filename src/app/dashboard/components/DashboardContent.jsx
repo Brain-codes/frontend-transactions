@@ -44,7 +44,12 @@ import {
   Loader2,
   Plus,
   ChevronRight,
+  Search,
+  X,
+  ChevronDown,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import PageHeader from "../../components/PageHeader";
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -144,7 +149,12 @@ const RankTable = ({ title, rows, nameLabel = "Name" }) => (
   </Card>
 );
 
-const DashboardContent = ({ data, loading, year, onYearChange, role = "partner", partners = [] }) => {
+const DashboardContent = ({
+  data, loading, year, onYearChange, role = "partner", partners = [],
+  dashboardFilters = {}, onFilterChange, onClearFilters,
+  partnersList = [], loadingPartners = false, onPartnerSearch,
+  availableBranches = [],
+}) => {
   const isSuperAdmin = role === "super_admin";
 
   const byState = data?.byState ?? [];
@@ -158,6 +168,35 @@ const DashboardContent = ({ data, loading, year, onYearChange, role = "partner",
   const [stateLimit, setStateLimit] = React.useState("10");
   const displayStates = stateLimit === "all" ? byState : byState.slice(0, Number(stateLimit));
 
+  // Filter dropdown state (for super admin filter bar)
+  const [partnerSearch, setPartnerSearch] = React.useState("");
+  const [partnerDropdownOpen, setPartnerDropdownOpen] = React.useState(false);
+  const [stateSearch, setStateSearch] = React.useState("");
+  const [stateDropdownOpen, setStateDropdownOpen] = React.useState(false);
+  const [branchDropdownOpen, setBranchDropdownOpen] = React.useState(false);
+  const partnerDropdownRef = React.useRef(null);
+  const stateDropdownRef = React.useRef(null);
+  const branchDropdownRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const handler = (e) => {
+      if (partnerDropdownRef.current && !partnerDropdownRef.current.contains(e.target)) setPartnerDropdownOpen(false);
+      if (stateDropdownRef.current && !stateDropdownRef.current.contains(e.target)) setStateDropdownOpen(false);
+      if (branchDropdownRef.current && !branchDropdownRef.current.contains(e.target)) setBranchDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handlePartnerSearch = (val) => {
+    setPartnerSearch(val);
+    onPartnerSearch?.(val);
+  };
+
+  const selectedPartner = dashboardFilters.selectedGroup || null;
+  const hasActiveFilters = dashboardFilters.selectedGroup || dashboardFilters.state || dashboardFilters.branch;
+  const showBranchFilter = !!dashboardFilters.selectedGroup && !!dashboardFilters.state;
+
 
   return (
     <div className="p-4 space-y-4">
@@ -166,7 +205,7 @@ const DashboardContent = ({ data, loading, year, onYearChange, role = "partner",
         icon={LayoutDashboard}
         title="Dashboard"
         right={
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             {role === "acsl_agent" && (
               <Link
                 href="/partners"
@@ -176,18 +215,149 @@ const DashboardContent = ({ data, loading, year, onYearChange, role = "partner",
                 <span className="text-sm font-bold text-[#07376a]">{partners.length}</span>
               </Link>
             )}
+
+            {/* Super Admin Filters — inline in header */}
             {isSuperAdmin && (
-              <Link
-                href="/sales"
-                className="flex items-center gap-1 bg-[#194977] text-white hover:bg-[#0f2d4f] text-xs px-3 py-1.5 rounded-md transition-colors font-medium"
-              >
-                <ClipboardList className="h-3 w-3" />
-                Manage Sales
-              </Link>
+              <>
+                {/* Partner Search Dropdown */}
+                <div className="relative" ref={partnerDropdownRef}>
+                  <button
+                    onClick={() => setPartnerDropdownOpen((o) => !o)}
+                    className="h-8 px-3 flex items-center gap-1.5 bg-white border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[180px] max-w-[220px]"
+                  >
+                    <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className={`truncate flex-1 text-left ${!selectedPartner ? "text-muted-foreground" : ""}`}>
+                      {selectedPartner ? selectedPartner.base_name : "Filter by partner…"}
+                    </span>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  </button>
+                  {partnerDropdownOpen && (
+                    <div className="absolute z-50 top-full right-0 mt-1 w-[240px] bg-white border border-gray-200 rounded-md shadow-lg">
+                      <div className="p-1.5 border-b border-gray-100">
+                        <Input
+                          autoFocus
+                          placeholder="Type partner name…"
+                          value={partnerSearch}
+                          onChange={(e) => handlePartnerSearch(e.target.value)}
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                      <div className="max-h-52 overflow-y-auto">
+                        <button
+                          onClick={() => { onFilterChange?.("selectedGroup", null); setPartnerSearch(""); setPartnerDropdownOpen(false); onPartnerSearch?.(""); }}
+                          className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${!dashboardFilters.selectedGroup ? "font-semibold text-[#07376a]" : ""}`}
+                        >All Partners</button>
+                        {loadingPartners ? (
+                          <div className="px-3 py-2 text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />Loading…</div>
+                        ) : partnersList.length === 0 ? (
+                          <div className="px-3 py-2 text-xs text-muted-foreground">No partners found</div>
+                        ) : (
+                          partnersList.map((group) => (
+                            <button
+                              key={group.base_name}
+                              onClick={() => { onFilterChange?.("selectedGroup", group); setPartnerSearch(""); setPartnerDropdownOpen(false); onPartnerSearch?.(""); }}
+                              className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${dashboardFilters.selectedGroup?.base_name === group.base_name ? "font-semibold text-[#07376a]" : ""}`}
+                            >
+                              <span className="truncate block">{group.base_name}</span>
+                              {group.branch_count > 1 && <span className="text-xs text-muted-foreground">{group.branch_count} branches</span>}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* State Filter — shows when partner selected */}
+                {dashboardFilters.selectedGroup && (
+                  <div className="relative" ref={stateDropdownRef}>
+                    <button
+                      onClick={() => setStateDropdownOpen((o) => !o)}
+                      className="h-8 px-3 flex items-center gap-1.5 bg-white border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[130px]"
+                    >
+                      <span className={`truncate flex-1 text-left ${!dashboardFilters.state ? "text-muted-foreground" : ""}`}>
+                        {dashboardFilters.state
+                          ? NIGERIAN_STATES.find((s) => s.toLowerCase() === dashboardFilters.state.toLowerCase()) || dashboardFilters.state
+                          : "All States"}
+                      </span>
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    </button>
+                    {stateDropdownOpen && (
+                      <div className="absolute z-50 top-full right-0 mt-1 w-[160px] bg-white border border-gray-200 rounded-md shadow-lg">
+                        <div className="p-1.5 border-b border-gray-100">
+                          <Input
+                            autoFocus
+                            placeholder="Search state…"
+                            value={stateSearch}
+                            onChange={(e) => setStateSearch(e.target.value)}
+                            className="h-7 text-xs"
+                          />
+                        </div>
+                        <div className="max-h-48 overflow-y-auto">
+                          <button
+                            onClick={() => { onFilterChange?.("state", null); onFilterChange?.("branch", null); setStateSearch(""); setStateDropdownOpen(false); }}
+                            className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${!dashboardFilters.state ? "font-semibold text-[#07376a]" : ""}`}
+                          >All States</button>
+                          {NIGERIAN_STATES.filter((s) => s.toLowerCase().includes(stateSearch.toLowerCase())).map((s) => (
+                            <button
+                              key={s}
+                              onClick={() => { onFilterChange?.("state", s.toLowerCase()); onFilterChange?.("branch", null); setStateSearch(""); setStateDropdownOpen(false); }}
+                              className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${dashboardFilters.state === s.toLowerCase() ? "font-semibold text-[#07376a]" : ""}`}
+                            >{s}</button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Branch Filter — shows when partner + state selected */}
+                {showBranchFilter && (
+                  <div className="relative" ref={branchDropdownRef}>
+                    <button
+                      onClick={() => setBranchDropdownOpen((o) => !o)}
+                      className="h-8 px-3 flex items-center gap-1.5 bg-white border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[130px]"
+                    >
+                      <span className={`truncate flex-1 text-left ${!dashboardFilters.branch ? "text-muted-foreground" : ""}`}>
+                        {dashboardFilters.branch || "All Branches"}
+                      </span>
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    </button>
+                    {branchDropdownOpen && (
+                      <div className="absolute z-50 top-full right-0 mt-1 w-[160px] bg-white border border-gray-200 rounded-md shadow-lg">
+                        <div className="max-h-48 overflow-y-auto">
+                          <button
+                            onClick={() => { onFilterChange?.("branch", null); setBranchDropdownOpen(false); }}
+                            className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${!dashboardFilters.branch ? "font-semibold text-[#07376a]" : ""}`}
+                          >All Branches</button>
+                          {availableBranches.length === 0 ? (
+                            <p className="text-xs text-muted-foreground px-3 py-2">No branches found</p>
+                          ) : (
+                            availableBranches.map((b) => (
+                              <button
+                                key={b}
+                                onClick={() => { onFilterChange?.("branch", b); setBranchDropdownOpen(false); }}
+                                className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${dashboardFilters.branch === b ? "font-semibold text-[#07376a]" : ""}`}
+                              >{b}</button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {hasActiveFilters && (
+                  <Button onClick={onClearFilters} size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-foreground">
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </>
             )}
+
             <span className="text-sm font-medium text-gray-700">Year:</span>
             <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
-              <SelectTrigger className="w-[110px] h-8 text-sm">
+              <SelectTrigger className="w-[100px] h-8 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

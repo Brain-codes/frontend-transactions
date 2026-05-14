@@ -46,37 +46,60 @@ serve(async (req) => {
       );
     }
 
-    const { year = new Date().getFullYear() } = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
+    const year = body.year ?? new Date().getFullYear();
+    const organizationIds: string[] | null = body.organization_ids?.length ? body.organization_ids : null;
+    const stateFilter: string | null = body.state || null;
+    const branchFilter: string | null = body.branch || null;
 
-    // Stove KPIs use a balance-sheet (snapshot) model: cumulative totals as of
-    // the END of the selected year. This gives different numbers per year while
-    // keeping Available = Received − Sold logically consistent.
-    // stove_ids has no transfer-date column; created_at is used as the best proxy.
-    //
-    // Financial metrics (amount, etc.) remain year-specific via sales_date.
     const startDate = `${year}-01-01`;
-    const endOfYear = `${year + 1}-01-01`; // exclusive — captures all of Dec 31
+    const endOfYear = `${year + 1}-01-01`;
+
+    // Resolve partner names from organization_ids (grouped partner may span multiple orgs)
+    let partnerNames: string[] | null = null;
+    if (organizationIds) {
+      const { data: orgs } = await serviceClient
+        .from("organizations")
+        .select("partner_name")
+        .in("id", organizationIds);
+      partnerNames = orgs ? [...new Set(orgs.map((o: any) => o.partner_name).filter(Boolean))] : null;
+    }
+
+    const buildSalesQuery = (query: any) => {
+      if (partnerNames?.length) query = query.in("partner_name", partnerNames);
+      if (stateFilter) query = query.ilike("state_backup", stateFilter);
+      if (branchFilter) query = query.eq("retailer_branch", branchFilter);
+      return query;
+    };
+
+    const buildStovesReceivedQuery = (query: any) => {
+      if (organizationIds) query = query.in("organization_id", organizationIds);
+      return query;
+    };
 
     const [receivedResult, soldCumulativeResult, salesResult] = await Promise.all([
-      // Stoves received by any partner as of end of selected year
-      serviceClient
-        .from("stove_ids")
-        .select("*", { count: "exact", head: true })
-        .not("organization_id", "is", null)
-        .lt("created_at", endOfYear),
+      buildStovesReceivedQuery(
+        serviceClient
+          .from("stove_ids")
+          .select("*", { count: "exact", head: true })
+          .not("organization_id", "is", null)
+          .lt("created_at", endOfYear)
+      ),
 
-      // Total stoves sold to end users as of end of selected year (sales_date is authoritative)
-      serviceClient
-        .from("sales")
-        .select("*", { count: "exact", head: true })
-        .lt("sales_date", endOfYear),
+      buildSalesQuery(
+        serviceClient
+          .from("sales")
+          .select("*", { count: "exact", head: true })
+          .lt("sales_date", endOfYear)
+      ),
 
-      // Year-only sales for financial metrics and charts
-      serviceClient
-        .from("sales")
-        .select("id, amount, total_paid, state_backup, partner_name, retailer_branch, payment_model_id, created_by")
-        .gte("sales_date", startDate)
-        .lt("sales_date", endOfYear),
+      buildSalesQuery(
+        serviceClient
+          .from("sales")
+          .select("id, amount, total_paid, state_backup, partner_name, retailer_branch, payment_model_id, created_by")
+          .gte("sales_date", startDate)
+          .lt("sales_date", endOfYear)
+      ),
     ]);
 
     if (salesResult.error) throw new Error("Failed to fetch sales data");
