@@ -151,8 +151,8 @@ const RankTable = ({ title, rows, nameLabel = "Name" }) => (
 
 const DashboardContent = ({
   data, loading, year, onYearChange, role = "partner", partners = [],
-  dashboardFilters = {}, onFilterChange, onClearFilters,
-  partnersList = [], loadingPartners = false, onPartnerSearch,
+  dashboardFilters = {}, onFilterChange = () => {}, onClearFilters = () => {},
+  partnersList = [], loadingPartners = false, onPartnerSearch = () => {},
   availableBranches = [],
 }) => {
   const isSuperAdmin = role === "super_admin";
