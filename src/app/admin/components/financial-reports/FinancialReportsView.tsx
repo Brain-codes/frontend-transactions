@@ -9,6 +9,7 @@ import PaymentHistoryModal from "./PaymentHistoryModal";
 import RecordPaymentModal from "../sales/RecordPaymentModal";
 import AdminSalesDetailModal from "../sales/AdminSalesDetailModal";
 import { AdminSales } from "@/types/adminSales";
+import adminSalesService from "../../../services/adminSalesService";
 import { Loader2, Eye, EyeOff, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { lgaAndStates } from "../../../constants";
@@ -91,6 +92,7 @@ interface FinancialReportsViewProps {
   onYearChange?: (year: number) => void;
   availableYears?: number[];
   onExportReady?: (fn: () => void) => void;
+  onSelectionChange?: (count: number) => void;
 }
 
 const getAmountPaid = (sale: AdminSales): number =>
@@ -99,7 +101,7 @@ const getAmountPaid = (sale: AdminSales): number =>
 const getAmountOwed = (sale: AdminSales): number =>
   sale.is_installment ? sale.amount - (sale.total_paid ?? 0) : 0;
 
-const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, onEditSale, onDeleteSale, onApproveSale, viewFrom = "admin", selectedYear: externalSelectedYear, onYearChange: externalOnYearChange, availableYears: externalAvailableYears, onExportReady }) => {
+const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, onEditSale, onDeleteSale, onApproveSale, viewFrom = "admin", selectedYear: externalSelectedYear, onYearChange: externalOnYearChange, availableYears: externalAvailableYears, onExportReady, onSelectionChange }) => {
   const [allSales, setAllSales] = useState<AdminSales[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -126,12 +128,26 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
   const [orgFilter, setOrgFilter] = useState("all");
   const [approvalFilter, setApprovalFilter] = useState("all");
   const [internalSelectedYears, setInternalSelectedYears] = useState<number[]>(loadSelectedYears);
-  const selectedYears = externalSelectedYear !== undefined ? [externalSelectedYear] : internalSelectedYears;
+  const selectedYears = useMemo(
+    () => externalSelectedYear !== undefined ? [externalSelectedYear] : internalSelectedYears,
+    [externalSelectedYear, internalSelectedYears]
+  );
   const setSelectedYears = (years: number[]) => {
     setInternalSelectedYears(years);
     saveSelectedYears(years);
   };
   const [exporting, setExporting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => { onSelectionChange?.(selectedIds.size); }, [selectedIds.size, onSelectionChange]);
+
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }, []);
 
   const stateList = useMemo(() => Object.keys(lgaAndStates).sort(), []);
   const lgaList = useMemo(
@@ -260,7 +276,24 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
     return filteredSales.slice(start, start + pageSize);
   }, [filteredSales, currentPage, pageSize]);
 
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, paymentStatusFilter, startDate, endDate, pageSize, selectedState, selectedLGA, orgFilter, approvalFilter, selectedYears]);
+  const handleToggleSelectAll = useCallback(() => {
+    const pageIds = paginatedSales.map((s) => s.id);
+    const allSelected = pageIds.every((id) => selectedIds.has(id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allSelected) {
+        pageIds.forEach((id) => next.delete(id));
+      } else {
+        pageIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  }, [paginatedSales, selectedIds]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedIds((prev) => (prev.size === 0 ? prev : new Set()));
+  }, [searchTerm, paymentStatusFilter, startDate, endDate, pageSize, selectedState, selectedLGA, orgFilter, approvalFilter, selectedYears]);
 
   const hasActiveFilters = searchTerm !== "" || paymentStatusFilter !== "all" || startDate !== "" || endDate !== "" || selectedState !== "all" || selectedLGA !== "all" || orgFilter !== "all" || approvalFilter !== "all";
 
@@ -295,30 +328,46 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
   const handleExport = async () => {
     try {
       setExporting(true);
-      const rows = filteredSales.map((s) => ({
-        "Transaction ID": s.transaction_id || "",
-        Customer: s.end_user_name || "",
-        Phone: s.phone || "",
-        "Stove S/N": s.stove_serial_no || "",
-        Partner: s.organizations?.partner_name || s.partner_name || "",
-        State: s.state_backup || "",
-        "Sales Date": s.sales_date || s.created_at || "",
-        Amount: s.amount ?? "",
-        "Amount Paid": getAmountPaid(s),
-        Status: s.payment_status || (s.is_installment ? "installment" : "paid"),
-      }));
-      const headers = Object.keys(rows[0] || {});
-      const csv = [
-        headers.join(","),
-        ...rows.map((r) => headers.map((h) => `"${String((r as any)[h]).replace(/"/g, '""')}"`).join(",")),
-      ].join("\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `sales-export-${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+
+      // If specific rows are selected, export only those from client-side data
+      if (selectedIds.size > 0) {
+        const exportData = filteredSales.filter((s) => selectedIds.has(s.id));
+        if (exportData.length === 0) { alert("No data to export."); return; }
+        const { exportSalesDataToCSV } = await import("@/utils/csvExportUtils");
+        exportSalesDataToCSV(exportData, `sales-export-selected-${new Date().toISOString().slice(0, 10)}.csv`);
+        return;
+      }
+
+      const result = await (adminSalesService as any).getSalesForExport({
+        search: searchTerm || undefined,
+        paymentStatus: paymentStatusFilter !== "all" ? paymentStatusFilter : undefined,
+        dateFrom: startDate || undefined,
+        dateTo: endDate || undefined,
+        state: selectedState !== "all" ? selectedState : undefined,
+        lga: selectedLGA !== "all" ? selectedLGA : undefined,
+        organizationId: orgFilter !== "all" ? orgFilter : undefined,
+      });
+
+      if (!result.success || !result.data?.length) {
+        alert("No data to export.");
+        return;
+      }
+
+      let exportData = result.data;
+      if (approvalFilter !== "all") {
+        exportData = exportData.filter((s: any) =>
+          approvalFilter === "approved" ? s.agent_approved : !s.agent_approved
+        );
+      }
+      if (selectedYears.length > 0 && selectedYears.length < availableYears.length) {
+        exportData = exportData.filter((s: any) => {
+          const d = s.sales_date || s.created_at;
+          return d && selectedYears.includes(new Date(d).getFullYear());
+        });
+      }
+
+      const { exportSalesDataToCSV } = await import("@/utils/csvExportUtils");
+      exportSalesDataToCSV(exportData, `sales-export-${new Date().toISOString().slice(0, 10)}.csv`);
     } finally {
       setExporting(false);
     }
@@ -370,6 +419,19 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
             })) : []}
           />
 
+          {/* Selection info bar */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-brand font-medium">{selectedIds.size} sale{selectedIds.size !== 1 ? "s" : ""} selected — Export will include only these records</span>
+              <button
+                className="text-xs text-red-500 hover:text-red-700 font-medium border border-red-200 rounded px-2 py-0.5 hover:bg-red-50 transition-colors"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Clear
+              </button>
+            </div>
+          )}
+
           {/* Table */}
           <FinancialReportsTable
             data={paginatedSales}
@@ -388,6 +450,9 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
             sortOrder={sortOrder}
             onToggleSort={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
             viewFrom={viewFrom === "acsl_agent" ? "agent" : viewFrom}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
+            onToggleSelectAll={handleToggleSelectAll}
           />
         </>
       )}

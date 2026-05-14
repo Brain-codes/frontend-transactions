@@ -51,11 +51,12 @@ serve(async (req) => {
   const source = url.searchParams.get("source");
   const date_from = url.searchParams.get("date_from");
   const date_to = url.searchParams.get("date_to");
+  const sort_order = url.searchParams.get("sort_order") === "asc" ? true : false;
 
   let query = supabase
     .from("stove_transfer_history")
     .select("*", { count: "exact" })
-    .order("transfer_date", { ascending: false })
+    .order("transfer_date", { ascending: sort_order })
     .range(offset, offset + limit - 1);
 
   if (search.trim()) {

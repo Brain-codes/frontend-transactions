@@ -38,6 +38,9 @@ import {
   ChevronsRight,
   Package,
   Download,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import transferHistoryService, { TransferRecord } from "../../services/transferHistoryService";
 
@@ -55,12 +58,6 @@ function formatDate(iso: string) {
 }
 
 // ── Stove IDs Modal ──────────────────────────────────────────────────────────
-
-const SectionHeader = ({ title }: { title: string }) => (
-  <div className="flex items-center justify-between border-b border-primary/20 pb-0.5 mb-2">
-    <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider">{title}</h3>
-  </div>
-);
 
 function StoveIdsModal({
   record,
@@ -83,9 +80,27 @@ function StoveIdsModal({
     (s) => !search || s.stove_id?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const fileSlug = `${record.partner_name?.replace(/\s+/g, "-").toLowerCase() ?? "partner"}-${record.transaction_id ?? "transfer"}`;
+
+  const downloadCSV = () => {
+    const headers = ["Stove ID", "Factory", "Sales Reference"];
+    const rows = filtered.map((s) => [s.stove_id, s.factory || "", s.sales_reference || ""]);
+    const csv = [headers, ...rows]
+      .map((row) => row.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `stove-ids-${fileSlug}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+        {/* Header */}
         <DialogHeader className="px-5 py-3 bg-gradient-to-r from-primary/5 to-primary/10 border-b shrink-0">
           <div>
             <DialogTitle className="text-base font-bold text-foreground">
@@ -93,18 +108,22 @@ function StoveIdsModal({
             </DialogTitle>
             <p className="text-xs text-muted-foreground mt-0.5">
               Partner: <span className="font-semibold text-primary">{record.partner_name}</span>
-              <span className="ml-2 bg-primary/10 text-primary text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                {stoves.length} stove{stoves.length !== 1 ? "s" : ""}
-              </span>
             </p>
           </div>
         </DialogHeader>
 
-        <div className="space-y-3 overflow-y-auto flex-1">
+        {/* Content */}
+        <div className=" space-y-3 overflow-y-auto flex-1">
           {/* Summary */}
-          {/* <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
-            <SectionHeader title="Transfer Details" />
+          <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+            <div className="flex items-center justify-between border-b border-primary/20 pb-0.5 mb-2">
+              <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider">Transfer Summary</h3>
+            </div>
             <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-0">
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Total Stoves</p>
+                <p className="text-xs font-medium">{stoves.length.toLocaleString()}</p>
+              </div>
               <div className="space-y-0">
                 <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Transfer Date</p>
                 <p className="text-xs font-medium">{formatDate(record.transfer_date)}</p>
@@ -113,19 +132,15 @@ function StoveIdsModal({
                 <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Transaction ID</p>
                 <p className="text-xs font-mono font-medium">{record.transaction_id || "—"}</p>
               </div>
-              <div className="space-y-0">
-                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Source</p>
-                <p className="text-xs font-medium">
-                  {record.source === "external-csv-sync" ? "CSV Sync" : "JSON Sync"}
-                </p>
-              </div>
             </div>
-          </div> */}
+          </div>
 
-          {/* Search */}
-          <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
-            <SectionHeader title="Search" />
-            <div className="relative">
+          {/* Filter & Search */}
+          {/* <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+            <div className="flex items-center justify-between border-b border-primary/20 pb-0.5 mb-2">
+              <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider">Search</h3>
+            </div>
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search stove ID..."
@@ -134,42 +149,40 @@ function StoveIdsModal({
                 className="pl-8 h-8 text-xs bg-background"
               />
             </div>
-          </div>
+          </div> */}
 
-          {/* Stove IDs grid */}
+          {/* Stove IDs */}
           <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
-            <SectionHeader title={`Stove IDs${filtered.length > 0 ? ` (${filtered.length})` : ""}`} />
+            <div className="flex items-center justify-between border-b border-primary/20 pb-0.5 mb-2">
+              <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider">
+                Stove IDs{filtered.length > 0 ? ` (${filtered.length})` : ""}
+              </h3>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 text-[10px] gap-1"
+                onClick={downloadCSV}
+                disabled={filtered.length === 0}
+              >
+                <Download className="h-3 w-3" />CSV
+              </Button>
+            </div>
+
             {stoves.length === 0 ? (
-              <p className="text-center text-muted-foreground py-6 text-sm">No stove IDs recorded.</p>
+              <div className="text-center text-muted-foreground py-6 text-sm">No stove IDs recorded.</div>
             ) : filtered.length === 0 ? (
-              <p className="text-center text-muted-foreground py-6 text-sm">No stove IDs match your search.</p>
+              <div className="text-center text-muted-foreground py-6 text-sm">No stove IDs match your search.</div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-brand hover:bg-brand">
-                      <TableHead className="text-white font-semibold text-xs">#</TableHead>
-                      <TableHead className="text-white font-semibold text-xs">Stove ID</TableHead>
-                      <TableHead className="text-white font-semibold text-xs">Factory</TableHead>
-                      <TableHead className="text-white font-semibold text-xs">Sales Ref</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.map((s, i) => (
-                      <TableRow
-                        key={s.stove_id}
-                        className={i % 2 === 0 ? "bg-white" : "bg-blue-50/50"}
-                      >
-                        <TableCell className="text-xs text-gray-400">{i + 1}</TableCell>
-                        <TableCell className="font-mono text-xs font-medium text-gray-900">
-                          {s.stove_id}
-                        </TableCell>
-                        <TableCell className="text-xs text-gray-600">{s.factory || "—"}</TableCell>
-                        <TableCell className="text-xs text-gray-600">{s.sales_reference || "—"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              <div className="grid grid-cols-4 md:grid-cols-6 gap-1.5 max-h-64 overflow-y-auto">
+                {filtered.map((s) => (
+                  <div
+                    key={s.stove_id}
+                    className="px-2 py-1 text-xs rounded border text-center truncate  bg-muted/50 border-border/50 text-foreground cursor-default" 
+                    title={[s.stove_id, s.factory && `Factory: ${s.factory}`, s.sales_reference && `Ref: ${s.sales_reference}`].filter(Boolean).join(" · ")}
+                  >
+                    {s.stove_id}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -186,6 +199,9 @@ export default function StoveTransferHistoryContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [totalCount, setTotalCount] = useState(0);
@@ -202,6 +218,9 @@ export default function StoveTransferHistoryContent() {
     try {
       const response = await transferHistoryService.getHistory({
         search: search.trim() || undefined,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
+        sort_order: sortOrder,
         limit: pageSize,
         offset: (page - 1) * pageSize,
       });
@@ -212,7 +231,7 @@ export default function StoveTransferHistoryContent() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search]);
+  }, [page, pageSize, search, dateFrom, dateTo, sortOrder]);
 
   useEffect(() => {
     fetchRecords();
@@ -220,7 +239,7 @@ export default function StoveTransferHistoryContent() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, pageSize]);
+  }, [search, dateFrom, dateTo, sortOrder, pageSize]);
 
   const openModal = (record: TransferRecord) => {
     setSelectedRecord(record);
@@ -267,9 +286,29 @@ export default function StoveTransferHistoryContent() {
               />
             </div>
 
-            {search && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-500 whitespace-nowrap">From:</span>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="bg-white h-9 text-sm w-[140px]"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-500 whitespace-nowrap">To:</span>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="bg-white h-9 text-sm w-[140px]"
+              />
+            </div>
+
+            {(search || dateFrom || dateTo) && (
               <Button
-                onClick={() => setSearch("")}
+                onClick={() => { setSearch(""); setDateFrom(""); setDateTo(""); }}
                 size="sm"
                 variant="outline"
                 className="h-9"
@@ -332,7 +371,17 @@ export default function StoveTransferHistoryContent() {
                   <TableHeader>
                     <TableRow className="bg-brand hover:bg-brand">
                       <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
-                        Transfer Date
+                        <button
+                          className="flex items-center gap-1 hover:opacity-80"
+                          onClick={() => setSortOrder((s) => s === "desc" ? "asc" : "desc")}
+                        >
+                          Transfer Date
+                          {sortOrder === "desc" ? (
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          ) : (
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          )}
+                        </button>
                       </TableHead>
                       <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                         Transaction ID
@@ -416,8 +465,7 @@ export default function StoveTransferHistoryContent() {
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
+            <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
                 <p className="text-sm text-gray-600">
                   Showing {startRecord} to {endRecord} of {totalCount} records
                 </p>
@@ -472,8 +520,7 @@ export default function StoveTransferHistoryContent() {
                     <ChevronsRight className="h-4 w-4" />
                   </Button>
                 </div>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </DashboardLayout>

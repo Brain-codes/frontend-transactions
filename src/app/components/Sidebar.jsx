@@ -44,13 +44,13 @@ const allNavItems = [
     href: "/agents",
   },
   {
-    name: "Manage Partners",
+    name: "Partner Manager",
     icon: UserCheck,
     route: "partners",
     href: "/partners",
   },
   {
-    name: "Sales",
+    name: "Sales Record",
     icon: ShoppingCart,
     route: "sales",
     href: "/sales",
@@ -62,16 +62,16 @@ const allNavItems = [
   //   href: "/stove-management",
   // },
   {
-    name: "Stove Manager",
-    icon: Package,
-    route: "stove-manager",
-    href: "/stove-manager",
-  },
-  {
     name: "Transfer History",
     icon: ArrowLeftRight,
     route: "stove-transfer-history",
     href: "/stove-transfer-history",
+  },
+  {
+    name: "Stove Manager",
+    icon: Package,
+    route: "stove-manager",
+    href: "/stove-manager",
   },
   // {
   //   name: "Agreement Images",

@@ -205,7 +205,7 @@ const DashboardContent = ({
         icon={LayoutDashboard}
         title="Dashboard"
         right={
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap pr-4">
             {role === "acsl_agent" && (
               <Link
                 href="/partners"
@@ -223,7 +223,7 @@ const DashboardContent = ({
                 <div className="relative" ref={partnerDropdownRef}>
                   <button
                     onClick={() => setPartnerDropdownOpen((o) => !o)}
-                    className="h-8 px-3 flex items-center gap-1.5 bg-white border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[180px] max-w-[220px]"
+                    className="h-8 px-3 flex items-center gap-1.5 bg-white border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring w-[350px]"
                   >
                     <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <span className={`truncate flex-1 text-left ${!selectedPartner ? "text-muted-foreground" : ""}`}>
@@ -232,7 +232,7 @@ const DashboardContent = ({
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                   </button>
                   {partnerDropdownOpen && (
-                    <div className="absolute z-50 top-full right-0 mt-1 w-[240px] bg-white border border-gray-200 rounded-md shadow-lg">
+                    <div className="absolute z-50 top-full right-0 mt-1 w-[350px] bg-white border border-gray-200 rounded-md shadow-lg">
                       <div className="p-1.5 border-b border-gray-100">
                         <Input
                           autoFocus
@@ -378,7 +378,7 @@ const DashboardContent = ({
           </div>
         </div>
       ) : isSuperAdmin ? (
-        <div className="space-y-8">
+        <div className="space-y-8 px-4 pt-2">
           {/* Section A — KPI Stat Cards */}
           <div className="space-y-4">
             {[KPI_CONFIG.slice(0, 3), KPI_CONFIG.slice(3)].map((row, rowIdx) => (
@@ -411,7 +411,7 @@ const DashboardContent = ({
           </div>
 
           {/* Section B — Sales Analysis Charts */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 ">
             {/* Sales Model Analysis */}
             <Card className="bg-white shadow-sm">
               <CardHeader className="rounded-t-lg text-white py-2 px-4" style={{ backgroundColor: DARK_NAVY }}>

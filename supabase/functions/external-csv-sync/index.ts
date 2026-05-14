@@ -382,7 +382,8 @@ async function writeTransferHistory(
 ): Promise<void> {
   if (data.stove_ids.length === 0) return;
   try {
-    const transactionId = `TRF-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const salesRef = data.stove_ids.find((s) => s.sales_reference)?.sales_reference;
+    const transactionId = salesRef || `TRF-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     await supabase.from("stove_transfer_history").insert({
       transaction_id: transactionId,
       organization_id: data.organization_id,

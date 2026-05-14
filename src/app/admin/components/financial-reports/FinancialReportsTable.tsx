@@ -31,6 +31,9 @@ interface FinancialReportsTableProps {
   onToggleSort: () => void;
   // "admin" shows Agent column, "superAdmin" shows Partner column, "agent" hides both
   viewFrom?: "admin" | "superAdmin" | "agent";
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onToggleSelectAll?: () => void;
 }
 
 const formatCurrency = (amount: number) =>
@@ -63,7 +66,11 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
   data, loading, currentPage, pageSize, totalRecords,
   onPageChange, onPageSizeChange, onViewDetails, onViewHistory, onRecordPayment,
   onApproveSale, onEditSale, onDeleteSale, sortOrder, onToggleSort, viewFrom = "admin",
+  selectedIds, onToggleSelect, onToggleSelectAll,
 }) => {
+  const pageIds = data.map((s) => s.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds?.has(id));
+  const somePageSelected = !allPageSelected && pageIds.some((id) => selectedIds?.has(id));
   const totalPages = Math.ceil(totalRecords / pageSize);
   const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endRecord = Math.min(currentPage * pageSize, totalRecords);
@@ -120,6 +127,17 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
         <Table>
           <TableHeader>
             <TableRow className="bg-brand hover:bg-brand">
+              {onToggleSelect && (
+                <TableHead className="w-8 text-white">
+                  <input
+                    type="checkbox"
+                    ref={(el) => { if (el) el.indeterminate = somePageSelected; }}
+                    checked={allPageSelected}
+                    onChange={onToggleSelectAll}
+                    className="h-4 w-4 rounded border-white cursor-pointer accent-white"
+                  />
+                </TableHead>
+              )}
               <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Transaction ID</TableHead>
               <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Customer</TableHead>
               <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone</TableHead>
@@ -149,7 +167,18 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
           </TableHeader>
           <TableBody className={loading ? "opacity-40" : ""}>
             {data.map((sale, idx) => (
-              <TableRow key={sale.id} className={idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"}>
+              <TableRow key={sale.id} className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} ${selectedIds?.has(sale.id) ? "ring-1 ring-inset ring-brand/40 bg-blue-50" : ""}`}>
+                {onToggleSelect && (
+                  <TableCell className="w-8">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds?.has(sale.id) ?? false}
+                      onChange={() => onToggleSelect(sale.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand cursor-pointer"
+                    />
+                  </TableCell>
+                )}
                 <TableCell className="font-medium text-xs">{sale.transaction_id || "N/A"}</TableCell>
                 <TableCell className="text-xs">{sale.end_user_name || "N/A"}</TableCell>
                 <TableCell className="text-xs">{sale.phone || "N/A"}</TableCell>

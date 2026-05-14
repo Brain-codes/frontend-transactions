@@ -145,7 +145,7 @@ export async function updateAgent(supabase: any, agentId: string, data: any, adm
   // Resolve the admin's name for the response
   const { data: updater } = await supabase
     .from("profiles")
-    .select("full_name")
+    .select("full_name, email")
     .eq("id", adminId)
     .single();
 
@@ -153,6 +153,6 @@ export async function updateAgent(supabase: any, agentId: string, data: any, adm
 
   return {
     message: "Agent updated successfully",
-    data: { ...updated, updated_by_name: updater?.full_name ?? null },
+    data: { ...updated, updated_by_name: updater?.full_name || updater?.email || null },
   };
 }

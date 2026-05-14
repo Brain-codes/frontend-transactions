@@ -41,6 +41,7 @@ export interface TransferHistoryFilters {
   source?: "external-sync" | "external-csv-sync" | "";
   date_from?: string;
   date_to?: string;
+  sort_order?: "asc" | "desc";
   limit?: number;
   offset?: number;
 }
@@ -66,6 +67,7 @@ class TransferHistoryService {
     if (filters.source) params.set("source", filters.source);
     if (filters.date_from) params.set("date_from", filters.date_from);
     if (filters.date_to) params.set("date_to", filters.date_to);
+    if (filters.sort_order) params.set("sort_order", filters.sort_order);
     params.set("limit", String(filters.limit ?? 20));
     params.set("offset", String(filters.offset ?? 0));
 

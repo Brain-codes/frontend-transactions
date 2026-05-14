@@ -88,9 +88,9 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams) {
   if (updaterIds.length > 0) {
     const { data: updaters } = await supabase
       .from("profiles")
-      .select("id, full_name")
+      .select("id, full_name, email")
       .in("id", updaterIds);
-    (updaters || []).forEach((u: any) => { updaterMap[u.id] = u.full_name; });
+    (updaters || []).forEach((u: any) => { updaterMap[u.id] = u.full_name || u.email; });
   }
   const agentsWithModifier = agentsWithCounts.map((a: any) => ({
     ...a,

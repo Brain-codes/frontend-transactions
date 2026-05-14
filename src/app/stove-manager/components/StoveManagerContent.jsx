@@ -4,7 +4,6 @@ import { useState, useRef } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
 import PageHeader from "../../components/PageHeader";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Search,
@@ -179,7 +178,7 @@ const ReferenceList = ({ stoves, salesReference, onSelect }) => {
 };
 
 // ── Search bar shared component ───────────────────────────────────────────────
-function SearchBar({ query, onChange, onKeyDown, onSearch, onClear, searching, inputRef, size = "default" }) {
+function SearchBar({ query, onChange, onKeyDown, onClear, searching, inputRef, size = "default" }) {
   const isLarge = size === "large";
   return (
     <div className={`flex items-center gap-2 ${isLarge ? "w-full max-w-xl" : ""}`}>
@@ -194,7 +193,7 @@ function SearchBar({ query, onChange, onKeyDown, onSearch, onClear, searching, i
           value={query}
           onChange={onChange}
           onKeyDown={onKeyDown}
-          placeholder="Enter stove ID..."
+          placeholder="Enter stove ID."
           className={`pl-10 pr-8 border-gray-300 focus:border-brand focus:ring-brand ${
             isLarge ? "h-12 text-base w-full rounded-full shadow-sm" : "h-9 pr-8 w-64 text-sm"
           }`}
@@ -204,26 +203,14 @@ function SearchBar({ query, onChange, onKeyDown, onSearch, onClear, searching, i
             onClick={onClear}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
           >
-            <XCircle className={isLarge ? "h-4 w-4" : "h-3.5 w-3.5"} />
+            {searching ? (
+              <Loader2 className={`animate-spin ${isLarge ? "h-4 w-4" : "h-3.5 w-3.5"}`} />
+            ) : (
+              <XCircle className={isLarge ? "h-4 w-4" : "h-3.5 w-3.5"} />
+            )}
           </button>
         )}
       </div>
-      <Button
-        onClick={onSearch}
-        disabled={!query.trim() || searching}
-        className={`bg-brand hover:bg-brand/90 text-white font-medium ${
-          isLarge ? "h-12 px-6 rounded-full text-sm" : "h-9 px-4 text-sm"
-        }`}
-      >
-        {searching ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <>
-            <Search className="h-3.5 w-3.5 mr-1.5" />
-            Search
-          </>
-        )}
-      </Button>
     </div>
   );
 }
@@ -377,7 +364,6 @@ export default function StoveManagerContent() {
     query,
     onChange: (e) => setQuery(e.target.value),
     onKeyDown: handleKeyDown,
-    onSearch: handleSearch,
     onClear: handleClear,
     searching,
   };

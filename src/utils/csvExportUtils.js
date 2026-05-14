@@ -63,6 +63,20 @@ const getCSVHeaders = () => {
     "Sales Partner/Field Assistant",
     "User Name",
     "User Surname",
+    "CPA",
+    // Additional details
+    "Transaction ID",
+    "AKA",
+    "Retailer/Branch",
+    "Pot Quantity",
+    "Heat Retention Device (Wonderbox)",
+    "Previous Stove Type",
+    "Previous Stove Other",
+    "Meals Per Day",
+    "Cooking Fuel Source",
+    "Cooking Location",
+    "Payment Type",
+    "Payment Status",
   ];
 };
 
@@ -106,28 +120,45 @@ const formatSaleToCSVRow = (sale) => {
   const addressState = safeExtract(addresses.state);
   const addressCity = safeExtract(addresses.city);
 
+  const previousStoveLabel = (type, other) => {
+    if (!type) return "";
+    if (type === "wood_stove") return "Wood Stove (3 stone)";
+    if (type === "charcoal") return "Charcoal Stove";
+    if (type === "other") return other ? `Other - ${other}` : "Other";
+    return type;
+  };
+
   // Format the row data
   const rowData = [
     cleanCSVValue(safeExtract(sale.stove_serial_no)),
     formatDateForCSV(sale.sales_date),
-    formatDateTimeForCSV(new Date()), // Created date is when sheet was downloaded
+    formatDateTimeForCSV(sale.created_at ? new Date(sale.created_at) : new Date()),
     cleanCSVValue(safeExtract(sale.state_backup) || addressState),
     cleanCSVValue(safeExtract(sale.lga_backup) || addressCity),
     cleanCSVValue(getFullAddress(addresses)),
     cleanCSVValue(addressLatitude),
     cleanCSVValue(addressLongitude),
-    cleanCSVValue(
-      formatPhoneNumber(
-        safeExtract(sale.phone) || safeExtract(sale.contact_phone)
-      )
-    ),
-    cleanCSVValue(
-      safeExtract(sale.contact_person) || safeExtract(sale.end_user_name)
-    ),
+    cleanCSVValue(formatPhoneNumber(safeExtract(sale.phone) || safeExtract(sale.contact_phone))),
+    cleanCSVValue(safeExtract(sale.contact_person) || safeExtract(sale.end_user_name)),
     cleanCSVValue(formatPhoneNumber(safeExtract(sale.other_phone))),
     cleanCSVValue(getSalesPartner(sale)),
     cleanCSVValue(firstName),
     cleanCSVValue(lastName),
+    // CPA — not yet defined, placeholder
+    "",
+    // Additional fields
+    cleanCSVValue(safeExtract(sale.transaction_id)),
+    cleanCSVValue(safeExtract(sale.aka)),
+    cleanCSVValue(safeExtract(sale.retailer_branch)),
+    sale.pot_quantity != null ? String(sale.pot_quantity) : "",
+    sale.heat_retention_device != null ? (sale.heat_retention_device ? "Yes" : "No") : "",
+    cleanCSVValue(previousStoveLabel(sale.previous_stove_type, sale.previous_stove_other)),
+    cleanCSVValue(safeExtract(sale.previous_stove_other)),
+    cleanCSVValue(safeExtract(sale.meals_per_day)),
+    cleanCSVValue(safeExtract(sale.cooking_fuel_source)),
+    cleanCSVValue(safeExtract(sale.cooking_location)),
+    sale.is_installment ? "Installment" : "Full Payment",
+    cleanCSVValue(safeExtract(sale.payment_status)),
   ];
 
   return rowData.join(",");

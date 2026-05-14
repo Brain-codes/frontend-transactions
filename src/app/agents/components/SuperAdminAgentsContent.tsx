@@ -365,6 +365,9 @@ function AssignPartnerModal({
                   })}
                 </div>
               )}
+                                      <span className="text-[10px] font-semibold leading-tight truncate w-full text-[#8c0000]">
+                                        Click to select state(s)
+                                      </span>
               <div className="relative">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                 <Input
@@ -678,9 +681,9 @@ function AgentPartnersModal({
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                       Branch
                     </TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
+                    {/* <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                       Assignment
-                    </TableHead>
+                    </TableHead> */}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -698,7 +701,7 @@ function AgentPartnersModal({
                       <TableCell className="text-xs text-gray-600">
                         {partner.branch || "—"}
                       </TableCell>
-                      <TableCell>
+                      {/* <TableCell>
                         <span
                           className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
                             partner.source === "state"
@@ -708,7 +711,7 @@ function AgentPartnersModal({
                         >
                           {partner.source === "state" ? "Via State" : "Direct"}
                         </span>
-                      </TableCell>
+                      </TableCell> */}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -1039,12 +1042,16 @@ export default function SuperAdminAgentsContent() {
                           const hasEdit = !!agent.updated_at && agent.updated_at !== agent.created_at;
                           const ts = hasEdit ? agent.updated_at! : agent.created_at;
                           const fullDate = new Date(ts).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+                          const modifierName = hasEdit ? (agent.updated_by_name ?? null) : null;
                           return (
-                            <div title={fullDate}>
-                              <p className="text-xs text-gray-700 font-medium whitespace-nowrap">{timeAgo(ts)}</p>
-                              <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${hasEdit ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>
+                            <div title={modifierName ? `${fullDate} by ${modifierName}` : fullDate}>
+                              <p className="text-xs text-gray-700 font-medium whitespace-nowrap">{fullDate}</p>
+                              {/* <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${hasEdit ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>
                                 {hasEdit ? "Modified" : "Created"}
-                              </span>
+                              </span> */}
+                              {hasEdit && modifierName && (
+                                <p className="text-[9px] text-gray-500 mt-0.5 whitespace-nowrap">{modifierName}</p>
+                              )}
                             </div>
                           );
                         })()}

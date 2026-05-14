@@ -361,6 +361,170 @@ const StoveIdsModal = ({ organization, isOpen, onClose, initialFilter = "all" })
   );
 };
 
+// ── Stove Transfer History Modal ──────────────────────────────────────────────
+
+const StoveTransferHistoryModal = ({ organization, isOpen, onClose }) => {
+  const { supabase } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [records, setRecords] = useState([]);
+  const [error, setError] = useState(null);
+  const [expandedStoveIds, setExpandedStoveIds] = useState(null); // { transactionId, stoveIds }
+
+  useEffect(() => {
+    if (isOpen && organization) {
+      fetchHistory();
+    }
+  }, [isOpen, organization]);
+
+  const fetchHistory = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const params = new URLSearchParams({ limit: "200", offset: "0" });
+      if (organization.partner_id) params.set("search", organization.partner_id);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-transfer-history?${params}`,
+        { headers: { Authorization: `Bearer ${session.access_token}` } }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to fetch transfer history");
+      setRecords(data.data || []);
+    } catch (err) {
+      setError(err.message);
+      setRecords([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (d) => {
+    if (!d) return "N/A";
+    try { return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }); }
+    catch { return "N/A"; }
+  };
+
+  const SectionHeader = ({ title }) => (
+    <div className="flex items-center justify-between border-b border-primary/20 pb-0.5 mb-2">
+      <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider">{title}</h3>
+    </div>
+  );
+
+  return (
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+          <DialogHeader className="px-5 py-3 bg-gradient-to-r from-primary/5 to-primary/10 border-b shrink-0">
+            <div>
+              <DialogTitle className="text-base font-bold text-foreground">Stove Transfer History</DialogTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Partner: <span className="font-semibold text-primary">{organization?.partner_name}</span>
+              </p>
+            </div>
+          </DialogHeader>
+
+          <div className=" space-y-3 overflow-y-auto flex-1">
+            <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+              <SectionHeader title={`Transfer Records${!loading && records.length > 0 ? ` (${records.length})` : ""}`} />
+
+              {loading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                </div>
+              ) : error ? (
+                <div className="text-center py-6 space-y-2">
+                  <p className="text-red-600 text-sm">{error}</p>
+                  <Button size="sm" variant="outline" className="text-xs h-7" onClick={fetchHistory}>Retry</Button>
+                </div>
+              ) : records.length === 0 ? (
+                <div className="text-center text-muted-foreground py-6 text-sm">No transfer records found for this partner.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-brand hover:bg-brand">
+                        <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Transaction ID</TableHead>
+                        <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Date Transferred</TableHead>
+                        <TableHead className="text-white font-semibold text-xs whitespace-nowrap text-center">No. of Stoves</TableHead>
+                        <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stove IDs</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {records.map((record, idx) => {
+                        const stoveIds = record.stove_ids ?? [];
+                        const preview = stoveIds.slice(0, 8);
+                        const remaining = stoveIds.length - 8;
+                        return (
+                          <TableRow key={record.id || idx} className={idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"}>
+                            <TableCell className="text-xs font-mono font-medium text-gray-900">{record.transaction_id || "—"}</TableCell>
+                            <TableCell className="text-xs">{formatDate(record.transfer_date)}</TableCell>
+                            <TableCell className="text-xs text-center font-semibold text-primary">{record.stove_count ?? stoveIds.length}</TableCell>
+                            <TableCell className="text-xs max-w-xs">
+                              {stoveIds.length === 0 ? (
+                                <span className="text-gray-400">—</span>
+                              ) : (
+                                <div className="flex flex-wrap gap-1 items-center">
+                                  {preview.map((s) => (
+                                    <span key={s.stove_id} className="bg-primary/10 text-primary text-[10px] font-mono px-1.5 py-0.5 rounded">
+                                      {s.stove_id}
+                                    </span>
+                                  ))}
+                                  {remaining > 0 && (
+                                    <button
+                                      onClick={() => setExpandedStoveIds({ transactionId: record.transaction_id, stoveIds })}
+                                      className="text-[10px] font-semibold text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
+                                    >
+                                      +{remaining} more
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* All Stove IDs sub-modal */}
+      <Dialog open={!!expandedStoveIds} onOpenChange={() => setExpandedStoveIds(null)}>
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+          <DialogHeader className="px-5 py-3 bg-gradient-to-r from-primary/5 to-primary/10 border-b shrink-0">
+            <div>
+              <DialogTitle className="text-base font-bold text-foreground">All Stove IDs</DialogTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Transaction: <span className="font-semibold text-primary font-mono">{expandedStoveIds?.transactionId}</span>
+                <span className="ml-2 bg-primary/10 text-primary text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                  {expandedStoveIds?.stoveIds.length} stoves
+                </span>
+              </p>
+            </div>
+          </DialogHeader>
+          <div className="overflow-y-auto flex-1">
+            <div className="grid grid-cols-4 md:grid-cols-6 gap-1.5">
+              {(expandedStoveIds?.stoveIds ?? []).map((s) => (
+                <span
+                  key={s.stove_id}
+                  className="px-2 py-1 text-xs rounded border text-center truncate bg-muted/50 border-border/50 text-foreground font-mono"
+                  title={s.stove_id}
+                >
+                  {s.stove_id}
+                </span>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
 // ── Assigned Agents Modal ─────────────────────────────────────────────────────
 
 const AssignedAgentsModal = ({ organization, agents, isOpen, onClose }) => {
@@ -541,6 +705,7 @@ export default function SuperAdminPartnersContent() {
   const [viewingCredential, setViewingCredential] = useState(null);
   const [agentsModalOrg, setAgentsModalOrg] = useState(null);
   const [loadingCredentialOrgId, setLoadingCredentialOrgId] = useState(null);
+  const [transferHistoryOrg, setTransferHistoryOrg] = useState(null);
 
   const [expandedOrgId, setExpandedOrgId] = useState(null);
   const [orgGroupedData, setOrgGroupedData] = useState({});
@@ -1037,6 +1202,9 @@ export default function SuperAdminPartnersContent() {
                               <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="View Credentials" onClick={() => handleViewCredentials(org)} disabled={loadingCredentialOrgId === org.id}>
                                 {loadingCredentialOrgId === org.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}Credentials
                               </Button>
+                              <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="Stove Transfer History" onClick={() => setTransferHistoryOrg(org)}>
+                                Stove Transfer History
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1147,6 +1315,7 @@ export default function SuperAdminPartnersContent() {
         />
         <ViewCredentialModal isOpen={!!viewingCredential} onClose={() => setViewingCredential(null)} credential={viewingCredential} />
         <AssignedAgentsModal organization={agentsModalOrg} agents={agentsModalOrg ? (orgAgentsData[agentsModalOrg.id] || []) : []} isOpen={!!agentsModalOrg} onClose={() => setAgentsModalOrg(null)} />
+        <StoveTransferHistoryModal organization={transferHistoryOrg} isOpen={!!transferHistoryOrg} onClose={() => setTransferHistoryOrg(null)} />
         <ToastContainer toasts={toasts} onRemove={removeToast} />
       </DashboardLayout>
     </>

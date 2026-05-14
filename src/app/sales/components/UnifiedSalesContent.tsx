@@ -40,6 +40,7 @@ export default function UnifiedSalesContent() {
 
   const exportFnRef = useRef<(() => void) | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [selectedExportCount, setSelectedExportCount] = useState(0);
 
   const [editSale, setEditSale] = useState<AdminSales | null>(null);
   const [editLoading, setEditLoading] = useState(false);
@@ -111,11 +112,11 @@ export default function UnifiedSalesContent() {
   }, []);
 
   return (
-    <DashboardLayout currentRoute="sales" title="Sales">
+    <DashboardLayout currentRoute="sales" title="Sales Record">
       <div className="p-6 space-y-6">
         <PageHeader
           icon={ShoppingCart}
-          title="Sales"
+          title="Sales Record"
           right={
             <div className="flex items-center gap-3">
               {isSuperAdmin && (
@@ -147,7 +148,7 @@ export default function UnifiedSalesContent() {
                   }}
                 >
                   {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                  Export
+                  Export{selectedExportCount > 0 ? ` (${selectedExportCount})` : ""}
                 </Button>
               )}
               {can("create-sale") && (
@@ -175,6 +176,7 @@ export default function UnifiedSalesContent() {
           onYearChange={isSuperAdmin ? setSelectedYear : undefined}
           availableYears={isSuperAdmin ? YEARS : undefined}
           onExportReady={(fn) => { exportFnRef.current = fn; }}
+          onSelectionChange={setSelectedExportCount}
         />
       </div>
 

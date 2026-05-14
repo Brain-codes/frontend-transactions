@@ -47,7 +47,7 @@ const DetailItem = ({
     <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
       {label}
     </p>
-    <p className="text-xs font-medium text-gray-900">
+    <p className="text-xs font-medium text-gray-900 overflow-hidden text-ellipsis">
       {value ?? <span className="text-gray-400">N/A</span>}
     </p>
   </div>
@@ -162,7 +162,7 @@ const ViewSuperAdminAgentModal: React.FC<ViewSuperAdminAgentModalProps> = ({
                 value={
                   <span className="flex items-center gap-1">
                     <span className="bg-amber-100 text-amber-700 text-[10px] font-medium px-1.5 py-0.5 rounded-full">
-                      {agent.assigned_organizations_count ?? 0} direct
+                      {agent.assigned_organizations_count ?? 0} partners
                     </span>
                     {(agent.assigned_states_count ?? 0) > 0 && (
                       <span className="bg-purple-100 text-purple-700 text-[10px] font-medium px-1.5 py-0.5 rounded-full">
@@ -198,7 +198,7 @@ const ViewSuperAdminAgentModal: React.FC<ViewSuperAdminAgentModalProps> = ({
                       <th className="text-left px-2.5 py-1.5 font-semibold text-[11px]">Partner Name</th>
                       <th className="text-left px-2.5 py-1.5 font-semibold text-[11px]">State</th>
                       <th className="text-left px-2.5 py-1.5 font-semibold text-[11px]">Branch</th>
-                      <th className="text-left px-2.5 py-1.5 font-semibold text-[11px]">Assignment</th>
+                      {/* <th className="text-left px-2.5 py-1.5 font-semibold text-[11px]">Assignment</th> */}
                     </tr>
                   </thead>
                   <tbody>
@@ -216,7 +216,7 @@ const ViewSuperAdminAgentModal: React.FC<ViewSuperAdminAgentModalProps> = ({
                         <td className="px-2.5 py-1.5 text-gray-600">
                           {org.branch || "—"}
                         </td>
-                        <td className="px-2.5 py-1.5">
+                        {/* <td className="px-2.5 py-1.5">
                           <span
                             className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
                               org.source === "state"
@@ -226,7 +226,7 @@ const ViewSuperAdminAgentModal: React.FC<ViewSuperAdminAgentModalProps> = ({
                           >
                             {org.source === "state" ? "Via State" : "Direct"}
                           </span>
-                        </td>
+                        </td> */}
                       </tr>
                     ))}
                   </tbody>

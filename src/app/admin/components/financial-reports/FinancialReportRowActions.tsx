@@ -25,7 +25,7 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
 }) => {
   const isInstallment = sale.is_installment === true;
   const isFullyPaid = sale.payment_status === "fully_paid";
-  const showPayButton = isInstallment && !isFullyPaid && viewFrom !== "superAdmin";
+  const showPayButton = isInstallment && !isFullyPaid;
 
   const totalPaid = isInstallment ? (sale.total_paid ?? 0) : sale.amount;
   const durationMonths = sale.payment_model?.duration_months ?? 0;

@@ -97,6 +97,7 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
   const [installmentPayments, setInstallmentPayments] = useState<InstallmentPayment[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [showRecordPayment, setShowRecordPayment] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [paymentSummary, setPaymentSummary] = useState<{
     total_paid: number;
     remaining_balance: number;
@@ -199,7 +200,7 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                {activeSale && getStatusBadge(activeSale)}
+                {/* {activeSale && getStatusBadge(activeSale)} */}
                 {isInstallment && !isFullyPaid && viewFrom !== "superAdmin" && (
                   <Button
                     size="sm"
@@ -281,8 +282,26 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
                       value={address?.full_address || address?.street}
                     />
                   </div>
-                  <DetailItem label="Latitude" value={address?.latitude} />
-                  <DetailItem label="Longitude" value={address?.longitude} />
+                  <DetailItem
+                    label="Latitude"
+                    value={
+                      address?.latitude != null ? (
+                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] px-1.5 py-0 font-mono">
+                          {address.latitude}
+                        </Badge>
+                      ) : undefined
+                    }
+                  />
+                  <DetailItem
+                    label="Longitude"
+                    value={
+                      address?.longitude != null ? (
+                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] px-1.5 py-0 font-mono">
+                          {address.longitude}
+                        </Badge>
+                      ) : undefined
+                    }
+                  />
                 </div>
               </SectionCard>
 
@@ -292,14 +311,13 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
                     label="Stove Image"
                     value={
                       stoveImageUrl ? (
-                        <a
-                          href={stoveImageUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline"
+                        <Button
+                          size="sm"
+                          className="bg-brand hover:bg-brand/90 text-white h-6 text-[10px] px-2.5"
+                          onClick={() => setLightboxUrl(stoveImageUrl)}
                         >
                           View Image
-                        </a>
+                        </Button>
                       ) : undefined
                     }
                   />
@@ -307,14 +325,13 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
                     label="Agreement Image"
                     value={
                       agreementImageUrl ? (
-                        <a
-                          href={agreementImageUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline"
+                        <Button
+                          size="sm"
+                          className="bg-brand hover:bg-brand/90 text-white h-6 text-[10px] px-2.5"
+                          onClick={() => setLightboxUrl(agreementImageUrl)}
                         >
-                          View Image
-                        </a>
+                          View Agreement
+                        </Button>
                       ) : undefined
                     }
                   />
@@ -492,6 +509,24 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
               </SectionCard>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Lightbox */}
+      <Dialog open={!!lightboxUrl} onOpenChange={(v) => !v && setLightboxUrl(null)}>
+        <DialogContent className="max-w-3xl w-[90vw] p-0 overflow-hidden">
+          <DialogHeader className="px-4 py-3 border-b">
+            <DialogTitle className="text-sm font-semibold">Document Preview</DialogTitle>
+          </DialogHeader>
+          {lightboxUrl && (
+            <div className="flex items-center justify-center bg-gray-50 p-4">
+              <img
+                src={lightboxUrl}
+                alt="Document preview"
+                className="max-w-full max-h-[75vh] object-contain"
+              />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
