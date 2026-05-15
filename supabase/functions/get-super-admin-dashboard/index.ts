@@ -52,8 +52,11 @@ serve(async (req) => {
     const stateFilter: string | null = body.state || null;
     const branchFilter: string | null = body.branch || null;
 
-    const startDate = `${year}-01-01`;
-    const endOfYear = `${year + 1}-01-01`;
+    // Custom date range overrides year-based range when both are provided
+    const startDate = body.date_from || `${year}-01-01`;
+    const endOfYear = body.date_to
+      ? (() => { const d = new Date(body.date_to); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); })()
+      : `${year + 1}-01-01`;
 
     // Resolve partner names from organization_ids (grouped partner may span multiple orgs)
     let partnerNames: string[] | null = null;
@@ -83,6 +86,7 @@ serve(async (req) => {
           .from("stove_ids")
           .select("*", { count: "exact", head: true })
           .not("organization_id", "is", null)
+          .gte("created_at", startDate)
           .lt("created_at", endOfYear)
       ),
 
@@ -90,6 +94,7 @@ serve(async (req) => {
         serviceClient
           .from("sales")
           .select("*", { count: "exact", head: true })
+          .gte("sales_date", startDate)
           .lt("sales_date", endOfYear)
       ),
 

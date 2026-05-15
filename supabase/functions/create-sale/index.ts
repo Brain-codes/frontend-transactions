@@ -114,30 +114,42 @@ serve(async (req) => {
     let organizationId: string | null = profile?.organization_id ?? null;
 
     if (!organizationId) {
-      // ACSL agent case: org ID must come from the request body
-      if (profile?.role !== "acsl_agent" && profile?.role !== "super_admin_agent") {
+      const isSuperAdmin = profile?.role === "super_admin";
+      const isAgent = profile?.role === "acsl_agent" || profile?.role === "super_admin_agent";
+
+      if (!isSuperAdmin && !isAgent) {
         return jsonError("User must belong to an organization");
       }
 
       if (!requestedOrgId) {
         return jsonError(
-          "Organization ID is required for ACSL agents"
+          isSuperAdmin
+            ? "Organization ID is required for super admin sales"
+            : "Organization ID is required for ACSL agents"
         );
       }
 
-      // Verify the SAA is assigned to this org (direct or via state)
-      const { assignedOrgIds } = await resolveAssignedOrgIds(supabase, userId);
-      if (!assignedOrgIds.includes(requestedOrgId)) {
-        return jsonError(
-          "You are not assigned to the specified organization",
-          403
-        );
+      // Super admins can use any org; agents must be assigned to it
+      if (!isSuperAdmin) {
+        const { assignedOrgIds } = await resolveAssignedOrgIds(supabase, userId);
+        if (!assignedOrgIds.includes(requestedOrgId)) {
+          return jsonError(
+            "You are not assigned to the specified organization",
+            403
+          );
+        }
       }
 
       organizationId = requestedOrgId;
     }
 
     console.log("🏢 Resolved organization ID:", organizationId);
+
+    // Normalize optional proof image empty string to null
+    const safeInitialPaymentProofImageId =
+      initialPaymentProofImageId && String(initialPaymentProofImageId).trim() !== ""
+        ? initialPaymentProofImageId
+        : null;
 
     // ── Installment payment validation ──────────────────────────────────────
     let saleAmount = amount;
@@ -191,7 +203,7 @@ serve(async (req) => {
         modelId: paymentModelId,
         initialAmount: initialAmt,
         paymentMethod: initialPaymentMethod || "cash",
-        proofImageId: initialPaymentProofImageId || null,
+        proofImageId: safeInitialPaymentProofImageId,
         totalPaid: initialAmt,
         paymentStatus: initialAmt >= saleAmount ? "fully_paid" : initialAmt > 0 ? "partially_paid" : "partially_paid",
       };
@@ -199,6 +211,13 @@ serve(async (req) => {
       console.log("✅ Installment validated:", paymentModel.name, "Price:", saleAmount);
     }
 
+    // Validate required image IDs — reject empty strings (Flutter must upload before submitting)
+    if (!stoveImageId || String(stoveImageId).trim() === "") {
+      return jsonError("Stove image is required", 400);
+    }
+    if (!agreementImageId || String(agreementImageId).trim() === "") {
+      return jsonError("Agreement image is required", 400);
+    }
     // ── Insert address ────────────────────────────────────────────────────────
     console.log("📍 Inserting address:", addressData);
     const { data: address, error: addressError } = await supabase
@@ -335,7 +354,6 @@ serve(async (req) => {
 
       if (paymentError) {
         console.error("⚠️ Initial payment insert failed:", paymentError.message);
-        // Don't fail the whole sale creation, just log
       } else {
         console.log("✅ Initial installment payment recorded");
       }

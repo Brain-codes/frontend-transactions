@@ -50,6 +50,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import PageHeader from "../../components/PageHeader";
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -194,7 +195,7 @@ const DashboardContent = ({
   };
 
   const selectedPartner = dashboardFilters.selectedGroup || null;
-  const hasActiveFilters = dashboardFilters.selectedGroup || dashboardFilters.state || dashboardFilters.branch;
+  const hasActiveFilters = dashboardFilters.selectedGroup || dashboardFilters.state || dashboardFilters.branch || dashboardFilters.dateFrom || dashboardFilters.dateTo;
   const showBranchFilter = !!dashboardFilters.selectedGroup && !!dashboardFilters.state;
 
 
@@ -266,6 +267,24 @@ const DashboardContent = ({
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Date Range Filter */}
+                <div className="flex items-center gap-1.5">
+                  <DatePicker
+                    value={dashboardFilters.dateFrom || ""}
+                    onChange={(v) => onFilterChange?.("dateFrom", v || null)}
+                    placeholder="From date"
+                    className="w-[150px] [&_input]:h-8 [&_input]:text-xs [&_input]:pl-8 [&_svg]:h-3.5 [&_svg]:w-3.5"
+                  />
+                  <span className="text-xs text-muted-foreground">–</span>
+                  <DatePicker
+                    value={dashboardFilters.dateTo || ""}
+                    onChange={(v) => onFilterChange?.("dateTo", v || null)}
+                    placeholder="To date"
+                    className="w-[150px] [&_input]:h-8 [&_input]:text-xs [&_input]:pl-8 [&_svg]:h-3.5 [&_svg]:w-3.5"
+                    min={dashboardFilters.dateFrom || undefined}
+                  />
                 </div>
 
                 {/* State Filter — shows when partner selected */}

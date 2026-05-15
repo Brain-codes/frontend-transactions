@@ -339,7 +339,12 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
                     label="Signature"
                     value={
                       activeSale?.signature ? (
-                        <span className="text-green-600">Available</span>
+                        <img
+                          src={`data:image/png;base64,${activeSale.signature}`}
+                          alt="Signature"
+                          className="h-8 w-24 object-contain border border-gray-200 rounded bg-white cursor-pointer hover:opacity-80"
+                          onClick={() => setLightboxUrl(`data:image/png;base64,${activeSale.signature}`)}
+                        />
                       ) : undefined
                     }
                   />

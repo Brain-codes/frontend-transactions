@@ -173,7 +173,7 @@ export default function UnifiedSalesContent() {
           onApproveSale={isAcslAgent ? setApproveSale : undefined}
           viewFrom={viewFrom as any}
           selectedYear={isSuperAdmin ? selectedYear : undefined}
-          onYearChange={isSuperAdmin ? setSelectedYear : undefined}
+          onYearChange={isSuperAdmin ? (v) => setSelectedYear(v ?? CURRENT_YEAR) : undefined}
           availableYears={isSuperAdmin ? YEARS : undefined}
           onExportReady={(fn) => { exportFnRef.current = fn; }}
           onSelectionChange={setSelectedExportCount}

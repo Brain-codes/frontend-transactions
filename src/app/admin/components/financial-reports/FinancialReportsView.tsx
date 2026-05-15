@@ -205,12 +205,14 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
       if (externalSelectedYear !== undefined) {
         result = result.filter((s) => {
           const d = s.sales_date || s.created_at;
-          return d && new Date(d).getFullYear() === externalSelectedYear;
+          if (!d) return true; // no date — don't exclude
+          return new Date(d).getFullYear() === externalSelectedYear;
         });
       } else if (selectedYears.length > 0 && selectedYears.length < availableYears.length) {
         result = result.filter((s) => {
           const d = s.sales_date || s.created_at;
-          return d && selectedYears.includes(new Date(d).getFullYear());
+          if (!d) return true;
+          return selectedYears.includes(new Date(d).getFullYear());
         });
       }
     }

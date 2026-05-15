@@ -28,8 +28,10 @@ const SystemConfigPage = () => {
   // ── API Keys state ──────────────────────────────────────────────
   const [sysConfig, setSysConfig] = useState({
     google_places_api_key: "",
+    google_maps_api_key: "",
     brevo_api_key: "",
     google_places_api_key_set: false,
+    google_maps_api_key_set: false,
     brevo_api_key_set: false,
   });
   const [configLoading, setConfigLoading] = useState(true);
@@ -84,6 +86,7 @@ const SystemConfigPage = () => {
         setSysConfig((prev) => ({
           ...prev,
           google_places_api_key_set: result.data.google_places_api_key_set,
+          google_maps_api_key_set: result.data.google_maps_api_key_set,
           brevo_api_key_set: result.data.brevo_api_key_set,
         }));
       }
@@ -95,7 +98,9 @@ const SystemConfigPage = () => {
   };
 
   const hasConfigChanges =
-    sysConfig.google_places_api_key !== "" || sysConfig.brevo_api_key !== "";
+    sysConfig.google_places_api_key !== "" ||
+    sysConfig.google_maps_api_key !== "" ||
+    sysConfig.brevo_api_key !== "";
 
   const handleConfigSave = async () => {
     if (!confirmPassword) {
@@ -110,6 +115,8 @@ const SystemConfigPage = () => {
       const payload = { password: confirmPassword };
       if (sysConfig.google_places_api_key !== "")
         payload.google_places_api_key = sysConfig.google_places_api_key;
+      if (sysConfig.google_maps_api_key !== "")
+        payload.google_maps_api_key = sysConfig.google_maps_api_key;
       if (sysConfig.brevo_api_key !== "")
         payload.brevo_api_key = sysConfig.brevo_api_key;
 
@@ -136,9 +143,12 @@ const SystemConfigPage = () => {
       setConfirmPassword("");
       setSysConfig((prev) => ({
         google_places_api_key: "",
+        google_maps_api_key: "",
         brevo_api_key: "",
         google_places_api_key_set:
           payload.google_places_api_key ? true : prev.google_places_api_key_set,
+        google_maps_api_key_set:
+          payload.google_maps_api_key ? true : prev.google_maps_api_key_set,
         brevo_api_key_set:
           payload.brevo_api_key ? true : prev.brevo_api_key_set,
       }));
@@ -370,6 +380,33 @@ const SystemConfigPage = () => {
                     />
                     <p className="text-xs text-gray-500">
                       Used for address autocomplete when creating sales.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="googleMapsKey">Google Maps API Key</Label>
+                      {sysConfig.google_maps_api_key_set && (
+                        <span className="text-xs text-green-600 flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Configured
+                        </span>
+                      )}
+                    </div>
+                    <Input
+                      id="googleMapsKey"
+                      type="password"
+                      placeholder={
+                        sysConfig.google_maps_api_key_set
+                          ? "•••••••••••• (leave blank to keep current)"
+                          : "Enter Google Maps API key"
+                      }
+                      value={sysConfig.google_maps_api_key}
+                      onChange={(e) =>
+                        setSysConfig((prev) => ({ ...prev, google_maps_api_key: e.target.value }))
+                      }
+                    />
+                    <p className="text-xs text-gray-500">
+                      Used to load the Google Maps SDK for location features. Set HTTP referrer restrictions on this key in Google Cloud Console.
                     </p>
                   </div>
 

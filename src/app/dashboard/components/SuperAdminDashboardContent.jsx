@@ -14,8 +14,8 @@ const SuperAdminDashboardContent = () => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
 
-  // filters: { selectedGroup: { base_name, organization_ids, branches } | null, state, branch }
-  const [filters, setFilters] = useState({ selectedGroup: null, state: null, branch: null });
+  // filters: { selectedGroup: { base_name, organization_ids, branches } | null, state, branch, dateFrom, dateTo }
+  const [filters, setFilters] = useState({ selectedGroup: null, state: null, branch: null, dateFrom: null, dateTo: null });
   const [groupedPartners, setGroupedPartners] = useState([]);
   const [loadingPartners, setLoadingPartners] = useState(false);
 
@@ -81,6 +81,8 @@ const SuperAdminDashboardContent = () => {
 
       if (f.state) payload.state = f.state;
       if (f.branch) payload.branch = f.branch;
+      if (f.dateFrom) payload.date_from = f.dateFrom;
+      if (f.dateTo) payload.date_to = f.dateTo;
 
       const response = await superAdminDashboardService.getDashboardStats(payload);
       if (response.success) setData(response.data);
@@ -116,7 +118,7 @@ const SuperAdminDashboardContent = () => {
     });
   };
 
-  const handleClearFilters = () => setFilters({ selectedGroup: null, state: null, branch: null });
+  const handleClearFilters = () => setFilters({ selectedGroup: null, state: null, branch: null, dateFrom: null, dateTo: null });
 
   return (
     <DashboardLayout currentRoute="dashboard">

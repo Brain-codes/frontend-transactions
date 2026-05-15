@@ -593,7 +593,20 @@ function StoveDetail({ stove, sale, isSuperAdmin, isAcslAgent }) {
                 }
               />
               {sale?.signature && (
-                <DetailItem label="Signature" value={<span className="text-green-600">Available</span>} />
+                <DetailItem
+                  label="Signature"
+                  value={
+                    <img
+                      src={`data:image/png;base64,${sale.signature}`}
+                      alt="Signature"
+                      className="h-8 w-24 object-contain border border-gray-200 rounded bg-white cursor-pointer hover:opacity-80"
+                      onClick={() => {
+                        const win = window.open();
+                        win.document.write(`<img src="data:image/png;base64,${sale.signature}" style="max-width:100%" />`);
+                      }}
+                    />
+                  }
+                />
               )}
             </div>
           </SectionCard>

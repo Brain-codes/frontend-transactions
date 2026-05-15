@@ -14,27 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
-  User,
-  Package,
-  MapPin,
-  Camera,
-  PenTool,
-  CheckCircle2,
-  ArrowLeft,
-  Upload,
   FileText,
   Save,
   Loader2,
   AlertCircle,
-  CreditCard,
-  Clock,
-  Layers,
   Info,
-  Flame,
-  ClipboardList,
-  ShieldCheck,
 } from "lucide-react";
 import DateRangePicker from "@/app/components/ui/date-range-picker";
 import GooglePlacesInput from "@/app/components/ui/google-places-input";
@@ -55,6 +41,36 @@ import {
 import ImageUploadSection from "../../../components/ui/ImageUploadSection";
 import SignatureCanvas from "../../../components/ui/SignatureCanvas";
 import paymentModelService from "../../../services/paymentModelService";
+
+const SectionCard = ({ title, children, className = "" }) => (
+  <div className={`bg-muted/30 rounded-lg p-3 border border-border/50 ${className}`}>
+    <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider border-b border-primary/20 pb-0.5 mb-2">
+      {title}
+    </h3>
+    {children}
+  </div>
+);
+
+const FieldLabel = ({ children }) => (
+  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-0.5">
+    {children}
+  </p>
+);
+
+const FormField = ({ label, error, children }) => (
+  <div>
+    <FieldLabel>{label}</FieldLabel>
+    {children}
+    {error && <p className="text-[10px] text-red-500 mt-0.5">{error}</p>}
+  </div>
+);
+
+const ReadOnlyTile = ({ label, value }) => (
+  <div>
+    <FieldLabel>{label}</FieldLabel>
+    <p className="text-xs font-medium">{value || <span className="text-muted-foreground">—</span>}</p>
+  </div>
+);
 
 const CreateSalesForm = ({
   onSuccess,
@@ -192,10 +208,16 @@ const CreateSalesForm = ({
             return result;
           };
 
+          // For super admin / ACSL agent, partner name comes from the selection step stored in sessionStorage
+          const saaPartnerName =
+            typeof sessionStorage !== "undefined"
+              ? sessionStorage.getItem("saa_selected_org_name")
+              : null;
+
           setFormData((prev) => ({
             ...prev,
             transactionId: generateTransactionId(),
-            partnerName: profileData?.partnerName || "",
+            partnerName: saaPartnerName || profileData?.partnerName || "",
           }));
 
           // Fetch available stoves for create mode
@@ -605,620 +627,321 @@ const CreateSalesForm = ({
   }
 
   return (
-    <div
-      className={`${isModal ? "max-w-4xl mx-auto" : "max-w-4xl mx-auto"} p-6`}
-    >
+    <div className="max-w-4xl mx-auto p-5">
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-          <AlertCircle className="h-5 w-5 text-red-600" />
-          <span className="text-red-700">{error}</span>
+        <div className="mb-3 p-2.5 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+          <AlertCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0" />
+          <span className="text-xs text-red-700">{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Transaction Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Transaction Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="transactionId">
-                  Transaction ID (Invoice Number)
-                  {isEditMode && (
-                    <span className="text-gray-500 text-sm ml-2">
-                      (Not editable)
-                    </span>
-                  )}
-                </Label>
-                <Input
-                  id="transactionId"
-                  value={formData.transactionId}
-                  placeholder="Auto-generated"
-                  className="bg-gray-50"
-                  readOnly
-                />
-                {errors.transactionId && (
-                  <p className="text-sm text-red-600">{errors.transactionId}</p>
-                )}
-              </div>
+      <form onSubmit={handleSubmit} className="space-y-3">
 
-              <div className="space-y-2">
-                <Label htmlFor="salesDate">Sales Date *</Label>
+        {/* Row 1: Transaction Info + Buyer Info */}
+        <div className="grid grid-cols-2 gap-3">
+          <SectionCard title="Transaction Information">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <FieldLabel>Transaction ID</FieldLabel>
+                <p className="text-xs font-medium text-primary">{formData.transactionId || "Auto-generated"}</p>
+                {errors.transactionId && <p className="text-[10px] text-red-500">{errors.transactionId}</p>}
+              </div>
+              <FormField label="Sales Date *" error={errors.salesDate}>
                 <Input
-                  id="salesDate"
                   type="date"
                   value={formData.salesDate}
-                  onChange={(e) =>
-                    handleInputChange("salesDate", e.target.value)
-                  }
-                  className={errors.salesDate ? "border-red-500" : ""}
+                  onChange={(e) => handleInputChange("salesDate", e.target.value)}
+                  className={`h-7 text-xs ${errors.salesDate ? "border-red-500" : ""}`}
                 />
-                {errors.salesDate && (
-                  <p className="text-sm text-red-600">{errors.salesDate}</p>
-                )}
-              </div>
+              </FormField>
+              <ReadOnlyTile label="Partner" value={formData.partnerName} />
+              <FormField label="Retailer / Branch / CSO" error={null}>
+                <Input
+                  value={formData.retailerBranch}
+                  onChange={(e) => handleInputChange("retailerBranch", e.target.value)}
+                  placeholder="Branch or agency"
+                  className="h-7 text-xs"
+                />
+              </FormField>
             </div>
-          </CardContent>
-        </Card>
+          </SectionCard>
 
-        {/* Contact Person / Buyer Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Contact Person / Buyer Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="contactPerson">
-                  Contact Person / Buyer Name *
-                </Label>
+          <SectionCard title="Buyer & End User">
+            <div className="grid grid-cols-2 gap-2">
+              <FormField label="Contact Person / Buyer *" error={errors.contactPerson}>
                 <Input
-                  id="contactPerson"
                   value={formData.contactPerson}
-                  onChange={(e) =>
-                    handleInputChange("contactPerson", e.target.value)
-                  }
-                  placeholder="Enter contact person name"
-                  className={errors.contactPerson ? "border-red-500" : ""}
+                  onChange={(e) => handleInputChange("contactPerson", e.target.value)}
+                  placeholder="Buyer name"
+                  className={`h-7 text-xs ${errors.contactPerson ? "border-red-500" : ""}`}
                 />
-                {errors.contactPerson && (
-                  <p className="text-sm text-red-600">{errors.contactPerson}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="contactPhone">Contact Phone Number *</Label>
+              </FormField>
+              <FormField label="Contact Phone *" error={errors.contactPhone}>
                 <Input
-                  id="contactPhone"
                   type="tel"
                   value={formData.contactPhone}
-                  onChange={(e) =>
-                    handleInputChange("contactPhone", e.target.value)
-                  }
-                  placeholder="e.g., +234 803 123 4567"
-                  className={errors.contactPhone ? "border-red-500" : ""}
+                  onChange={(e) => handleInputChange("contactPhone", e.target.value)}
+                  placeholder="+234 803 123 4567"
+                  className={`h-7 text-xs ${errors.contactPhone ? "border-red-500" : ""}`}
                 />
-                {errors.contactPhone && (
-                  <p className="text-sm text-red-600">{errors.contactPhone}</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* End User Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              End User Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="endUserName">End User Name *</Label>
+              </FormField>
+              <FormField label="End User Name *" error={errors.endUserName}>
                 <Input
-                  id="endUserName"
                   value={formData.endUserName}
-                  onChange={(e) =>
-                    handleInputChange("endUserName", e.target.value)
-                  }
-                  placeholder="Enter end user name"
-                  className={errors.endUserName ? "border-red-500" : ""}
+                  onChange={(e) => handleInputChange("endUserName", e.target.value)}
+                  placeholder="End user name"
+                  className={`h-7 text-xs ${errors.endUserName ? "border-red-500" : ""}`}
                 />
-                {errors.endUserName && (
-                  <p className="text-sm text-red-600">{errors.endUserName}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="aka">AKA (Also Known As)</Label>
+              </FormField>
+              <FormField label="End User Phone *" error={errors.phone}>
                 <Input
-                  id="aka"
-                  value={formData.aka}
-                  onChange={(e) => handleInputChange("aka", e.target.value)}
-                  placeholder="Enter any alias or nickname"
-                />
-                {errors.aka && (
-                  <p className="text-sm text-red-600">{errors.aka}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone">End User Phone Number *</Label>
-                <Input
-                  id="phone"
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => handleInputChange("phone", e.target.value)}
-                  placeholder="e.g., +234 803 123 4567"
-                  className={errors.phone ? "border-red-500" : ""}
+                  placeholder="+234 803 123 4567"
+                  className={`h-7 text-xs ${errors.phone ? "border-red-500" : ""}`}
                 />
-                {errors.phone && (
-                  <p className="text-sm text-red-600">{errors.phone}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="retailerBranch">Retailer / Sales Branch / Agency / CSO</Label>
+              </FormField>
+              <FormField label="AKA" error={null}>
                 <Input
-                  id="retailerBranch"
-                  value={formData.retailerBranch}
-                  onChange={(e) => handleInputChange("retailerBranch", e.target.value)}
-                  placeholder="Enter retailer branch, agency, or CSO"
+                  value={formData.aka}
+                  onChange={(e) => handleInputChange("aka", e.target.value)}
+                  placeholder="Alias or nickname"
+                  className="h-7 text-xs"
                 />
-              </div>
+              </FormField>
             </div>
-          </CardContent>
-        </Card>
+          </SectionCard>
+        </div>
 
-        {/* Sale Information & Payment */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Sale Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="stoveSerialNo">
-                  Stove Serial Number *
-                  {isEditMode && (
-                    <span className="text-gray-500 text-sm ml-2">
-                      (Not editable)
-                    </span>
-                  )}
-                </Label>
-                {isEditMode ? (
+        {/* Row 2: Sale & Payment */}
+        <SectionCard title="Sale & Payment">
+          <div className="grid grid-cols-4 gap-2">
+            {/* Stove serial */}
+            <FormField label={`Stove Serial No *${isEditMode ? " (locked)" : ""}`} error={errors.stoveSerialNo}>
+              {isEditMode ? (
+                <p className="text-xs font-medium">{formData.stoveSerialNo || stoveSearchTerm || <span className="text-muted-foreground">—</span>}</p>
+              ) : (
+                <div className="relative stove-search-container">
                   <Input
-                    id="stoveSerialNo"
-                    value={formData.stoveSerialNo || stoveSearchTerm}
-                    placeholder="Stove Serial Number"
-                    className="bg-gray-50"
-                    readOnly
-                    disabled
+                    value={stoveSearchTerm}
+                    onChange={(e) => { setStoveSearchTerm(e.target.value); setShowStoveDropdown(true); }}
+                    onFocus={() => setShowStoveDropdown(true)}
+                    placeholder={stovesLoading ? "Loading..." : "Search stove ID..."}
+                    className={`h-7 text-xs ${errors.stoveSerialNo ? "border-red-500" : ""}`}
+                    disabled={stovesLoading}
                   />
-                ) : (
-                  <div className="relative stove-search-container">
-                    <Input
-                      id="stoveSerialNo"
-                      value={stoveSearchTerm}
-                      onChange={(e) => {
-                        setStoveSearchTerm(e.target.value);
-                        setShowStoveDropdown(true);
-                      }}
-                      onFocus={() => setShowStoveDropdown(true)}
-                      placeholder={
-                        stovesLoading
-                          ? "Loading stoves..."
-                          : "Type to search stoves..."
-                      }
-                      className={errors.stoveSerialNo ? "border-red-500" : ""}
-                      disabled={stovesLoading}
-                    />
-                    {showStoveDropdown && filteredStoves.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                        {filteredStoves.map((stove) => (
-                          <div
-                            key={stove.id}
-                            className="px-3 py-2 cursor-pointer hover:bg-gray-100"
-                            onClick={() => {
-                              setFormData((prev) => ({
-                                ...prev,
-                                stoveSerialNo: stove.stove_id,
-                              }));
-                              setStoveSearchTerm(stove.stove_id);
-                              setShowStoveDropdown(false);
-                              if (errors.stoveSerialNo) {
-                                setErrors((prev) => ({
-                                  ...prev,
-                                  stoveSerialNo: null,
-                                }));
-                              }
-                            }}
-                          >
-                            {stove.stove_id}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {errors.stoveSerialNo && (
-                  <p className="text-sm text-red-600">{errors.stoveSerialNo}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="partnerName">Partner Name</Label>
-                <Input
-                  id="partnerName"
-                  value={formData.partnerName}
-                  onChange={(e) =>
-                    handleInputChange("partnerName", e.target.value)
-                  }
-                  className="bg-gray-50"
-                  readOnly
-                />
-                {errors.partnerName && (
-                  <p className="text-sm text-red-600">{errors.partnerName}</p>
-                )}
-              </div>
-
-              {/* Payment model read-only display in edit mode */}
-              {isEditMode && initialData?.is_installment && initialData?.payment_model && (
-                <div className="space-y-2">
-                  <Label>Payment Model</Label>
-                  <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md">
-                    <Layers className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-sm text-gray-700">
-                      {initialData.payment_model.name} — ₦{Number(initialData.payment_model.fixed_price).toLocaleString("en-NG")} / {initialData.payment_model.duration_months} months
-                    </span>
-                    <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Installment</span>
-                  </div>
-                </div>
-              )}
-              {isEditMode && !initialData?.is_installment && (
-                <div className="space-y-2">
-                  <Label>Payment Type</Label>
-                  <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-700">
-                    Full Payment
-                  </div>
-                </div>
-              )}
-
-              {/* Payment Type dropdown — only in create mode when org has models */}
-              {!isEditMode && paymentModels.length > 0 && (
-                <div className="space-y-2">
-                  <Label htmlFor="paymentType">Payment Type *</Label>
-                  <Select
-                    value={isInstallment ? selectedModelId : "full_payment"}
-                    onValueChange={handlePaymentTypeChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select payment type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="full_payment">
-                        Full Payment — One-time complete payment
-                      </SelectItem>
-                      {paymentModels.map((model) => (
-                        <SelectItem key={model.id} value={model.id}>
-                          {model.name} — {formatCurrency(model.fixed_price)} / {model.duration_months} mo
-                        </SelectItem>
+                  {showStoveDropdown && filteredStoves.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-auto">
+                      {filteredStoves.map((stove) => (
+                        <div
+                          key={stove.id}
+                          className="px-3 py-1.5 text-xs cursor-pointer hover:bg-gray-50"
+                          onClick={() => {
+                            setFormData((prev) => ({ ...prev, stoveSerialNo: stove.stove_id }));
+                            setStoveSearchTerm(stove.stove_id);
+                            setShowStoveDropdown(false);
+                            if (errors.stoveSerialNo) setErrors((prev) => ({ ...prev, stoveSerialNo: null }));
+                          }}
+                        >
+                          {stove.stove_id}
+                        </div>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  )}
                 </div>
               )}
+            </FormField>
 
-              <div className="space-y-2">
-                <Label htmlFor="amount">
-                  Sale Amount (₦) *
-                  {isInstallment && selectedModel && (
-                    <span className="text-gray-500 text-sm ml-2">
-                      (Set by payment model)
-                    </span>
-                  )}
-                </Label>
-                <Input
-                  id="amount"
-                  type="text"
-                  inputMode="numeric"
-                  value={formatAmountInput(formData.amount)}
-                  onChange={(e) => handleInputChange("amount", parseAmountInput(e.target.value))}
-                  placeholder="Enter sale amount"
-                  className={`${errors.amount ? "border-red-500" : ""} ${
-                    (isInstallment && selectedModel) || isEditMode ? "bg-gray-50" : ""
-                  }`}
-                  readOnly={(isInstallment && !!selectedModel) || isEditMode}
-                />
-                {errors.amount && (
-                  <p className="text-sm text-red-600">{errors.amount}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Model Summary — shown when an installment model is selected */}
-            {isInstallment && selectedModel && (
-              <div className="space-y-4 pt-2">
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
-                  <div className="flex items-center gap-2 text-brand font-medium">
-                    <Layers className="h-4 w-4" />
-                    {selectedModel.name}
-                  </div>
-                  {selectedModel.description && (
-                    <p className="text-sm text-gray-600">
-                      {selectedModel.description}
-                    </p>
-                  )}
-                  <div className="grid grid-cols-3 gap-3 text-sm">
-                    <div className="flex items-center gap-1.5">
-                      <CreditCard className="h-3.5 w-3.5 text-gray-500" />
-                      <span className="text-gray-600">Price:</span>
-                      <span className="font-medium">
-                        {formatCurrency(selectedModel.fixed_price)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 text-gray-500" />
-                      <span className="text-gray-600">Duration:</span>
-                      <span className="font-medium">
-                        {selectedModel.duration_months} months
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <CreditCard className="h-3.5 w-3.5 text-gray-500" />
-                      <span className="text-gray-600">Monthly:</span>
-                      <span className="font-medium">
-                        ~
-                        {formatCurrency(
-                          (
-                            selectedModel.fixed_price /
-                            selectedModel.duration_months
-                          ).toFixed(0)
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                  {selectedModel.min_down_payment > 0 && (
-                    <div className="flex items-center gap-1.5 text-sm text-amber-700">
-                      <Info className="h-3.5 w-3.5" />
-                      Minimum down payment:{" "}
-                      {formatCurrency(selectedModel.min_down_payment)}
-                    </div>
-                  )}
-                </div>
-
-                {/* Initial Payment Fields */}
-                <div className="space-y-4 pt-2 border-t">
-                  <div className="flex items-center gap-2 text-sm font-medium text-gray-700 pt-2">
-                    <CreditCard className="h-4 w-4" />
-                    Initial Payment (Optional)
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="initialPaymentAmount">
-                        Initial Payment Amount (₦)
-                      </Label>
-                      <Input
-                        id="initialPaymentAmount"
-                        type="text"
-                        inputMode="numeric"
-                        value={formatAmountInput(initialPaymentAmount)}
-                        onChange={(e) => {
-                          const raw = parseAmountInput(e.target.value);
-                          if (
-                            raw === "" ||
-                            parseFloat(raw) <=
-                              parseFloat(selectedModel.fixed_price)
-                          ) {
-                            setInitialPaymentAmount(raw);
-                          }
-                        }}
-                        placeholder={
-                          selectedModel.min_down_payment > 0
-                            ? `Min: ${formatCurrency(selectedModel.min_down_payment)}`
-                            : "Enter initial payment"
-                        }
-                      />
-                      {initialPaymentAmount &&
-                        selectedModel.min_down_payment > 0 &&
-                        parseFloat(initialPaymentAmount) <
-                          parseFloat(selectedModel.min_down_payment) && (
-                          <p className="text-sm text-amber-600">
-                            Minimum down payment is{" "}
-                            {formatCurrency(selectedModel.min_down_payment)}
-                          </p>
-                        )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="initialPaymentMethod">
-                        Payment Method
-                      </Label>
-                      <Select
-                        value={initialPaymentMethod}
-                        onValueChange={(value) =>
-                          setInitialPaymentMethod(value)
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select method" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="cash">Cash</SelectItem>
-                          <SelectItem value="transfer">Transfer</SelectItem>
-                          <SelectItem value="pos">POS</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Proof of Payment Image */}
-                  {initialPaymentAmount &&
-                    parseFloat(initialPaymentAmount) > 0 && (
-                      <ImageUploadSection
-                        label="Proof of Payment"
-                        preview={initialPaymentProofPreview}
-                        uploading={uploadingProof}
-                        onUpload={handleProofImageUpload}
-                        placeholder="Upload proof of initial payment"
-                        uploadIcon={FileText}
-                        buttonText="Upload Proof"
-                        changeButtonText="Change Proof"
-                      />
-                    )}
+            {/* Edit mode: payment type display */}
+            {isEditMode && initialData?.is_installment && initialData?.payment_model ? (
+              <div className="col-span-2">
+                <FieldLabel>Payment Model</FieldLabel>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-medium">
+                    {initialData.payment_model.name} — ₦{Number(initialData.payment_model.fixed_price).toLocaleString("en-NG")} / {initialData.payment_model.duration_months} mo
+                  </p>
+                  <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-[10px] px-1.5 py-0">Installment</Badge>
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Location Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
-              Location Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="state">State *</Label>
-                <Select
-                  value={formData.stateBackup}
-                  onValueChange={handleStateChange}
-                >
-                  <SelectTrigger
-                    className={errors.stateBackup ? "border-red-500" : ""}
-                  >
-                    <SelectValue placeholder="Select state" />
+            ) : isEditMode ? (
+              <ReadOnlyTile label="Payment Type" value="Full Payment" />
+            ) : paymentModels.length > 0 ? (
+              <FormField label="Payment Type *" error={null}>
+                <Select value={isInstallment ? selectedModelId : "full_payment"} onValueChange={handlePaymentTypeChange}>
+                  <SelectTrigger className="h-7 text-xs">
+                    <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {nigerianStates.map((state) => (
-                      <SelectItem key={state} value={state}>
-                        {state}
+                    <SelectItem value="full_payment">Full Payment</SelectItem>
+                    {paymentModels.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.name} — {formatCurrency(model.fixed_price)} / {model.duration_months} mo
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.stateBackup && (
-                  <p className="text-sm text-red-600">{errors.stateBackup}</p>
-                )}
-              </div>
+              </FormField>
+            ) : null}
 
-              <div className="space-y-2">
-                <Label htmlFor="lga">LGA *</Label>
-                <Select
-                  value={formData.lgaBackup}
-                  onValueChange={(value) =>
-                    handleInputChange("lgaBackup", value)
-                  }
-                  disabled={!formData.stateBackup}
-                >
-                  <SelectTrigger
-                    className={errors.lgaBackup ? "border-red-500" : ""}
-                  >
-                    <SelectValue
-                      placeholder={
-                        formData.stateBackup
-                          ? "Select LGA"
-                          : "Select state first"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {formData.stateBackup &&
-                      lgaAndStates[formData.stateBackup]?.map((lga) => (
-                        <SelectItem key={lga} value={lga}>
-                          {lga}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                {errors.lgaBackup && (
-                  <p className="text-sm text-red-600">{errors.lgaBackup}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Google Places Address Input */}
-            <div className="space-y-2">
-              <Label htmlFor="address">Residential Address *</Label>
-              <GooglePlacesInput
-                value={formData.addressData.fullAddress}
-                onChange={handleAddressSelect}
-                placeholder="Start typing to search for address in Nigeria..."
-                className={`w-full ${errors.address ? "border-red-500" : ""}`}
+            {/* Sale amount */}
+            <FormField label={`Sale Amount (₦) *${isInstallment && selectedModel ? " — by model" : ""}`} error={errors.amount}>
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={formatAmountInput(formData.amount)}
+                onChange={(e) => handleInputChange("amount", parseAmountInput(e.target.value))}
+                placeholder="Enter amount"
+                className={`h-7 text-xs ${errors.amount ? "border-red-500" : ""} ${(isInstallment && selectedModel) || isEditMode ? "bg-muted/50" : ""}`}
+                readOnly={(isInstallment && !!selectedModel) || isEditMode}
               />
-              {errors.address && (
-                <p className="text-sm text-red-600">{errors.address}</p>
-              )}
-              {errors.location && (
-                <p className="text-sm text-red-600">{errors.location}</p>
-              )}
+            </FormField>
+          </div>
 
-              {/* Display GPS coordinates if available (non-editable) */}
-              {formData.addressData.latitude &&
-                formData.addressData.longitude && (
-                  <div className="mt-2 p-3 bg-gray-50 rounded-md border">
-                    <p className="text-sm font-medium text-gray-700 mb-1">
-                      Full Address:
-                    </p>
-                    <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-4 w-full">
-                      {formData.addressData.fullAddress}
-                    </div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">
-                      GPS Coordinates:
-                    </p>
-                    <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-                      <div>
-                        <span className="font-medium">Latitude:</span>{" "}
-                        {formData.addressData.latitude}
-                      </div>
-                      <div>
-                        <span className="font-medium">Longitude:</span>{" "}
-                        {formData.addressData.longitude}
-                      </div>
-                    </div>
+          {/* Installment model summary */}
+          {isInstallment && selectedModel && (
+            <div className="mt-3 space-y-2">
+              <div className="bg-blue-50/60 border border-blue-200/60 rounded-lg p-3">
+                <p className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-2">{selectedModel.name}</p>
+                {selectedModel.description && <p className="text-[10px] text-muted-foreground mb-2">{selectedModel.description}</p>}
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Price</p>
+                    <p className="text-xs font-semibold">{formatCurrency(selectedModel.fixed_price)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Duration</p>
+                    <p className="text-xs font-semibold">{selectedModel.duration_months} months</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Monthly ~</p>
+                    <p className="text-xs font-semibold">{formatCurrency((selectedModel.fixed_price / selectedModel.duration_months).toFixed(0))}</p>
+                  </div>
+                </div>
+                {selectedModel.min_down_payment > 0 && (
+                  <p className="text-[10px] text-amber-700 mt-1.5 flex items-center gap-1">
+                    <Info className="h-3 w-3" />
+                    Min. down payment: {formatCurrency(selectedModel.min_down_payment)}
+                  </p>
+                )}
+              </div>
+
+              {/* Initial payment fields */}
+              <div className="border-t pt-2">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Initial Payment (Optional)</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <FormField label="Amount (₦)" error={null}>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={formatAmountInput(initialPaymentAmount)}
+                      onChange={(e) => {
+                        const raw = parseAmountInput(e.target.value);
+                        if (raw === "" || parseFloat(raw) <= parseFloat(selectedModel.fixed_price)) setInitialPaymentAmount(raw);
+                      }}
+                      placeholder={selectedModel.min_down_payment > 0 ? `Min: ${formatCurrency(selectedModel.min_down_payment)}` : "Enter amount"}
+                      className="h-7 text-xs"
+                    />
+                    {initialPaymentAmount && selectedModel.min_down_payment > 0 && parseFloat(initialPaymentAmount) < parseFloat(selectedModel.min_down_payment) && (
+                      <p className="text-[10px] text-amber-600">Min. {formatCurrency(selectedModel.min_down_payment)}</p>
+                    )}
+                  </FormField>
+                  <FormField label="Method" error={null}>
+                    <Select value={initialPaymentMethod} onValueChange={(v) => setInitialPaymentMethod(v)}>
+                      <SelectTrigger className="h-7 text-xs">
+                        <SelectValue placeholder="Select method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="transfer">Transfer</SelectItem>
+                        <SelectItem value="pos">POS</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+                </div>
+                {initialPaymentAmount && parseFloat(initialPaymentAmount) > 0 && (
+                  <div className="mt-2">
+                    <ImageUploadSection
+                      label="Proof of Payment"
+                      preview={initialPaymentProofPreview}
+                      uploading={uploadingProof}
+                      onUpload={handleProofImageUpload}
+                      placeholder="Upload proof of initial payment"
+                      uploadIcon={FileText}
+                      buttonText="Upload Proof"
+                      changeButtonText="Change Proof"
+                    />
                   </div>
                 )}
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </SectionCard>
 
-        {/* Stove Set & Payment Option */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Flame className="h-5 w-5" />
-              Stove Set &amp; Payment Option
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="potQuantity">Pots Quantity</Label>
-                <Select
-                  value={formData.potQuantity.toString()}
-                  onValueChange={(value) => handleInputChange("potQuantity", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select pots quantity" />
+        {/* Row 3: Location */}
+        <SectionCard title="Location">
+          <div className="grid grid-cols-2 gap-2">
+            <FormField label="State *" error={errors.stateBackup}>
+              <Select value={formData.stateBackup} onValueChange={handleStateChange}>
+                <SelectTrigger className={`h-7 text-xs ${errors.stateBackup ? "border-red-500" : ""}`}>
+                  <SelectValue placeholder="Select state" />
+                </SelectTrigger>
+                <SelectContent>
+                  {nigerianStates.map((state) => (
+                    <SelectItem key={state} value={state}>{state}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField label="LGA *" error={errors.lgaBackup}>
+              <Select value={formData.lgaBackup} onValueChange={(v) => handleInputChange("lgaBackup", v)} disabled={!formData.stateBackup}>
+                <SelectTrigger className={`h-7 text-xs ${errors.lgaBackup ? "border-red-500" : ""}`}>
+                  <SelectValue placeholder={formData.stateBackup ? "Select LGA" : "Select state first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {formData.stateBackup && lgaAndStates[formData.stateBackup]?.map((lga) => (
+                    <SelectItem key={lga} value={lga}>{lga}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <div className="col-span-2">
+              <FormField label="Residential Address *" error={errors.address || errors.location}>
+                <GooglePlacesInput
+                  value={formData.addressData}
+                  onChange={handleAddressSelect}
+                  placeholder="Search for address in Nigeria..."
+                  className={`w-full text-xs ${errors.address ? "border-red-500" : ""}`}
+                />
+              </FormField>
+            </div>
+            {formData.addressData.latitude && formData.addressData.longitude && (
+              <>
+                <div>
+                  <FieldLabel>Latitude</FieldLabel>
+                  <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] px-1.5 py-0 font-mono">
+                    {formData.addressData.latitude}
+                  </Badge>
+                </div>
+                <div>
+                  <FieldLabel>Longitude</FieldLabel>
+                  <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] px-1.5 py-0 font-mono">
+                    {formData.addressData.longitude}
+                  </Badge>
+                </div>
+              </>
+            )}
+          </div>
+        </SectionCard>
+
+        {/* Row 4: Stove Set + Cooking Habits */}
+        <div className="grid grid-cols-2 gap-3">
+          <SectionCard title="Stove Set">
+            <div className="grid grid-cols-2 gap-2">
+              <FormField label="Pots Quantity" error={null}>
+                <Select value={formData.potQuantity.toString()} onValueChange={(v) => handleInputChange("potQuantity", v)}>
+                  <SelectTrigger className="h-7 text-xs">
+                    <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="0">0 pots</SelectItem>
@@ -1226,245 +949,147 @@ const CreateSalesForm = ({
                     <SelectItem value="2">2 pots</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Heat Retention Device</Label>
-                <div className="flex items-center gap-3 pt-2">
+              </FormField>
+              <div>
+                <FieldLabel>Wonderbox (Heat Retention)</FieldLabel>
+                <label className="flex items-center gap-1.5 cursor-pointer mt-1">
                   <input
                     type="checkbox"
-                    id="heatRetentionDevice"
                     checked={formData.heatRetentionDevice}
                     onChange={(e) => handleInputChange("heatRetentionDevice", e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-brand"
+                    className="h-3.5 w-3.5 rounded border-gray-300 text-brand"
                   />
-                  <Label htmlFor="heatRetentionDevice" className="font-normal cursor-pointer">
-                    Wonderbox (Heat Retention Device)
-                  </Label>
+                  <span className="text-xs text-muted-foreground">Included</span>
+                </label>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Cooking Habits">
+            <div className="grid grid-cols-1 gap-2">
+              <div>
+                <FieldLabel>Previous Stove Type</FieldLabel>
+                <div className="flex flex-wrap gap-3 mt-0.5">
+                  {[
+                    { value: "charcoal", label: "Charcoal" },
+                    { value: "wood_stove", label: "Wood (3 stone)" },
+                    { value: "other", label: "Other" },
+                  ].map(({ value, label }) => (
+                    <label key={value} className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="previousStoveType"
+                        value={value}
+                        checked={formData.previousStoveType === value}
+                        onChange={(e) => handleInputChange("previousStoveType", e.target.value)}
+                        className="h-3.5 w-3.5 text-brand"
+                      />
+                      <span className="text-xs text-muted-foreground">{label}</span>
+                    </label>
+                  ))}
+                </div>
+                {formData.previousStoveType === "other" && (
+                  <Input
+                    value={formData.previousStoveOther}
+                    onChange={(e) => handleInputChange("previousStoveOther", e.target.value)}
+                    placeholder="Describe stove type"
+                    className="h-7 text-xs mt-1"
+                  />
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <FormField label="Meals per day" error={null}>
+                  <Input value={formData.mealsPerDay} onChange={(e) => handleInputChange("mealsPerDay", e.target.value)} placeholder="e.g., 2 meals" className="h-7 text-xs" />
+                </FormField>
+                <FormField label="Fuel Source" error={null}>
+                  <Input value={formData.cookingFuelSource} onChange={(e) => handleInputChange("cookingFuelSource", e.target.value)} placeholder="e.g., Local market" className="h-7 text-xs" />
+                </FormField>
+                <div className="col-span-2">
+                  <FormField label="Cooking Location" error={null}>
+                    <Input value={formData.cookingLocation} onChange={(e) => handleInputChange("cookingLocation", e.target.value)} placeholder="e.g., Outdoors, kitchen" className="h-7 text-xs" />
+                  </FormField>
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Cooking Habits */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5" />
-              Cooking Habits
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Previous Stove Type (before Save80)</Label>
-              <div className="flex flex-wrap gap-4 pt-1">
-                {[
-                  { value: "charcoal", label: "Charcoal Stove" },
-                  { value: "wood_stove", label: "Wood Stove (3 stone or similar)" },
-                  { value: "other", label: "Other" },
-                ].map(({ value, label }) => (
-                  <label key={value} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="previousStoveType"
-                      value={value}
-                      checked={formData.previousStoveType === value}
-                      onChange={(e) => handleInputChange("previousStoveType", e.target.value)}
-                      className="h-4 w-4 text-brand"
-                    />
-                    <span className="text-sm">{label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {formData.previousStoveType === "other" && (
-              <div className="space-y-2">
-                <Label htmlFor="previousStoveOther">Please specify previous stove</Label>
-                <Input
-                  id="previousStoveOther"
-                  value={formData.previousStoveOther}
-                  onChange={(e) => handleInputChange("previousStoveOther", e.target.value)}
-                  placeholder="Describe the stove type"
-                />
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="mealsPerDay">How many meals per day on your stove?</Label>
-                <Input
-                  id="mealsPerDay"
-                  value={formData.mealsPerDay}
-                  onChange={(e) => handleInputChange("mealsPerDay", e.target.value)}
-                  placeholder="e.g., 2 meals"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cookingFuelSource">Where do you get your cooking fuel?</Label>
-                <Input
-                  id="cookingFuelSource"
-                  value={formData.cookingFuelSource}
-                  onChange={(e) => handleInputChange("cookingFuelSource", e.target.value)}
-                  placeholder="e.g., Local market"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cookingLocation">Where do you usually cook?</Label>
-                <Input
-                  id="cookingLocation"
-                  value={formData.cookingLocation}
-                  onChange={(e) => handleInputChange("cookingLocation", e.target.value)}
-                  placeholder="e.g., Outdoors, kitchen"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          </SectionCard>
+        </div>
 
         {/* Terms & Conditions */}
-        <Card className={errors.termsAccepted ? "border-red-400" : ""}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5" />
-              Terms &amp; Conditions *
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-gray-500 mb-2">
-              All items below must be acknowledged before submitting.
-            </p>
+        <SectionCard title="Terms & Conditions *" className={errors.termsAccepted ? "border-red-400" : ""}>
+          <p className="text-[10px] text-muted-foreground mb-2">All items below must be acknowledged before submitting.</p>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
             {[
-              {
-                key: "poaGoverned",
-                label:
-                  "This stove is promoted and sold under the atmosfair Programme of Activities (PoA) which is governed by the UN Framework Convention on Climate Change (UNFCCC) and Gold Standard for the Global Goals. I hereby recognize that the stove is subsidised by Carbon Credits.",
-              },
-              {
-                key: "monitoring",
-                label:
-                  "I agree to cooperate with the distributor and the cooperating managing entity (atmosfair gGmbH) for monitoring purposes.",
-              },
-              {
-                key: "noResell",
-                label: "I agree not to resell the stove.",
-              },
-              {
-                key: "emissionReductions",
-                label:
-                  "I agree not to claim any emission reductions for the use of the efficient cook stove but cede the emission reductions the stove generates to the cooperating managing entity (atmosfair gGmbH) of the Programme of Activities (PoA).",
-              },
-              {
-                key: "noExport",
-                label: "I do not agree to take the stove outside of Nigeria.",
-              },
-              {
-                key: "demonstration",
-                label:
-                  "I have received a sufficient demonstration and explanation for efficient firewood usage.",
-              },
+              { key: "poaGoverned", label: "PoA / UNFCCC governed — stove subsidised by Carbon Credits" },
+              { key: "monitoring", label: "Agreed to cooperate for monitoring purposes" },
+              { key: "noResell", label: "Agreed not to resell the stove" },
+              { key: "emissionReductions", label: "Ceded emission reductions to atmosfair gGmbH" },
+              { key: "noExport", label: "Agreed not to take stove outside Nigeria" },
+              { key: "demonstration", label: "Received demonstration for efficient firewood usage" },
             ].map(({ key, label }) => (
-              <label key={key} className="flex items-start gap-3 cursor-pointer group">
+              <label key={key} className="flex items-start gap-2 cursor-pointer group">
                 <input
                   type="checkbox"
                   checked={formData.termsAccepted?.[key] ?? false}
-                  onChange={(e) =>
-                    handleInputChange("termsAccepted", {
-                      ...formData.termsAccepted,
-                      [key]: e.target.checked,
-                    })
-                  }
-                  className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-brand"
+                  onChange={(e) => handleInputChange("termsAccepted", { ...formData.termsAccepted, [key]: e.target.checked })}
+                  className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 rounded border-gray-300 text-brand"
                 />
-                <span className="text-sm text-gray-700 group-hover:text-gray-900">
-                  {label}
-                </span>
+                <span className="text-xs text-muted-foreground group-hover:text-foreground leading-tight">{label}</span>
               </label>
             ))}
-            {errors.termsAccepted && (
-              <p className="text-sm text-red-600 mt-2">{errors.termsAccepted}</p>
-            )}
-          </CardContent>
-        </Card>
+          </div>
+          {errors.termsAccepted && <p className="text-[10px] text-red-500 mt-1.5">{errors.termsAccepted}</p>}
+        </SectionCard>
 
-        {/* Images */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Camera className="h-5 w-5" />
-              Images and Documents
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Stove Image */}
-            <ImageUploadSection
-              label="Stove Photo *"
-              preview={stoveImagePreview}
-              uploading={uploadingImages.stove}
-              onUpload={(file) => handleImageUpload(file, "stove")}
-              placeholder="Upload a clear photo of the stove"
-              error={errors.stoveImage}
-            />
+        {/* Images & Signature */}
+        <div className="grid grid-cols-2 gap-3">
+          <SectionCard title="Images & Documents">
+            <div className="space-y-3">
+              <ImageUploadSection
+                label="Stove Photo *"
+                preview={stoveImagePreview}
+                uploading={uploadingImages.stove}
+                onUpload={(file) => handleImageUpload(file, "stove")}
+                placeholder="Upload a clear photo of the stove"
+                error={errors.stoveImage}
+              />
+              <ImageUploadSection
+                label="Agreement Document *"
+                preview={agreementImagePreview}
+                uploading={uploadingImages.agreement}
+                onUpload={(file) => handleImageUpload(file, "agreement")}
+                placeholder="Upload the signed agreement document"
+                error={errors.agreementImage}
+                uploadIcon={FileText}
+                buttonText="Upload Agreement"
+                changeButtonText="Change Document"
+              />
+            </div>
+          </SectionCard>
 
-            {/* Agreement Document */}
-            <ImageUploadSection
-              label="Agreement Document *"
-              preview={agreementImagePreview}
-              uploading={uploadingImages.agreement}
-              onUpload={(file) => handleImageUpload(file, "agreement")}
-              placeholder="Upload the signed agreement document"
-              error={errors.agreementImage}
-              uploadIcon={FileText}
-              buttonText="Upload Agreement"
-              changeButtonText="Change Document"
-            />
-          </CardContent>
-        </Card>
-
-        {/* Digital Signature */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PenTool className="h-5 w-5" />
-              Digital Signature
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <SectionCard title="Digital Signature">
             <SignatureCanvas
               signature={formData.signature}
               onSignatureChange={handleSignatureChange}
               error={errors.signature}
               label="Customer Signature *"
             />
-          </CardContent>
-        </Card>
+          </SectionCard>
+        </div>
 
-        {/* Submit Button */}
-        <div className="flex justify-end space-x-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleCancel}
-            disabled={loading}
-          >
+        {/* Actions */}
+        <div className="flex justify-end gap-2 pb-1">
+          <Button type="button" variant="outline" onClick={handleCancel} disabled={loading} className="h-8 text-xs px-4">
             Cancel
           </Button>
-          <Button
-            type="submit"
-            disabled={loading}
-            className="bg-brand hover:bg-brand-700 text-white"
-          >
+          <Button type="submit" disabled={loading} className="h-8 text-xs px-4 bg-brand hover:bg-brand/90 text-white">
             {loading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {isEditMode ? "Updating Sale..." : "Creating Sale..."}
+                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                {isEditMode ? "Updating..." : "Creating..."}
               </>
             ) : (
               <>
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="h-3.5 w-3.5 mr-1.5" />
                 {isEditMode ? "Update Sale" : "Create Sale"}
               </>
             )}
