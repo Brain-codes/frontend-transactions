@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import {
   ShoppingCart,
@@ -22,343 +23,148 @@ import {
   Package,
   Tag,
   Layers,
+  ArrowLeftRight,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
+import { usePermissions } from "../hooks/usePermissions";
 import Link from "next/link";
+
+const allNavItems = [
+  {
+    name: "Dashboard",
+    icon: LayoutDashboard,
+    route: "dashboard",
+    href: "/dashboard",
+  },
+  {
+    name: "Agent Manager",
+    icon: Users,
+    route: "agents",
+    href: "/agents",
+  },
+  {
+    name: "Partner Manager",
+    icon: UserCheck,
+    route: "partners",
+    href: "/partners",
+  },
+  {
+    name: "Sales Record",
+    icon: ShoppingCart,
+    route: "sales",
+    href: "/sales",
+  },
+  // {
+  //   name: "Stove Management",
+  //   icon: Tag,
+  //   route: "stove-management",
+  //   href: "/stove-management",
+  // },
+  {
+    name: "Transfer History",
+    icon: ArrowLeftRight,
+    route: "stove-transfer-history",
+    href: "/stove-transfer-history",
+  },
+  {
+    name: "Stove Manager",
+    icon: Package,
+    route: "stove-manager",
+    href: "/stove-manager",
+  },
+  // {
+  //   name: "Agreement Images",
+  //   icon: FileImage,
+  //   route: "agreement-images",
+  //   href: "/agreement-images",
+  // },
+  {
+    name: "Settings",
+    icon: Settings,
+    route: "settings",
+    children: [
+      {
+        name: "Payment Models",
+        route: "settings-payment-models",
+        href: "/payment-models",
+      },
+      // {
+      //   name: "User Management",
+      //   route: "settings-user-management",
+      //   href: "/user-management",
+      // },
+      // {
+      //   name: "Credentials",
+      //   route: "settings-credentials",
+      //   href: "/admin/credentials",
+      // },
+      {
+        name: "System Configuration",
+        route: "settings-system-config",
+        href: "/admin/system-config",
+      },
+    ],
+  },
+  // {
+  //   name: "Profile",
+  //   icon: User,
+  //   route: "profile",
+  //   href: "/profile",
+  // },
+];
 
 const Sidebar = ({ isOpen, onClose, currentRoute }) => {
   const router = useRouter();
-  const { isSuperAdmin, isSuperAdminAgent, isAcslAgent, isAdmin, isPartner, isAgent, isPartnerAgent, hasAdminAccess, isAtmosfairUser } =
-    useAuth();
+  const { userRole, isAcslAgent, isPartnerAgent } = useAuth();
+  const { canRoute } = usePermissions();
 
-  // Track which sub-menus are expanded
   const [expandedItems, setExpandedItems] = useState({});
 
   const toggleExpand = (key) => {
     setExpandedItems((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Navigation items based on user role
-  const getNavItems = () => {
-    const baseItems = [
-      {
-        name: "Dashboard",
-        icon: LayoutDashboard,
-        route: "dashboard",
-        href: "/dashboard",
-        badge: null,
-        requiresAuth: true,
-      },
-    ];
-
-    // Super Admin gets access to everything
-    if (isSuperAdmin) {
-      // TODO: TEMPORARY - Remove this atmosfair.com email navigation restriction when implementing proper role-based navigation
-      // Check if this is an atmosfair.com user (special case)
-      if (isAtmosfairUser) {
-        return [
-          {
-            name: "Manage Sales",
-            icon: ShoppingCart,
-            route: "sales-manage",
-            href: "/sales/manage",
-            badge: null,
-            requiresAuth: true,
-          },
-        ];
+  let navItems = allNavItems
+    .filter((item) => canRoute(item.route))
+    .map((item) => {
+      if (item.route === "partners" && isAcslAgent) {
+        return { ...item, name: "My Partners" };
       }
+      return item;
+    });
 
-      // Regular super admin navigation
-      return [
-        {
-          name: "Dashboard",
-          icon: LayoutDashboard,
-          route: "dashboard",
-          href: "/dashboard",
-          badge: null,
-          requiresAuth: true,
-        },
-        {
-          name: "Manage Sales",
-          icon: ShoppingCart,
-          route: "sales-manage",
-          href: "/sales/manage",
-          badge: null,
-          requiresAuth: true,
-          // children removed — All Sales + Sales Financial Reports merged into /sales/manage
-          // {
-          //   name: "All Sales",
-          //   route: "sales",
-          //   href: "/sales",
-          // },
-          // {
-          //   name: "Sales Financial Reports",
-          //   route: "financial-reports",
-          //   href: "/sales/financial-reports",
-          // },
-        },
-        {
-          name: "Partners & Agents",
-          icon: UserCheck,
-          route: "partners-group",
-          requiresAuth: true,
-          children: [
-            {
-              name: "Partners",
-              route: "partners",
-              href: "/partners",
-            },
-            {
-              name: "Partner Agents",
-              route: "partner-agents",
-              href: "/admin/partner-agents",
-            },
-            {
-              name: "ACSL Agents",
-              route: "super-admin-agents",
-              href: "/super-admin-agents",
-            },
-          ],
-        },
-        {
-          name: "Stove ID Management",
-          icon: Tag,
-          route: "stove-management",
-          href: "/stove-management",
-          badge: null,
-          requiresAuth: true,
-        },
-
-        {
-          name: "Agreement Images",
-          icon: FileImage,
-          route: "agreement-images",
-          href: "/agreement-images",
-          badge: null,
-          requiresAuth: true,
-        },
-        // {
-        //   name: "Profile",
-        //   icon: User,
-        //   route: "profile",
-        //   href: "/profile",
-        //   badge: null,
-        //   requiresAuth: true,
-        // },
-                {
-          name: "Settings",
-          icon: Settings,
-          route: "settings-group",
-          requiresAuth: true,
-          children: [
-            {
-              name: "Payment Models",
-              route: "payment-models",
-              href: "/payment-models",
-            },
-            {
-              name: "User Management",
-              route: "user-management",
-              href: "/user-management",
-            },
-            {
-              name: "Credentials",
-              route: "admin-credentials",
-              href: "/admin/credentials",
-            },
-            {
-              name: "System Configuration",
-              route: "system-config",
-              href: "/admin/system-config",
-            },
-            // {
-            //   name: "Sync Logs",
-            //   route: "admin-logs",
-            //   href: "/admin/logs",
-            // },
-          ],
-        },
-        // {
-        //   name: "Admin Panel",
-        //   icon: BarChart3,
-        //   route: "admin",
-        //   href: "/admin",
-        //   badge: "New",
-        //   requiresAuth: true,
-        // },
-      ];
-    }
-
-    // ACSL Agent gets access to their assigned partners' sales
-    if (isAcslAgent || isSuperAdminAgent) {
-      return [
-        {
-          name: "Dashboard",
-          icon: LayoutDashboard,
-          route: "super-admin-agent",
-          href: "/super-admin-agent",
-          badge: null,
-          requiresAuth: true,
-        },
-        {
-          name: "Sales",
-          icon: ShoppingCart,
-          route: "super-admin-agent-sales",
-          href: "/super-admin-agent/sales",
-          badge: null,
-          requiresAuth: true,
-        },
-        {
-          name: "My Partners",
-          icon: UserCheck,
-          route: "super-admin-agent-partners",
-          href: "/super-admin-agent/partners",
-          badge: null,
-          requiresAuth: true,
-        },
-        {
-          name: "Stove IDs",
-          icon: Package,
-          route: "super-admin-agent-stove-ids",
-          href: "/super-admin-agent/stove-ids",
-          badge: null,
-          requiresAuth: true,
-        },
-        {
-          name: "Profile",
-          icon: User,
-          route: "profile",
-          href: "/profile",
-          badge: null,
-          requiresAuth: true,
-        },
-      ];
-    }
-
-    // Partner (formerly Admin) gets access to their organization's features
-    if (isPartner || isAdmin) {
-      return [
-        {
-          name: "Dashboard",
-          icon: LayoutDashboard,
-          route: "admin",
-          href: "/admin",
-          badge: null,
-          requiresAuth: true,
-        },
-        {
-          name: "Manage Sales",
-          icon: ShoppingCart,
-          route: "admin-sales",
-          href: "/admin/sales",
-          badge: null,
-          requiresAuth: true,
-          // children removed — All Sales, Create Sale, Sales Financial Reports merged into /admin/sales
-          // {
-          //   name: "All Sales",
-          //   route: "admin-sales",
-          //   href: "/admin/sales",
-          // },
-          // {
-          //   name: "Create Sale",
-          //   route: "admin-create-sale",
-          //   href: "/admin/sales/create",
-          // },
-          // {
-          //   name: "Sales Financial Reports",
-          //   route: "admin-financial-reports",
-          //   href: "/admin/sales/financial-reports",
-          // },
-        },
-        {
-          name: "Manage Agents",
-          icon: Users,
-          route: "admin-agents",
-          href: "/admin/agents",
-          badge: null,
-          requiresAuth: true,
-        },
-        {
-          name: "Stove ID Management",
-          icon: Tag,
-          route: "stove-management",
-          href: "/stove-management",
-          badge: null,
-          requiresAuth: true,
-        },
-        // {
-        //   name: "Branches",
-        //   icon: Building2,
-        //   route: "admin-branches",
-        //   href: "/admin/branches",
-        //   badge: null,
-        //   requiresAuth: true,
-        // },
-        // {
-        //   name: "Settings",
-        //   icon: Settings,
-        //   route: "admin-settings",
-        //   href: "/admin/settings",
-        //   badge: null,
-        //   requiresAuth: true,
-        // },
-        {
-          name: "Profile",
-          icon: User,
-          route: "profile",
-          href: "/profile",
-          badge: null,
-          requiresAuth: true,
-        },
-        // {
-        //   name: "Agreement Images",
-        //   icon: FileImage,
-        //   route: "admin-agreement-images",
-        //   href: "/admin/agreement-images",
-        //   badge: null,
-        //   requiresAuth: true,
-        // },
-      ];
-    }
-
-    // Partner Agent (formerly Agent) gets access to sales creation and viewing only
-    if (isPartnerAgent || isAgent) {
-      return [
-        {
-          name: "Manage Sales",
-          icon: ShoppingCart,
-          route: "admin-sales",
-          href: "/admin/sales",
-          badge: null,
-          requiresAuth: true,
-        },
-      ];
-    }
-
-    // Default navigation for other roles
-    return baseItems;
-  };
-
-  const navItems = getNavItems();
+  // Specific order for ACSL Agent and Partner Agent
+  if (isAcslAgent || isPartnerAgent) {
+    const agentOrder = isAcslAgent
+      ? ["dashboard", "sales", "partners", 
+        // "stove-management", 
+        "stove-manager", "profile"]
+      : ["dashboard", "sales", "stove-manager", "profile"];
+      
+    navItems = [...navItems].sort((a, b) => {
+      const indexA = agentOrder.indexOf(a.route);
+      const indexB = agentOrder.indexOf(b.route);
+      if (indexA === -1 && indexB === -1) return 0;
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+  }
 
   const navigateToRoute = (href) => {
     router.push(href);
-    // Auto-close sidebar on mobile when clicking nav items
     if (window.innerWidth < 1024) {
       onClose();
     }
   };
 
-  // Force close for mobile overlay clicks (always close regardless of screen size)
   const handleOverlayClick = () => {
     if (window.innerWidth < 1024) {
       onClose();
     }
   };
 
-  // Check if any child route is active (for auto-expanding parent)
   const isChildActive = (children) => {
     return children?.some((child) => currentRoute === child.route);
   };
@@ -375,7 +181,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 h-screen z-50 w-72 border-r border-gray-200 flex flex-col
+        className={`fixed top-0 left-0 h-screen z-50 w-64 border-r border-gray-200 flex flex-col
           transition-all duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
         style={{ backgroundColor: "#fafafa" }}

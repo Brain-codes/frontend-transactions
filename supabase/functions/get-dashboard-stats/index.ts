@@ -20,13 +20,25 @@ serve(async (req) => {
     );
   }
 
-  // Parse optional date filters from body
+  // Parse year or date filters from body
   let dateFrom: string | null = null;
   let dateTo: string | null = null;
+  let endOfYear: string | null = null; // exclusive upper bound for balance-sheet stove counts
   try {
     const body = await req.json().catch(() => ({}));
-    dateFrom = body.date_from || null;
-    dateTo = body.date_to || null;
+    if (body.year) {
+      dateFrom = `${body.year}-01-01`;
+      dateTo = `${body.year}-12-31`;
+      endOfYear = `${Number(body.year) + 1}-01-01`;
+    } else {
+      dateFrom = body.date_from || null;
+      dateTo = body.date_to || null;
+      // Derive endOfYear from dateTo if present (for balance-sheet queries)
+      if (dateTo) {
+        const toYear = new Date(dateTo).getFullYear();
+        endOfYear = `${toYear + 1}-01-01`;
+      }
+    }
   } catch (_) {
     // ignore parse errors
   }
@@ -107,46 +119,30 @@ serve(async (req) => {
       );
     }
 
-    // Get stove inventory stats for the organization
-    // Total stoves received
-    const { count: totalStovesReceived, error: stovesReceivedError } =
-      await supabase
-        .from("stove_ids")
-        .select("*", { count: "exact", head: true })
-        .eq("organization_id", organizationId);
-
-    if (stovesReceivedError) {
-      console.error(
-        "Error fetching total stoves received:",
-        stovesReceivedError
-      );
-    }
-
-    // Total stoves sold (status = 'sold')
-    const { count: totalStovesSold, error: stovesSoldError } = await supabase
+    // Balance-sheet stove counts: cumulative as of end of selected year.
+    // created_at proxies transfer date; sales_date is authoritative for sold.
+    let stovesReceivedQuery = supabase
       .from("stove_ids")
       .select("*", { count: "exact", head: true })
-      .eq("organization_id", organizationId)
-      .eq("status", "sold");
+      .eq("organization_id", organizationId);
+    if (endOfYear) stovesReceivedQuery = stovesReceivedQuery.lt("created_at", endOfYear);
 
-    if (stovesSoldError) {
-      console.error("Error fetching total stoves sold:", stovesSoldError);
-    }
+    let stovesSoldQuery = supabase
+      .from("sales")
+      .select("*", { count: "exact", head: true })
+      .eq("organization_id", organizationId);
+    if (endOfYear) stovesSoldQuery = stovesSoldQuery.lt("sales_date", endOfYear);
 
-    // Total stoves available (status = 'available')
-    const { count: totalStovesAvailable, error: stovesAvailableError } =
-      await supabase
-        .from("stove_ids")
-        .select("*", { count: "exact", head: true })
-        .eq("organization_id", organizationId)
-        .eq("status", "available");
+    const [
+      { count: totalStovesReceived, error: stovesReceivedError },
+      { count: stovesSoldCumulative, error: stovesSoldError },
+    ] = await Promise.all([stovesReceivedQuery, stovesSoldQuery]);
 
-    if (stovesAvailableError) {
-      console.error(
-        "Error fetching total stoves available:",
-        stovesAvailableError
-      );
-    }
+    if (stovesReceivedError) console.error("Error fetching stoves received:", stovesReceivedError);
+    if (stovesSoldError) console.error("Error fetching stoves sold:", stovesSoldError);
+
+    const totalStovesSold = stovesSoldCumulative ?? 0;
+    const totalStovesAvailable = Math.max(0, (totalStovesReceived ?? 0) - totalStovesSold);
 
     // Get total sales count for the organization
     const { count: totalSalesCount, error: salesCountError } = await supabase
@@ -239,35 +235,61 @@ serve(async (req) => {
       console.error("Error fetching pending sales count:", pendingCountError);
     }
 
-    // Get financial aggregation data (with optional date filters)
-    let financialQuery = supabase
+    // Get financial + chart data (year-filtered)
+    let salesQuery = supabase
       .from("sales")
-      .select("amount, total_paid, is_installment, payment_status")
+      .select("amount, total_paid, is_installment, payment_status, state_backup, payment_model_id")
       .eq("organization_id", organizationId)
       .not("amount", "is", null);
 
-    if (dateFrom) financialQuery = financialQuery.gte("sales_date", dateFrom);
-    if (dateTo) financialQuery = financialQuery.lte("sales_date", dateTo + "T23:59:59");
+    if (dateFrom) salesQuery = salesQuery.gte("sales_date", dateFrom);
+    if (dateTo) salesQuery = salesQuery.lte("sales_date", dateTo + "T23:59:59");
 
-    const { data: financialData, error: financialError } = await financialQuery;
+    const { data: salesRows, error: financialError } = await salesQuery;
 
     let totalSalesAmount = 0;
     let totalAmountPaid = 0;
     let totalAmountOwed = 0;
     let customersOwing = 0;
+    const stateMap: Record<string, number> = {};
+    const modelCountMap: Record<string, number> = {};
+    const modelIds: string[] = [];
 
-    if (!financialError && financialData) {
-      for (const sale of financialData) {
+    if (!financialError && salesRows) {
+      for (const sale of salesRows) {
         const amount = sale.amount || 0;
         const paid = sale.is_installment ? (sale.total_paid || 0) : amount;
         totalSalesAmount += amount;
         totalAmountPaid += paid;
-        if (sale.is_installment && sale.payment_status !== "fully_paid") {
-          customersOwing += 1;
+        if (sale.is_installment && sale.payment_status !== "fully_paid") customersOwing += 1;
+
+        if (sale.state_backup) stateMap[sale.state_backup] = (stateMap[sale.state_backup] || 0) + 1;
+        if (sale.payment_model_id && !modelIds.includes(sale.payment_model_id)) {
+          modelIds.push(sale.payment_model_id);
         }
       }
       totalAmountOwed = totalSalesAmount - totalAmountPaid;
     }
+
+    // Resolve payment model names
+    let modelNames: Record<string, string> = {};
+    if (modelIds.length > 0) {
+      const { data: models } = await supabase.from("payment_models").select("id, name").in("id", modelIds);
+      models?.forEach((m) => { modelNames[m.id] = m.name; });
+    }
+    salesRows?.forEach((s) => {
+      const label = s.payment_model_id ? (modelNames[s.payment_model_id] || "Other") : "Outright";
+      modelCountMap[label] = (modelCountMap[label] || 0) + 1;
+    });
+
+    const totalSalesForPct = salesRows?.length || 0;
+    const salesModelData = Object.entries(modelCountMap)
+      .map(([model, count]) => ({ model, count, percentage: totalSalesForPct > 0 ? (count / totalSalesForPct) * 100 : 0 }))
+      .sort((a, b) => b.count - a.count);
+
+    const byState = Object.entries(stateMap)
+      .map(([state, count]) => ({ state, count }))
+      .sort((a, b) => b.count - a.count);
 
     // Return dashboard statistics
     const dashboardStats = {
@@ -287,6 +309,9 @@ serve(async (req) => {
       totalStovesReceived: totalStovesReceived || 0,
       totalStovesSold: totalStovesSold || 0,
       totalStovesAvailable: totalStovesAvailable || 0,
+      // Chart data
+      byState,
+      salesModelData,
     };
 
     return withCors(

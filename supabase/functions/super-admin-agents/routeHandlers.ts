@@ -88,7 +88,7 @@ export async function handleRoute(req: Request, supabase: any) {
   if ((method === "PATCH" || method === "PUT") && agentId && !subResource) {
     const auth = await authenticateSuperAdmin(supabase, authHeader);
     const body = await req.json();
-    return await updateAgent(supabase, agentId, body);
+    return await updateAgent(supabase, agentId, body, auth.userId);
   }
 
   // ── DELETE /super-admin-agents/{id}/organizations/{orgId}

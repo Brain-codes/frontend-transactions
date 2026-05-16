@@ -62,13 +62,15 @@ export async function createAgent(supabase: any, data: any, adminId: string) {
     throw new Error("Failed to create user profile");
   }
 
-  // Update profile with phone if provided, and ensure organization_id stays NULL
-  if (data.phone) {
-    await supabase
-      .from("profiles")
-      .update({ phone: data.phone, organization_id: null })
-      .eq("id", profile.id);
-  }
+  // Update profile with phone if provided, stamp created_by, and ensure organization_id stays NULL
+  await supabase
+    .from("profiles")
+    .update({
+      ...(data.phone ? { phone: data.phone } : {}),
+      organization_id: null,
+      updated_by: adminId,
+    })
+    .eq("id", profile.id);
 
   // Save credentials so they appear in the credentials management page
   await supabase.from("credentials").insert({
@@ -92,7 +94,7 @@ export async function createAgent(supabase: any, data: any, adminId: string) {
   };
 }
 
-export async function updateAgent(supabase: any, agentId: string, data: any) {
+export async function updateAgent(supabase: any, agentId: string, data: any, adminId: string) {
   console.log("✏️ Updating agent:", agentId);
 
   // Verify agent exists
@@ -120,11 +122,15 @@ export async function updateAgent(supabase: any, agentId: string, data: any) {
     throw new Error("validation: No valid fields to update");
   }
 
+  // Stamp who made the change and when (only on intentional admin edits)
+  updates.updated_at = new Date().toISOString();
+  updates.updated_by = adminId;
+
   const { data: updated, error: updateError } = await supabase
     .from("profiles")
     .update(updates)
     .eq("id", agentId)
-    .select("id, full_name, email, phone, role, status, created_at")
+    .select("id, full_name, email, phone, role, status, created_at, last_login, updated_at, updated_by")
     .single();
 
   if (updateError) throw new Error(`Database error: ${updateError.message}`);
@@ -136,10 +142,17 @@ export async function updateAgent(supabase: any, agentId: string, data: any) {
     await supabase.auth.admin.updateUserById(agentId, { ban_duration: "none" });
   }
 
+  // Resolve the admin's name for the response
+  const { data: updater } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", adminId)
+    .single();
+
   console.log("✅ Agent updated:", agentId);
 
   return {
     message: "Agent updated successfully",
-    data: updated,
+    data: { ...updated, updated_by_name: updater?.full_name || updater?.email || null },
   };
 }

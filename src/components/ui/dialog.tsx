@@ -55,12 +55,13 @@ export interface DialogContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>,
     VariantProps<typeof dialogContentVariants> {
   className?: string;
+  showPaddingOnDialogContent?: boolean;
 }
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({ className, children, size, ...props }, ref) => (
+>(({ className, children, size, showPaddingOnDialogContent = true, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
@@ -78,7 +79,9 @@ const DialogContent = React.forwardRef<
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
       </div>
-      <div className="overflow-y-auto overflow-x-hidden flex-1 p-6">
+      <div className={`overflow-y-auto overflow-x-hidden flex-1 ${
+        showPaddingOnDialogContent ? "p-6" : ""
+      }`}>
         <div className="grid gap-4">{children}</div>
       </div>
     </DialogPrimitive.Content>

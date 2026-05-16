@@ -96,6 +96,15 @@ function buildOptimizedSelectFields(filters: Filters): string {
     "total_paid",
     "payment_status",
     "is_archived",
+    "retailer_branch",
+    "pot_quantity",
+    "heat_retention_device",
+    "previous_stove_type",
+    "previous_stove_other",
+    "meals_per_day",
+    "cooking_fuel_source",
+    "cooking_location",
+    "terms_accepted",
   ];
 
   // Add joins based on what's requested to avoid N+1 queries

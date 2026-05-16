@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Calendar, CreditCard, CheckCircle2 } from "lucide-react";
+import { Loader2, CreditCard, CheckCircle2, Eye } from "lucide-react";
 import { AdminSales } from "@/types/adminSales";
 import paymentModelService from "../../../services/paymentModelService";
 
@@ -75,6 +75,10 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
   const [summary, setSummary] = useState<PaymentSummaryData | null>(null);
   const [paymentModel, setPaymentModel] = useState<PaymentModel | null>(null);
   const [loading, setLoading] = useState(false);
+  const [noteModal, setNoteModal] = useState<{ open: boolean; note: string }>({
+    open: false,
+    note: "",
+  });
 
   const isInstallment = sale?.is_installment === true;
 
@@ -113,8 +117,9 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
   const totalPaidDisplay = isInstallment ? totalPaid : saleAmount;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg">
             Payment History — {sale.transaction_id || "N/A"}
@@ -135,7 +140,7 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
               <p className="font-bold">{formatCurrency(saleAmount)}</p>
             </div>
             <div>
-              <span className="text-gray-500">Balance Payment</span>
+              <span className="text-gray-500">Outstanding Balance</span>
               <p className="font-bold text-red-600">
                 {formatCurrency(amountOwed)}
               </p>
@@ -237,19 +242,31 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
                             {payment.recorder?.full_name || "—"}
                           </TableCell>
                           <TableCell className="text-sm">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3 text-gray-400" />
-                              {new Date(
-                                payment.payment_date
-                              ).toLocaleDateString("en-GB", {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric",
-                              })}
-                            </span>
+                            {new Date(
+                              payment.payment_date
+                            ).toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                            })}
                           </TableCell>
-                          <TableCell className="text-xs text-gray-500 max-w-[120px] truncate">
-                            {payment.notes || "—"}
+                          <TableCell>
+                            {payment.notes ? (
+                              <button
+                                onClick={() =>
+                                  setNoteModal({
+                                    open: true,
+                                    note: payment.notes!,
+                                  })
+                                }
+                                className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs"
+                              >
+                                <Eye className="h-4 w-4" />
+                                View
+                              </button>
+                            ) : (
+                              <span className="text-gray-400 text-xs">—</span>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -269,6 +286,21 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
         )}
       </DialogContent>
     </Dialog>
+
+    <Dialog
+      open={noteModal.open}
+      onOpenChange={() => setNoteModal({ open: false, note: "" })}
+    >
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="text-base">Payment Note</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+          {noteModal.note}
+        </p>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 };
 

@@ -147,10 +147,9 @@ export const useOrganizations = (initialFilters = {}) => {
       }
 
       if (isLoadingRef.current) {
-        console.log(
-          `🔍 [${componentName}] Request already in progress - skipping`
-        );
-        return;
+        // Abort the in-flight request so the latest filters win
+        safeFetchManager.abortComponentRequests(componentName);
+        isLoadingRef.current = false;
       }
 
       isLoadingRef.current = true;

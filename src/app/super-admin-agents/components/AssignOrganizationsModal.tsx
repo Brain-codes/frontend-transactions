@@ -183,7 +183,7 @@ const AssignOrganizationsModal: React.FC<AssignOrganizationsModalProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            Assign States & Partners
+            Assign to Partners & States
           </DialogTitle>
           <DialogDescription>
             Assign states and/or specific organizations that{" "}

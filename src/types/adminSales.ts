@@ -14,7 +14,6 @@ export interface AdminSales {
   lga_backup: string;
   phone: string;
   other_phone: string;
-  partner_name: string;
   amount: number;
   signature: string; // Base64 image string
   created_by: string;
@@ -25,6 +24,9 @@ export interface AdminSales {
   created_at: string; // ISO timestamp
   status: string; // could be "completed" | "pending" | ...
   address: Address;
+  agent_approved?: boolean;
+  partner_id?: string;
+  partner_name?: string;
 
   // Agent info (joined from profiles via created_by)
   agent_name?: string;

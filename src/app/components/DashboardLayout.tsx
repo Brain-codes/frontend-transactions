@@ -23,7 +23,7 @@ const DashboardLayout = ({
   children,
   currentRoute = "dashboard",
   title = "Dashboard",
-  description = "Welcome to your dashboard",
+  description = "",
   rightButton = null,
 }: DashboardLayoutProps) => {
   const { user, signOut, isAgent, isPartnerAgent } = useAuth() as any;
@@ -54,22 +54,20 @@ const DashboardLayout = ({
   return (
     <div className="min-h-screen bg-white">
       {/* Sidebar hidden for agents — they only have one page */}
-      {!isAgent && (
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={closeSidebar}
-          currentRoute={currentRoute}
-        />
-      )}
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={closeSidebar}
+        currentRoute={currentRoute}
+      />
 
       {/* Main content */}
       <div
         className={`flex flex-col min-h-screen transition-all duration-300 ease-in-out
-          ${!isAgent && sidebarOpen ? "ml-0 lg:ml-72" : "ml-0 lg:ml-0"}`}
+          ${sidebarOpen ? "ml-0 lg:ml-64" : "ml-0 lg:ml-0"}`}
       >
         <TopNavigation
-          onToggleSidebar={!isAgent ? toggleSidebar : undefined}
-          hideSidebarToggle={isAgent}
+          onToggleSidebar={toggleSidebar}
+          hideSidebarToggle={false}
           title={title}
           description={description}
           rightButton={null}
@@ -78,11 +76,11 @@ const DashboardLayout = ({
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto bg-white">
-          {title && (
+          {/* {title && (
             <div className="px-6 pt-6">
               <PageHeader title={title} right={rightButton} />
             </div>
-          )}
+          )} */}
           {children}
         </main>
       </div>

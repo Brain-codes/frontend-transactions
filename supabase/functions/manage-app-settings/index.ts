@@ -65,7 +65,7 @@ serve(async (req) => {
 
       const { data, error } = await supabase
         .from("app_settings")
-        .select("google_places_api_key, brevo_api_key, updated_at, updated_by")
+        .select("google_places_api_key, google_maps_api_key, brevo_api_key, updated_at, updated_by")
         .eq("id", SETTINGS_ROW_ID)
         .single();
 
@@ -83,8 +83,10 @@ serve(async (req) => {
         success: true,
         data: {
           google_places_api_key: masked(data?.google_places_api_key),
+          google_maps_api_key: masked(data?.google_maps_api_key),
           brevo_api_key: masked(data?.brevo_api_key),
           google_places_api_key_set: !!data?.google_places_api_key,
+          google_maps_api_key_set: !!data?.google_maps_api_key,
           brevo_api_key_set: !!data?.brevo_api_key,
           updated_at: data?.updated_at,
           updated_by: data?.updated_by,
@@ -97,7 +99,7 @@ serve(async (req) => {
       const profile = await getSuperAdminProfile(supabase, authHeader);
       const body = await req.json();
 
-      const { google_places_api_key, brevo_api_key, password } = body;
+      const { google_places_api_key, google_maps_api_key, brevo_api_key, password } = body;
 
       // Verify password by attempting sign-in with the admin's email
       if (!password) {
@@ -126,6 +128,9 @@ serve(async (req) => {
 
       if (google_places_api_key !== undefined) {
         updatePayload.google_places_api_key = google_places_api_key || null;
+      }
+      if (google_maps_api_key !== undefined) {
+        updatePayload.google_maps_api_key = google_maps_api_key || null;
       }
       if (brevo_api_key !== undefined) {
         updatePayload.brevo_api_key = brevo_api_key || null;

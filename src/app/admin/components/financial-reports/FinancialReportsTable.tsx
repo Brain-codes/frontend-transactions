@@ -24,12 +24,16 @@ interface FinancialReportsTableProps {
   onViewDetails: (sale: AdminSales) => void;
   onViewHistory: (sale: AdminSales) => void;
   onRecordPayment: (sale: AdminSales) => void;
+  onApproveSale?: (sale: AdminSales) => void;
   onEditSale?: (sale: AdminSales) => void;
   onDeleteSale?: (sale: AdminSales) => void;
   sortOrder: "asc" | "desc";
   onToggleSort: () => void;
   // "admin" shows Agent column, "superAdmin" shows Partner column, "agent" hides both
   viewFrom?: "admin" | "superAdmin" | "agent";
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onToggleSelectAll?: () => void;
 }
 
 const formatCurrency = (amount: number) =>
@@ -61,8 +65,12 @@ const getStatusBadge = (sale: AdminSales) => {
 const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
   data, loading, currentPage, pageSize, totalRecords,
   onPageChange, onPageSizeChange, onViewDetails, onViewHistory, onRecordPayment,
-  onEditSale, onDeleteSale, sortOrder, onToggleSort, viewFrom = "admin",
+  onApproveSale, onEditSale, onDeleteSale, sortOrder, onToggleSort, viewFrom = "admin",
+  selectedIds, onToggleSelect, onToggleSelectAll,
 }) => {
+  const pageIds = data.map((s) => s.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds?.has(id));
+  const somePageSelected = !allPageSelected && pageIds.some((id) => selectedIds?.has(id));
   const totalPages = Math.ceil(totalRecords / pageSize);
   const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endRecord = Math.min(currentPage * pageSize, totalRecords);
@@ -119,6 +127,17 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
         <Table>
           <TableHeader>
             <TableRow className="bg-brand hover:bg-brand">
+              {onToggleSelect && (
+                <TableHead className="w-8 text-white">
+                  <input
+                    type="checkbox"
+                    ref={(el) => { if (el) el.indeterminate = somePageSelected; }}
+                    checked={allPageSelected}
+                    onChange={onToggleSelectAll}
+                    className="h-4 w-4 rounded border-white cursor-pointer accent-white"
+                  />
+                </TableHead>
+              )}
               <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Transaction ID</TableHead>
               <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Customer</TableHead>
               <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone</TableHead>
@@ -132,7 +151,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                   Sales Date <ArrowUpDown className="h-3 w-3" />
                 </div>
               </TableHead>
-              <TableHead className="text-white font-semibold text-xs text-center whitespace-nowrap">Status</TableHead>
+              <TableHead className="text-white font-semibold text-xs text-center whitespace-nowrap">Payment Status</TableHead>
               {viewFrom === "admin" && (
                 <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Sales Rep</TableHead>
               )}
@@ -140,15 +159,26 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                 <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner</TableHead>
               )}
               <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Payment Model</TableHead>
+              <TableHead className="text-white font-semibold text-xs text-right whitespace-nowrap">Expected Amount</TableHead>
               <TableHead className="text-white font-semibold text-xs text-right whitespace-nowrap">Amount Paid</TableHead>
-              <TableHead className="text-white font-semibold text-xs text-right whitespace-nowrap">Total Amount</TableHead>
               <TableHead className="text-white font-semibold text-xs text-right whitespace-nowrap">Amount Owed</TableHead>
               <TableHead className="text-white font-semibold text-xs text-center whitespace-nowrap">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className={loading ? "opacity-40" : ""}>
             {data.map((sale, idx) => (
-              <TableRow key={sale.id} className={idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"}>
+              <TableRow key={sale.id} className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} ${selectedIds?.has(sale.id) ? "ring-1 ring-inset ring-brand/40 bg-blue-50" : ""}`}>
+                {onToggleSelect && (
+                  <TableCell className="w-8">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds?.has(sale.id) ?? false}
+                      onChange={() => onToggleSelect(sale.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand cursor-pointer"
+                    />
+                  </TableCell>
+                )}
                 <TableCell className="font-medium text-xs">{sale.transaction_id || "N/A"}</TableCell>
                 <TableCell className="text-xs">{sale.end_user_name || "N/A"}</TableCell>
                 <TableCell className="text-xs">{sale.phone || "N/A"}</TableCell>
@@ -175,11 +205,11 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                     ? (sale.payment_model?.name || "Installment")
                     : "Full Payment"}
                 </TableCell>
-                <TableCell className="text-right text-green-700 font-medium text-xs">
-                  {formatCurrency(getAmountPaid(sale))}
-                </TableCell>
                 <TableCell className="text-right font-bold text-xs">
                   {formatCurrency(sale.amount ?? 0)}
+                </TableCell>
+                <TableCell className="text-right text-green-700 font-medium text-xs">
+                  {formatCurrency(getAmountPaid(sale))}
                 </TableCell>
                 <TableCell className="text-right text-red-700 font-medium text-xs">
                   {formatCurrency(getAmountOwed(sale))}
@@ -190,8 +220,10 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                     onViewDetails={onViewDetails}
                     onViewHistory={onViewHistory}
                     onRecordPayment={onRecordPayment}
+                    onApproveSale={onApproveSale}
                     onEditSale={onEditSale}
                     onDeleteSale={onDeleteSale}
+                    viewFrom={viewFrom}
                   />
                 </TableCell>
               </TableRow>

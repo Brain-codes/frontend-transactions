@@ -15,7 +15,7 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams) {
 
   let query = supabase
     .from("profiles")
-    .select("id, full_name, email, phone, role, status, created_at", { count: "exact" });
+    .select("id, full_name, email, phone, role, status, created_at, last_login, updated_at, updated_by", { count: "exact" });
 
   if (roleParam && ["acsl_agent", "super_admin_agent", "super_admin"].includes(roleParam)) {
     // Map legacy role param to new value
@@ -39,26 +39,63 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams) {
   const { data: agents, error, count } = await query;
   if (error) throw new Error(`Database error: ${error.message}`);
 
-  // For each agent, fetch their assigned org count + state count
+  // For each agent, compute the total unique partner count:
+  // direct org assignments + orgs covered by state assignments (excluding duplicates)
   const agentsWithCounts = await Promise.all(
     (agents || []).map(async (agent: any) => {
-      const [{ count: orgCount }, { count: stateCount }] = await Promise.all([
+      const [{ data: directOrgs }, { data: stateRows }] = await Promise.all([
         supabase
           .from("acsl_agent_organizations")
-          .select("*", { count: "exact", head: true })
+          .select("organization_id")
           .eq("agent_id", agent.id),
         supabase
           .from("acsl_agent_states")
-          .select("*", { count: "exact", head: true })
+          .select("state")
           .eq("agent_id", agent.id),
       ]);
+
+      const directOrgIds = new Set((directOrgs || []).map((r: any) => r.organization_id));
+      const assignedStates = (stateRows || []).map((r: any) => r.state);
+
+      let stateOrgCount = 0;
+      if (assignedStates.length > 0) {
+        const { data: stateOrgRows } = await supabase
+          .from("organizations")
+          .select("id")
+          .in("state", assignedStates);
+        // Only count orgs not already directly assigned
+        stateOrgCount = (stateOrgRows || []).filter((o: any) => !directOrgIds.has(o.id)).length;
+      }
+
+      const totalPartners = directOrgIds.size + stateOrgCount;
+
       return {
         ...agent,
-        assigned_organizations_count: orgCount || 0,
-        assigned_states_count: stateCount || 0,
+        assigned_organizations_count: directOrgIds.size,
+        assigned_states_count: assignedStates.length,
+        total_partners_count: totalPartners,
       };
     })
   );
+
+  // Batch-resolve updated_by names
+  const updaterIds = [...new Set(
+    agentsWithCounts
+      .filter((a: any) => a.updated_by)
+      .map((a: any) => a.updated_by as string)
+  )];
+  const updaterMap: Record<string, string> = {};
+  if (updaterIds.length > 0) {
+    const { data: updaters } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", updaterIds);
+    (updaters || []).forEach((u: any) => { updaterMap[u.id] = u.full_name || u.email; });
+  }
+  const agentsWithModifier = agentsWithCounts.map((a: any) => ({
+    ...a,
+    updated_by_name: a.updated_by ? (updaterMap[a.updated_by] ?? null) : null,
+  }));
 
   const totalPages = Math.ceil((count || 0) / limit);
 
@@ -66,7 +103,7 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams) {
 
   return {
     message: `Found ${count || 0} agents`,
-    data: agentsWithCounts,
+    data: agentsWithModifier,
     pagination: {
       currentPage: page,
       totalPages,
@@ -83,7 +120,7 @@ export async function getAgent(supabase: any, agentId: string) {
 
   const { data: agent, error } = await supabase
     .from("profiles")
-    .select("id, full_name, email, phone, role, status, created_at")
+    .select("id, full_name, email, phone, role, status, created_at, last_login, updated_at, updated_by")
     .eq("id", agentId)
     .in("role", ["acsl_agent", "super_admin"])
     .single();

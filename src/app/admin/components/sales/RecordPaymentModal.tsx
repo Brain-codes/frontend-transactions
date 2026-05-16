@@ -97,47 +97,47 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent size="3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-brand" />
-            Record Payment
+            Record Payment for {saleSummary?.customerName || "Customer"}
           </DialogTitle>
           <DialogDescription>
-            Remaining balance:{" "}
-            <span className="font-medium text-brand">
+            Outstanding Balance:{" "}
+            <span className="font-bold text-red-600">
               {formatCurrency(remainingBalance)}
             </span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {saleSummary && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+          {/* {saleSummary && (
+            <div className="py-2 border-b">
+              <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
                 {saleSummary.transactionId && (
                   <div>
-                    <span className="text-gray-500">Transaction ID</span>
-                    <p className="font-medium">{saleSummary.transactionId}</p>
+                    <span className="text-gray-500 block text-xs uppercase font-semibold">Transaction ID</span>
+                    <p className="font-medium text-base">{saleSummary.transactionId}</p>
                   </div>
                 )}
                 {saleSummary.customerName && (
                   <div>
-                    <span className="text-gray-500">Customer</span>
-                    <p className="font-medium">{saleSummary.customerName}</p>
+                    <span className="text-gray-500 block text-xs uppercase font-semibold">Customer</span>
+                    <p className="font-medium text-base">{saleSummary.customerName}</p>
                   </div>
                 )}
                 <div>
-                  <span className="text-gray-500">Total</span>
-                  <p className="font-bold">{formatCurrency(saleSummary.totalAmount)}</p>
+                  <span className="text-gray-500 block text-xs uppercase font-semibold">Total</span>
+                  <p className="font-bold text-base text-gray-900">{formatCurrency(saleSummary.totalAmount)}</p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Paid</span>
-                  <p className="font-bold text-green-700">{formatCurrency(saleSummary.amountPaid)}</p>
+                  <span className="text-gray-500 block text-xs uppercase font-semibold">Paid</span>
+                  <p className="font-bold text-base text-green-700">{formatCurrency(saleSummary.amountPaid)}</p>
                 </div>
               </div>
             </div>
-          )}
+          )} */}
 
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">

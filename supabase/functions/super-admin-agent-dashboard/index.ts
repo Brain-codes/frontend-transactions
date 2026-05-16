@@ -5,140 +5,126 @@ import { authenticate } from "./authenticate.ts";
 import { resolveAssignedOrgIds } from "../_shared/resolveAssignedOrgIds.ts";
 
 serve(async (req) => {
-  console.log("🚀 ACSL Agent Dashboard API started");
-
   if (req.method === "OPTIONS") {
     return withCors(new Response("ok", { status: 200 }));
   }
 
   try {
-    const REQUEST_TIMEOUT = 30000;
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Request timeout")), REQUEST_TIMEOUT)
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const result = await Promise.race([executeMainLogic(req), timeoutPromise]);
-    return result;
-  } catch (error) {
-    console.error("❌ Dashboard error:", error);
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const { userId, organizationId } = await authenticate(supabase, authHeader);
 
-    let statusCode = 500;
-    if (error.message?.includes("Unauthorized")) statusCode = 403;
-    else if (error.message?.includes("timeout")) statusCode = 408;
+    // Parse year from body
+    const { year = new Date().getFullYear() } = await req.json().catch(() => ({}));
+    const startDate = `${year}-01-01`;
+    const endOfYear = `${year + 1}-01-01`; // exclusive upper bound
 
-    return withCors(
-      new Response(
-        JSON.stringify({
-          success: false,
-          message: error.message || "Internal server error",
-          timestamp: new Date().toISOString(),
-        }),
-        { status: statusCode, headers: { "Content-Type": "application/json" } }
-      )
-    );
-  }
-});
+    // Resolve org IDs assigned to this agent
+    const resolved = await resolveAssignedOrgIds(supabase, userId);
+    const assignedOrgIds = [...new Set([...resolved.assignedOrgIds, ...(organizationId ? [organizationId] : [])])];
 
-async function executeMainLogic(req: Request) {
-  const startTime = Date.now();
+    if (assignedOrgIds.length === 0) {
+      return withCors(
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              stovesReceived: 0, stovesSold: 0, availableStoves: 0,
+              expectedReceivable: 0, amountReceived: 0, outstandingBalance: 0,
+              byState: [], salesModelData: [],
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+    }
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-  );
+    // Balance-sheet stove counts: cumulative as of end of selected year.
+    // created_at is used for received (no transfer-date column); sales_date
+    // is authoritative for sold. Financial metrics remain year-specific.
+    const [receivedResult, soldCumulativeResult, salesResult] = await Promise.all([
+      supabase
+        .from("stove_ids")
+        .select("*", { count: "exact", head: true })
+        .in("organization_id", assignedOrgIds)
+        .lt("created_at", endOfYear),
 
-  const authHeader = req.headers.get("Authorization") ?? "";
-  const { userId, userRole } = await authenticate(supabase, authHeader);
+      supabase
+        .from("sales")
+        .select("*", { count: "exact", head: true })
+        .in("organization_id", assignedOrgIds)
+        .lt("sales_date", endOfYear),
 
-  console.log("📊 Fetching dashboard stats for:", userId);
+      supabase
+        .from("sales")
+        .select("amount, total_paid, state_backup, payment_model_id")
+        .in("organization_id", assignedOrgIds)
+        .gte("sales_date", startDate)
+        .lt("sales_date", endOfYear),
+    ]);
 
-  // Resolve assigned org IDs (direct + state-based)
-  const resolved = await resolveAssignedOrgIds(supabase, userId);
-  const assignedOrgIds = resolved.assignedOrgIds;
-  const assignedPartnersCount = assignedOrgIds.length;
-  const assignedStatesCount = resolved.assignedStates.length;
+    const sales = salesResult.data || [];
+    const expectedReceivable = sales.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const amountReceived = sales.reduce((s, r) => s + (Number(r.total_paid) || 0), 0);
 
-  console.log(
-    `🔗 Resolved: ${resolved.directOrgIds.length} direct + ${assignedStatesCount} states (${resolved.stateResolvedOrgIds.length} orgs) = ${assignedPartnersCount} total`
-  );
+    // Sales by state
+    const stateMap: Record<string, number> = {};
+    sales.forEach((s) => {
+      const st = s.state_backup || "Unknown";
+      stateMap[st] = (stateMap[st] || 0) + 1;
+    });
+    const byState = Object.entries(stateMap)
+      .map(([state, count]) => ({ state, count }))
+      .sort((a, b) => b.count - a.count);
 
-  // If no orgs assigned, return zeroed stats
-  if (assignedOrgIds.length === 0) {
+    // Sales model analysis
+    const modelIds = [...new Set(sales.map((s) => s.payment_model_id).filter(Boolean))];
+    let modelNames: Record<string, string> = {};
+    if (modelIds.length > 0) {
+      const { data: models } = await supabase.from("payment_models").select("id, name").in("id", modelIds);
+      models?.forEach((m) => { modelNames[m.id] = m.name; });
+    }
+    const modelCountMap: Record<string, number> = {};
+    sales.forEach((s) => {
+      const label = s.payment_model_id ? (modelNames[s.payment_model_id] || "Other") : "Outright";
+      modelCountMap[label] = (modelCountMap[label] || 0) + 1;
+    });
+    const totalSales = sales.length;
+    const salesModelData = Object.entries(modelCountMap)
+      .map(([model, count]) => ({ model, count, percentage: totalSales > 0 ? (count / totalSales) * 100 : 0 }))
+      .sort((a, b) => b.count - a.count);
+
     return withCors(
       new Response(
         JSON.stringify({
           success: true,
           data: {
-            assignedPartnersCount: 0,
-            assignedStatesCount: 0,
-            totalSales: 0,
-            pendingApprovals: 0,
-            approvedSales: 0,
-            salesCreatedByMe: 0,
+            stovesReceived: receivedResult.count ?? 0,
+            stovesSold: soldCumulativeResult.count ?? 0,
+            availableStoves: Math.max(0, (receivedResult.count ?? 0) - (soldCumulativeResult.count ?? 0)),
+            expectedReceivable,
+            amountReceived,
+            outstandingBalance: expectedReceivable - amountReceived,
+            byState,
+            salesModelData,
           },
-          timestamp: new Date().toISOString(),
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       )
     );
+  } catch (error: any) {
+    console.error("ACSL agent dashboard error:", error);
+    let statusCode = 500;
+    if (error.message?.includes("Unauthorized")) statusCode = 403;
+    return withCors(
+      new Response(
+        JSON.stringify({ success: false, message: error.message || "Internal server error" }),
+        { status: statusCode, headers: { "Content-Type": "application/json" } }
+      )
+    );
   }
-
-  // Run all counts in parallel
-  // Note: ACSL agents have system-wide visibility of all sales (for monitoring).
-  // assignedOrgIds is only used for the partner scoreboard / partner-count display.
-  const [
-    totalSalesResult,
-    pendingApprovalsResult,
-    approvedSalesResult,
-    salesCreatedByMeResult,
-  ] = await Promise.all([
-    supabase
-      .from("sales")
-      .select("*", { count: "exact", head: true }),
-
-    supabase
-      .from("sales")
-      .select("*", { count: "exact", head: true })
-      .eq("agent_approved", false),
-
-    supabase
-      .from("sales")
-      .select("*", { count: "exact", head: true })
-      .eq("agent_approved", true),
-
-    supabase
-      .from("sales")
-      .select("*", { count: "exact", head: true })
-      .eq("created_by", userId),
-  ]);
-
-  const stats = {
-    assignedPartnersCount,
-    assignedStatesCount,
-    totalSales: totalSalesResult.count ?? 0,
-    pendingApprovals: pendingApprovalsResult.count ?? 0,
-    approvedSales: approvedSalesResult.count ?? 0,
-    salesCreatedByMe: salesCreatedByMeResult.count ?? 0,
-  };
-
-  console.log("✅ Dashboard stats:", stats);
-  const responseTime = Date.now() - startTime;
-
-  return withCors(
-    new Response(
-      JSON.stringify({
-        success: true,
-        data: stats,
-        timestamp: new Date().toISOString(),
-        performance: { responseTime: `${responseTime}ms` },
-      }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-        },
-      }
-    )
-  );
-}
+});

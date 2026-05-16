@@ -364,6 +364,45 @@ async function saveCredentials(
   entries.push(mkEntry("save-credentials", "success", `Credentials saved for partner ${partnerId}`));
 }
 
+// ─── Transfer history ─────────────────────────────────────────────────────────
+
+async function writeTransferHistory(
+  supabase: any,
+  data: {
+    organization_id: string;
+    partner_name: string;
+    partner_id: string;
+    state?: string;
+    branch?: string;
+    sales_factory?: string;
+    stove_ids: Array<{ stove_id: string; factory?: string; sales_reference?: string }>;
+    source: "external-sync" | "external-csv-sync";
+    application_name?: string;
+  },
+): Promise<void> {
+  if (data.stove_ids.length === 0) return;
+  try {
+    const salesRef = data.stove_ids.find((s) => s.sales_reference)?.sales_reference;
+    const transactionId = salesRef || `TRF-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    await supabase.from("stove_transfer_history").insert({
+      transaction_id: transactionId,
+      organization_id: data.organization_id,
+      partner_name: data.partner_name,
+      partner_id: data.partner_id,
+      state: data.state || null,
+      branch: data.branch || null,
+      sales_factory: data.sales_factory || null,
+      stove_count: data.stove_ids.length,
+      stove_ids: data.stove_ids,
+      source: data.source,
+      application_name: data.application_name || null,
+      transfer_date: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error("Failed to write transfer history:", e);
+  }
+}
+
 // ─── DB logging ───────────────────────────────────────────────────────────────
 
 async function writeSyncLog(
@@ -770,6 +809,22 @@ serve(async (req) => {
       totalStoveIds += syncResult.summary.stove_ids_processed;
       stoveIdsCreated += stoveCreated;
       stoveIdsSkipped += stoveSkipped;
+
+      // Write transfer history for newly created stove IDs
+      const newStoves = syncResult.stove_ids.filter((s: any) => s.action === "created");
+      if (newStoves.length > 0) {
+        await writeTransferHistory(supabase, {
+          organization_id: syncResult.organization.id,
+          partner_name: orgData.partner_name,
+          partner_id: orgData.partner_id,
+          state: orgData.state,
+          branch: orgData.branch,
+          sales_factory: newStoves[0]?.factory || undefined,
+          stove_ids: newStoves.map((s: any) => ({ stove_id: s.stove_id, factory: s.factory, sales_reference: s.sales_reference })),
+          source: "external-csv-sync",
+          application_name: body.application_name,
+        });
+      }
 
       results.push({ partner_id: orgData.partner_id, status: "success", result: syncResult });
     } catch (error) {

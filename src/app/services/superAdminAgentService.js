@@ -143,10 +143,14 @@ class SuperAdminAgentService {
   // ─── SAA Portal: Dashboard ────────────────────────────────────────────────
 
   // Get dashboard stats for the logged-in SAA
-  async getDashboardStats() {
+  async getDashboardStats({ year } = {}) {
     return await this.request(
       `${API_FUNCTIONS_URL}/super-admin-agent-dashboard`,
-      { method: "GET" }
+      {
+        method: "POST",
+        headers: await this.getHeaders(),
+        body: JSON.stringify({ year: year ?? new Date().getFullYear() }),
+      }
     );
   }
 

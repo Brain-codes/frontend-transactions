@@ -75,6 +75,9 @@ const ProtectedRoute = ({
         return;
       }
 
+      // Super admin bypasses all role restrictions
+      if (isSuperAdmin) return;
+
       // Check allowedRoles if specified
       if (allowedRoles && allowedRoles.length > 0) {
         if (!userRole || !allowedRoles.includes(userRole)) {
@@ -84,7 +87,6 @@ const ProtectedRoute = ({
       }
 
       if (requireSuperAdmin && !isSuperAdmin) {
-        // User is authenticated but not super admin
         router.push("/unauthorized");
         return;
       }
@@ -142,6 +144,7 @@ const ProtectedRoute = ({
 
   // Show loading spinner while redirecting
   const hasRoleAccess =
+    isSuperAdmin ||
     !allowedRoles ||
     allowedRoles.length === 0 ||
     (userRole && allowedRoles.includes(userRole));
@@ -149,8 +152,8 @@ const ProtectedRoute = ({
   if (
     !isAuthenticated ||
     !hasRoleAccess ||
-    (requireSuperAdmin && !isSuperAdmin) ||
-    (requireAdminAccess && !hasAdminAccess)
+    (!isSuperAdmin && requireSuperAdmin && !isSuperAdmin) ||
+    (!isSuperAdmin && requireAdminAccess && !hasAdminAccess)
   ) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

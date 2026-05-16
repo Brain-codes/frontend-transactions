@@ -4,6 +4,49 @@ import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { MapPin, X } from "lucide-react";
 
+// Decrypt AES-GCM payload returned by /api/app-settings/google-key
+async function decryptPayload(encrypted, ivB64) {
+  const cipherKeyHex = process.env.NEXT_PUBLIC_MAPS_CIPHER_KEY;
+  if (!cipherKeyHex || cipherKeyHex.length < 64) return null;
+
+  try {
+    const keyBytes = Uint8Array.from(Buffer.from(cipherKeyHex, "hex"));
+    const iv = Uint8Array.from(Buffer.from(ivB64, "base64"));
+    const ciphertext = Uint8Array.from(Buffer.from(encrypted, "base64"));
+
+    const cryptoKey = await window.crypto.subtle.importKey(
+      "raw",
+      keyBytes,
+      { name: "AES-GCM" },
+      false,
+      ["decrypt"]
+    );
+
+    const plaintext = await window.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      cryptoKey,
+      ciphertext
+    );
+
+    return JSON.parse(new TextDecoder().decode(plaintext));
+  } catch {
+    return null;
+  }
+}
+
+async function fetchApiKeys() {
+  const res = await fetch("/api/app-settings/google-key");
+  const data = await res.json();
+
+  // Encrypted response
+  if (data.encrypted && data.iv) {
+    return await decryptPayload(data.encrypted, data.iv);
+  }
+
+  // Plain fallback (dev without cipher key configured)
+  return { placesKey: data.placesKey ?? null, mapsKey: data.mapsKey ?? null };
+}
+
 const GooglePlacesInput = ({
   value,
   onChange,
@@ -19,10 +62,10 @@ const GooglePlacesInput = ({
   const autocompleteService = useRef(null);
   const placesService = useRef(null);
 
-  // Load Google Places API — key fetched from server (DB or env fallback)
+  // Load Google Maps JS SDK — keys fetched & decrypted from server
   useEffect(() => {
     const initializeServices = () => {
-      if (window.google && window.google.maps && window.google.maps.places) {
+      if (window.google?.maps?.places) {
         autocompleteService.current =
           new window.google.maps.places.AutocompleteService();
         placesService.current = new window.google.maps.places.PlacesService(
@@ -32,16 +75,16 @@ const GooglePlacesInput = ({
       }
     };
 
-    const loadGoogleMaps = (apiKey) => {
-      if (window.google && window.google.maps && window.google.maps.places) {
+    const loadGoogleMaps = (mapsKey) => {
+      if (window.google?.maps?.places) {
         initializeServices();
         return;
       }
 
       if (document.querySelector('script[src*="maps.googleapis.com"]')) {
-        const checkGoogle = setInterval(() => {
-          if (window.google && window.google.maps && window.google.maps.places) {
-            clearInterval(checkGoogle);
+        const poll = setInterval(() => {
+          if (window.google?.maps?.places) {
+            clearInterval(poll);
             initializeServices();
           }
         }, 100);
@@ -49,24 +92,25 @@ const GooglePlacesInput = ({
       }
 
       const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsKey}&libraries=places`;
       script.async = true;
       script.defer = true;
       script.onload = initializeServices;
       document.head.appendChild(script);
     };
 
-    fetch("/api/app-settings/google-key")
-      .then((r) => r.json())
-      .then(({ key }) => {
-        if (key) loadGoogleMaps(key);
+    fetchApiKeys()
+      .then((keys) => {
+        // Prefer mapsKey for loading the SDK (broader permission);
+        // fall back to placesKey if mapsKey not set
+        const sdkKey = keys?.mapsKey || keys?.placesKey;
+        if (sdkKey) loadGoogleMaps(sdkKey);
       })
       .catch(() => {
-        // Silently fail — input will remain in text-only mode
+        // Input remains in text-only mode
       });
   }, []);
 
-  // Update input value when prop changes
   useEffect(() => {
     setInputValue(value?.fullAddress || "");
   }, [value]);
@@ -81,19 +125,18 @@ const GooglePlacesInput = ({
       return;
     }
 
-    // Get predictions from Google Places API
     autocompleteService.current.getPlacePredictions(
       {
         input: searchValue,
-        componentRestrictions: { country: "ng" }, // Restrict to Nigeria
-        types: ["establishment", "geocode"], // Include both places and addresses
+        componentRestrictions: { country: "ng" },
+        types: ["establishment", "geocode"],
       },
-      (predictions, status) => {
+      (preds, status) => {
         if (
           status === window.google.maps.places.PlacesServiceStatus.OK &&
-          predictions
+          preds
         ) {
-          setPredictions(predictions);
+          setPredictions(preds);
           setShowSuggestions(true);
         } else {
           setPredictions([]);
@@ -106,7 +149,6 @@ const GooglePlacesInput = ({
   const handlePlaceSelect = (prediction) => {
     if (!placesService.current) return;
 
-    // Get detailed place information
     placesService.current.getDetails(
       {
         placeId: prediction.place_id,
@@ -117,7 +159,6 @@ const GooglePlacesInput = ({
           status === window.google.maps.places.PlacesServiceStatus.OK &&
           place
         ) {
-          // Extract address components
           const addressComponents = place.address_components || [];
           let street = "";
           let city = "";
@@ -143,9 +184,9 @@ const GooglePlacesInput = ({
           const addressData = {
             fullAddress: place.formatted_address,
             street: street.trim() || place.name,
-            city: city,
-            state: state,
-            country: country,
+            city,
+            state,
+            country,
             latitude: place.geometry?.location?.lat() || null,
             longitude: place.geometry?.location?.lng() || null,
           };
@@ -154,9 +195,7 @@ const GooglePlacesInput = ({
           setShowSuggestions(false);
           setPredictions([]);
 
-          if (onChange) {
-            onChange(addressData);
-          }
+          if (onChange) onChange(addressData);
         }
       }
     );
@@ -192,15 +231,10 @@ const GooglePlacesInput = ({
           disabled={disabled || !isLoaded}
           className={`pl-10 pr-10 ${className}`}
           onFocus={() => {
-            if (predictions.length > 0) {
-              setShowSuggestions(true);
-            }
+            if (predictions.length > 0) setShowSuggestions(true);
           }}
-          onBlur={(e) => {
-            // Delay hiding suggestions to allow for click
-            setTimeout(() => {
-              setShowSuggestions(false);
-            }, 200);
+          onBlur={() => {
+            setTimeout(() => setShowSuggestions(false), 200);
           }}
         />
         {inputValue && (
@@ -214,14 +248,12 @@ const GooglePlacesInput = ({
         )}
       </div>
 
-      {/* Loading indicator */}
       {!isLoaded && (
         <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md mt-1 p-3 text-sm text-gray-500 z-10">
           Loading Google Places...
         </div>
       )}
 
-      {/* Suggestions dropdown */}
       {showSuggestions && predictions.length > 0 && (
         <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto z-10 shadow-lg">
           {predictions.map((prediction) => (
@@ -249,7 +281,6 @@ const GooglePlacesInput = ({
         </div>
       )}
 
-      {/* No API key warning — shown when Google Maps failed to load */}
       {!isLoaded && !predictions.length && inputValue.length > 2 && (
         <div className="absolute top-full left-0 right-0 bg-yellow-50 border border-yellow-300 rounded-md mt-1 p-3 text-sm text-yellow-700 z-10">
           Google Places not available — check API key in System Configuration
