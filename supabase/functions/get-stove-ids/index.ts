@@ -20,7 +20,7 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  const { organization_id, status } = await req.json();
+  const { organization_id, status, limit: rawLimit, offset: rawOffset } = await req.json();
 
   if (!organization_id) {
     return withCors(
@@ -34,13 +34,16 @@ serve(async (req) => {
     );
   }
 
+  const pageLimit = Math.min(parseInt(rawLimit ?? "200"), 500);
+  const pageOffset = parseInt(rawOffset ?? "0");
+
   let query = supabase
     .from("stove_ids")
     .select(
       `
-      id, 
-      stove_id, 
-      status, 
+      id,
+      stove_id,
+      status,
       created_at,
       sale_id,
       sales!left (
@@ -50,7 +53,9 @@ serve(async (req) => {
       )
     `
     )
-    .eq("organization_id", organization_id);
+    .eq("organization_id", organization_id)
+    .range(pageOffset, pageOffset + pageLimit - 1)
+    .order("stove_id", { ascending: true });
 
   if (status) {
     query = query.eq("status", status);
@@ -100,6 +105,11 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         data: transformedData,
+        pagination: {
+          limit: pageLimit,
+          offset: pageOffset,
+          total: totalStoveIds ?? 0,
+        },
         totals: {
           total_stove_ids: totalStoveIds ?? 0,
           total_stove_available: totalStoveAvailable ?? 0,

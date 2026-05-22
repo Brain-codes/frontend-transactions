@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 // ACSL Agent Service (formerly Super Admin Agent Service)
 // Handles all API calls for acsl_agent user management and their portal operations
 import tokenManager from "../../utils/tokenManager";
@@ -46,14 +47,19 @@ class SuperAdminAgentService {
 
   // ─── Super Admin: Manage SAA Users ────────────────────────────────────────
 
-  // List all super admin agents
+  // List all super admin agents (pass organization_id to filter by org assignment)
   async getSuperAdminAgents(params = {}) {
     const qs = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
-      if (v !== null && v !== undefined && v !== "") qs.append(k, v);
+      if (v !== null && v !== undefined && v !== "") qs.append(k, String(v));
     });
     const url = `${API_FUNCTIONS_URL}/super-admin-agents${qs.toString() ? "?" + qs.toString() : ""}`;
     return await this.request(url, { method: "GET" });
+  }
+
+  // Get ACSL agents assigned to a specific organization
+  async getAgentsByOrganization(organizationId) {
+    return await this.getSuperAdminAgents({ organization_id: organizationId, limit: 100 });
   }
 
   // Get a single super admin agent by ID

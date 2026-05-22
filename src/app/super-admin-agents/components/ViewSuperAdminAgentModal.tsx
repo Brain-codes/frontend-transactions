@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, Building2, MapPin, Package, TrendingUp } from "lucide-react";
 import superAdminAgentService from "../../services/superAdminAgentService";
 
 interface Agent {
@@ -68,6 +68,14 @@ const SectionCard = ({
   </div>
 );
 
+interface PerformanceMetrics {
+  totalPartners: number;
+  totalStoves: number;
+  salesMade: number;
+  pendingSales: number;
+  statesCount: number;
+}
+
 const ViewSuperAdminAgentModal: React.FC<ViewSuperAdminAgentModalProps> = ({
   agent,
   onClose,
@@ -75,6 +83,7 @@ const ViewSuperAdminAgentModal: React.FC<ViewSuperAdminAgentModalProps> = ({
   const [orgs, setOrgs] = useState<AssignedOrg[]>([]);
   const [orgsLoading, setOrgsLoading] = useState(true);
   const [orgsError, setOrgsError] = useState("");
+  const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null);
 
   useEffect(() => {
     const fetchOrgs = async () => {
@@ -82,7 +91,17 @@ const ViewSuperAdminAgentModal: React.FC<ViewSuperAdminAgentModalProps> = ({
         setOrgsLoading(true);
         setOrgsError("");
         const result = await superAdminAgentService.getAgentOrganizations(agent.id);
-        setOrgs(result.data || []);
+        const orgData: any[] = result.data || [];
+        setOrgs(orgData);
+
+        // Compute performance metrics from org data
+        setMetrics({
+          totalPartners: orgData.length,
+          totalStoves: orgData.reduce((s: number, o: any) => s + (o.total_sales ?? 0), 0),
+          salesMade: orgData.reduce((s: number, o: any) => s + (o.approved_sales ?? 0), 0),
+          pendingSales: orgData.reduce((s: number, o: any) => s + (o.pending_sales ?? 0), 0),
+          statesCount: (result.assigned_states || []).length,
+        });
       } catch (err: any) {
         setOrgsError(err.message || "Failed to load organizations");
       } finally {
@@ -141,7 +160,53 @@ const ViewSuperAdminAgentModal: React.FC<ViewSuperAdminAgentModalProps> = ({
         </DialogHeader>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto space-y-3">
+        <div className="flex-1 overflow-y-auto space-y-3 p-5">
+          {/* Performance Overview */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {[
+              {
+                label: "Partners",
+                value: orgsLoading ? "—" : (metrics?.totalPartners ?? 0),
+                icon: Building2,
+                bg: "bg-green-50",
+                border: "border-green-100",
+                text: "text-green-700",
+              },
+              {
+                label: "States Covered",
+                value: orgsLoading ? "—" : (metrics?.statesCount ?? agent.assigned_states_count ?? 0),
+                icon: MapPin,
+                bg: "bg-purple-50",
+                border: "border-purple-100",
+                text: "text-purple-700",
+              },
+              {
+                label: "Stoves Assigned",
+                value: orgsLoading ? "—" : (metrics?.totalStoves ?? 0).toLocaleString(),
+                icon: Package,
+                bg: "bg-blue-50",
+                border: "border-blue-100",
+                text: "text-blue-700",
+              },
+              {
+                label: "Sales Made",
+                value: orgsLoading ? "—" : (metrics?.salesMade ?? 0),
+                icon: TrendingUp,
+                bg: "bg-amber-50",
+                border: "border-amber-100",
+                text: "text-amber-700",
+              },
+            ].map(({ label, value, icon: Icon, bg, border, text }) => (
+              <div key={label} className={`${bg} ${border} border rounded-lg px-3 py-2.5 flex items-center gap-2.5`}>
+                <Icon className={`h-4 w-4 ${text} shrink-0`} />
+                <div>
+                  <p className={`text-sm font-bold ${text}`}>{value}</p>
+                  <p className="text-[10px] text-muted-foreground">{label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
           {/* Agent Information */}
           <SectionCard title="Agent Information">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

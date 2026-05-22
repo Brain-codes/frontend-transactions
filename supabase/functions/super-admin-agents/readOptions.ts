@@ -10,14 +10,53 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams) {
   const status = searchParams.get("status") || "";
   const sortBy = searchParams.get("sortBy") || "created_at";
   const sortOrder = searchParams.get("sortOrder") || "desc";
+  const organizationId = searchParams.get("organization_id") || "";
 
   const roleParam = searchParams.get("role") || "";
+
+  // When filtering by organization_id, resolve which agent IDs are assigned to that org
+  // (either directly via acsl_agent_organizations, or via state assignment)
+  let filteredAgentIds: string[] | null = null;
+  if (organizationId) {
+    // 1. Direct assignments
+    const { data: directRows } = await supabase
+      .from("acsl_agent_organizations")
+      .select("agent_id")
+      .eq("organization_id", organizationId);
+    const directIds = new Set((directRows || []).map((r: any) => r.agent_id as string));
+
+    // 2. State-based: get the org's state, then find agents assigned to that state
+    const { data: orgRow } = await supabase
+      .from("organizations")
+      .select("state")
+      .eq("id", organizationId)
+      .single();
+    if (orgRow?.state) {
+      const { data: stateRows } = await supabase
+        .from("acsl_agent_states")
+        .select("agent_id")
+        .eq("state", orgRow.state);
+      (stateRows || []).forEach((r: any) => directIds.add(r.agent_id));
+    }
+
+    filteredAgentIds = [...directIds];
+    // If no agents are assigned, return empty immediately
+    if (filteredAgentIds.length === 0) {
+      return {
+        message: "No ACSL agents assigned to this organization",
+        data: [],
+        pagination: { currentPage: 1, totalPages: 0, totalItems: 0, itemsPerPage: limit, hasNextPage: false, hasPrevPage: false },
+      };
+    }
+  }
 
   let query = supabase
     .from("profiles")
     .select("id, full_name, email, phone, role, status, created_at, last_login, updated_at, updated_by", { count: "exact" });
 
-  if (roleParam && ["acsl_agent", "super_admin_agent", "super_admin"].includes(roleParam)) {
+  if (filteredAgentIds !== null) {
+    query = query.in("id", filteredAgentIds);
+  } else if (roleParam && ["acsl_agent", "super_admin_agent", "super_admin"].includes(roleParam)) {
     // Map legacy role param to new value
     const mappedRole = roleParam === "super_admin_agent" ? "acsl_agent" : roleParam;
     query = query.eq("role", mappedRole);
@@ -77,6 +116,61 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams) {
       };
     })
   );
+
+  if (organizationId && agentsWithCounts.length > 0) {
+    const agentIds = agentsWithCounts.map((agent: any) => agent.id).filter(Boolean);
+    const salesByAgent: Record<string, { count: number; amount: number; saleIds: string[] }> = {};
+
+    const { data: orgSales, error: orgSalesError } = await supabase
+      .from("sales")
+      .select("id, created_by, amount")
+      .eq("organization_id", organizationId)
+      .in("created_by", agentIds);
+
+    if (orgSalesError) {
+      console.warn("⚠️ Failed to fetch partner-scoped agent sales:", orgSalesError.message);
+    }
+
+    (orgSales || []).forEach((sale: any) => {
+      if (!sale.created_by) return;
+      if (!salesByAgent[sale.created_by]) {
+        salesByAgent[sale.created_by] = { count: 0, amount: 0, saleIds: [] };
+      }
+      salesByAgent[sale.created_by].count += 1;
+      salesByAgent[sale.created_by].amount += Number(sale.amount) || 0;
+      salesByAgent[sale.created_by].saleIds.push(sale.id);
+    });
+
+    // Batch-fetch attended stove counts (sold stove_ids per sale_id)
+    const allSaleIds = Object.values(salesByAgent).flatMap((s) => s.saleIds);
+    const stoveCountBySaleId: Record<string, number> = {};
+    if (allSaleIds.length > 0) {
+      const { data: soldStoves } = await supabase
+        .from("stove_ids")
+        .select("sale_id")
+        .in("sale_id", allSaleIds);
+      (soldStoves || []).forEach((s: any) => {
+        if (s.sale_id) stoveCountBySaleId[s.sale_id] = (stoveCountBySaleId[s.sale_id] || 0) + 1;
+      });
+    }
+
+    // Partner-level unattended = stove_ids assigned to this org with status 'available'
+    const { count: partnerUnattended } = await supabase
+      .from("stove_ids")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .eq("status", "available");
+
+    agentsWithCounts.forEach((agent: any) => {
+      const stats = salesByAgent[agent.id] || { count: 0, amount: 0, saleIds: [] };
+      const attendedCount = stats.saleIds.reduce((sum: number, sid: string) => sum + (stoveCountBySaleId[sid] || 0), 0);
+      agent.partner_sales_count = stats.count;
+      agent.partner_sold_stoves_count = stats.count;
+      agent.partner_sales_amount = stats.amount;
+      agent.partner_attended_count = attendedCount;
+      agent.partner_unattended_count = partnerUnattended ?? 0;
+    });
+  }
 
   // Batch-resolve updated_by names
   const updaterIds = [...new Set(
@@ -266,58 +360,51 @@ export async function getAgentOrganizations(supabase: any, agentId: string) {
     `✅ Found ${directOrgs.length} direct + ${stateOrgs.length} state-resolved organizations`
   );
 
-  // Fetch per-org sales stats in parallel
+  // Fetch per-org stove counts using the same RPC used by manage-organizations
+  // (avoids Supabase's 1000-row default cap on row-fetching queries)
   const allOrgIds = allOrganizations.map((o: any) => o.id).filter(Boolean);
-  let orgStatsMap: Record<string, { total: number; approved: number; pending: number }> = {};
+  let orgStatsMap: Record<string, { total: number; sold: number; available: number }> = {};
 
   if (allOrgIds.length > 0) {
-    const [stoveRes, approvedRes, pendingRes] = await Promise.all([
-      // Total stove IDs assigned to each org
-      supabase
-        .from("stove_ids")
-        .select("organization_id")
-        .in("organization_id", allOrgIds),
-      // Approved sales per org
-      supabase
-        .from("sales")
-        .select("organization_id")
-        .in("organization_id", allOrgIds)
-        .eq("agent_approved", true),
-      // Pending sales per org
-      supabase
-        .from("sales")
-        .select("organization_id")
-        .in("organization_id", allOrgIds)
-        .eq("agent_approved", false),
-    ]);
+    const { data: stoveCounts, error: stoveRpcErr } = await supabase.rpc(
+      "get_organization_stove_counts",
+      { org_ids: allOrgIds }
+    );
 
-    // Build per-org counts from individual rows
-    (stoveRes.data || []).forEach((row: any) => {
-      if (!orgStatsMap[row.organization_id]) {
-        orgStatsMap[row.organization_id] = { total: 0, approved: 0, pending: 0 };
-      }
-      orgStatsMap[row.organization_id].total += 1;
-    });
-    (approvedRes.data || []).forEach((row: any) => {
-      if (!orgStatsMap[row.organization_id]) {
-        orgStatsMap[row.organization_id] = { total: 0, approved: 0, pending: 0 };
-      }
-      orgStatsMap[row.organization_id].approved += 1;
-    });
-    (pendingRes.data || []).forEach((row: any) => {
-      if (!orgStatsMap[row.organization_id]) {
-        orgStatsMap[row.organization_id] = { total: 0, approved: 0, pending: 0 };
-      }
-      orgStatsMap[row.organization_id].pending += 1;
-    });
+    if (stoveRpcErr) {
+      console.warn("⚠️ RPC get_organization_stove_counts failed, counts will be 0:", stoveRpcErr.message);
+    } else {
+      (stoveCounts || []).forEach((row: any) => {
+        orgStatsMap[row.organization_id] = {
+          total: row.total_count ?? 0,
+          sold: row.sold_count ?? 0,
+          available: row.available_count ?? 0,
+        };
+      });
+    }
   }
 
-  // Annotate each org with its stats (total = stove IDs, approved/pending = sales)
+  // Count stoves sold specifically BY this agent (sales.created_by = agentId)
+  let agentSoldCount = 0;
+  const { data: agentSaleRows } = await supabase
+    .from("sales")
+    .select("id")
+    .eq("created_by", agentId);
+  const agentSaleIds = (agentSaleRows || []).map((s: any) => s.id as string);
+  if (agentSaleIds.length > 0) {
+    const { count } = await supabase
+      .from("stove_ids")
+      .select("id", { count: "exact", head: true })
+      .in("sale_id", agentSaleIds);
+    agentSoldCount = count ?? 0;
+  }
+
+  // Annotate each org with accurate stove counts
   const orgsWithStats = allOrganizations.map((o: any) => ({
     ...o,
-    total_sales: orgStatsMap[o.id]?.total ?? 0,    // stove ID count
-    approved_sales: orgStatsMap[o.id]?.approved ?? 0,
-    pending_sales: orgStatsMap[o.id]?.pending ?? 0,
+    total_sales: orgStatsMap[o.id]?.total ?? 0,
+    approved_sales: orgStatsMap[o.id]?.sold ?? 0,
+    pending_sales: orgStatsMap[o.id]?.available ?? 0,
   }));
 
   console.log(`✅ Sales stats attached for ${allOrgIds.length} organizations`);
@@ -326,6 +413,7 @@ export async function getAgentOrganizations(supabase: any, agentId: string) {
     message: `Found ${allOrganizations.length} assigned organizations`,
     data: orgsWithStats,
     assigned_states: assignedStates,
+    agent_sold_count: agentSoldCount,
     summary: {
       direct_count: directOrgs.length,
       state_count: assignedStates.length,

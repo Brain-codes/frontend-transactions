@@ -41,36 +41,25 @@ import {
 import ImageUploadSection from "../../../components/ui/ImageUploadSection";
 import SignatureCanvas from "../../../components/ui/SignatureCanvas";
 import paymentModelService from "../../../services/paymentModelService";
+import superAdminAgentService from "../../../services/superAdminAgentService";
+import { useAuth } from "../../../contexts/AuthContext";
 
-const SectionCard = ({ title, children, className = "" }) => (
-  <div className={`bg-muted/30 rounded-lg p-3 border border-border/50 ${className}`}>
-    <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider border-b border-primary/20 pb-0.5 mb-2">
-      {title}
-    </h3>
-    {children}
-  </div>
-);
-
-const FieldLabel = ({ children }) => (
-  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-0.5">
-    {children}
-  </p>
-);
-
-const FormField = ({ label, error, children }) => (
+const FormField = ({ label, error, children, htmlFor }) => (
   <div>
-    <FieldLabel>{label}</FieldLabel>
+    <Label htmlFor={htmlFor}>{label}</Label>
     {children}
-    {error && <p className="text-[10px] text-red-500 mt-0.5">{error}</p>}
+    {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
   </div>
 );
 
 const ReadOnlyTile = ({ label, value }) => (
   <div>
-    <FieldLabel>{label}</FieldLabel>
-    <p className="text-xs font-medium">{value || <span className="text-muted-foreground">—</span>}</p>
+    <Label>{label}</Label>
+    <Input value={value || ""} readOnly className="bg-gray-100" />
   </div>
 );
+
+const SAA_ROLES = ["super_admin", "acsl_agent", "super_admin_agent"];
 
 const CreateSalesForm = ({
   onSuccess,
@@ -78,10 +67,14 @@ const CreateSalesForm = ({
   cancelHref = "",
   isModal = false,
   showSuccessState = true,
-  mode = "create", // "create" or "edit"
-  initialData = null, // existing sale data for edit mode
+  mode = "create",
+  initialData = null,
+  userRole = null,
+  userId = null,
 }) => {
   const router = useRouter();
+  const { supabase } = useAuth();
+  const isSuperAdmin = SAA_ROLES.includes(userRole);
   const [loading, setLoading] = useState(false);
   const [availableStoves, setAvailableStoves] = useState([]);
   const [stovesLoading, setStovesLoading] = useState(true);
@@ -122,6 +115,12 @@ const CreateSalesForm = ({
   const [showStoveDropdown, setShowStoveDropdown] = useState(false);
   const [filteredStoves, setFilteredStoves] = useState([]);
 
+  // Partner search state (super admin only)
+  const [partners, setPartners] = useState([]);
+  const [partnerSearch, setPartnerSearch] = useState("");
+  const [showPartnerDropdown, setShowPartnerDropdown] = useState(false);
+  const [partnersLoading, setPartnersLoading] = useState(false);
+
   // Determine if this is edit mode
   const isEditMode = mode === "edit" && initialData;
 
@@ -146,6 +145,9 @@ const CreateSalesForm = ({
       if (!event.target.closest(".stove-search-container")) {
         setShowStoveDropdown(false);
       }
+      if (!event.target.closest(".partner-search-container")) {
+        setShowPartnerDropdown(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -153,6 +155,45 @@ const CreateSalesForm = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Debounced partner search for super admin roles (create mode only)
+  useEffect(() => {
+    if (!isSuperAdmin || isEditMode) return;
+    if (!partnerSearch.trim()) {
+      setPartners([]);
+      return;
+    }
+
+    const t = setTimeout(async () => {
+      setPartnersLoading(true);
+      try {
+        if (userRole === "super_admin") {
+          const { data: { session } } = await supabase.auth.getSession();
+          const params = new URLSearchParams({ limit: "50", offset: "0", search: partnerSearch.trim() });
+          const res = await fetch(
+            `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
+            { headers: { Authorization: `Bearer ${session.access_token}` } }
+          );
+          const result = await res.json();
+          if (res.ok) setPartners(result.data || []);
+        } else {
+          const result = await superAdminAgentService.getAgentOrganizations(userId);
+          const all = result.data || [];
+          const q = partnerSearch.trim().toLowerCase();
+          setPartners(all.filter((p) =>
+            (p.partner_name || "").toLowerCase().includes(q) ||
+            (p.branch || "").toLowerCase().includes(q)
+          ));
+        }
+      } catch (err) {
+        console.error("Error searching partners:", err);
+      } finally {
+        setPartnersLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(t);
+  }, [partnerSearch, isSuperAdmin, isEditMode, userRole, userId]);
 
   // Initialize form data on mount
   useEffect(() => {
@@ -220,8 +261,12 @@ const CreateSalesForm = ({
             partnerName: saaPartnerName || profileData?.partnerName || "",
           }));
 
-          // Fetch available stoves for create mode
-          fetchAvailableStoves();
+          // Fetch available stoves for create mode (super admins wait until a partner is selected)
+          if (!isSuperAdmin) {
+            fetchAvailableStoves();
+          } else {
+            setStovesLoading(false);
+          }
         }
 
         initializedRef.current = true;
@@ -269,7 +314,9 @@ const CreateSalesForm = ({
           : null);
 
       if (!organizationId) {
-        setError("Organization ID not found. Please log in again.");
+        // Super admins have no personal org — stoves are fetched after partner selection
+        if (!isSuperAdmin) setError("Organization ID not found. Please log in again.");
+        setStovesLoading(false);
         return;
       }
 
@@ -292,36 +339,30 @@ const CreateSalesForm = ({
     }
   };
 
-  // Fetch payment models for the organization (create mode only)
-  useEffect(() => {
-    if (isEditMode) return;
-
-    const fetchPaymentModels = async () => {
-      try {
-        setModelsLoading(true);
-        const organizationId =
-          profileService.getOrganizationId() ||
-          (typeof sessionStorage !== "undefined"
-            ? sessionStorage.getItem("saa_selected_org_id")
-            : null);
-
-        if (!organizationId) return;
-
-        const result = await paymentModelService.getOrgPaymentModels(organizationId);
-        if (result.data && result.data.length > 0) {
-          // Extract the payment_model from each assignment
-          const models = result.data
-            .map((a) => a.payment_model)
-            .filter((m) => m && m.is_active !== false);
-          setPaymentModels(models);
-        }
-      } catch (err) {
-        console.error("Error fetching payment models:", err);
-      } finally {
-        setModelsLoading(false);
+  const fetchPaymentModels = async (orgId) => {
+    const organizationId = orgId ||
+      profileService.getOrganizationId() ||
+      (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("saa_selected_org_id") : null);
+    if (!organizationId) return;
+    try {
+      setModelsLoading(true);
+      const result = await paymentModelService.getOrgPaymentModels(organizationId);
+      if (result.data && result.data.length > 0) {
+        const models = result.data
+          .map((a) => a.payment_model)
+          .filter((m) => m && m.is_active !== false);
+        setPaymentModels(models);
       }
-    };
+    } catch (err) {
+      console.error("Error fetching payment models:", err);
+    } finally {
+      setModelsLoading(false);
+    }
+  };
 
+  // Fetch payment models on mount for non-super-admin users (create mode only)
+  useEffect(() => {
+    if (isEditMode || isSuperAdmin) return;
     fetchPaymentModels();
   }, [isEditMode]);
 
@@ -629,114 +670,176 @@ const CreateSalesForm = ({
   return (
     <div className="max-w-4xl mx-auto p-5">
       {error && (
-        <div className="mb-3 p-2.5 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-          <AlertCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0" />
-          <span className="text-xs text-red-700">{error}</span>
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+          <span className="text-sm text-red-700">{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-6">
 
-        {/* Row 1: Transaction Info + Buyer Info */}
-        <div className="grid grid-cols-2 gap-3">
-          <SectionCard title="Transaction Information">
-            <div className="grid grid-cols-2 gap-2">
+        {/* Transaction Information */}
+        <div>
+          <Label className="text-base font-semibold">Transaction Information</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
+            <div>
+              <Label>Transaction ID</Label>
+              <Input value={formData.transactionId || "Auto-generated"} readOnly className="bg-gray-100" />
+              {errors.transactionId && <p className="text-sm text-red-500 mt-1">{errors.transactionId}</p>}
+            </div>
+            <FormField label="Sales Date *" error={errors.salesDate} htmlFor="salesDate">
+              <Input
+                id="salesDate"
+                type="date"
+                value={formData.salesDate}
+                onChange={(e) => handleInputChange("salesDate", e.target.value)}
+                className={errors.salesDate ? "border-red-500" : ""}
+              />
+            </FormField>
+            {isSuperAdmin && !isEditMode ? (
               <div>
-                <FieldLabel>Transaction ID</FieldLabel>
-                <p className="text-xs font-medium text-primary">{formData.transactionId || "Auto-generated"}</p>
-                {errors.transactionId && <p className="text-[10px] text-red-500">{errors.transactionId}</p>}
+                <Label htmlFor="partnerSearch">Partner *</Label>
+                <div className="relative partner-search-container">
+                  <Input
+                    id="partnerSearch"
+                    value={partnerSearch}
+                    onChange={(e) => {
+                      setPartnerSearch(e.target.value);
+                      setShowPartnerDropdown(true);
+                      // Clear previously selected partner when user edits the field
+                      if (formData.partnerName) handleInputChange("partnerName", "");
+                    }}
+                    onFocus={() => setShowPartnerDropdown(true)}
+                    placeholder={partnersLoading ? "Searching..." : "Type to search partner..."}
+                    className={errors.partnerName ? "border-red-500" : ""}
+                  />
+                  {showPartnerDropdown && partnerSearch.trim() && (
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-52 overflow-auto">
+                      {partnersLoading ? (
+                        <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching...
+                        </div>
+                      ) : partners.length === 0 ? (
+                        <p className="px-3 py-2 text-sm text-muted-foreground">No partners found</p>
+                      ) : (
+                        partners.map((p) => (
+                          <div
+                            key={p.id}
+                            className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+                            onClick={() => {
+                              sessionStorage.setItem("saa_selected_org_id", p.id);
+                              sessionStorage.setItem("saa_selected_org_name", p.partner_name || "");
+                              handleInputChange("partnerName", p.partner_name || "");
+                              setPartnerSearch(`${p.partner_name}${p.branch ? ` (${p.branch})` : ""}`);
+                              setShowPartnerDropdown(false);
+                              if (errors.partnerName) setErrors((prev) => ({ ...prev, partnerName: null }));
+                              // Now that an org is selected, fetch stoves and payment models
+                              fetchAvailableStoves();
+                              fetchPaymentModels(p.id);
+                            }}
+                          >
+                            {p.partner_name}
+                            {p.branch && <span className="text-muted-foreground"> ({p.branch})</span>}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                {errors.partnerName && <p className="text-sm text-red-500 mt-1">{errors.partnerName}</p>}
               </div>
-              <FormField label="Sales Date *" error={errors.salesDate}>
-                <Input
-                  type="date"
-                  value={formData.salesDate}
-                  onChange={(e) => handleInputChange("salesDate", e.target.value)}
-                  className={`h-7 text-xs ${errors.salesDate ? "border-red-500" : ""}`}
-                />
-              </FormField>
+            ) : (
               <ReadOnlyTile label="Partner" value={formData.partnerName} />
-              <FormField label="Retailer / Branch / CSO" error={null}>
-                <Input
-                  value={formData.retailerBranch}
-                  onChange={(e) => handleInputChange("retailerBranch", e.target.value)}
-                  placeholder="Branch or agency"
-                  className="h-7 text-xs"
-                />
-              </FormField>
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Buyer & End User">
-            <div className="grid grid-cols-2 gap-2">
-              <FormField label="Contact Person / Buyer *" error={errors.contactPerson}>
-                <Input
-                  value={formData.contactPerson}
-                  onChange={(e) => handleInputChange("contactPerson", e.target.value)}
-                  placeholder="Buyer name"
-                  className={`h-7 text-xs ${errors.contactPerson ? "border-red-500" : ""}`}
-                />
-              </FormField>
-              <FormField label="Contact Phone *" error={errors.contactPhone}>
-                <Input
-                  type="tel"
-                  value={formData.contactPhone}
-                  onChange={(e) => handleInputChange("contactPhone", e.target.value)}
-                  placeholder="+234 803 123 4567"
-                  className={`h-7 text-xs ${errors.contactPhone ? "border-red-500" : ""}`}
-                />
-              </FormField>
-              <FormField label="End User Name *" error={errors.endUserName}>
-                <Input
-                  value={formData.endUserName}
-                  onChange={(e) => handleInputChange("endUserName", e.target.value)}
-                  placeholder="End user name"
-                  className={`h-7 text-xs ${errors.endUserName ? "border-red-500" : ""}`}
-                />
-              </FormField>
-              <FormField label="End User Phone *" error={errors.phone}>
-                <Input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
-                  placeholder="+234 803 123 4567"
-                  className={`h-7 text-xs ${errors.phone ? "border-red-500" : ""}`}
-                />
-              </FormField>
-              <FormField label="AKA" error={null}>
-                <Input
-                  value={formData.aka}
-                  onChange={(e) => handleInputChange("aka", e.target.value)}
-                  placeholder="Alias or nickname"
-                  className="h-7 text-xs"
-                />
-              </FormField>
-            </div>
-          </SectionCard>
+            )}
+            <FormField label="Retailer / Branch / CSO" htmlFor="retailerBranch">
+              <Input
+                id="retailerBranch"
+                value={formData.retailerBranch}
+                onChange={(e) => handleInputChange("retailerBranch", e.target.value)}
+                placeholder="Branch or agency"
+              />
+            </FormField>
+          </div>
         </div>
 
-        {/* Row 2: Sale & Payment */}
-        <SectionCard title="Sale & Payment">
-          <div className="grid grid-cols-4 gap-2">
+        {/* Buyer & End User */}
+        <div>
+          <Label className="text-base font-semibold">Buyer &amp; End User</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
+            <FormField label="Contact Person / Buyer *" error={errors.contactPerson} htmlFor="contactPerson">
+              <Input
+                id="contactPerson"
+                value={formData.contactPerson}
+                onChange={(e) => handleInputChange("contactPerson", e.target.value)}
+                placeholder="Buyer name"
+                className={errors.contactPerson ? "border-red-500" : ""}
+              />
+            </FormField>
+            <FormField label="Contact Phone *" error={errors.contactPhone} htmlFor="contactPhone">
+              <Input
+                id="contactPhone"
+                type="tel"
+                value={formData.contactPhone}
+                onChange={(e) => handleInputChange("contactPhone", e.target.value)}
+                placeholder="+234 803 123 4567"
+                className={errors.contactPhone ? "border-red-500" : ""}
+              />
+            </FormField>
+            <FormField label="End User Name *" error={errors.endUserName} htmlFor="endUserName">
+              <Input
+                id="endUserName"
+                value={formData.endUserName}
+                onChange={(e) => handleInputChange("endUserName", e.target.value)}
+                placeholder="End user name"
+                className={errors.endUserName ? "border-red-500" : ""}
+              />
+            </FormField>
+            <FormField label="End User Phone *" error={errors.phone} htmlFor="phone">
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => handleInputChange("phone", e.target.value)}
+                placeholder="+234 803 123 4567"
+                className={errors.phone ? "border-red-500" : ""}
+              />
+            </FormField>
+            <FormField label="AKA" htmlFor="aka">
+              <Input
+                id="aka"
+                value={formData.aka}
+                onChange={(e) => handleInputChange("aka", e.target.value)}
+                placeholder="Alias or nickname"
+              />
+            </FormField>
+          </div>
+        </div>
+
+        {/* Sale & Payment */}
+        <div>
+          <Label className="text-base font-semibold">Sale &amp; Payment</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
             {/* Stove serial */}
-            <FormField label={`Stove Serial No *${isEditMode ? " (locked)" : ""}`} error={errors.stoveSerialNo}>
+            <FormField label={`Stove Serial No *${isEditMode ? " (locked)" : ""}`} error={errors.stoveSerialNo} htmlFor="stoveSerialNo">
               {isEditMode ? (
-                <p className="text-xs font-medium">{formData.stoveSerialNo || stoveSearchTerm || <span className="text-muted-foreground">—</span>}</p>
+                <Input value={formData.stoveSerialNo || stoveSearchTerm || ""} readOnly className="bg-gray-100" />
               ) : (
                 <div className="relative stove-search-container">
                   <Input
+                    id="stoveSerialNo"
                     value={stoveSearchTerm}
                     onChange={(e) => { setStoveSearchTerm(e.target.value); setShowStoveDropdown(true); }}
                     onFocus={() => setShowStoveDropdown(true)}
-                    placeholder={stovesLoading ? "Loading..." : "Search stove ID..."}
-                    className={`h-7 text-xs ${errors.stoveSerialNo ? "border-red-500" : ""}`}
-                    disabled={stovesLoading}
+                    placeholder={stovesLoading ? "Loading..." : isSuperAdmin && !formData.partnerName ? "Select a partner first" : "Search stove ID..."}
+                    className={errors.stoveSerialNo ? "border-red-500" : ""}
+                    disabled={stovesLoading || (isSuperAdmin && !formData.partnerName)}
                   />
                   {showStoveDropdown && filteredStoves.length > 0 && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-auto">
                       {filteredStoves.map((stove) => (
                         <div
                           key={stove.id}
-                          className="px-3 py-1.5 text-xs cursor-pointer hover:bg-gray-50"
+                          className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
                           onClick={() => {
                             setFormData((prev) => ({ ...prev, stoveSerialNo: stove.stove_id }));
                             setStoveSearchTerm(stove.stove_id);
@@ -753,23 +856,25 @@ const CreateSalesForm = ({
               )}
             </FormField>
 
-            {/* Edit mode: payment type display */}
+            {/* Payment type */}
             {isEditMode && initialData?.is_installment && initialData?.payment_model ? (
-              <div className="col-span-2">
-                <FieldLabel>Payment Model</FieldLabel>
-                <div className="flex items-center gap-2">
-                  <p className="text-xs font-medium">
-                    {initialData.payment_model.name} — ₦{Number(initialData.payment_model.fixed_price).toLocaleString("en-NG")} / {initialData.payment_model.duration_months} mo
-                  </p>
-                  <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-[10px] px-1.5 py-0">Installment</Badge>
+              <div>
+                <Label>Payment Model</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    value={`${initialData.payment_model.name} — ₦${Number(initialData.payment_model.fixed_price).toLocaleString("en-NG")} / ${initialData.payment_model.duration_months} mo`}
+                    readOnly
+                    className="bg-gray-100"
+                  />
+                  <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs px-2 py-0.5 whitespace-nowrap">Installment</Badge>
                 </div>
               </div>
             ) : isEditMode ? (
               <ReadOnlyTile label="Payment Type" value="Full Payment" />
             ) : paymentModels.length > 0 ? (
-              <FormField label="Payment Type *" error={null}>
+              <FormField label="Payment Type *" htmlFor="paymentType">
                 <Select value={isInstallment ? selectedModelId : "full_payment"} onValueChange={handlePaymentTypeChange}>
-                  <SelectTrigger className="h-7 text-xs">
+                  <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -785,14 +890,15 @@ const CreateSalesForm = ({
             ) : null}
 
             {/* Sale amount */}
-            <FormField label={`Sale Amount (₦) *${isInstallment && selectedModel ? " — by model" : ""}`} error={errors.amount}>
+            <FormField label={`Sale Amount (₦) *${isInstallment && selectedModel ? " — by model" : ""}`} error={errors.amount} htmlFor="amount">
               <Input
+                id="amount"
                 type="text"
                 inputMode="numeric"
                 value={formatAmountInput(formData.amount)}
                 onChange={(e) => handleInputChange("amount", parseAmountInput(e.target.value))}
                 placeholder="Enter amount"
-                className={`h-7 text-xs ${errors.amount ? "border-red-500" : ""} ${(isInstallment && selectedModel) || isEditMode ? "bg-muted/50" : ""}`}
+                className={`${errors.amount ? "border-red-500" : ""} ${(isInstallment && selectedModel) || isEditMode ? "bg-gray-100" : ""}`}
                 readOnly={(isInstallment && !!selectedModel) || isEditMode}
               />
             </FormField>
@@ -800,38 +906,39 @@ const CreateSalesForm = ({
 
           {/* Installment model summary */}
           {isInstallment && selectedModel && (
-            <div className="mt-3 space-y-2">
-              <div className="bg-blue-50/60 border border-blue-200/60 rounded-lg p-3">
-                <p className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-2">{selectedModel.name}</p>
-                {selectedModel.description && <p className="text-[10px] text-muted-foreground mb-2">{selectedModel.description}</p>}
-                <div className="grid grid-cols-3 gap-2">
+            <div className="mt-4 space-y-3">
+              <div className="bg-blue-50/60 border border-blue-200/60 rounded-lg p-4">
+                <Label className="text-base font-semibold">{selectedModel.name}</Label>
+                {selectedModel.description && <p className="text-sm text-muted-foreground mt-1 mb-3">{selectedModel.description}</p>}
+                <div className="grid grid-cols-3 gap-4 mt-2">
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Price</p>
-                    <p className="text-xs font-semibold">{formatCurrency(selectedModel.fixed_price)}</p>
+                    <Label>Price</Label>
+                    <p className="text-sm font-semibold mt-1">{formatCurrency(selectedModel.fixed_price)}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Duration</p>
-                    <p className="text-xs font-semibold">{selectedModel.duration_months} months</p>
+                    <Label>Duration</Label>
+                    <p className="text-sm font-semibold mt-1">{selectedModel.duration_months} months</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Monthly ~</p>
-                    <p className="text-xs font-semibold">{formatCurrency((selectedModel.fixed_price / selectedModel.duration_months).toFixed(0))}</p>
+                    <Label>Monthly ~</Label>
+                    <p className="text-sm font-semibold mt-1">{formatCurrency((selectedModel.fixed_price / selectedModel.duration_months).toFixed(0))}</p>
                   </div>
                 </div>
                 {selectedModel.min_down_payment > 0 && (
-                  <p className="text-[10px] text-amber-700 mt-1.5 flex items-center gap-1">
-                    <Info className="h-3 w-3" />
+                  <p className="text-sm text-amber-700 mt-2 flex items-center gap-1">
+                    <Info className="h-3.5 w-3.5" />
                     Min. down payment: {formatCurrency(selectedModel.min_down_payment)}
                   </p>
                 )}
               </div>
 
               {/* Initial payment fields */}
-              <div className="border-t pt-2">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Initial Payment (Optional)</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <FormField label="Amount (₦)" error={null}>
+              <div className="border-t pt-3">
+                <Label className="text-base font-semibold">Initial Payment (Optional)</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-4 mt-2">
+                  <FormField label="Amount (₦)" htmlFor="initialPaymentAmount">
                     <Input
+                      id="initialPaymentAmount"
                       type="text"
                       inputMode="numeric"
                       value={formatAmountInput(initialPaymentAmount)}
@@ -840,15 +947,14 @@ const CreateSalesForm = ({
                         if (raw === "" || parseFloat(raw) <= parseFloat(selectedModel.fixed_price)) setInitialPaymentAmount(raw);
                       }}
                       placeholder={selectedModel.min_down_payment > 0 ? `Min: ${formatCurrency(selectedModel.min_down_payment)}` : "Enter amount"}
-                      className="h-7 text-xs"
                     />
                     {initialPaymentAmount && selectedModel.min_down_payment > 0 && parseFloat(initialPaymentAmount) < parseFloat(selectedModel.min_down_payment) && (
-                      <p className="text-[10px] text-amber-600">Min. {formatCurrency(selectedModel.min_down_payment)}</p>
+                      <p className="text-sm text-amber-600 mt-1">Min. {formatCurrency(selectedModel.min_down_payment)}</p>
                     )}
                   </FormField>
-                  <FormField label="Method" error={null}>
+                  <FormField label="Method" htmlFor="initialPaymentMethod">
                     <Select value={initialPaymentMethod} onValueChange={(v) => setInitialPaymentMethod(v)}>
-                      <SelectTrigger className="h-7 text-xs">
+                      <SelectTrigger>
                         <SelectValue placeholder="Select method" />
                       </SelectTrigger>
                       <SelectContent>
@@ -860,7 +966,7 @@ const CreateSalesForm = ({
                   </FormField>
                 </div>
                 {initialPaymentAmount && parseFloat(initialPaymentAmount) > 0 && (
-                  <div className="mt-2">
+                  <div className="mt-3">
                     <ImageUploadSection
                       label="Proof of Payment"
                       preview={initialPaymentProofPreview}
@@ -876,14 +982,15 @@ const CreateSalesForm = ({
               </div>
             </div>
           )}
-        </SectionCard>
+        </div>
 
-        {/* Row 3: Location */}
-        <SectionCard title="Location">
-          <div className="grid grid-cols-2 gap-2">
-            <FormField label="State *" error={errors.stateBackup}>
+        {/* Location */}
+        <div>
+          <Label className="text-base font-semibold">Location</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
+            <FormField label="State *" error={errors.stateBackup} htmlFor="stateBackup">
               <Select value={formData.stateBackup} onValueChange={handleStateChange}>
-                <SelectTrigger className={`h-7 text-xs ${errors.stateBackup ? "border-red-500" : ""}`}>
+                <SelectTrigger className={errors.stateBackup ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select state" />
                 </SelectTrigger>
                 <SelectContent>
@@ -893,9 +1000,9 @@ const CreateSalesForm = ({
                 </SelectContent>
               </Select>
             </FormField>
-            <FormField label="LGA *" error={errors.lgaBackup}>
+            <FormField label="LGA *" error={errors.lgaBackup} htmlFor="lgaBackup">
               <Select value={formData.lgaBackup} onValueChange={(v) => handleInputChange("lgaBackup", v)} disabled={!formData.stateBackup}>
-                <SelectTrigger className={`h-7 text-xs ${errors.lgaBackup ? "border-red-500" : ""}`}>
+                <SelectTrigger className={errors.lgaBackup ? "border-red-500" : ""}>
                   <SelectValue placeholder={formData.stateBackup ? "Select LGA" : "Select state first"} />
                 </SelectTrigger>
                 <SelectContent>
@@ -905,119 +1012,113 @@ const CreateSalesForm = ({
                 </SelectContent>
               </Select>
             </FormField>
-            <div className="col-span-2">
-              <FormField label="Residential Address *" error={errors.address || errors.location}>
+            <div className="md:col-span-2 lg:col-span-3">
+              <FormField label="Residential Address *" error={errors.address || errors.location} htmlFor="address">
                 <GooglePlacesInput
                   value={formData.addressData}
                   onChange={handleAddressSelect}
                   placeholder="Search for address in Nigeria..."
-                  className={`w-full text-xs ${errors.address ? "border-red-500" : ""}`}
+                  className={`w-full ${errors.address ? "border-red-500" : ""}`}
                 />
               </FormField>
             </div>
             {formData.addressData.latitude && formData.addressData.longitude && (
               <>
                 <div>
-                  <FieldLabel>Latitude</FieldLabel>
-                  <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] px-1.5 py-0 font-mono">
-                    {formData.addressData.latitude}
-                  </Badge>
+                  <Label>Latitude</Label>
+                  <Input value={formData.addressData.latitude} readOnly className="bg-gray-100 font-mono" />
                 </div>
                 <div>
-                  <FieldLabel>Longitude</FieldLabel>
-                  <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] px-1.5 py-0 font-mono">
-                    {formData.addressData.longitude}
-                  </Badge>
+                  <Label>Longitude</Label>
+                  <Input value={formData.addressData.longitude} readOnly className="bg-gray-100 font-mono" />
                 </div>
               </>
             )}
           </div>
-        </SectionCard>
+        </div>
 
-        {/* Row 4: Stove Set + Cooking Habits */}
-        <div className="grid grid-cols-2 gap-3">
-          <SectionCard title="Stove Set">
-            <div className="grid grid-cols-2 gap-2">
-              <FormField label="Pots Quantity" error={null}>
-                <Select value={formData.potQuantity.toString()} onValueChange={(v) => handleInputChange("potQuantity", v)}>
-                  <SelectTrigger className="h-7 text-xs">
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">0 pots</SelectItem>
-                    <SelectItem value="1">1 pot</SelectItem>
-                    <SelectItem value="2">2 pots</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormField>
-              <div>
-                <FieldLabel>Wonderbox (Heat Retention)</FieldLabel>
-                <label className="flex items-center gap-1.5 cursor-pointer mt-1">
-                  <input
-                    type="checkbox"
-                    checked={formData.heatRetentionDevice}
-                    onChange={(e) => handleInputChange("heatRetentionDevice", e.target.checked)}
-                    className="h-3.5 w-3.5 rounded border-gray-300 text-brand"
-                  />
-                  <span className="text-xs text-muted-foreground">Included</span>
-                </label>
-              </div>
+        {/* Stove Set */}
+        <div>
+          <Label className="text-base font-semibold">Stove Set</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
+            <FormField label="Pots Quantity" htmlFor="potQuantity">
+              <Select value={formData.potQuantity.toString()} onValueChange={(v) => handleInputChange("potQuantity", v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">0 pots</SelectItem>
+                  <SelectItem value="1">1 pot</SelectItem>
+                  <SelectItem value="2">2 pots</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormField>
+            <div>
+              <Label>Wonderbox (Heat Retention)</Label>
+              <label className="flex items-center gap-2 cursor-pointer mt-2">
+                <input
+                  type="checkbox"
+                  checked={formData.heatRetentionDevice}
+                  onChange={(e) => handleInputChange("heatRetentionDevice", e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-brand"
+                />
+                <span className="text-sm text-muted-foreground">Included</span>
+              </label>
             </div>
-          </SectionCard>
+          </div>
+        </div>
 
-          <SectionCard title="Cooking Habits">
-            <div className="grid grid-cols-1 gap-2">
-              <div>
-                <FieldLabel>Previous Stove Type</FieldLabel>
-                <div className="flex flex-wrap gap-3 mt-0.5">
-                  {[
-                    { value: "charcoal", label: "Charcoal" },
-                    { value: "wood_stove", label: "Wood (3 stone)" },
-                    { value: "other", label: "Other" },
-                  ].map(({ value, label }) => (
-                    <label key={value} className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="previousStoveType"
-                        value={value}
-                        checked={formData.previousStoveType === value}
-                        onChange={(e) => handleInputChange("previousStoveType", e.target.value)}
-                        className="h-3.5 w-3.5 text-brand"
-                      />
-                      <span className="text-xs text-muted-foreground">{label}</span>
-                    </label>
-                  ))}
-                </div>
-                {formData.previousStoveType === "other" && (
-                  <Input
-                    value={formData.previousStoveOther}
-                    onChange={(e) => handleInputChange("previousStoveOther", e.target.value)}
-                    placeholder="Describe stove type"
-                    className="h-7 text-xs mt-1"
-                  />
-                )}
+        {/* Cooking Habits */}
+        <div>
+          <Label className="text-base font-semibold">Cooking Habits</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
+            <div className="md:col-span-2 lg:col-span-3">
+              <Label>Previous Stove Type</Label>
+              <div className="flex flex-wrap gap-4 mt-2">
+                {[
+                  { value: "charcoal", label: "Charcoal" },
+                  { value: "wood_stove", label: "Wood (3 stone)" },
+                  { value: "other", label: "Other" },
+                ].map(({ value, label }) => (
+                  <label key={value} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="previousStoveType"
+                      value={value}
+                      checked={formData.previousStoveType === value}
+                      onChange={(e) => handleInputChange("previousStoveType", e.target.value)}
+                      className="h-4 w-4 text-brand"
+                    />
+                    <span className="text-sm text-muted-foreground">{label}</span>
+                  </label>
+                ))}
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <FormField label="Meals per day" error={null}>
-                  <Input value={formData.mealsPerDay} onChange={(e) => handleInputChange("mealsPerDay", e.target.value)} placeholder="e.g., 2 meals" className="h-7 text-xs" />
-                </FormField>
-                <FormField label="Fuel Source" error={null}>
-                  <Input value={formData.cookingFuelSource} onChange={(e) => handleInputChange("cookingFuelSource", e.target.value)} placeholder="e.g., Local market" className="h-7 text-xs" />
-                </FormField>
-                <div className="col-span-2">
-                  <FormField label="Cooking Location" error={null}>
-                    <Input value={formData.cookingLocation} onChange={(e) => handleInputChange("cookingLocation", e.target.value)} placeholder="e.g., Outdoors, kitchen" className="h-7 text-xs" />
-                  </FormField>
-                </div>
-              </div>
+              {formData.previousStoveType === "other" && (
+                <Input
+                  value={formData.previousStoveOther}
+                  onChange={(e) => handleInputChange("previousStoveOther", e.target.value)}
+                  placeholder="Describe stove type"
+                  className="mt-2"
+                />
+              )}
             </div>
-          </SectionCard>
+            <FormField label="Meals per day" htmlFor="mealsPerDay">
+              <Input id="mealsPerDay" value={formData.mealsPerDay} onChange={(e) => handleInputChange("mealsPerDay", e.target.value)} placeholder="e.g., 2 meals" />
+            </FormField>
+            <FormField label="Fuel Source" htmlFor="cookingFuelSource">
+              <Input id="cookingFuelSource" value={formData.cookingFuelSource} onChange={(e) => handleInputChange("cookingFuelSource", e.target.value)} placeholder="e.g., Local market" />
+            </FormField>
+            <FormField label="Cooking Location" htmlFor="cookingLocation">
+              <Input id="cookingLocation" value={formData.cookingLocation} onChange={(e) => handleInputChange("cookingLocation", e.target.value)} placeholder="e.g., Outdoors, kitchen" />
+            </FormField>
+          </div>
         </div>
 
         {/* Terms & Conditions */}
-        <SectionCard title="Terms & Conditions *" className={errors.termsAccepted ? "border-red-400" : ""}>
-          <p className="text-[10px] text-muted-foreground mb-2">All items below must be acknowledged before submitting.</p>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+        <div className={errors.termsAccepted ? "border border-red-400 rounded-lg p-4" : ""}>
+          <Label className="text-base font-semibold">Terms &amp; Conditions *</Label>
+          <p className="text-sm text-muted-foreground mt-1 mb-3">All items below must be acknowledged before submitting.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
             {[
               { key: "poaGoverned", label: "PoA / UNFCCC governed — stove subsidised by Carbon Credits" },
               { key: "monitoring", label: "Agreed to cooperate for monitoring purposes" },
@@ -1031,19 +1132,20 @@ const CreateSalesForm = ({
                   type="checkbox"
                   checked={formData.termsAccepted?.[key] ?? false}
                   onChange={(e) => handleInputChange("termsAccepted", { ...formData.termsAccepted, [key]: e.target.checked })}
-                  className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 rounded border-gray-300 text-brand"
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-brand"
                 />
-                <span className="text-xs text-muted-foreground group-hover:text-foreground leading-tight">{label}</span>
+                <span className="text-sm text-muted-foreground group-hover:text-foreground leading-tight">{label}</span>
               </label>
             ))}
           </div>
-          {errors.termsAccepted && <p className="text-[10px] text-red-500 mt-1.5">{errors.termsAccepted}</p>}
-        </SectionCard>
+          {errors.termsAccepted && <p className="text-sm text-red-500 mt-2">{errors.termsAccepted}</p>}
+        </div>
 
         {/* Images & Signature */}
-        <div className="grid grid-cols-2 gap-3">
-          <SectionCard title="Images & Documents">
-            <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-4">
+          <div>
+            <Label className="text-base font-semibold">Images &amp; Documents</Label>
+            <div className="space-y-4 mt-2">
               <ImageUploadSection
                 label="Stove Photo *"
                 preview={stoveImagePreview}
@@ -1064,32 +1166,35 @@ const CreateSalesForm = ({
                 changeButtonText="Change Document"
               />
             </div>
-          </SectionCard>
+          </div>
 
-          <SectionCard title="Digital Signature">
-            <SignatureCanvas
-              signature={formData.signature}
-              onSignatureChange={handleSignatureChange}
-              error={errors.signature}
-              label="Customer Signature *"
-            />
-          </SectionCard>
+          <div>
+            <Label className="text-base font-semibold">Digital Signature</Label>
+            <div className="mt-2">
+              <SignatureCanvas
+                signature={formData.signature}
+                onSignatureChange={handleSignatureChange}
+                error={errors.signature}
+                label="Customer Signature *"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end gap-2 pb-1">
-          <Button type="button" variant="outline" onClick={handleCancel} disabled={loading} className="h-8 text-xs px-4">
+        <div className="flex justify-end gap-3 pb-2">
+          <Button type="button" variant="outline" onClick={handleCancel} disabled={loading}>
             Cancel
           </Button>
-          <Button type="submit" disabled={loading} className="h-8 text-xs px-4 bg-brand hover:bg-brand/90 text-white">
+          <Button type="submit" disabled={loading} className="bg-brand hover:bg-brand/90 text-white">
             {loading ? (
               <>
-                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 {isEditMode ? "Updating..." : "Creating..."}
               </>
             ) : (
               <>
-                <Save className="h-3.5 w-3.5 mr-1.5" />
+                <Save className="h-4 w-4 mr-2" />
                 {isEditMode ? "Update Sale" : "Create Sale"}
               </>
             )}
