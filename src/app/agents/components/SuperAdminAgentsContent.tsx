@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -781,6 +781,97 @@ function AgentPartnersModal({
   );
 }
 
+// ── Agent States Modal ─────────────────────────────────────────────────────────
+
+
+function AgentStatesModal({
+  agent,
+  isOpen,
+  onClose,
+}: {
+  agent: AcslAgent | null;
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [states, setStates] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!isOpen || !agent) return;
+    setError(null);
+    setStates([]);
+    const load = async () => {
+      setLoading(true);
+      try {
+        const result = await superAdminAgentService.getAgentStates(agent.id);
+        const sorted: string[] = ((result.data || []) as any[])
+          .map((s: any) => s.state as string)
+          .sort();
+        setStates(sorted);
+      } catch (err: any) {
+        setError(err.message || "Failed to load states");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [isOpen, agent]);
+
+  if (!agent) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+        <DialogHeader className="px-5 py-3 bg-gradient-to-r from-primary/5 to-primary/10 border-b shrink-0">
+          <div>
+            <DialogTitle className="text-base font-bold text-foreground">States Assigned</DialogTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Agent: <span className="font-semibold text-primary">{agent.full_name}</span>
+              {!loading && (
+                <span className="ml-2 bg-primary/10 text-primary text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                  {states.length} state{states.length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </p>
+          </div>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          ) : states.length === 0 ? (
+            <div className="text-center text-muted-foreground py-10 text-sm">
+              <MapPin className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+              No states assigned to this agent.
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {states.map((s) => (
+                <span
+                  key={s}
+                  className="bg-primary/10 text-primary text-[11px] font-mono px-2.5 py-1 rounded"
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 interface PaginationInfo {
   currentPage: number;
   totalPages: number;
@@ -800,7 +891,7 @@ export default function SuperAdminAgentsContent() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [roleFilter, setRoleFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("acsl_agent");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
@@ -811,6 +902,11 @@ export default function SuperAdminAgentsContent() {
   const [selectedAgent, setSelectedAgent] = useState<AcslAgent | null>(null);
   const [partnersModalAgent, setPartnersModalAgent] = useState<AcslAgent | null>(null);
   const [assignPartnerAgent, setAssignPartnerAgent] = useState<AcslAgent | null>(null);
+  const [statesModalAgent, setStatesModalAgent] = useState<AcslAgent | null>(null);
+
+  type AgentSummary = { states: string[]; received: number; sold: number; available: number };
+  const [agentSummaryData, setAgentSummaryData] = useState<Record<string, AgentSummary>>({});
+  const loadingAgentSummaryRef = useRef(new Set<string>());
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchAgents = useCallback(async () => {
@@ -833,6 +929,31 @@ export default function SuperAdminAgentsContent() {
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
   useEffect(() => { setPage(1); }, [search, statusFilter, roleFilter]);
+
+  const loadAgentSummary = useCallback((agent: AcslAgent) => {
+    if (loadingAgentSummaryRef.current.has(agent.id)) return;
+    loadingAgentSummaryRef.current.add(agent.id);
+    superAdminAgentService.getAgentOrganizations(agent.id)
+      .then((res) => {
+        const orgs: any[] = res.data || [];
+        const states: string[] = ((res.assigned_states || []) as string[]).sort();
+        const received = orgs.reduce((s: number, o: any) => s + (o.total_sales ?? 0), 0);
+        const sold = res.agent_sold_count ?? orgs.reduce((s: number, o: any) => s + (o.approved_sales ?? 0), 0);
+        const available = orgs.reduce((s: number, o: any) => s + (o.pending_sales ?? 0), 0);
+        setAgentSummaryData((prev) => ({ ...prev, [agent.id]: { states, received, sold, available } }));
+      })
+      .catch(() => {
+        setAgentSummaryData((prev) => ({ ...prev, [agent.id]: { states: [], received: 0, sold: 0, available: 0 } }));
+      })
+      .finally(() => { loadingAgentSummaryRef.current.delete(agent.id); });
+  }, []);
+
+  useEffect(() => {
+    agents.forEach((agent) => {
+      if (agentSummaryData[agent.id] === undefined) loadAgentSummary(agent);
+    });
+  }, [agents]);
+
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const handleToggleStatus = async (agent: AcslAgent) => {
@@ -923,9 +1044,9 @@ export default function SuperAdminAgentsContent() {
               <SelectItem value="super_admin">Super Admin</SelectItem>
             </SelectContent>
           </Select>
-          {(search || statusFilter !== "all" || roleFilter !== "all") && (
+          {(search || statusFilter !== "all" || roleFilter !== "acsl_agent") && (
             <Button
-              onClick={() => { setSearch(""); setStatusFilter("all"); setRoleFilter("all"); setPage(1); }}
+              onClick={() => { setSearch(""); setStatusFilter("all"); setRoleFilter("acsl_agent"); setPage(1); }}
               size="sm"
               variant="outline"
               className="h-9"
@@ -968,19 +1089,17 @@ export default function SuperAdminAgentsContent() {
               <TableHeader>
                 <TableRow className="bg-[#07376a] hover:bg-[#07376a]">
                   <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Full Name</TableHead>
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Email</TableHead>
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone</TableHead>
-                  {/* <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Role</TableHead> */}
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partners Assigned</TableHead>
+                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">States Assigned</TableHead>
+                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap text-center">Partners Assigned</TableHead>
+                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stoves (Assigned / Collected / Unattended)</TableHead>
                   <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Status</TableHead>
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Last Modified</TableHead>
                   <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className={loading ? "opacity-40" : ""}>
                 {!loading && agents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12">
+                    <TableCell colSpan={6} className="text-center py-12">
                       <Users className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500 font-medium">No agents found</p>
                       <p className="text-gray-400 text-sm">Click "Create Agent" to add one.</p>
@@ -993,21 +1112,38 @@ export default function SuperAdminAgentsContent() {
                       className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}
                     >
                       <TableCell className="text-xs font-medium text-gray-900">
-                   
                           {agent.full_name}
                       </TableCell>
-                      <TableCell className="text-xs text-gray-600">{agent.email}</TableCell>
-                      <TableCell className="text-xs text-gray-600">{agent.phone || "—"}</TableCell>
-                      {/* <TableCell>
-                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                          agent.role === "super_admin"
-                            ? "bg-purple-100 text-purple-700"
-                            : "bg-blue-100 text-blue-700"
-                        }`}>
-                          {agent.role === "super_admin" ? "Super Admin" : "ACSL Agent"}
-                        </span>
-                      </TableCell> */}
-                      <TableCell>
+                      {/* States — name badges, wrapping */}
+                      <TableCell className="max-w-[260px]">
+                        {agentSummaryData[agent.id] === undefined ? (
+                          <Loader2 className="h-3 w-3 animate-spin text-gray-300" />
+                        ) : agentSummaryData[agent.id].states.length === 0 ? (
+                          <span className="text-gray-400">—</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1 items-center">
+                            {agentSummaryData[agent.id].states.slice(0, 5).map((s) => (
+                              <span
+                                key={s}
+                                className="bg-primary/10 text-primary text-[10px] font-mono px-1.5 py-0.5 rounded"
+                              >
+                                {s}
+                              </span>
+                            ))}
+                            {agentSummaryData[agent.id].states.length > 5 && (
+                              <button
+                                onClick={() => setStatesModalAgent(agent)}
+                                className="text-[10px] font-semibold text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
+                                title="Click to view all assigned states"
+                              >
+                                +{agentSummaryData[agent.id].states.length - 5} more
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
+                      {/* Partners */}
+                      <TableCell className="text-center">
                         {(() => {
                           const total = agent.total_partners_count ?? (agent.assigned_organizations_count ?? 0);
                           if (total === 0) {
@@ -1028,6 +1164,26 @@ export default function SuperAdminAgentsContent() {
                           );
                         })()}
                       </TableCell>
+                      {/* Stoves */}
+                      <TableCell>
+                        {agentSummaryData[agent.id] === undefined ? (
+                          <Loader2 className="h-3 w-3 animate-spin text-gray-300" />
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <span className="font-medium text-purple-700" title="Received">
+                              {agentSummaryData[agent.id].received.toLocaleString()}
+                            </span>
+                            <span className="text-gray-300">/</span>
+                            <span className="font-medium text-blue-600" title="Sold">
+                              {agentSummaryData[agent.id].sold.toLocaleString()}
+                            </span>
+                            <span className="text-gray-300">/</span>
+                            <span className="font-medium text-green-600" title="Available">
+                              {agentSummaryData[agent.id].available.toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
                           agent.status === "active"
@@ -1036,25 +1192,6 @@ export default function SuperAdminAgentsContent() {
                         }`}>
                           {agent.status === "active" ? "Active" : "Disabled"}
                         </span>
-                      </TableCell>
-                      <TableCell>
-                        {(() => {
-                          const hasEdit = !!agent.updated_at && agent.updated_at !== agent.created_at;
-                          const ts = hasEdit ? agent.updated_at! : agent.created_at;
-                          const fullDate = new Date(ts).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-                          const modifierName = hasEdit ? (agent.updated_by_name ?? null) : null;
-                          return (
-                            <div title={modifierName ? `${fullDate} by ${modifierName}` : fullDate}>
-                              <p className="text-xs text-gray-700 font-medium whitespace-nowrap">{fullDate}</p>
-                              {/* <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${hasEdit ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>
-                                {hasEdit ? "Modified" : "Created"}
-                              </span> */}
-                              {hasEdit && modifierName && (
-                                <p className="text-[9px] text-gray-500 mt-0.5 whitespace-nowrap">{modifierName}</p>
-                              )}
-                            </div>
-                          );
-                        })()}
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1">
@@ -1192,11 +1329,25 @@ export default function SuperAdminAgentsContent() {
         onClose={() => setPartnersModalAgent(null)}
       />
 
+      <AgentStatesModal
+        agent={statesModalAgent}
+        isOpen={!!statesModalAgent}
+        onClose={() => setStatesModalAgent(null)}
+      />
+
       <AssignPartnerModal
         agent={assignPartnerAgent}
         isOpen={!!assignPartnerAgent}
         onClose={() => setAssignPartnerAgent(null)}
         onSuccess={() => {
+          if (assignPartnerAgent) {
+            // Evict cache so this agent's badges reload with fresh data
+            setAgentSummaryData((prev) => {
+              const next = { ...prev };
+              delete next[assignPartnerAgent.id];
+              return next;
+            });
+          }
           setAssignPartnerAgent(null);
           toast({ variant: "success", title: "Partner assignments updated" });
           fetchAgents();

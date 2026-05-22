@@ -35,7 +35,7 @@ import useOrganizations from "../../hooks/useOrganizations";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import { lgaAndStates } from "../../constants";
-import adminAgentService from "../../services/adminAgentService.jsx";
+import superAdminAgentService from "../../services/superAdminAgentService";
 import PageHeader from "../../components/PageHeader";
 import {
   Search,
@@ -64,6 +64,8 @@ import adminCredentialsService from "../../services/adminCredentialsService";
 
 const FILTER_LABELS = { all: "All Stove IDs", available: "Available Stove IDs", sold: "Sold Stove IDs" };
 
+const STOVE_PAGE_SIZE = 200;
+
 const StoveIdsModal = ({ organization, isOpen, onClose, initialFilter = "all" }) => {
   const { supabase } = useAuth();
   const { toast } = useToast();
@@ -75,28 +77,31 @@ const StoveIdsModal = ({ organization, isOpen, onClose, initialFilter = "all" })
   const [error, setError] = useState(null);
   const [selectedSale, setSelectedSale] = useState(null);
   const [loadingSaleId, setLoadingSaleId] = useState(null);
+  const [stovePage, setStovePage] = useState(1);
+  const [stoveTotal, setStoveTotal] = useState(0);
 
-  // On open, reset to the requested filter and fetch
   useEffect(() => {
     if (isOpen && organization) {
       setSearch("");
+      setStovePage(1);
       setStatusFilter(initialFilter);
-      fetchStoveIds(initialFilter);
+      fetchStoveIds(initialFilter, 1);
     }
   }, [isOpen, organization]);
 
-  // Re-fetch when user manually changes the filter dropdown
   const handleStatusChange = (val) => {
     setStatusFilter(val);
-    fetchStoveIds(val);
+    setStovePage(1);
+    fetchStoveIds(val, 1);
   };
 
-  const fetchStoveIds = async (sf) => {
+  const fetchStoveIds = async (sf, page = stovePage) => {
     setLoading(true);
     setError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const body = { organization_id: organization.id };
+      const offset = (page - 1) * STOVE_PAGE_SIZE;
+      const body = { organization_id: organization.id, limit: STOVE_PAGE_SIZE, offset };
       if (sf && sf !== "all") body.status = sf;
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-stove-ids`,
@@ -110,12 +115,18 @@ const StoveIdsModal = ({ organization, isOpen, onClose, initialFilter = "all" })
       if (!res.ok) throw new Error(data.message || "Failed to fetch stove IDs");
       setStoveIds(data.data || []);
       setTotals(data.totals || null);
+      setStoveTotal(data.pagination?.total ?? data.totals?.total_stove_ids ?? 0);
     } catch (err) {
       setError(err.message);
       setStoveIds([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStovePage = (p) => {
+    setStovePage(p);
+    fetchStoveIds(statusFilter, p);
   };
 
   const handleViewSale = async (saleId) => {
@@ -145,6 +156,8 @@ const StoveIdsModal = ({ organization, isOpen, onClose, initialFilter = "all" })
   const filtered = stoveIds.filter((s) =>
     !search || s.stove_id?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const stoveTotalPages = Math.max(1, Math.ceil(stoveTotal / STOVE_PAGE_SIZE));
 
   const totalCount = totals?.total_stove_ids ?? 0;
   const available = totals?.total_stove_available ?? 0;
@@ -290,7 +303,7 @@ const StoveIdsModal = ({ organization, isOpen, onClose, initialFilter = "all" })
 
             {/* Stove IDs */}
             <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
-              <SectionHeader title={`Stove IDs${!loading && filtered.length > 0 ? ` (${filtered.length})` : ""}`}>
+              <SectionHeader title={`Stove IDs${stoveTotal > 0 ? ` (${stoveTotal.toLocaleString()} total)` : ""}`}>
                 <div className="flex items-center gap-1">
                   <Button
                     variant="outline"
@@ -327,26 +340,50 @@ const StoveIdsModal = ({ organization, isOpen, onClose, initialFilter = "all" })
               ) : filtered.length === 0 ? (
                 <div className="text-center text-muted-foreground py-6 text-sm">No stove IDs found.</div>
               ) : (
-                <div className="grid grid-cols-4 md:grid-cols-6 gap-1.5 max-h-64 overflow-y-auto">
-                  {filtered.map((stove) => (
-                    <button
-                      key={stove.id}
-                      onClick={() => stove.sale_id && handleViewSale(stove.sale_id)}
-                      disabled={!!loadingSaleId || !stove.sale_id}
-                      className={[
-                        "px-2 py-1 text-xs rounded border text-center truncate transition-colors",
-                        stove.status === "sold"
-                          ? "bg-green-800 border-green-800 text-white hover:bg-green-700 cursor-pointer"
-                          : "bg-muted/50 border-border/50 text-foreground cursor-default",
-                        stove.sale_id && loadingSaleId === stove.sale_id ? "opacity-60" : "",
-                      ].join(" ")}
-                      title={stove.status === "sold" ? `${stove.stove_id} — Sold${stove.sale_id ? " (click to view sale)" : ""}` : `${stove.stove_id} — Available`}
-                    >
-                      {stove.sale_id && loadingSaleId === stove.sale_id
-                        ? <Loader2 className="h-3 w-3 animate-spin inline" />
-                        : stove.stove_id}
-                    </button>
-                  ))}
+                <div className="space-y-2">
+                  <div className="grid grid-cols-4 md:grid-cols-6 gap-1.5 max-h-64 overflow-y-auto">
+                    {filtered.map((stove) => (
+                      <button
+                        key={stove.id}
+                        onClick={() => stove.sale_id && handleViewSale(stove.sale_id)}
+                        disabled={!!loadingSaleId || !stove.sale_id}
+                        className={[
+                          "px-2 py-1 text-xs rounded border text-center truncate transition-colors",
+                          stove.status === "sold"
+                            ? "bg-green-800 border-green-800 text-white hover:bg-green-700 cursor-pointer"
+                            : "bg-muted/50 border-border/50 text-foreground cursor-default",
+                          stove.sale_id && loadingSaleId === stove.sale_id ? "opacity-60" : "",
+                        ].join(" ")}
+                        title={stove.status === "sold" ? `${stove.stove_id} — Sold${stove.sale_id ? " (click to view sale)" : ""}` : `${stove.stove_id} — Available`}
+                      >
+                        {stove.sale_id && loadingSaleId === stove.sale_id
+                          ? <Loader2 className="h-3 w-3 animate-spin inline" />
+                          : stove.stove_id}
+                      </button>
+                    ))}
+                  </div>
+                  {stoveTotalPages > 1 && (
+                    <div className="flex items-center justify-between pt-1 border-t border-border/40">
+                      <p className="text-[10px] text-muted-foreground">
+                        Page {stovePage} of {stoveTotalPages} — showing {((stovePage - 1) * STOVE_PAGE_SIZE) + 1}–{Math.min(stovePage * STOVE_PAGE_SIZE, stoveTotal)} of {stoveTotal.toLocaleString()}
+                      </p>
+                      <div className="flex items-center gap-1">
+                        <Button variant="outline" size="sm" className="h-6 w-6 p-0" onClick={() => handleStovePage(1)} disabled={stovePage === 1}>
+                          <ChevronsLeft className="h-3 w-3" />
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-6 px-2 text-[10px]" onClick={() => handleStovePage(stovePage - 1)} disabled={stovePage === 1}>
+                          <ChevronLeft className="h-3 w-3 mr-0.5" />Prev
+                        </Button>
+                        <span className="text-[10px] font-semibold text-primary px-1">{stovePage}</span>
+                        <Button variant="outline" size="sm" className="h-6 px-2 text-[10px]" onClick={() => handleStovePage(stovePage + 1)} disabled={stovePage >= stoveTotalPages}>
+                          Next<ChevronRight className="h-3 w-3 ml-0.5" />
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-6 w-6 p-0" onClick={() => handleStovePage(stoveTotalPages)} disabled={stovePage >= stoveTotalPages}>
+                          <ChevronsRight className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -528,24 +565,37 @@ const StoveTransferHistoryModal = ({ organization, isOpen, onClose }) => {
 // ── Assigned Agents Modal ─────────────────────────────────────────────────────
 
 const AssignedAgentsModal = ({ organization, agents, isOpen, onClose }) => {
+  const [agentSearch, setAgentSearch] = useState("");
+
   if (!organization) return null;
 
-  const SectionHeader = ({ title }) => (
-    <div className="flex items-center justify-between border-b border-primary/20 pb-0.5 mb-2">
-      <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider">{title}</h3>
-    </div>
-  );
+  const partnerTotalStoves = organization.total_stove_ids ?? 0;
+  const partnerSoldStoves = organization.sold_stove_ids ?? 0;
+  const agentsWithPartnerSales = agents.map((agent) => ({
+    ...agent,
+    partnerSoldCount: agent.partner_sold_stoves_count ?? agent.partner_sales_count ?? 0,
+  }));
+  const rankedAgents = [...agentsWithPartnerSales].sort((a, b) => b.partnerSoldCount - a.partnerSoldCount);
 
-  const DetailItem = ({ label, value }) => (
-    <div className="space-y-0">
-      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
-      <p className="text-xs font-medium">{value ?? <span className="text-muted-foreground">N/A</span>}</p>
-    </div>
-  );
+  const filteredRankedAgents = agentSearch.trim()
+    ? rankedAgents.filter((a) =>
+        (a.full_name || a.name || "").toLowerCase().includes(agentSearch.toLowerCase()) ||
+        (a.email || "").toLowerCase().includes(agentSearch.toLowerCase())
+      )
+    : rankedAgents;
+
+  const isFiltered = agentSearch.trim().length > 0;
+  const statTotalAssigned = partnerTotalStoves;
+  const statTotalRecorded = isFiltered
+    ? filteredRankedAgents.reduce((sum, a) => sum + a.partnerSoldCount, 0)
+    : partnerSoldStoves;
+
+  // const topAgent = rankedAgents[0];
+  // const lowestAgent = [...rankedAgents].reverse().find((agent) => agent.partnerSoldCount > 0) || rankedAgents[rankedAgents.length - 1];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+      <DialogContent className={`${agents.length > 1 ? "max-w-4xl" : "max-w-2xl"} w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col`}>
         <DialogHeader className="px-5 py-3 bg-gradient-to-r from-primary/5 to-primary/10 border-b shrink-0">
           <div>
             <DialogTitle className="text-base font-bold text-foreground">Assigned Agents</DialogTitle>
@@ -555,39 +605,104 @@ const AssignedAgentsModal = ({ organization, agents, isOpen, onClose }) => {
             </p>
           </div>
         </DialogHeader>
+
+        {/* Compact stats + filter — only when there are multiple agents */}
+        {agents.length > 1 && (
+          <div className="px-5 py-2.5 border-b bg-muted/20 flex flex-wrap items-center gap-3 shrink-0">
+            {/* Stat cards */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="rounded border border-[#07376a]/30 bg-[#07376a]/10 px-3 py-1.5 flex items-center gap-2">
+                <span className="text-xs font-bold text-[#07376a]">{statTotalAssigned.toLocaleString()}</span>
+                <span className="text-[10px] text-[#07376a]/70 font-medium">Total Stoves Assigned to Partner</span>
+              </div>
+              <div className="rounded border border-blue-300 bg-blue-50 px-3 py-1.5 flex items-center gap-2">
+                <span className="text-xs font-bold text-blue-700">{statTotalRecorded.toLocaleString()}</span>
+                <span className="text-[10px] text-blue-600/80 font-medium">Total Recorded{isFiltered ? " (filtered)" : ""}</span>
+              </div>
+            </div>
+            {/* Agent filter */}
+            <div className="relative ml-auto min-w-[180px]">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Filter by agent..."
+                value={agentSearch}
+                onChange={(e) => setAgentSearch(e.target.value)}
+                className="pl-8 h-7 text-xs bg-white"
+              />
+              {agentSearch && (
+                <button onClick={() => setAgentSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="overflow-y-auto flex-1">
           {agents.length === 0 ? (
             <div className="text-center text-muted-foreground py-10 text-sm">No agents assigned to this partner.</div>
+          ) : agents.length === 1 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-brand hover:bg-brand">
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Full Name</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone Number</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Email</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow className="bg-white">
+                    <TableCell className="text-xs font-medium text-gray-900">{agents[0].full_name || agents[0].name || "—"}</TableCell>
+                    <TableCell className="text-xs text-gray-700">{agents[0].phone || "—"}</TableCell>
+                    <TableCell className="text-xs text-gray-700">{agents[0].email || "—"}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          ) : filteredRankedAgents.length === 0 ? (
+            <div className="text-center text-muted-foreground py-10 text-sm">No agents match your search.</div>
           ) : (
             <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-brand hover:bg-brand">
-                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Full Name</TableHead>
-                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone</TableHead>
-                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Email</TableHead>
-                      {/* <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Role</TableHead> */}
-                      {/* <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Status</TableHead> */}
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-brand hover:bg-brand">
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Rank</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Agent</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stoves Received</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stove Attended</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stove Unattended</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredRankedAgents.map((agent, idx) => (
+                    <TableRow key={agent.id || idx} className={idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"}>
+                      <TableCell className="text-xs font-bold text-gray-700">#{idx + 1}</TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="text-xs font-medium text-gray-900">{agent.full_name || agent.name || "—"}</p>
+                          <p className="text-[10px] text-muted-foreground">{agent.email || "—"}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                          {agent.partnerSoldCount.toLocaleString()}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                          {(agent.partner_attended_count ?? 0).toLocaleString()}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                          {(agent.partner_unattended_count ?? 0).toLocaleString()}
+                        </span>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {agents.map((agent, idx) => (
-                      <TableRow key={agent.id || idx} className={idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"}>
-                        <TableCell className="text-xs font-medium text-gray-900">{agent.full_name || agent.name || "—"}</TableCell>
-                        <TableCell className="text-xs">{agent.phone || "—"}</TableCell>
-                        <TableCell className="text-xs">{agent.email || "—"}</TableCell>
-                        {/* <TableCell className="text-xs">{agent.role || "—"}</TableCell> */}
-                        {/* <TableCell className="text-xs">
-                          {agent.status ? (
-                            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${agent.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                              {agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
-                            </span>
-                          ) : "—"}
-                        </TableCell> */}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </div>
@@ -884,7 +999,7 @@ export default function SuperAdminPartnersContent() {
       if (orgAgentsData[org.id] !== undefined) return;
       if (loadingAgentOrgIdsRef.current.has(org.id)) return;
       loadingAgentOrgIdsRef.current.add(org.id);
-      adminAgentService.getSalesAgents({ limit: 100, organization_id: org.id })
+      superAdminAgentService.getAgentsByOrganization(org.id)
         .then((response) => {
           setOrgAgentsData((prev) => ({ ...prev, [org.id]: response.data || [] }));
         })
