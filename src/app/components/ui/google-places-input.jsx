@@ -3,49 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { MapPin, X } from "lucide-react";
-
-// Decrypt AES-GCM payload returned by /api/app-settings/google-key
-async function decryptPayload(encrypted, ivB64) {
-  const cipherKeyHex = process.env.NEXT_PUBLIC_MAPS_CIPHER_KEY;
-  if (!cipherKeyHex || cipherKeyHex.length < 64) return null;
-
-  try {
-    const keyBytes = Uint8Array.from(Buffer.from(cipherKeyHex, "hex"));
-    const iv = Uint8Array.from(Buffer.from(ivB64, "base64"));
-    const ciphertext = Uint8Array.from(Buffer.from(encrypted, "base64"));
-
-    const cryptoKey = await window.crypto.subtle.importKey(
-      "raw",
-      keyBytes,
-      { name: "AES-GCM" },
-      false,
-      ["decrypt"]
-    );
-
-    const plaintext = await window.crypto.subtle.decrypt(
-      { name: "AES-GCM", iv },
-      cryptoKey,
-      ciphertext
-    );
-
-    return JSON.parse(new TextDecoder().decode(plaintext));
-  } catch {
-    return null;
-  }
-}
-
-async function fetchApiKeys() {
-  const res = await fetch("/api/app-settings/google-key");
-  const data = await res.json();
-
-  // Encrypted response
-  if (data.encrypted && data.iv) {
-    return await decryptPayload(data.encrypted, data.iv);
-  }
-
-  // Plain fallback (dev without cipher key configured)
-  return { placesKey: data.placesKey ?? null, mapsKey: data.mapsKey ?? null };
-}
+import { useAuth } from "../../contexts/AuthContext";
 
 const GooglePlacesInput = ({
   value,
@@ -54,6 +12,7 @@ const GooglePlacesInput = ({
   disabled = false,
   className = "",
 }) => {
+  const { supabase } = useAuth();
   const [isLoaded, setIsLoaded] = useState(false);
   const [predictions, setPredictions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -62,7 +21,6 @@ const GooglePlacesInput = ({
   const autocompleteService = useRef(null);
   const placesService = useRef(null);
 
-  // Load Google Maps JS SDK — keys fetched & decrypted from server
   useEffect(() => {
     const initializeServices = () => {
       if (window.google?.maps?.places) {
@@ -99,16 +57,21 @@ const GooglePlacesInput = ({
       document.head.appendChild(script);
     };
 
-    fetchApiKeys()
-      .then((keys) => {
-        // Prefer mapsKey for loading the SDK (broader permission);
-        // fall back to placesKey if mapsKey not set
-        const sdkKey = keys?.mapsKey || keys?.placesKey;
-        if (sdkKey) loadGoogleMaps(sdkKey);
-      })
-      .catch(() => {
-        // Input remains in text-only mode
-      });
+    const fetchAndLoadKeys = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-google-keys`,
+        { headers: { Authorization: `Bearer ${session.access_token}` } }
+      );
+      const data = await res.json();
+      const sdkKey = data?.mapsKey || data?.placesKey;
+      if (sdkKey) loadGoogleMaps(sdkKey);
+    };
+
+    fetchAndLoadKeys().catch(() => {
+      // Input remains in text-only mode
+    });
   }, []);
 
   useEffect(() => {
