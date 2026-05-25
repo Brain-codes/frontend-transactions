@@ -48,7 +48,7 @@ serve(async (req) => {
       sale_id,
       sales!left (
         id,
-        sale_date,
+        sales_date,
         created_at
       )
     `
@@ -79,7 +79,7 @@ serve(async (req) => {
     status: item.status,
     created_at: item.created_at,
     sale_id: item.sale_id,
-    sale_date: item.sales?.sale_date || item.sales?.created_at || null,
+    sale_date: item.sales?.sales_date || item.sales?.created_at || null,
   }));
 
   // Get total counts for the organization

@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { webcrypto } from "node:crypto";
-
-const SETTINGS_ROW_ID = "00000000-0000-0000-0000-000000000001";
 
 // AES-GCM encrypt payload with NEXT_PUBLIC_MAPS_CIPHER_KEY.
 // Returns { encrypted: base64, iv: base64 } or null if key not configured.
@@ -35,29 +32,30 @@ async function encryptPayload(payload) {
 }
 
 // Returns both Google Places and Google Maps API keys for client-side use.
-// Keys are fetched server-side (never in client bundles) and AES-GCM encrypted.
+// Keys are fetched server-side via the get-google-keys edge function and
+// AES-GCM encrypted before sending to the client.
 // Client must decrypt using NEXT_PUBLIC_MAPS_CIPHER_KEY before use.
 export async function GET() {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    const { data } = await supabase
-      .from("app_settings")
-      .select("google_places_api_key, google_maps_api_key")
-      .eq("id", SETTINGS_ROW_ID)
-      .single();
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error("app-settings/google-key: missing SUPABASE env vars");
+      return NextResponse.json({ placesKey: null, mapsKey: null });
+    }
 
-    const placesKey =
-      data?.google_places_api_key ||
-      process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY ||
-      null;
-    const mapsKey =
-      data?.google_maps_api_key ||
-      process.env.GOOGLE_MAPS_API_KEY ||
-      null;
+    // Proxy to the get-google-keys edge function using service role as auth token
+    const res = await fetch(`${supabaseUrl}/functions/v1/get-google-keys`, {
+      headers: {
+        Authorization: `Bearer ${serviceRoleKey}`,
+        apikey: serviceRoleKey,
+      },
+    });
+
+    const edgeData = await res.json();
+    const placesKey = edgeData?.placesKey ?? null;
+    const mapsKey = edgeData?.mapsKey ?? null;
 
     const result = await encryptPayload({ placesKey, mapsKey });
 
