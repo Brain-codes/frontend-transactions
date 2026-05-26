@@ -47,6 +47,8 @@ export default function UnifiedSalesContent() {
   const [approveSale, setApproveSale] = useState<AdminSales | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  const initialPartnerFilter = searchParams.get("partner") ?? "";
+
   // Auto-open create modal if ?create=true is in URL
   useEffect(() => {
     if (searchParams.get("create") === "true") {
@@ -177,6 +179,7 @@ export default function UnifiedSalesContent() {
           availableYears={isSuperAdmin ? YEARS : undefined}
           onExportReady={(fn) => { exportFnRef.current = fn; }}
           onSelectionChange={setSelectedExportCount}
+          initialSearchTerm={initialPartnerFilter}
         />
       </div>
 

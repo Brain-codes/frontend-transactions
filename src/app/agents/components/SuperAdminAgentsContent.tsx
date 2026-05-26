@@ -55,9 +55,12 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
+  TrendingUp,
+  Package,
 } from "lucide-react";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import organizationsService from "../../services/organizationsService";
+import { useAuth } from "../../contexts/AuthContext";
 import { lgaAndStates } from "../../constants";
 import AgentFormModal from "../../components/AgentFormModal";
 import DeleteSuperAdminAgentModal from "../../super-admin-agents/components/DeleteSuperAdminAgentModal";
@@ -883,9 +886,14 @@ interface PaginationInfo {
 
 export default function SuperAdminAgentsContent() {
   const { toast, toasts, removeToast } = useToast();
+  const { supabase } = useAuth();
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [performingAgentsCount, setPerformingAgentsCount] = useState(0);
+  const [loadingStats, setLoadingStats] = useState(false);
   const [agents, setAgents] = useState<AcslAgent[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -903,6 +911,8 @@ export default function SuperAdminAgentsContent() {
   const [partnersModalAgent, setPartnersModalAgent] = useState<AcslAgent | null>(null);
   const [assignPartnerAgent, setAssignPartnerAgent] = useState<AcslAgent | null>(null);
   const [statesModalAgent, setStatesModalAgent] = useState<AcslAgent | null>(null);
+
+  const [sortMode, setSortMode] = useState("default");
 
   type AgentSummary = { states: string[]; received: number; sold: number; available: number };
   const [agentSummaryData, setAgentSummaryData] = useState<Record<string, AgentSummary>>({});
@@ -954,6 +964,32 @@ export default function SuperAdminAgentsContent() {
     });
   }, [agents]);
 
+  const fetchAgentStats = useCallback(async () => {
+    setLoadingStats(true);
+    try {
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        .toISOString().split("T")[0];
+      const from = dateFrom || thirtyDaysAgo;
+      const to = dateTo || now.toISOString().split("T")[0];
+      const { data, error } = await supabase
+        .from("sales")
+        .select("created_by")
+        .eq("is_archived", false)
+        .gte("sales_date", from)
+        .lte("sales_date", to);
+      if (error) throw error;
+      const unique = new Set((data || []).map((s: any) => s.created_by));
+      setPerformingAgentsCount(unique.size);
+    } catch (err) {
+      console.error("Agent stats error:", err);
+    } finally {
+      setLoadingStats(false);
+    }
+  }, [dateFrom, dateTo, supabase]);
+
+  useEffect(() => { fetchAgentStats(); }, [fetchAgentStats]);
+
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const handleToggleStatus = async (agent: AcslAgent) => {
@@ -984,6 +1020,20 @@ export default function SuperAdminAgentsContent() {
     return pages;
   };
 
+  const allSummaries = Object.values(agentSummaryData);
+  const totalSoldByAgents = allSummaries.reduce((sum, s) => sum + (s.sold ?? 0), 0);
+  const totalReceivedByAgents = allSummaries.reduce((sum, s) => sum + (s.received ?? 0), 0);
+  const topSoldAgent = agents.reduce<AcslAgent | null>((best, a) => {
+    const sold = agentSummaryData[a.id]?.sold ?? 0;
+    const bestSold = best ? (agentSummaryData[best.id]?.sold ?? 0) : -1;
+    return sold > bestSold ? a : best;
+  }, null);
+  const topReceivedAgent = agents.reduce<AcslAgent | null>((best, a) => {
+    const received = agentSummaryData[a.id]?.received ?? 0;
+    const bestReceived = best ? (agentSummaryData[best.id]?.received ?? 0) : -1;
+    return received > bestReceived ? a : best;
+  }, null);
+
   return (
     <DashboardLayout currentRoute="agents" title="Agent Manager">
       <div className="p-6 space-y-5">
@@ -1002,6 +1052,101 @@ export default function SuperAdminAgentsContent() {
             </Button>
           }
         />
+
+        {/* KPI Stat Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            {
+              gradient: "from-[#B45309] to-[#F59E0B]",
+              Icon: Package,
+              value: totalReceivedByAgents > 0 ? totalReceivedByAgents.toLocaleString() : "—",
+              label: "Most Stoves Collected",
+              sub: topReceivedAgent ? topReceivedAgent.full_name : "By agent · Highest first",
+              subBadge: undefined as string | undefined,
+              onClick: () => setSortMode("most_received"),
+              active: sortMode === "most_received",
+            },
+            {
+              gradient: "from-[#194977] to-[#2563EB]",
+              Icon: TrendingUp,
+              value: totalSoldByAgents > 0 ? totalSoldByAgents.toLocaleString() : "—",
+              label: "Most Active Agent",
+              sub: topSoldAgent ? topSoldAgent.full_name : "By stoves sold · Highest first",
+              subBadge: undefined as string | undefined,
+              onClick: () => setSortMode("most_sold"),
+              active: sortMode === "most_sold",
+            },
+            {
+              gradient: "from-[#047857] to-[#10B981]",
+              Icon: TrendingUp,
+              value: loadingStats ? "—" : performingAgentsCount.toLocaleString(),
+              label: "Top Performing Agents",
+              sub: "with sales",
+              subBadge: (() => {
+                if (dateFrom && dateTo) {
+                  const fmt = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                  return `${fmt(dateFrom)} – ${fmt(dateTo)}`;
+                }
+                return new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+              })(),
+              onClick: () => {},
+              active: false,
+            },
+          ].map(({ gradient, Icon, value, label, sub, subBadge, onClick, active }) =>
+            active ? (
+              <div
+                key={label}
+                onClick={onClick}
+                className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md cursor-pointer transition-all bg-gradient-to-br ${gradient}`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0 flex-1 pr-3">
+                    <p className="text-2xl font-bold text-white tracking-tight leading-tight">{value}</p>
+                    <p className="text-xs font-semibold text-white/80 mt-1">{label}</p>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <p className="text-xs text-white/60 mt-0.5 w-full">{sub}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <div className="rounded-lg p-2 bg-white/20 text-white shadow-sm w-fit">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    {subBadge && (
+                      <span className="text-[10px] bg-white/20 text-white/90 px-1.5 py-0.5 rounded whitespace-nowrap">
+                        {subBadge}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div
+                key={label}
+                onClick={onClick}
+                className="relative overflow-hidden rounded-lg border bg-white px-4 py-4 shadow-sm cursor-pointer transition-all hover:shadow-md"
+              >
+                <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient}`} />
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0 flex-1 pr-3">
+                    <p className="text-2xl font-bold text-gray-900 tracking-tight leading-tight">{value}</p>
+                    <p className="text-xs font-semibold text-gray-500 mt-1">{label}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <div className={`rounded-lg p-2 bg-gradient-to-br ${gradient} text-white shadow-sm w-fit`}>
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    {subBadge && (
+                      <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded whitespace-nowrap">
+                        {subBadge}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          )}
+        </div>
 
         {/* Error */}
         {error && (
@@ -1044,9 +1189,29 @@ export default function SuperAdminAgentsContent() {
               <SelectItem value="super_admin">Super Admin</SelectItem>
             </SelectContent>
           </Select>
-          {(search || statusFilter !== "all" || roleFilter !== "acsl_agent") && (
+          {/* Date Range Filter */}
+          <div className="flex items-center gap-1.5">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[140px]"
+              style={{ colorScheme: "light" }}
+            />
+            <span className="text-xs text-gray-400">–</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[140px]"
+              style={{ colorScheme: "light" }}
+            />
+          </div>
+
+          {(search || statusFilter !== "all" || roleFilter !== "acsl_agent" || dateFrom || dateTo) && (
             <Button
-              onClick={() => { setSearch(""); setStatusFilter("all"); setRoleFilter("acsl_agent"); setPage(1); }}
+              onClick={() => { setSearch(""); setStatusFilter("all"); setRoleFilter("acsl_agent"); setDateFrom(""); setDateTo(""); setPage(1); }}
               size="sm"
               variant="outline"
               className="h-9"

@@ -88,7 +88,12 @@ export async function getOrganizations(
   const branchFilter = searchParams.get("branch");
   const sortBy = searchParams.get("sortBy") || "created_at";
   const sortOrder = searchParams.get("sortOrder") || "desc";
+  const dateFrom = searchParams.get("dateFrom") || "";
+  const dateTo = searchParams.get("dateTo") || "";
   const includeAdminUsers = searchParams.get("include_admin_users") !== "false"; // Default to true
+
+  const stoveSortFields = ["sold_stove_ids", "total_stove_ids", "available_stove_ids"];
+  const isStoveSort = stoveSortFields.includes(sortBy);
 
   // Validate sortBy to prevent SQL injection
   const validSortFields = [
@@ -103,6 +108,110 @@ export async function getOrganizations(
   // Validate sortOrder
   const actualSortOrder = sortOrder === "asc" ? "asc" : "desc";
 
+  // Helper to apply shared filters to any query
+  const applyFilters = (q: any) => {
+    if (search) q = q.or(`partner_name.ilike.%${search}%,partner_id.ilike.%${search}%`);
+    if (status) q = q.eq("status", status);
+    if (partnerType) q = q.ilike("partner_type", partnerType);
+    if (stateFilter) q = q.ilike("state", stateFilter);
+    if (branchFilter) q = q.ilike("branch", `%${branchFilter}%`);
+    if (dateFrom) q = q.gte("created_at", dateFrom);
+    if (dateTo) q = q.lte("created_at", dateTo + "T23:59:59");
+    return q;
+  };
+
+  // ── Stove-based sort path ──────────────────────────────────────────────────
+  if (isStoveSort) {
+    // Step 1: get all matching org IDs (no pagination limit)
+    const { data: allIdRows, error: idsError } = await applyFilters(
+      supabase.from("organizations").select("id")
+    );
+    if (idsError) throw new Error(`Failed to fetch org IDs: ${idsError.message}`);
+
+    const allOrgIds: string[] = (allIdRows || []).map((r: any) => r.id);
+    const totalCount = allOrgIds.length;
+
+    if (totalCount === 0) {
+      return {
+        data: [],
+        pagination: { limit, offset, total: 0, totalPages: 0 },
+        message: "No organizations found",
+      };
+    }
+
+    // Step 2: get stove counts for all matching orgs
+    let countsByOrg: Record<string, { total: number; sold: number; available: number }> = {};
+    try {
+      const { data: rpcCounts, error: rpcErr } = await supabase.rpc(
+        "get_organization_stove_counts",
+        { org_ids: allOrgIds },
+      );
+      if (!rpcErr && rpcCounts) {
+        for (const row of rpcCounts) {
+          countsByOrg[row.organization_id] = {
+            total: row.total_count || 0,
+            sold: row.sold_count || 0,
+            available: row.available_count || 0,
+          };
+        }
+      }
+    } catch (_) {
+      // fallback: query stove_ids table directly
+      const { data: stoveRows } = await supabase
+        .from("stove_ids")
+        .select("organization_id, status")
+        .in("organization_id", allOrgIds);
+      for (const row of stoveRows || []) {
+        const id = row.organization_id;
+        if (!countsByOrg[id]) countsByOrg[id] = { total: 0, sold: 0, available: 0 };
+        countsByOrg[id].total += 1;
+        if (row.status === "sold") countsByOrg[id].sold += 1;
+        else countsByOrg[id].available += 1;
+      }
+    }
+
+    // Step 3: sort IDs by stove count
+    const sortKey = sortBy === "sold_stove_ids" ? "sold" : sortBy === "total_stove_ids" ? "total" : "available";
+    const sortedIds = [...allOrgIds].sort((a, b) => {
+      const va = countsByOrg[a]?.[sortKey] ?? 0;
+      const vb = countsByOrg[b]?.[sortKey] ?? 0;
+      return actualSortOrder === "asc" ? va - vb : vb - va;
+    });
+
+    // Step 4: paginate
+    const pageIds = sortedIds.slice(offset, offset + limit);
+
+    // Step 5: fetch full org details for this page
+    const { data: pageOrgs, error: pageErr } = await supabase
+      .from("organizations")
+      .select(`id, partner_id, partner_name, partner_type, branch, state, contact_person, contact_phone, alternative_phone, email, address, created_at, updated_at, created_by, updated_by`)
+      .in("id", pageIds);
+    if (pageErr) throw new Error(`Failed to fetch page orgs: ${pageErr.message}`);
+
+    // Step 6: attach counts, restore sorted order
+    const orgById: Record<string, any> = {};
+    for (const org of pageOrgs || []) orgById[org.id] = org;
+
+    const result = pageIds.map((id) => ({
+      ...orgById[id],
+      total_stove_ids: countsByOrg[id]?.total ?? 0,
+      sold_stove_ids: countsByOrg[id]?.sold ?? 0,
+      available_stove_ids: countsByOrg[id]?.available ?? 0,
+    }));
+
+    return {
+      data: result,
+      pagination: {
+        limit,
+        offset,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+      },
+      message: `Retrieved ${result.length} organizations (sorted by ${sortBy})`,
+    };
+  }
+
+  // ── Normal sort path ───────────────────────────────────────────────────────
   let query = supabase.from("organizations").select(
     `
       id,
@@ -124,28 +233,7 @@ export async function getOrganizations(
     { count: "exact" },
   );
 
-  // Apply filters - updated for new 8-field structure
-  if (search) {
-    query = query.or(
-      `partner_name.ilike.%${search}%,partner_id.ilike.%${search}%`,
-    );
-  }
-
-  if (status) {
-    query = query.eq("status", status);
-  }
-
-  if (partnerType) {
-    query = query.eq("partner_type", partnerType);
-  }
-
-  if (stateFilter) {
-    query = query.ilike("state", stateFilter);
-  }
-
-  if (branchFilter) {
-    query = query.ilike("branch", `%${branchFilter}%`);
-  }
+  query = applyFilters(query);
 
   // Apply sorting and pagination with validated parameters
   query = query

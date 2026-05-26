@@ -75,12 +75,16 @@ const KPI_CONFIG = [
     label: "Total Stoves Received By Partner(s)",
     icon: Package,
     gradient: "from-[#194977] to-[#2563EB]",
+    destPath: "/partners",
+    destParam: "search",
   },
   {
     key: "stovesSold",
     label: "Total Stoves Sold to End Users",
     icon: ShoppingCart,
     gradient: "from-[#0F766E] to-[#14B8A6]",
+    destPath: "/sales",
+    destParam: "partner",
   },
   {
     key: "availableStoves",
@@ -88,6 +92,8 @@ const KPI_CONFIG = [
     icon: Boxes,
     gradient: "from-[#7C3AED] to-[#A78BFA]",
     sub: "Current inventory",
+    destPath: "/sales",
+    destParam: "partner",
   },
   {
     key: "expectedReceivable",
@@ -95,6 +101,8 @@ const KPI_CONFIG = [
     icon: CreditCard,
     gradient: "from-[#B45309] to-[#F59E0B]",
     currency: true,
+    destPath: "/sales",
+    destParam: "partner",
   },
   {
     key: "amountReceived",
@@ -102,6 +110,8 @@ const KPI_CONFIG = [
     icon: Wallet,
     gradient: "from-[#047857] to-[#10B981]",
     currency: true,
+    destPath: "/sales",
+    destParam: "partner",
   },
   {
     key: "outstandingBalance",
@@ -109,6 +119,8 @@ const KPI_CONFIG = [
     icon: AlertCircle,
     gradient: "from-[#B91C1C] to-[#F87171]",
     currency: true,
+    destPath: "/sales",
+    destParam: "partner",
   },
 ];
 
@@ -406,10 +418,17 @@ const DashboardContent = ({
                   const raw = data?.[kpi.key] ?? 0;
                   const display = kpi.currency ? formatCurrency(raw) : raw.toLocaleString();
                   const sub = kpi.sub ?? `FY ${year}`;
+                  const partnerName = selectedPartner?.base_name;
+                  const href = kpi.destPath
+                    ? partnerName
+                      ? `${kpi.destPath}?${kpi.destParam}=${encodeURIComponent(partnerName)}`
+                      : kpi.destPath
+                    : undefined;
                   return (
-                    <div
+                    <Link
                       key={kpi.key}
-                      className="relative overflow-hidden rounded-lg border bg-white px-4 py-4 shadow-sm transition-shadow hover:shadow-md"
+                      href={href ?? "#"}
+                      className="relative overflow-hidden rounded-lg border bg-white px-4 py-4 shadow-sm transition-shadow hover:shadow-md cursor-pointer block group"
                     >
                       <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${kpi.gradient}`} />
                       <div className="flex items-start justify-between">
@@ -422,7 +441,8 @@ const DashboardContent = ({
                           <kpi.icon className="h-4 w-4" />
                         </div>
                       </div>
-                    </div>
+                      <ChevronRight className="absolute bottom-3 right-3 h-3.5 w-3.5 text-gray-300 group-hover:text-gray-500 transition-colors" />
+                    </Link>
                   );
                 })}
               </div>

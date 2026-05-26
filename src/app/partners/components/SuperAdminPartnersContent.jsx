@@ -52,6 +52,8 @@ import {
   ChevronDown,
   ChevronUp,
   Tag,
+  TrendingUp,
+  Boxes,
 } from "lucide-react";
 import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AddPartnerModal from "../components/AddPartnerModal";
@@ -830,6 +832,9 @@ export default function SuperAdminPartnersContent() {
   const [orgAgentsData, setOrgAgentsData] = useState({});
   const loadingAgentOrgIdsRef = useRef(new Set());
 
+  const [sortMode, setSortMode] = useState("default");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [filters, setFilters] = useState({ search: "", state: "all", partner_type: "all", assigned_agents: "all", branch: "" });
   const [stateSearch, setStateSearch] = useState("");
   const [stateDropdownOpen, setStateDropdownOpen] = useState(false);
@@ -840,7 +845,7 @@ export default function SuperAdminPartnersContent() {
   const [availableBranches, setAvailableBranches] = useState([]);
   const [typeCardFilter, setTypeCardFilter] = useState("all");
 
-  const [stats, setStats] = useState({ total_received: 0, total_sold: 0, total_available: 0, total_partners: 0 });
+  const [stats, setStats] = useState({ total_received: 0, total_sold: 0, total_available: 0, total_partners: 0, performing_partners: 0 });
   const [loadingStats, setLoadingStats] = useState(false);
   const [typeCounts, setTypeCounts] = useState({ customer: 0, partner: 0 });
   const [loadingTypeCounts, setLoadingTypeCounts] = useState(false);
@@ -894,22 +899,29 @@ export default function SuperAdminPartnersContent() {
 
   const showBranchFilter = filters.state !== "all" || filters.search.trim().length > 0;
 
-  const fetchStats = async () => {
+  const fetchStats = async (currentFilters = filters, currentDateFrom = dateFrom, currentDateTo = dateTo) => {
     setLoadingStats(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      const params = new URLSearchParams();
+      if (currentDateFrom) params.set("dateFrom", currentDateFrom);
+      if (currentDateTo) params.set("dateTo", currentDateTo);
+      if (currentFilters.partner_type && currentFilters.partner_type !== "all") params.set("partner_type", currentFilters.partner_type);
+      if (currentFilters.search) params.set("search", currentFilters.search);
+      if (currentFilters.state && currentFilters.state !== "all") params.set("state", currentFilters.state);
+      const qs = params.toString();
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-stove-stats`,
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-stove-stats${qs ? "?" + qs : ""}`,
         { headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" } }
       );
       const result = await res.json();
       if (!res.ok) throw new Error(result.error);
-      setStats({ total_received: result.data?.total || 0, total_sold: result.data?.sold || 0, total_available: result.data?.available || 0, total_partners: pagination.total || 0 });
+      setStats({ total_received: result.data?.total || 0, total_sold: result.data?.sold || 0, total_available: result.data?.available || 0, total_partners: pagination.total || 0, performing_partners: result.data?.performing_partners || 0 });
     } catch (err) { console.error("Stats error:", err); }
     finally { setLoadingStats(false); }
   };
 
-  useEffect(() => { if (!loading) fetchStats(); }, [organizationsData, pagination.total]);
+  useEffect(() => { if (!loading) fetchStats(filters, dateFrom, dateTo); }, [organizationsData, pagination.total, dateFrom, dateTo]);
 
   const fetchTypeCounts = async () => {
     setLoadingTypeCounts(true);
@@ -929,18 +941,29 @@ export default function SuperAdminPartnersContent() {
 
   useEffect(() => { fetchTypeCounts(); }, []);
 
+  const STOVE_SORT_MAP = {
+    active: "sold_stove_ids",
+    stoves_desc: "total_stove_ids",
+    available_desc: "available_stove_ids",
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => {
+      const stoveSortBy = STOVE_SORT_MAP[sortMode];
       applyFilters({
         page: 1,
         search: filters.search || null,
         state: filters.state !== "all" ? filters.state : null,
         partner_type: filters.partner_type !== "all" ? filters.partner_type : null,
         branch: filters.branch || null,
+        dateFrom: dateFrom || null,
+        dateTo: dateTo || null,
+        sortBy: stoveSortBy || null,
+        sortOrder: stoveSortBy ? "desc" : null,
       });
     }, 500);
     return () => clearTimeout(timer);
-  }, [filters]);
+  }, [filters, dateFrom, dateTo, sortMode]);
 
   const handleFilterChange = (field, value) => setFilters((prev) => ({ ...prev, [field]: value }));
   const handleTypeCardClick = (type) => {
@@ -951,11 +974,14 @@ export default function SuperAdminPartnersContent() {
   const handleClearFilters = () => {
     setFilters({ search: "", state: "all", partner_type: "all", assigned_agents: "all", branch: "" });
     setTypeCardFilter("all");
+    setSortMode("default");
+    setDateFrom("");
+    setDateTo("");
     setStateSearch("");
     setBranchSearch("");
     setAvailableBranches([]);
   };
-  const hasActiveFilters = filters.search || filters.state !== "all" || filters.partner_type !== "all" || filters.assigned_agents !== "all" || filters.branch;
+  const hasActiveFilters = filters.search || filters.state !== "all" || filters.partner_type !== "all" || filters.assigned_agents !== "all" || filters.branch || dateFrom || dateTo;
 
   const handlePageChange = (page) => applyFilters({ page });
   const handlePageSizeChange = (value) => applyFilters({ page: 1, limit: parseInt(value) });
@@ -1071,6 +1097,13 @@ export default function SuperAdminPartnersContent() {
     return true;
   });
 
+  const sortedOrgs = [...filteredOrgs].sort((a, b) => {
+    if (sortMode === "active") return (b.sold_stove_ids ?? 0) - (a.sold_stove_ids ?? 0);
+    if (sortMode === "stoves_desc") return (b.total_stove_ids ?? 0) - (a.total_stove_ids ?? 0);
+    if (sortMode === "available_desc") return (b.available_stove_ids ?? 0) - (a.available_stove_ids ?? 0);
+    return 0;
+  });
+
   const startRecord = organizationsData.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
   const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
 
@@ -1117,6 +1150,106 @@ export default function SuperAdminPartnersContent() {
               </Button>
             }
           />
+
+          {/* KPI Stat Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              {
+                gradient: "from-[#194977] to-[#2563EB]",
+                Icon: Building2,
+                value: loadingStats ? "—" : (stats.total_partners || pagination.total).toLocaleString(),
+                label: "Total Partners",
+                sub: "All registered partners",
+                onClick: () => { setSortMode("default"); handleFilterChange("partner_type", "all"); },
+                active: sortMode === "default" && filters.partner_type === "all",
+              },
+              {
+                gradient: "from-[#047857] to-[#10B981]",
+                Icon: TrendingUp,
+                value: loadingStats ? "—" : stats.performing_partners.toLocaleString(),
+                label: "Top Performing Partners",
+                sub: "with sales",
+                subBadge: (() => {
+                  if (dateFrom && dateTo) {
+                    const fmt = (d) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                    return `${fmt(dateFrom)} – ${fmt(dateTo)}`;
+                  }
+                  return new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+                })(),
+                onClick: () => setSortMode("active"),
+                active: sortMode === "active",
+              },
+              {
+                gradient: "from-[#B45309] to-[#F59E0B]",
+                Icon: Package,
+                value: loadingStats ? "—" : stats.total_received.toLocaleString(),
+                label: "Most Stoves Received",
+                sub: "Total stoves received across all partners",
+                onClick: () => setSortMode("stoves_desc"),
+                active: sortMode === "stoves_desc",
+              },
+              {
+                gradient: "from-[#7C3AED] to-[#A78BFA]",
+                Icon: Boxes,
+                value: loadingStats ? "—" : stats.total_available.toLocaleString(),
+                label: "Available Inventory",
+                sub: "Total stove unsold across all partners",
+                onClick: () => setSortMode("available_desc"),
+                active: sortMode === "available_desc",
+              },
+            ].map(({ gradient, Icon, value, label, sub, subBadge, onClick, active }) =>
+              active ? (
+                <div
+                  key={label}
+                  onClick={onClick}
+                  className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md cursor-pointer transition-all bg-gradient-to-br ${gradient}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0 flex-1 pr-3">
+                      <p className="text-2xl font-bold text-white tracking-tight leading-tight">{value}</p>
+                      <p className="text-xs font-semibold text-white/80 mt-1">{label}</p>
+                      <p className="text-xs text-white/60 mt-0.5">{sub}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <div className="rounded-lg p-2 bg-white/20 text-white shadow-sm w-fit">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      {subBadge && (
+                        <span className="text-[10px] bg-white/20 text-white/90 px-1.5 py-0.5 rounded whitespace-nowrap">
+                          {subBadge}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  key={label}
+                  onClick={onClick}
+                  className="relative overflow-hidden rounded-lg border bg-white px-4 py-4 shadow-sm cursor-pointer transition-all hover:shadow-md"
+                >
+                  <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient}`} />
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0 flex-1 pr-3">
+                      <p className="text-2xl font-bold text-gray-900 tracking-tight leading-tight">{value}</p>
+                      <p className="text-xs font-semibold text-gray-500 mt-1">{label}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
+                    </div>
+                    <div className="flex flex-col items-end justify-between gap-2 shrink-0">
+                      <div className={`rounded-lg p-2 bg-gradient-to-br ${gradient} text-white shadow-sm w-fit`}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      {subBadge && (
+                        <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded whitespace-nowrap">
+                          {subBadge}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            )}
+          </div>
 
           <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
             {/* Search */}
@@ -1218,6 +1351,26 @@ export default function SuperAdminPartnersContent() {
               </SelectContent>
             </Select>
 
+            {/* Date Range Filter */}
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[140px]"
+                style={{ colorScheme: "light" }}
+              />
+              <span className="text-xs text-gray-400">–</span>
+              <input
+                type="date"
+                value={dateTo}
+                min={dateFrom || undefined}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[140px]"
+                style={{ colorScheme: "light" }}
+              />
+            </div>
+
             {hasActiveFilters && (
               <Button onClick={handleClearFilters} size="sm" variant="outline" className="h-9">
                 <X className="h-4 w-4 mr-1" />Clear
@@ -1263,7 +1416,7 @@ export default function SuperAdminPartnersContent() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className={tableLoading ? "opacity-40" : ""}>
-                  {filteredOrgs.length === 0 ? (
+                  {sortedOrgs.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-10">
                         <Building2 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
@@ -1272,7 +1425,7 @@ export default function SuperAdminPartnersContent() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredOrgs.map((org, idx) => (
+                    sortedOrgs.map((org, idx) => (
                       <React.Fragment key={org.id}>
                         <TableRow className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}>
                           <TableCell className="text-xs font-medium text-gray-900">{org.partner_name}</TableCell>
