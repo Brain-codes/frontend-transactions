@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import ProtectedRoute from "../components/ProtectedRoute";
 import { usePermissions } from "../hooks/usePermissions";
 import SuperAdminPartnersContent from "./components/SuperAdminPartnersContent";
@@ -14,7 +15,9 @@ function PartnersRouter() {
 export default function PartnersPage() {
   return (
     <ProtectedRoute requireAdminAccess>
-      <PartnersRouter />
+      <Suspense fallback={<div className="p-6 text-gray-500">Loading...</div>}>
+        <PartnersRouter />
+      </Suspense>
     </ProtectedRoute>
   );
 }
