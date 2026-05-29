@@ -404,6 +404,9 @@ export default function StoveTransferHistoryContent() {
                       {/* <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                         Source
                       </TableHead> */}
+                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
+                        Sales Date
+                      </TableHead>
                       <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">
                         Action
                       </TableHead>
@@ -412,7 +415,7 @@ export default function StoveTransferHistoryContent() {
                   <TableBody className={loading ? "opacity-40" : ""}>
                     {records.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-10">
+                        <TableCell colSpan={10} className="text-center py-10">
                           <ArrowLeftRight className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                           <p className="text-gray-500 font-medium">No transfer records found</p>
                           <p className="text-gray-400 text-sm">Try adjusting your search</p>
@@ -446,6 +449,11 @@ export default function StoveTransferHistoryContent() {
                               {sourceLabel(record.source)}
                             </span>
                           </TableCell> */}
+                          <TableCell className="text-xs whitespace-nowrap">
+                            {record.sales_date
+                              ? new Date(record.sales_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+                              : "—"}
+                          </TableCell>
                           <TableCell className="text-center">
                             <Button
                               size="sm"
