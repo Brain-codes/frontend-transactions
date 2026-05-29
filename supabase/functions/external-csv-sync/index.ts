@@ -40,6 +40,10 @@ interface ParsedOrganization {
   state?: string;
   branch?: string;
   stove_ids?: Array<{ stove_id: string; factory: string; sales_reference?: string }>;
+  sales_date?: string;
+  customer?: string;
+  downloaded_by?: string;
+  sales_rep?: string;
 }
 
 interface StoveIdResult {
@@ -107,6 +111,18 @@ function generateInternalEmail(username: string): string {
   return `${username}@internal.acsl.local`;
 }
 
+// Parses DD/MM/YYYY or YYYY-MM-DD → ISO date string (YYYY-MM-DD), returns null if unparseable
+function parseSalesDate(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  // DD/MM/YYYY
+  const dmyMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, "0")}-${dmyMatch[1].padStart(2, "0")}`;
+  // YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  return null;
+}
+
 function generatePassword(length = 16): string {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
   const array = new Uint8Array(length);
@@ -117,7 +133,7 @@ function generatePassword(length = 16): string {
 // ─── CSV parsing ──────────────────────────────────────────────────────────────
 
 const REQUIRED_FIELDS = ["partner_id", "partner_name"];
-const OPTIONAL_FIELDS = ["email", "contact_person", "contact_phone", "alternative_phone", "address", "state", "branch", "partner_type", "stove_ids", "sales_factory", "sales_reference"];
+const OPTIONAL_FIELDS = ["email", "contact_person", "contact_phone", "alternative_phone", "address", "state", "branch", "partner_type", "stove_ids", "sales_factory", "sales_reference", "sales_date", "customer", "downloaded_by", "sales_rep"];
 
 const FIELD_MAPPINGS: Record<string, string[]> = {
   partner_id: ["partner_id", "partnerid", "partner_code", "partner-id"],
@@ -133,6 +149,10 @@ const FIELD_MAPPINGS: Record<string, string[]> = {
   branch: ["branch", "branch_name", "office", "location_name"],
   stove_ids: ["stove_ids", "stove ids", "stoveids", "stove-ids", "stove_id_list", "serial_numbers", "stove_ids_with_factory"],
   sales_reference: ["sales_reference", "sales reference", "salesreference", "sales-reference", "erp_sales_reference", "erp sales reference", "sales_ref", "sales ref", "transaction_id", "txn_id"],
+  sales_date: ["sales_date", "sales date", "salesdate", "sales-date", "sale_date", "sale date"],
+  customer: ["customer", "customer_name", "customer name", "end_user", "end user", "end_user_name"],
+  downloaded_by: ["downloaded_by", "downloaded by", "downloadedby", "downloaded-by"],
+  sales_rep: ["sales_rep", "sales rep", "salesrep", "sales-rep", "sales_representative", "sales representative", "rep"],
 };
 
 function parseCSVLine(line: string): string[] {
@@ -236,6 +256,14 @@ function parseFlexibleCSV(csvData: string): {
             if (normalizedType === "partner" || normalizedType === "customer") {
               org.partner_type = normalizedType;
             }
+          } else if (optionalField === "sales_date") {
+            org.sales_date = parseSalesDate(value) || undefined;
+          } else if (optionalField === "customer") {
+            org.customer = value;
+          } else if (optionalField === "downloaded_by") {
+            org.downloaded_by = value;
+          } else if (optionalField === "sales_rep") {
+            org.sales_rep = value;
           } else if (optionalField !== "sales_factory" && optionalField !== "sales_reference") {
             // sales_reference is handled above at row level; skip here
             (org as any)[optionalField] = value;
@@ -375,6 +403,10 @@ async function writeTransferHistory(
     state?: string;
     branch?: string;
     sales_factory?: string;
+    sales_date?: string | null;
+    customer?: string | null;
+    downloaded_by?: string | null;
+    sales_rep?: string | null;
     stove_ids: Array<{ stove_id: string; factory?: string; sales_reference?: string }>;
     source: "external-sync" | "external-csv-sync";
     application_name?: string;
@@ -392,6 +424,10 @@ async function writeTransferHistory(
       state: data.state || null,
       branch: data.branch || null,
       sales_factory: data.sales_factory || null,
+      sales_date: data.sales_date || null,
+      customer: data.customer || null,
+      downloaded_by: data.downloaded_by || null,
+      sales_rep: data.sales_rep || null,
       stove_count: data.stove_ids.length,
       stove_ids: data.stove_ids,
       source: data.source,
@@ -820,6 +856,10 @@ serve(async (req) => {
           state: orgData.state,
           branch: orgData.branch,
           sales_factory: newStoves[0]?.factory || undefined,
+          sales_date: orgData.sales_date || null,
+          customer: orgData.customer || null,
+          downloaded_by: orgData.downloaded_by || null,
+          sales_rep: orgData.sales_rep || null,
           stove_ids: newStoves.map((s: any) => ({ stove_id: s.stove_id, factory: s.factory, sales_reference: s.sales_reference })),
           source: "external-csv-sync",
           application_name: body.application_name,

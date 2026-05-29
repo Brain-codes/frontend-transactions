@@ -37,6 +37,7 @@ interface ExternalSyncRequest {
     branch?: string;
   };
   stove_ids?: Array<{ stove_id: string; factory: string; sales_reference?: string }> | string[];
+  sales_date?: string;
   origin_url?: string;
 }
 
@@ -255,6 +256,10 @@ async function writeTransferHistory(
     state?: string;
     branch?: string;
     sales_factory?: string;
+    sales_date?: string | null;
+    customer?: string | null;
+    downloaded_by?: string | null;
+    sales_rep?: string | null;
     stove_ids: Array<{ stove_id: string; factory?: string; sales_reference?: string }>;
     source: "external-sync" | "external-csv-sync";
     application_name?: string;
@@ -272,6 +277,10 @@ async function writeTransferHistory(
       state: data.state || null,
       branch: data.branch || null,
       sales_factory: data.sales_factory || null,
+      sales_date: data.sales_date || null,
+      customer: data.customer || null,
+      downloaded_by: data.downloaded_by || null,
+      sales_rep: data.sales_rep || null,
       stove_count: data.stove_ids.length,
       stove_ids: data.stove_ids,
       source: data.source,
@@ -454,6 +463,7 @@ serve(async (req) => {
         state: body.organization_data.state,
         branch: body.organization_data.branch,
         sales_factory: newStoves[0]?.factory || undefined,
+        sales_date: body.sales_date || null,
         stove_ids: newStoves.map((s: any) => ({ stove_id: s.stove_id, factory: s.factory, sales_reference: s.sales_reference })),
         source: "external-sync",
         application_name: body.application_name,

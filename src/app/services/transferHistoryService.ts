@@ -22,6 +22,7 @@ export interface TransferRecord {
   source: "external-sync" | "external-csv-sync";
   application_name: string | null;
   transfer_date: string;
+  sales_date: string | null;
   created_at: string;
 }
 
