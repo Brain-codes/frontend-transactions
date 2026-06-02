@@ -26,6 +26,7 @@ import {
   ArrowLeftRight,
   ChevronDown,
   ChevronRight,
+  Smartphone,
 } from "lucide-react";
 import { usePermissions } from "../hooks/usePermissions";
 import Link from "next/link";
@@ -116,7 +117,7 @@ const allNavItems = [
 
 const Sidebar = ({ isOpen, onClose, currentRoute }) => {
   const router = useRouter();
-  const { userRole, isAcslAgent, isPartnerAgent } = useAuth();
+  const { userRole, isAcslAgent, isPartnerAgent, isSuperAdmin } = useAuth();
   const { canRoute } = usePermissions();
 
   const [expandedItems, setExpandedItems] = useState({});
@@ -289,7 +290,27 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
               </Link>
             );
           })}
+
+ 
         </nav>
+
+        {/* Sales Monitoring App footer — super admin only */}
+        {isSuperAdmin && (
+          <div className="px-2 pb-4 pt-2 border-t border-gray-200 ">
+            <Link
+              href="/sales-monitoring-app"
+              onClick={() => navigateToRoute("/sales-monitoring-app")}
+              className={`scale-[.7] flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${
+                currentRoute === "sales-monitoring-app"
+                  ? "bg-white text-gray-900 font-medium"
+                  : "text-gray-700 hover:bg-white/50"
+              }`}
+            >
+              <Smartphone className="h-5 w-5" />
+              <span className="flex-1">Sales Monitoring App</span>
+            </Link>
+          </div>
+        )}
       </div>
     </>
   );
