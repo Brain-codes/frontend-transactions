@@ -1,6 +1,6 @@
 // Write operations for super-admin-agents (ACSL Agent create and update)
 
-export async function createAgent(supabase: any, data: any, adminId: string) {
+export async function createAgent(supabase: any, data: any, adminId: string, managerId: string | null = null) {
   console.log("➕ Creating new ACSL agent...");
 
   // Validate required fields
@@ -13,9 +13,9 @@ export async function createAgent(supabase: any, data: any, adminId: string) {
   const email = data.email.trim().toLowerCase();
   // Accept both old and new role values; default to acsl_agent
   const mappedRole = data.role === "super_admin_agent" ? "acsl_agent" : data.role;
-  const role = ["acsl_agent", "super_admin"].includes(mappedRole)
-    ? mappedRole
-    : "acsl_agent";
+  // acsl_agent_manager can only create acsl_agent accounts (not super_admin)
+  const allowedRoles = managerId ? ["acsl_agent"] : ["acsl_agent", "super_admin", "acsl_agent_manager"];
+  const role = allowedRoles.includes(mappedRole) ? mappedRole : "acsl_agent";
 
   // Check if email already exists
   const { data: existing } = await supabase
@@ -62,11 +62,12 @@ export async function createAgent(supabase: any, data: any, adminId: string) {
     throw new Error("Failed to create user profile");
   }
 
-  // Update profile with phone if provided, stamp created_by, and ensure organization_id stays NULL
+  // Update profile with phone, stamp manager_id (if created by a manager), and ensure organization_id stays NULL
   await supabase
     .from("profiles")
     .update({
       ...(data.phone ? { phone: data.phone } : {}),
+      ...(managerId ? { manager_id: managerId } : {}),
       organization_id: null,
       updated_by: adminId,
     })
@@ -94,16 +95,19 @@ export async function createAgent(supabase: any, data: any, adminId: string) {
   };
 }
 
-export async function updateAgent(supabase: any, agentId: string, data: any, adminId: string) {
+export async function updateAgent(supabase: any, agentId: string, data: any, adminId: string, managerScopeId: string | null = null) {
   console.log("✏️ Updating agent:", agentId);
 
-  // Verify agent exists
-  const { data: existing, error: checkError } = await supabase
+  // Verify agent exists; managers may only update their own agents
+  let checkQuery = supabase
     .from("profiles")
     .select("id")
     .eq("id", agentId)
-    .in("role", ["acsl_agent", "super_admin"])
-    .single();
+    .in("role", ["acsl_agent", "acsl_agent_manager", "super_admin"]);
+
+  if (managerScopeId) checkQuery = checkQuery.eq("manager_id", managerScopeId);
+
+  const { data: existing, error: checkError } = await checkQuery.single();
 
   if (checkError) {
     if (checkError.code === "PGRST116") throw new Error("Agent not found");

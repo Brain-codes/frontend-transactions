@@ -159,12 +159,18 @@ const CreateSuperAdminAgentModal: React.FC<CreateSuperAdminAgentModalProps> = ({
       <DialogContent size="xl">
         <DialogHeader>
           <DialogTitle>
-            {form.role === "super_admin" ? "Add Super Admin" : "Add ACSL Agent"}
+            {form.role === "super_admin"
+              ? "Add Super Admin"
+              : form.role === "acsl_agent_manager"
+              ? "Add ACSL Agent Manager"
+              : "Add ACSL Agent"}
           </DialogTitle>
           <DialogDescription>
             {form.role === "super_admin"
               ? "Create a new super admin account with full system access."
-              : "Create a new super admin agent account. They will be assigned to partner organizations after creation."}
+              : form.role === "acsl_agent_manager"
+              ? "Create a new ACSL Agent Manager. They will be assigned to states and partners, and can create ACSL agents under them."
+              : "Create a new ACSL Agent account. They will be assigned to partner organizations after creation."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -198,6 +204,7 @@ const CreateSuperAdminAgentModal: React.FC<CreateSuperAdminAgentModalProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
+                  <SelectItem value="acsl_agent_manager">ACSL Agent Manager</SelectItem>
                   <SelectItem value="super_admin">Super Admin</SelectItem>
                 </SelectContent>
               </Select>
@@ -355,7 +362,11 @@ const CreateSuperAdminAgentModal: React.FC<CreateSuperAdminAgentModalProps> = ({
               ) : (
                 <>
                   <UserPlus className="h-4 w-4 mr-2" />
-                  {form.role === "super_admin" ? "Create Super Admin" : "Create Agent"}
+                  {form.role === "super_admin"
+                ? "Create Super Admin"
+                : form.role === "acsl_agent_manager"
+                ? "Create Agent Manager"
+                : "Create Agent"}
                 </>
               )}
             </Button>

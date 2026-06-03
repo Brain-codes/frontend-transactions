@@ -59,7 +59,7 @@ const ReadOnlyTile = ({ label, value }) => (
   </div>
 );
 
-const SAA_ROLES = ["super_admin", "acsl_agent", "super_admin_agent"];
+const SAA_ROLES = ["super_admin", "acsl_agent", "acsl_agent_manager", "super_admin_agent"];
 
 const CreateSalesForm = ({
   onSuccess,

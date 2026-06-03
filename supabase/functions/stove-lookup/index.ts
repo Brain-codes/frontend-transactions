@@ -71,7 +71,7 @@ serve(async (req) => {
 
     const { role, organization_id: orgId } = profile;
 
-    const allowedRoles = ["super_admin", "partner", "admin", "acsl_agent", "super_admin_agent", "partner_agent", "agent"];
+    const allowedRoles = ["super_admin", "partner", "admin", "acsl_agent", "acsl_agent_manager", "super_admin_agent", "partner_agent", "agent"];
     if (!allowedRoles.includes(role)) return respond({ error: "Access denied" }, 403);
 
     // ── 1. Fetch the stove by exact stove_id (service role → no RLS filter) ──
@@ -118,7 +118,7 @@ serve(async (req) => {
       // Partner sees stove only if it belongs to their org
       if (stoveOrgId !== orgId) return respond({ found: false });
 
-    } else if (role === "acsl_agent" || role === "super_admin_agent") {
+    } else if (role === "acsl_agent" || role === "acsl_agent_manager" || role === "super_admin_agent") {
       // ACSL agent sees stove only if it belongs to one of their assigned orgs
       const { assignedOrgIds } = await resolveAssignedOrgIds(supabase, userId);
       if (!assignedOrgIds.includes(stoveOrgId)) return respond({ found: false });

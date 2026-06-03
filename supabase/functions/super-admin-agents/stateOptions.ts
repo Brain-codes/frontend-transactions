@@ -38,7 +38,7 @@ export async function setAgentStates(
     .from("profiles")
     .select("id")
     .eq("id", agentId)
-    .eq("role", "acsl_agent")
+    .in("role", ["acsl_agent", "acsl_agent_manager"])
     .single();
 
   if (agentError) {

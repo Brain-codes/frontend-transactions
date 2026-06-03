@@ -30,7 +30,7 @@ export async function authenticate(supabase: any, authHeader: string): Promise<A
 
   if (profileError || !profile) throw new Error("Unauthorized: User profile not found");
 
-  if (!["acsl_agent", "super_admin_agent", "super_admin"].includes(profile.role)) {
+  if (!["acsl_agent", "acsl_agent_manager", "super_admin_agent", "super_admin"].includes(profile.role)) {
     throw new Error("Unauthorized: Only ACSL agents can approve sales");
   }
 

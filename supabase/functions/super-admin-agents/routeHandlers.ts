@@ -5,7 +5,7 @@ import { createAgent, updateAgent } from "./writeOptions.ts";
 import { deleteAgent } from "./deleteOptions.ts";
 import { setAgentOrganizations, removeAgentOrganization } from "./organizationOptions.ts";
 import { getAgentStates, setAgentStates, removeAgentState } from "./stateOptions.ts";
-import { authenticateSuperAdmin, authenticateReadAccess } from "./authenticate.ts";
+import { authenticateSuperAdmin, authenticateReadAccess, authenticateManagerOrAdmin } from "./authenticate.ts";
 
 export async function handleRoute(req: Request, supabase: any) {
   const url = new URL(req.url);
@@ -31,8 +31,10 @@ export async function handleRoute(req: Request, supabase: any) {
 
   // ── GET /super-admin-agents  (list)
   if (method === "GET" && !agentId) {
-    const auth = await authenticateSuperAdmin(supabase, authHeader);
-    return await listAgents(supabase, url.searchParams);
+    const auth = await authenticateManagerOrAdmin(supabase, authHeader);
+    // acsl_agent_manager only sees agents they created (manager_id = their ID)
+    const managerFilter = auth.userRole === "acsl_agent_manager" ? auth.userId : null;
+    return await listAgents(supabase, url.searchParams, managerFilter);
   }
 
   // ── GET /super-admin-agents/{id}/organizations
@@ -57,20 +59,23 @@ export async function handleRoute(req: Request, supabase: any) {
 
   // ── GET /super-admin-agents/{id}  (single agent)
   if (method === "GET" && agentId && !subResource) {
-    const auth = await authenticateSuperAdmin(supabase, authHeader);
+    const auth = await authenticateManagerOrAdmin(supabase, authHeader);
     return await getAgent(supabase, agentId);
   }
 
   // ── POST /super-admin-agents  (create)
+  // Both super_admin and acsl_agent_manager can create acsl_agent accounts.
+  // When a manager creates an agent, manager_id is auto-set to the manager's ID.
   if (method === "POST" && !agentId) {
-    const auth = await authenticateSuperAdmin(supabase, authHeader);
+    const auth = await authenticateManagerOrAdmin(supabase, authHeader);
     const body = await req.json();
-    return await createAgent(supabase, body, auth.userId);
+    const managerId = auth.userRole === "acsl_agent_manager" ? auth.userId : null;
+    return await createAgent(supabase, body, auth.userId, managerId);
   }
 
   // ── POST /super-admin-agents/{id}/organizations  (replace org assignments)
   if (method === "POST" && agentId && subResource === "organizations") {
-    const auth = await authenticateSuperAdmin(supabase, authHeader);
+    const auth = await authenticateManagerOrAdmin(supabase, authHeader);
     const body = await req.json();
     const orgIds: string[] = body.organization_ids ?? [];
     return await setAgentOrganizations(supabase, agentId, orgIds, auth.userId);
@@ -78,7 +83,7 @@ export async function handleRoute(req: Request, supabase: any) {
 
   // ── POST /super-admin-agents/{id}/states  (replace state assignments)
   if (method === "POST" && agentId && subResource === "states") {
-    const auth = await authenticateSuperAdmin(supabase, authHeader);
+    const auth = await authenticateManagerOrAdmin(supabase, authHeader);
     const body = await req.json();
     const states: string[] = body.states ?? [];
     return await setAgentStates(supabase, agentId, states, auth.userId);
@@ -86,27 +91,27 @@ export async function handleRoute(req: Request, supabase: any) {
 
   // ── PATCH /super-admin-agents/{id}  (update)
   if ((method === "PATCH" || method === "PUT") && agentId && !subResource) {
-    const auth = await authenticateSuperAdmin(supabase, authHeader);
+    const auth = await authenticateManagerOrAdmin(supabase, authHeader);
     const body = await req.json();
-    return await updateAgent(supabase, agentId, body, auth.userId);
+    return await updateAgent(supabase, agentId, body, auth.userId, auth.userRole === "acsl_agent_manager" ? auth.userId : null);
   }
 
   // ── DELETE /super-admin-agents/{id}/organizations/{orgId}
   if (method === "DELETE" && agentId && subResource === "organizations" && subResourceId) {
-    const auth = await authenticateSuperAdmin(supabase, authHeader);
+    const auth = await authenticateManagerOrAdmin(supabase, authHeader);
     return await removeAgentOrganization(supabase, agentId, subResourceId);
   }
 
   // ── DELETE /super-admin-agents/{id}/states/{state}
   if (method === "DELETE" && agentId && subResource === "states" && subResourceId) {
-    const auth = await authenticateSuperAdmin(supabase, authHeader);
+    const auth = await authenticateManagerOrAdmin(supabase, authHeader);
     return await removeAgentState(supabase, agentId, decodeURIComponent(subResourceId));
   }
 
   // ── DELETE /super-admin-agents/{id}
   if (method === "DELETE" && agentId && !subResource) {
-    const auth = await authenticateSuperAdmin(supabase, authHeader);
-    return await deleteAgent(supabase, agentId, auth.userId);
+    const auth = await authenticateManagerOrAdmin(supabase, authHeader);
+    return await deleteAgent(supabase, agentId, auth.userId, auth.userRole === "acsl_agent_manager" ? auth.userId : null);
   }
 
   throw new Error(`Route not found: ${method} ${url.pathname}`);

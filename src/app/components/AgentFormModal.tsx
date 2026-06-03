@@ -36,6 +36,7 @@ import {
 import superAdminAgentService from "../services/superAdminAgentService";
 import organizationsService from "../services/organizationsService";
 import { lgaAndStates } from "../constants";
+import { useAuth } from "../contexts/AuthContext";
 
 const ALL_STATES = Object.keys(lgaAndStates).sort();
 
@@ -105,6 +106,9 @@ export default function AgentFormModal({
   onClose,
   onSuccess,
 }: AgentFormModalProps) {
+  const { userRole, user } = useAuth();
+  const isCallerManager = userRole === "acsl_agent_manager";
+
   const [role, setRole] = useState(
     mode === "edit" ? (agent?.role ?? "acsl_agent") : "acsl_agent"
   );
@@ -146,17 +150,30 @@ export default function AgentFormModal({
   const [stateSearch, setStateSearch] = useState("");
   const [stateColorMap, setStateColorMap] = useState<Record<string, number>>({});
 
-  const isAcslRole = role === "acsl_agent";
+  const isAcslRole = role === "acsl_agent" || role === "acsl_agent_manager";
 
-  // Load all orgs
+  // Scoped states for manager — only states assigned to them
+  const [managerAssignedStates, setManagerAssignedStates] = useState<string[]>([]);
+
+  // Load orgs — managers only see their assigned orgs, super admin sees all
   useEffect(() => {
     if (!isAcslRole) return;
     setOrgsLoading(true);
-    organizationsService
-      .getAllOrganizations()
-      .then((r: any) => setOrgs(r.data || []))
-      .finally(() => setOrgsLoading(false));
-  }, [isAcslRole]);
+    if (isCallerManager && user?.id) {
+      // Load only orgs assigned to this manager (direct + state-resolved)
+      superAdminAgentService.getAgentOrganizations(user.id)
+        .then((r: any) => setOrgs(r.data || []))
+        .finally(() => setOrgsLoading(false));
+      // Also load manager's assigned states to restrict the state picker
+      superAdminAgentService.getAgentStates(user.id)
+        .then((r: any) => setManagerAssignedStates((r.data || []).map((s: any) => s.state)));
+    } else {
+      organizationsService
+        .getAllOrganizations()
+        .then((r: any) => setOrgs(r.data || []))
+        .finally(() => setOrgsLoading(false));
+    }
+  }, [isAcslRole, isCallerManager, user?.id]);
 
   // Load existing assignments for edit
   useEffect(() => {
@@ -198,7 +215,9 @@ export default function AgentFormModal({
     return counts;
   }, [orgs]);
 
-  const visibleStates = ALL_STATES.filter(
+  // Managers can only assign agents to their own states; super admin sees all states
+  const availableStates = isCallerManager ? managerAssignedStates : ALL_STATES;
+  const visibleStates = availableStates.filter(
     (s) => !selectedStates.has(s) && s.toLowerCase().includes(stateSearch.toLowerCase())
   );
 
@@ -387,7 +406,11 @@ export default function AgentFormModal({
   };
 
   const title = mode === "create"
-    ? role === "super_admin" ? "Add Super Admin" : "Create Agent"
+    ? role === "super_admin"
+      ? "Add Super Admin"
+      : role === "acsl_agent_manager"
+      ? "Add ACSL Agent Manager"
+      : "Create Agent"
     : "Edit Agent";
 
   return (
@@ -456,12 +479,22 @@ export default function AgentFormModal({
                       <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
-                        <SelectItem value="super_admin">Super Admin</SelectItem>
+                        {!isCallerManager && (
+                          <SelectItem value="acsl_agent_manager">ACSL Agent Manager</SelectItem>
+                        )}
+                        {!isCallerManager && (
+                          <SelectItem value="super_admin">Super Admin</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                     {role === "super_admin" && (
                       <p className="text-[10px] text-orange-600 mt-0.5">
                         Super Admin has full system access. Use with caution.
+                      </p>
+                    )}
+                    {role === "acsl_agent_manager" && (
+                      <p className="text-[10px] text-blue-600 mt-0.5">
+                        ACSL Agent Manager will be assigned to states and partners, and can create ACSL agents under them.
                       </p>
                     )}
                   </Field>

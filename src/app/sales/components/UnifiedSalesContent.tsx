@@ -26,10 +26,11 @@ export default function UnifiedSalesContent() {
 
   const isSuperAdmin = userRole === "super_admin";
   const isAcslAgent = userRole === "acsl_agent" || userRole === "super_admin_agent";
+  const isAcslAgentManager = userRole === "acsl_agent_manager";
   const isPartner = userRole === "partner" || userRole === "admin";
   const isAgent = userRole === "partner_agent" || userRole === "agent";
 
-  const viewFrom = isSuperAdmin ? "superAdmin" : (isAcslAgent ? "acsl_agent" : (isPartner ? "admin" : "agent"));
+  const viewFrom = isSuperAdmin ? "superAdmin" : ((isAcslAgent || isAcslAgentManager) ? "acsl_agent" : (isPartner ? "admin" : "agent"));
 
   const [reloadKey, setReloadKey] = useState(0);
   const reload = () => setReloadKey((k) => k + 1);
@@ -67,7 +68,7 @@ export default function UnifiedSalesContent() {
       );
     }
     
-    if (isAcslAgent) {
+    if (isAcslAgent || isAcslAgentManager) {
       return salesAdvancedService.getSalesData(
         { limit: 1000, responseFormat: "format2" },
         "POST",
@@ -172,7 +173,7 @@ export default function UnifiedSalesContent() {
           loadSales={loadSales}
           onEditSale={handleEditSale}
           onDeleteSale={handleDeleteSale}
-          onApproveSale={isAcslAgent ? setApproveSale : undefined}
+          onApproveSale={(isAcslAgent || isAcslAgentManager) ? setApproveSale : undefined}
           viewFrom={viewFrom as any}
           selectedYear={isSuperAdmin ? selectedYear : undefined}
           onYearChange={isSuperAdmin ? (v) => setSelectedYear(v ?? CURRENT_YEAR) : undefined}

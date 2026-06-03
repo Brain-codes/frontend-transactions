@@ -1,17 +1,21 @@
 // Delete operations for super-admin-agents
 
-export async function deleteAgent(supabase: any, agentId: string, adminId: string) {
+export async function deleteAgent(supabase: any, agentId: string, adminId: string, managerScopeId: string | null = null) {
   console.log("🗑️ Deleting agent:", agentId);
 
   if (agentId === adminId) throw new Error("Cannot delete your own account");
 
   // Verify agent exists
-  const { data: existing, error: checkError } = await supabase
+  let query = supabase
     .from("profiles")
     .select("id, full_name, email")
     .eq("id", agentId)
-    .eq("role", "acsl_agent")
-    .single();
+    .in("role", ["acsl_agent", "acsl_agent_manager"]);
+
+  // acsl_agent_manager can only delete agents they created
+  if (managerScopeId) query = query.eq("manager_id", managerScopeId);
+
+  const { data: existing, error: checkError } = await query.single();
 
   if (checkError) {
     if (checkError.code === "PGRST116") throw new Error("Agent not found");
