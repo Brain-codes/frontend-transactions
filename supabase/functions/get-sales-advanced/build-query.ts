@@ -110,9 +110,9 @@ function buildOptimizedSelectFields(filters: Filters): string {
   // Add joins based on what's requested to avoid N+1 queries
   const joinFields: string[] = [];
 
-  // Always include basic organization info since it's commonly needed
+  // Use LEFT JOIN so sales without an organization_id (e.g. legacy records) are still returned
   joinFields.push(
-    "organizations!inner(id, partner_name, branch, state, email)"
+    "organizations!left(id, partner_name, branch, state, email)"
   );
 
   // Always include payment model info for installment sales
