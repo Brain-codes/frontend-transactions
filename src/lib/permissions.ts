@@ -1,6 +1,7 @@
 export type AppRole =
   | "super_admin"
   | "acsl_agent"
+  | "acsl_agent_manager"
   | "super_admin_agent"
   | "partner"
   | "admin"
@@ -32,7 +33,8 @@ export type FeatureKey =
   | "create-sale"
   | "my-partners-filter"
   | "manage-agents"
-  | "org-sales-view";
+  | "org-sales-view"
+  | "manage-acsl-agents-scoped";
 
 interface RolePermissions {
   routes: RouteKey[];
@@ -74,6 +76,24 @@ export const PERMISSIONS: Record<string, RolePermissions> = {
       "my-partners-filter",
       "manage-agents",
       "org-sales-view",
+    ],
+  },
+  acsl_agent_manager: {
+    // Same pages as super_admin except settings and transfer history — data is filtered to assigned states/partners
+    routes: [
+      "dashboard",
+      "sales",
+      "partners",
+      "agents",
+      "stove-management",
+      "stove-manager",
+      "profile",
+    ],
+    features: [
+      "my-partners-filter",
+      "stove-allocation",
+      "create-sale",
+      "manage-acsl-agents-scoped",
     ],
   },
   acsl_agent: {

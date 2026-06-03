@@ -7,7 +7,8 @@ import PartnerAgentsContent from "./components/PartnerAgentsContent";
 
 function AgentsRouter() {
   const { can } = usePermissions();
-  if (can("manage-acsl-agents")) return <SuperAdminAgentsContent />;
+  // manage-acsl-agents = super admin (sees all); manage-acsl-agents-scoped = manager (sees only their agents)
+  if (can("manage-acsl-agents") || can("manage-acsl-agents-scoped")) return <SuperAdminAgentsContent />;
   return <PartnerAgentsContent />;
 }
 

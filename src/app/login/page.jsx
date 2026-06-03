@@ -31,6 +31,7 @@ const LoginPage = () => {
     isPartnerAgent,
     isSuperAdminAgent,
     isAcslAgent,
+    isAcslAgentManager,
     loading: authLoading,
     signOut,
   } = useAuth();
@@ -65,6 +66,8 @@ const LoginPage = () => {
       // Redirect based on role
       if (isSuperAdmin) {
         router.push("/dashboard");
+      } else if (isAcslAgentManager) {
+        router.push("/dashboard");
       } else if (isAcslAgent || isSuperAdminAgent) {
         router.push("/super-admin-agent");
       } else if (isPartner || isAdmin) {
@@ -87,6 +90,7 @@ const LoginPage = () => {
     isPartnerAgent,
     isSuperAdminAgent,
     isAcslAgent,
+    isAcslAgentManager,
     router,
   ]);
 

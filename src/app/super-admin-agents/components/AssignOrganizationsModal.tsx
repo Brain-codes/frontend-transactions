@@ -26,6 +26,7 @@ import {
 import superAdminAgentService from "../../services/superAdminAgentService";
 import organizationsService from "../../services/organizationsService";
 import { lgaAndStates } from "../../constants";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface Agent {
   id: string;
@@ -59,6 +60,9 @@ const AssignOrganizationsModal: React.FC<AssignOrganizationsModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { userRole, user } = useAuth();
+  const isCallerManager = userRole === "acsl_agent_manager";
+
   const [allOrgs, setAllOrgs] = useState<Organization[]>([]);
   const [selectedDirectOrgIds, setSelectedDirectOrgIds] = useState<Set<string>>(new Set());
   const [selectedStates, setSelectedStates] = useState<Set<string>>(new Set());
@@ -77,7 +81,10 @@ const AssignOrganizationsModal: React.FC<AssignOrganizationsModalProps> = ({
         setError("");
 
         const [orgsResult, assignedResult, statesResult] = await Promise.all([
-          organizationsService.getAllOrganizations(),
+          // Managers only see their own assigned orgs; super admin sees all
+          isCallerManager && user?.id
+            ? superAdminAgentService.getAgentOrganizations(user.id)
+            : organizationsService.getAllOrganizations(),
           superAdminAgentService.getAgentOrganizations(agent.id),
           superAdminAgentService.getAgentStates(agent.id),
         ]);
@@ -100,7 +107,7 @@ const AssignOrganizationsModal: React.FC<AssignOrganizationsModalProps> = ({
       }
     };
     fetchData();
-  }, [agent.id]);
+  }, [agent.id, isCallerManager, user?.id]);
 
   // Count orgs per state
   const orgCountByState = useMemo(() => {
@@ -130,7 +137,13 @@ const AssignOrganizationsModal: React.FC<AssignOrganizationsModalProps> = ({
     return allIds.size;
   }, [selectedDirectOrgIds, stateCoveredOrgIds]);
 
-  const filteredStates = ALL_STATES.filter((s) =>
+  // Managers can only assign from their own states; super admin sees all
+  const managerStates = useMemo(
+    () => [...new Set(allOrgs.map((o) => o.state).filter(Boolean) as string[])].sort(),
+    [allOrgs]
+  );
+  const availableStates = isCallerManager ? managerStates : ALL_STATES;
+  const filteredStates = availableStates.filter((s) =>
     s.toLowerCase().includes(stateSearchTerm.toLowerCase())
   );
 

@@ -18,7 +18,7 @@ export async function deleteUser(
       .from("profiles")
       .select("id, role, full_name, email")
       .eq("id", userId)
-      .in("role", ["acsl_agent", "super_admin_agent"])
+      .in("role", ["acsl_agent", "acsl_agent_manager", "super_admin_agent"])
       .single();
 
     if (checkError) {

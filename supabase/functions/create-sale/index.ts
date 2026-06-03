@@ -115,7 +115,7 @@ serve(async (req) => {
 
     if (!organizationId) {
       const isSuperAdmin = profile?.role === "super_admin";
-      const isAgent = profile?.role === "acsl_agent" || profile?.role === "super_admin_agent";
+      const isAgent = profile?.role === "acsl_agent" || profile?.role === "acsl_agent_manager" || profile?.role === "super_admin_agent";
 
       if (!isSuperAdmin && !isAgent) {
         return jsonError("User must belong to an organization");

@@ -74,7 +74,7 @@ serve(async (req) => {
     console.log("🏢 User organization:", userProfile.organization_id);
 
     // Check if user has permission
-    if (!["partner", "admin", "super_admin", "acsl_agent", "super_admin_agent"].includes(userProfile.role)) {
+    if (!["partner", "admin", "super_admin", "acsl_agent", "acsl_agent_manager", "super_admin_agent"].includes(userProfile.role)) {
       console.log("❌ Insufficient permissions");
       throw new Error(
         "Unauthorized: Access denied. Admin or Super Admin role required."
@@ -83,7 +83,7 @@ serve(async (req) => {
 
     // For acsl_agent (formerly super_admin_agent): resolve assigned org IDs (direct + state-based)
     let allowedOrgIds: string[] | null = null;
-    if (userProfile.role === "acsl_agent" || userProfile.role === "super_admin_agent") {
+    if (userProfile.role === "acsl_agent" || userProfile.role === "acsl_agent_manager" || userProfile.role === "super_admin_agent") {
       const resolved = await resolveAssignedOrgIds(supabase, userId);
       allowedOrgIds = resolved.assignedOrgIds;
       console.log(

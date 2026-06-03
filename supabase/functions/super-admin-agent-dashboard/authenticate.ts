@@ -32,7 +32,7 @@ export async function authenticate(supabase: any, authHeader: string): Promise<A
   if (profileError || !profile) throw new Error("Unauthorized: User profile not found");
 
   // Allow acsl_agent (and legacy super_admin_agent), super_admin, and partner_agent (and legacy agent) to access this dashboard
-  if (!["acsl_agent", "super_admin_agent", "super_admin", "partner_agent", "agent"].includes(profile.role)) {
+  if (!["acsl_agent", "acsl_agent_manager", "super_admin_agent", "super_admin", "partner_agent", "agent"].includes(profile.role)) {
     throw new Error("Unauthorized: Insufficient permissions");
   }
 

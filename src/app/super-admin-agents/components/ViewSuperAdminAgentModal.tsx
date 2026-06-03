@@ -216,8 +216,18 @@ const ViewSuperAdminAgentModal: React.FC<ViewSuperAdminAgentModalProps> = ({
               <DetailItem
                 label="Role"
                 value={
-                  <span className="bg-purple-100 text-purple-700 text-[10px] font-medium px-2 py-0.5 rounded-full">
-                    ACSL Agent
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                    agent.role === "acsl_agent_manager"
+                      ? "bg-blue-100 text-blue-700"
+                      : agent.role === "super_admin"
+                      ? "bg-red-100 text-red-700"
+                      : "bg-purple-100 text-purple-700"
+                  }`}>
+                    {agent.role === "acsl_agent_manager"
+                      ? "ACSL Agent Manager"
+                      : agent.role === "super_admin"
+                      ? "Super Admin"
+                      : "ACSL Agent"}
                   </span>
                 }
               />

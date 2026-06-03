@@ -1,6 +1,6 @@
 // Read operations for super-admin-agents (ACSL Agent management)
 
-export async function listAgents(supabase: any, searchParams: URLSearchParams) {
+export async function listAgents(supabase: any, searchParams: URLSearchParams, managerFilter: string | null = null) {
   console.log("📋 Fetching ACSL agents list...");
 
   const page = parseInt(searchParams.get("page") || "1");
@@ -56,12 +56,17 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams) {
 
   if (filteredAgentIds !== null) {
     query = query.in("id", filteredAgentIds);
-  } else if (roleParam && ["acsl_agent", "super_admin_agent", "super_admin"].includes(roleParam)) {
+  } else if (roleParam && ["acsl_agent", "acsl_agent_manager", "super_admin_agent", "super_admin"].includes(roleParam)) {
     // Map legacy role param to new value
     const mappedRole = roleParam === "super_admin_agent" ? "acsl_agent" : roleParam;
     query = query.eq("role", mappedRole);
   } else {
-    query = query.in("role", ["acsl_agent", "super_admin"]);
+    query = query.in("role", ["acsl_agent", "acsl_agent_manager", "super_admin"]);
+  }
+
+  // acsl_agent_manager only sees agents they personally created
+  if (managerFilter) {
+    query = query.eq("manager_id", managerFilter);
   }
 
   if (status && ["active", "disabled"].includes(status)) {
@@ -216,7 +221,7 @@ export async function getAgent(supabase: any, agentId: string) {
     .from("profiles")
     .select("id, full_name, email, phone, role, status, created_at, last_login, updated_at, updated_by")
     .eq("id", agentId)
-    .in("role", ["acsl_agent", "super_admin"])
+    .in("role", ["acsl_agent", "acsl_agent_manager", "super_admin"])
     .single();
 
   if (error) {
@@ -275,7 +280,7 @@ export async function getAgentOrganizations(supabase: any, agentId: string) {
     .from("profiles")
     .select("id")
     .eq("id", agentId)
-    .in("role", ["acsl_agent", "super_admin"])
+    .in("role", ["acsl_agent", "acsl_agent_manager", "super_admin"])
     .single();
 
   if (agentError) {

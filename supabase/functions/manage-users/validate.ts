@@ -38,8 +38,8 @@ export function validateUserData(data: any) {
   }
 
   // Role validation - allow acsl_agent (formerly super_admin_agent) and super_admin
-  if (!data.role || !["acsl_agent", "super_admin_agent", "super_admin"].includes(data.role)) {
-    errors.push("Role must be 'acsl_agent' or 'super_admin'");
+  if (!data.role || !["acsl_agent", "acsl_agent_manager", "super_admin_agent", "super_admin"].includes(data.role)) {
+    errors.push("Role must be 'acsl_agent', 'acsl_agent_manager', or 'super_admin'");
   }
 
   // Optional fields validation

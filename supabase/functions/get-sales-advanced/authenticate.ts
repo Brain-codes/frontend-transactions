@@ -55,7 +55,7 @@ export async function authenticateUser(supabase: any): Promise<AuthResult> {
   console.log("✅ User role determined:", { userRole, userOrgId });
 
   // Allow super_admin, partner (admin), partner_agent (agent), and acsl_agent (super_admin_agent) roles
-  if (!["super_admin", "partner", "admin", "partner_agent", "agent", "acsl_agent", "super_admin_agent"].includes(userRole)) {
+  if (!["super_admin", "partner", "admin", "partner_agent", "agent", "acsl_agent", "acsl_agent_manager", "super_admin_agent"].includes(userRole)) {
     console.log("❌ Access denied - Role:", userRole);
     throw new Error(
       "Access denied. Partner, Partner Agent, or Super Admin role required."
@@ -64,9 +64,9 @@ export async function authenticateUser(supabase: any): Promise<AuthResult> {
 
   console.log("✅ Access confirmed for role:", userRole);
 
-  // For acsl_agent (formerly super_admin_agent), resolve assigned org IDs (direct + state-based)
+  // For acsl_agent and acsl_agent_manager, resolve assigned org IDs (direct + state-based)
   let assignedOrgIds: string[] | undefined;
-  if (userRole === "acsl_agent" || userRole === "super_admin_agent") {
+  if (userRole === "acsl_agent" || userRole === "acsl_agent_manager" || userRole === "super_admin_agent") {
     console.log("🔗 Resolving assigned organizations for acsl_agent...");
     const resolved = await resolveAssignedOrgIds(supabase, userData.user.id);
     assignedOrgIds = resolved.assignedOrgIds;

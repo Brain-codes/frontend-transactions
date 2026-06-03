@@ -117,7 +117,7 @@ const allNavItems = [
 
 const Sidebar = ({ isOpen, onClose, currentRoute }) => {
   const router = useRouter();
-  const { userRole, isAcslAgent, isPartnerAgent, isSuperAdmin } = useAuth();
+  const { userRole, isAcslAgent, isAcslAgentManager, isPartnerAgent, isSuperAdmin } = useAuth();
   const { canRoute } = usePermissions();
 
   const [expandedItems, setExpandedItems] = useState({});
@@ -129,20 +129,28 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
   let navItems = allNavItems
     .filter((item) => canRoute(item.route))
     .map((item) => {
-      if (item.route === "partners" && isAcslAgent) {
+      if (item.route === "partners" && (isAcslAgent || isAcslAgentManager)) {
         return { ...item, name: "My Partners" };
       }
       return item;
     });
 
-  // Specific order for ACSL Agent and Partner Agent
-  if (isAcslAgent || isPartnerAgent) {
+  // Specific order for ACSL Agent Manager, ACSL Agent, and Partner Agent
+  if (isAcslAgentManager) {
+    const managerOrder = ["dashboard", "sales", "partners", "agents", "stove-manager", "profile"];
+    navItems = [...navItems].sort((a, b) => {
+      const indexA = managerOrder.indexOf(a.route);
+      const indexB = managerOrder.indexOf(b.route);
+      if (indexA === -1 && indexB === -1) return 0;
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+  } else if (isAcslAgent || isPartnerAgent) {
     const agentOrder = isAcslAgent
-      ? ["dashboard", "sales", "partners", 
-        // "stove-management", 
-        "stove-manager", "profile"]
+      ? ["dashboard", "sales", "partners", "stove-manager", "profile"]
       : ["dashboard", "sales", "stove-manager", "profile"];
-      
+
     navItems = [...navItems].sort((a, b) => {
       const indexA = agentOrder.indexOf(a.route);
       const indexB = agentOrder.indexOf(b.route);

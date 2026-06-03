@@ -50,7 +50,7 @@ export async function authenticate(
 
   // For ACSL agent (formerly SAA), resolve assigned org IDs
   let assignedOrgIds: string[] | undefined;
-  if (profile.role === "acsl_agent" || profile.role === "super_admin_agent") {
+  if (profile.role === "acsl_agent" || profile.role === "acsl_agent_manager" || profile.role === "super_admin_agent") {
     const resolved = await resolveAssignedOrgIds(supabase, profile.id);
     assignedOrgIds = resolved.assignedOrgIds;
   }

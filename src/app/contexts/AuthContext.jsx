@@ -123,6 +123,12 @@ export const AuthProvider = ({ children }) => {
     storedProfileRole === "super_admin_agent";
   const isSuperAdminAgent = isAcslAgent; // backward compat alias
 
+  // ACSL Agent Manager — real ACSL staff who supervise and create acsl_agents
+  const isAcslAgentManager =
+    user?.app_metadata?.role === "acsl_agent_manager" ||
+    user?.user_metadata?.role === "acsl_agent_manager" ||
+    storedProfileRole === "acsl_agent_manager";
+
   // Partner (formerly admin) — accept both old and new role values for backward compat
   const isPartner =
     user?.app_metadata?.role === "partner" ||
@@ -144,7 +150,7 @@ export const AuthProvider = ({ children }) => {
   const isAgent = isPartnerAgent; // backward compat alias
 
   // Helper function to check if user has admin level access (partner, partner_agent, super_admin, or acsl_agent)
-  const hasAdminAccess = isSuperAdmin || isAcslAgent || isPartner || isPartnerAgent;
+  const hasAdminAccess = isSuperAdmin || isAcslAgent || isAcslAgentManager || isPartner || isPartnerAgent;
 
   // Get user role
   const userRole =
@@ -518,6 +524,7 @@ export const AuthProvider = ({ children }) => {
     isSuperAdmin,
     isSuperAdminAgent,
     isAcslAgent,
+    isAcslAgentManager,
     isAdmin,
     isPartner,
     isAgent,

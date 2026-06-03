@@ -87,7 +87,7 @@ const UnavailableState = ({ isSuperAdmin, searchedId }) => (
       <p className="text-gray-500 text-sm max-w-xs">
         {isSuperAdmin
           ? `No stove with ID "${searchedId}" was found in the system.`
-          : `Stove ID "${searchedId}" is not available or does not belong to your account.`}
+          : `Stove ID "${searchedId}" is not available or does not belong to you.`}
       </p>
     </div>
   </div>
@@ -420,7 +420,7 @@ export default function StoveManagerContent() {
                     <p className="text-gray-500 text-sm max-w-xs">
                       {isSuperAdmin
                         ? `No stove with ID "${searchedId}" was found in the system.`
-                        : `Stove ID "${searchedId}" is not available or does not belong to your account.`}
+                        : `Stove ID "${searchedId}" is not available or does not belong to you.`}
                     </p>
                   </div>
                 </div>

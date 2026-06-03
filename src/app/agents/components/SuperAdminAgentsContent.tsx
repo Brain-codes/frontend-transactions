@@ -133,6 +133,9 @@ function AssignPartnerModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { userRole, user } = useAuth();
+  const isCallerManager = userRole === "acsl_agent_manager";
+
   const [allOrgs, setAllOrgs] = useState<OrgOption[]>([]);
   const [selectedDirectOrgIds, setSelectedDirectOrgIds] = useState<Set<string>>(new Set());
   const [selectedStates, setSelectedStates] = useState<Set<string>>(new Set());
@@ -155,7 +158,10 @@ function AssignPartnerModal({
       setLoading(true);
       try {
         const [orgsRes, assignedRes, statesRes] = await Promise.all([
-          organizationsService.getAllOrganizations(),
+          // Managers only see their own assigned orgs; super admin sees all
+          isCallerManager && user?.id
+            ? superAdminAgentService.getAgentOrganizations(user.id)
+            : organizationsService.getAllOrganizations(),
           superAdminAgentService.getAgentOrganizations(agent.id),
           superAdminAgentService.getAgentStates(agent.id),
         ]);
@@ -174,7 +180,7 @@ function AssignPartnerModal({
       }
     };
     load();
-  }, [isOpen, agent]);
+  }, [isOpen, agent, isCallerManager, user?.id]);
 
   const orgCountByState = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -197,7 +203,13 @@ function AssignPartnerModal({
     [selectedDirectOrgIds, stateCoveredIds]
   );
 
-  const filteredStates = ALL_STATES.filter((s) =>
+  // Managers can only assign from their own states; super admin sees all
+  const managerStates = useMemo(
+    () => [...new Set(allOrgs.map((o: any) => o.state).filter(Boolean) as string[])].sort(),
+    [allOrgs]
+  );
+  const availableStates = isCallerManager ? managerStates : ALL_STATES;
+  const filteredStates = availableStates.filter((s) =>
     s.toLowerCase().includes(stateSearch.toLowerCase())
   );
   const filteredOrgs = allOrgs.filter((o) => {
@@ -279,8 +291,8 @@ function AssignPartnerModal({
     }
   };
 
-  // State grid: only unselected states matching search
-  const visibleStates = ALL_STATES.filter(
+  // State grid: only unselected states matching search, scoped to manager's states if applicable
+  const visibleStates = availableStates.filter(
     (s) => !selectedStates.has(s) && s.toLowerCase().includes(stateSearch.toLowerCase())
   );
 
@@ -1186,6 +1198,7 @@ export default function SuperAdminAgentsContent() {
             <SelectContent>
               <SelectItem value="all">All Roles</SelectItem>
               <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
+              <SelectItem value="acsl_agent_manager">ACSL Agent Manager</SelectItem>
               <SelectItem value="super_admin">Super Admin</SelectItem>
             </SelectContent>
           </Select>
