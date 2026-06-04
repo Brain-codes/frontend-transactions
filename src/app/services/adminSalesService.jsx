@@ -356,6 +356,9 @@ class AdminSalesService {
   }
 
   // Get sales for financial reports (uses get-sales-advanced with POST body)
+  /**
+   * @param {{ page?: number; limit?: number; search?: string; paymentStatus?: string; dateFrom?: string; dateTo?: string; createdBy?: string; paymentModelId?: string }} [params]
+   */
   async getFinancialReportSales({
     page = 1,
     limit = 500,
