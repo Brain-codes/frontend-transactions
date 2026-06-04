@@ -933,6 +933,275 @@ function AgentStatesModal({
 }
 
 
+// ── Active Partners Modal ──────────────────────────────────────────────────────
+
+interface ActivePartner {
+  id: string;
+  partner_name: string;
+  state: string | null;
+  branch: string | null;
+  contact_phone: string | null;
+  total_stove_ids: number;
+  sold_stove_ids: number;
+  available_stove_ids: number;
+  agents_count: number;
+}
+
+function ActivePartnersModal({
+  isOpen,
+  onClose,
+  partnerIds,
+  dateBadge,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  partnerIds: string[];
+  dateBadge: string;
+}) {
+  const { supabase } = useAuth();
+  const PAGE_SIZE = 15;
+  const [partners, setPartners] = useState<ActivePartner[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setSearch("");
+    setPage(1);
+    setPartners([]);
+    if (partnerIds.length === 0) return;
+    setLoading(true);
+
+    const load = async () => {
+      try {
+        const BATCH = 200;
+
+        // Fetch org records
+        const orgBatches: Promise<any>[] = [];
+        for (let i = 0; i < partnerIds.length; i += BATCH) {
+          orgBatches.push(
+            supabase
+              .from("organizations")
+              .select("id, partner_name, state, branch, contact_phone")
+              .in("id", partnerIds.slice(i, i + BATCH))
+          );
+        }
+        const orgResults = await Promise.all(orgBatches);
+        const orgs: any[] = orgResults.flatMap((r) => r.data || []);
+
+        // Fetch stove counts grouped by org (client-side aggregation)
+        const stoveBatches: Promise<any>[] = [];
+        for (let i = 0; i < partnerIds.length; i += BATCH) {
+          stoveBatches.push(
+            supabase
+              .from("stove_ids")
+              .select("organization_id, status")
+              .in("organization_id", partnerIds.slice(i, i + BATCH))
+              .eq("is_archived", false)
+          );
+        }
+        const stoveResults = await Promise.all(stoveBatches);
+        const stoveCounts: Record<string, { total: number; sold: number; available: number }> = {};
+        stoveResults.flatMap((r) => r.data || []).forEach((s: any) => {
+          if (!stoveCounts[s.organization_id]) stoveCounts[s.organization_id] = { total: 0, sold: 0, available: 0 };
+          stoveCounts[s.organization_id].total++;
+          if (s.status === "sold") stoveCounts[s.organization_id].sold++;
+          else stoveCounts[s.organization_id].available++;
+        });
+
+        // Fetch direct agent assignment counts
+        const agentBatches: Promise<any>[] = [];
+        for (let i = 0; i < partnerIds.length; i += BATCH) {
+          agentBatches.push(
+            supabase
+              .from("super_admin_agent_organizations")
+              .select("organization_id")
+              .in("organization_id", partnerIds.slice(i, i + BATCH))
+          );
+        }
+        const agentResults = await Promise.all(agentBatches);
+        const agentCounts: Record<string, number> = {};
+        agentResults.flatMap((r) => r.data || []).forEach((row: any) => {
+          agentCounts[row.organization_id] = (agentCounts[row.organization_id] || 0) + 1;
+        });
+
+        const merged: ActivePartner[] = orgs.map((org) => ({
+          id: org.id,
+          partner_name: org.partner_name,
+          state: org.state,
+          branch: org.branch,
+          contact_phone: org.contact_phone,
+          total_stove_ids: stoveCounts[org.id]?.total ?? 0,
+          sold_stove_ids: stoveCounts[org.id]?.sold ?? 0,
+          available_stove_ids: stoveCounts[org.id]?.available ?? 0,
+          agents_count: agentCounts[org.id] ?? 0,
+        }));
+        merged.sort((a, b) => (a.partner_name ?? "").localeCompare(b.partner_name ?? ""));
+        setPartners(merged);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [isOpen, partnerIds, supabase]);
+
+  useEffect(() => { setPage(1); }, [search]);
+
+  const filtered = partners.filter((p) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      (p.partner_name ?? "").toLowerCase().includes(q) ||
+      (p.state ?? "").toLowerCase().includes(q) ||
+      (p.branch ?? "").toLowerCase().includes(q)
+    );
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const startItem = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const endItem = Math.min(safePage * PAGE_SIZE, filtered.length);
+
+  const getPageNumbers = () => {
+    const pages: number[] = [];
+    const start = Math.max(1, safePage - 2);
+    const end = Math.min(totalPages, start + 4);
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+        <DialogHeader className="px-5 py-3 bg-gradient-to-r from-[#6d28d9]/5 to-[#8b5cf6]/10 border-b shrink-0">
+          <div>
+            <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-[#8b5cf6]" />
+              Active Partners
+            </DialogTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              <span className="font-semibold text-[#6d28d9]">{partnerIds.length} partner{partnerIds.length !== 1 ? "s" : ""}</span>
+              {" "}with sales · {dateBadge}
+            </p>
+          </div>
+        </DialogHeader>
+
+        <div className="px-5 py-3 border-b shrink-0">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, state or branch..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 h-8 text-xs bg-background"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-5 w-5 animate-spin text-[#6d28d9]" />
+            </div>
+          ) : partnerIds.length === 0 ? (
+            <div className="text-center text-muted-foreground py-10 text-sm">
+              <Building2 className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+              No active partners for this period.
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center text-muted-foreground py-10 text-sm">
+              <Building2 className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+              No partners match your search.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-[#07376a] hover:bg-[#07376a]">
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">State</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Branch</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone Number</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stoves (Received / Sold / Available)</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Agents Assigned</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginated.map((partner, idx) => (
+                    <TableRow
+                      key={partner.id}
+                      className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}
+                    >
+                      <TableCell className="text-xs font-medium text-gray-900">{partner.partner_name}</TableCell>
+                      <TableCell className="text-xs">{partner.state || "N/A"}</TableCell>
+                      <TableCell className="text-xs">{partner.branch || "N/A"}</TableCell>
+                      <TableCell className="text-xs">{partner.contact_phone || "—"}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5 text-xs">
+                          <span className="font-medium text-purple-700" title="Received">{partner.total_stove_ids.toLocaleString()}</span>
+                          <span className="text-gray-300">/</span>
+                          <span className="font-medium text-blue-600" title="Sold">{partner.sold_stove_ids.toLocaleString()}</span>
+                          <span className="text-gray-300">/</span>
+                          <span className="font-medium text-green-600" title="Available">{partner.available_stove_ids.toLocaleString()}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {partner.agents_count === 0 ? (
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">0</span>
+                        ) : (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                            {partner.agents_count}
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+
+        {!loading && filtered.length > 0 && (
+          <div className="border-t border-gray-200 px-4 py-2.5 flex items-center justify-between bg-white shrink-0">
+            <p className="text-xs text-gray-500">{startItem}–{endItem} of {filtered.length}</p>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => setPage(1)} disabled={safePage === 1}>
+                  <ChevronsLeft className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}>
+                  <ChevronLeft className="h-3.5 w-3.5 mr-0.5" />Prev
+                </Button>
+                {getPageNumbers().map((p) => (
+                  <Button
+                    key={p}
+                    variant={p === safePage ? "default" : "outline"}
+                    size="sm"
+                    className={`h-7 w-7 p-0 text-xs ${p === safePage ? "bg-[#07376a] text-white hover:bg-[#07376a]" : ""}`}
+                    onClick={() => setPage(p)}
+                  >
+                    {p}
+                  </Button>
+                ))}
+                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}>
+                  Next<ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => setPage(totalPages)} disabled={safePage >= totalPages}>
+                  <ChevronsRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Stock Modal ────────────────────────────────────────────────────────────────
 
 function StockModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -1119,6 +1388,7 @@ export default function SuperAdminAgentsContent() {
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("");
   const [kpiStats, setKpiStats] = useState({
     totalSoldByAgents: 0,
     totalActiveAgents: 0,
@@ -1129,7 +1399,9 @@ export default function SuperAdminAgentsContent() {
   });
   const [loadingKpi, setLoadingKpi] = useState(false);
   const [activeAgentIdsInRange, setActiveAgentIdsInRange] = useState<Set<string>>(new Set());
+  const [activePartnerIdsInRange, setActivePartnerIdsInRange] = useState<string[]>([]);
   const [showStockModal, setShowStockModal] = useState(false);
+  const [showActivePartnersModal, setShowActivePartnersModal] = useState(false);
   const [agents, setAgents] = useState<AcslAgent[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1192,6 +1464,7 @@ export default function SuperAdminAgentsContent() {
         stovesInStock: d.stovesInStock ?? 0,
       });
       setActiveAgentIdsInRange(new Set<string>(d.activeAgentIds ?? []));
+      setActivePartnerIdsInRange(d.activePartnerIds ?? []);
     } catch (err) {
       console.error("KPI stats error:", err);
     } finally {
@@ -1259,6 +1532,13 @@ export default function SuperAdminAgentsContent() {
     return list;
   }, [agents, sortMode, activeAgentIdsInRange, kpiStats.mostActiveState]);
 
+  const dateBadgeLabel = useMemo(() => {
+    const fmt = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    return (dateFrom || dateTo)
+      ? `${dateFrom ? fmt(dateFrom) : "…"} – ${dateTo ? fmt(dateTo) : "…"}`
+      : new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  }, [dateFrom, dateTo]);
+
   return (
     <DashboardLayout currentRoute="agents" title="Agent Manager">
       <div className="p-6 space-y-5">
@@ -1277,6 +1557,117 @@ export default function SuperAdminAgentsContent() {
             </Button>
           }
         />
+
+        {/* Filters */}
+        <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
+          <div className="w-1/4 min-w-[180px] relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search by name or email..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="pl-9 bg-white h-9 text-sm"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+            <SelectTrigger className="w-[150px] h-9 bg-white text-sm">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="disabled">Disabled</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(1); }}>
+            <SelectTrigger className="w-[150px] h-9 bg-white text-sm">
+              <SelectValue placeholder="All Roles" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Roles</SelectItem>
+              <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
+              <SelectItem value="acsl_agent_manager">ACSL Agent Manager</SelectItem>
+              <SelectItem value="super_admin">Super Admin</SelectItem>
+            </SelectContent>
+          </Select>
+          {/* Month picker */}
+          <div className="flex items-center gap-1.5">
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => {
+                const m = e.target.value; // "YYYY-MM"
+                setSelectedMonth(m);
+                if (m) {
+                  const [y, mo] = m.split("-").map(Number);
+                  const first = `${y}-${String(mo).padStart(2, "0")}-01`;
+                  const last = new Date(y, mo, 0); // day 0 of next month = last day of current month
+                  const lastStr = `${y}-${String(mo).padStart(2, "0")}-${String(last.getDate()).padStart(2, "0")}`;
+                  setDateFrom(first);
+                  setDateTo(lastStr);
+                } else {
+                  setDateFrom("");
+                  setDateTo("");
+                }
+                setPage(1);
+              }}
+              className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[145px]"
+              style={{ colorScheme: "light" }}
+            />
+          </div>
+
+          {/* Date Range Filter */}
+          <div className="flex items-center gap-1.5">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => { setDateFrom(e.target.value); setSelectedMonth(""); }}
+              className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[140px]"
+              style={{ colorScheme: "light" }}
+            />
+            <span className="text-xs text-gray-400">–</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(e) => { setDateTo(e.target.value); setSelectedMonth(""); }}
+              className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[140px]"
+              style={{ colorScheme: "light" }}
+            />
+          </div>
+
+          {(search || statusFilter !== "all" || roleFilter !== "acsl_agent" || dateFrom || dateTo) && (
+            <Button
+              onClick={() => { setSearch(""); setStatusFilter("all"); setRoleFilter("acsl_agent"); setDateFrom(""); setDateTo(""); setSelectedMonth(""); setPage(1); }}
+              size="sm"
+              variant="outline"
+              className="h-9"
+            >
+              <X className="h-4 w-4 mr-1" />Clear
+            </Button>
+          )}
+          <div className="ml-auto flex items-center gap-3">
+            <p className="text-sm text-gray-600">
+              Showing <span className="font-medium">{startItem}–{endItem}</span> of{" "}
+              <span className="font-medium">{totalItems.toLocaleString()}</span> agents
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">per page:</span>
+              <Select value={pageSize.toString()} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+                <SelectTrigger className="w-[65px] h-7 bg-white text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-sm font-bold text-green-500">
+              Total: <span className="text-[#07376a]">{totalItems.toLocaleString()}</span>
+            </p>
+          </div>
+        </div>
 
         {/* KPI Stat Cards — 6-card grid */}
         {(() => {
@@ -1334,10 +1725,11 @@ export default function SuperAdminAgentsContent() {
               Icon: Building2,
               value: loadingKpi ? "—" : kpiStats.totalActivePartners.toLocaleString(),
               label: "Total Active Partners",
-              sub: "Partners with sales",
+              sub: "Partners with sales · Click to view",
               badge: dateBadge,
-              mode: "active_partners",
-              isModal: false,
+              mode: null,
+              isModal: true,
+              onModalClick: () => setShowActivePartnersModal(true),
             },
             {
               gradient: "from-[#334155] to-[#64748b]",
@@ -1349,13 +1741,15 @@ export default function SuperAdminAgentsContent() {
               mode: null,
               isModal: true,
             },
-          ] as const;
+          ];
 
           return (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {cards.map(({ gradient, Icon, value, label, sub, badge, mode, isModal }) => {
+              {cards.map(({ gradient, Icon, value, label, sub, badge, mode, isModal, onModalClick }: any) => {
                 const active = !isModal && mode !== null && sortMode === mode;
-                const handleClick = isModal
+                const handleClick = onModalClick
+                  ? onModalClick
+                  : isModal
                   ? () => setShowStockModal(true)
                   : mode !== null
                   ? () => setSortMode(sortMode === mode ? "default" : mode)
@@ -1421,91 +1815,6 @@ export default function SuperAdminAgentsContent() {
             </Button>
           </div>
         )}
-
-        {/* Filters */}
-        <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
-          <div className="w-1/4 min-w-[180px] relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search by name or email..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="pl-9 bg-white h-9 text-sm"
-            />
-          </div>
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[150px] h-9 bg-white text-sm">
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="disabled">Disabled</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[150px] h-9 bg-white text-sm">
-              <SelectValue placeholder="All Roles" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Roles</SelectItem>
-              <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
-              <SelectItem value="acsl_agent_manager">ACSL Agent Manager</SelectItem>
-              <SelectItem value="super_admin">Super Admin</SelectItem>
-            </SelectContent>
-          </Select>
-          {/* Date Range Filter */}
-          <div className="flex items-center gap-1.5">
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[140px]"
-              style={{ colorScheme: "light" }}
-            />
-            <span className="text-xs text-gray-400">–</span>
-            <input
-              type="date"
-              value={dateTo}
-              min={dateFrom || undefined}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[140px]"
-              style={{ colorScheme: "light" }}
-            />
-          </div>
-
-          {(search || statusFilter !== "all" || roleFilter !== "acsl_agent" || dateFrom || dateTo) && (
-            <Button
-              onClick={() => { setSearch(""); setStatusFilter("all"); setRoleFilter("acsl_agent"); setDateFrom(""); setDateTo(""); setPage(1); }}
-              size="sm"
-              variant="outline"
-              className="h-9"
-            >
-              <X className="h-4 w-4 mr-1" />Clear
-            </Button>
-          )}
-          <div className="ml-auto flex items-center gap-3">
-            <p className="text-sm text-gray-600">
-              Showing <span className="font-medium">{startItem}–{endItem}</span> of{" "}
-              <span className="font-medium">{totalItems.toLocaleString()}</span> agents
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">per page:</span>
-              <Select value={pageSize.toString()} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
-                <SelectTrigger className="w-[65px] h-7 bg-white text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <p className="text-sm font-bold text-green-500">
-              Total: <span className="text-[#07376a]">{totalItems.toLocaleString()}</span>
-            </p>
-          </div>
-        </div>
 
         {/* Active filter banner */}
         {sortMode !== "default" && (
@@ -1799,6 +2108,13 @@ export default function SuperAdminAgentsContent() {
       />
 
       <StockModal isOpen={showStockModal} onClose={() => setShowStockModal(false)} />
+
+      <ActivePartnersModal
+        isOpen={showActivePartnersModal}
+        onClose={() => setShowActivePartnersModal(false)}
+        partnerIds={activePartnerIdsInRange}
+        dateBadge={dateBadgeLabel}
+      />
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </DashboardLayout>
