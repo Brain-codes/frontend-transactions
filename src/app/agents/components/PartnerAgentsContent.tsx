@@ -13,6 +13,7 @@ import {
 import { AlertCircle, UserPlus, Search, X, Plus, Users, UserCheck, UserX, TrendingUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import adminAgentService from "../../services/adminAgentService.jsx";
+import PageHeader from "../../components/PageHeader";
 import { SalesAgent, AgentCredentials } from "@/types/salesAgent";
 
 import SalesAgentTable from "../../admin/components/agents/SalesAgentTable";
@@ -132,21 +133,22 @@ export default function PartnerAgentsContent() {
   const totalRecords = pagination?.totalItems ?? filteredAgents.length;
 
   return (
-    <DashboardLayout
-      currentRoute="agents"
-      title="Manage Agents"
-      rightButton={
-        <Button
-          size="sm"
-          className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
-          onClick={() => setShowCreateModal(true)}
-        >
-          <Plus className="h-4 w-4" />
-          Add Agent
-        </Button>
-      }
-    >
+    <DashboardLayout currentRoute="agents" title="Agents Manager">
       <div className="p-6 space-y-5">
+        <PageHeader
+          icon={Users}
+          title="Agents Manager"
+          right={
+            <Button
+              size="sm"
+              className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
+              onClick={() => setShowCreateModal(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Create Agent
+            </Button>
+          }
+        />
         {error && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-red-600" />
@@ -155,57 +157,94 @@ export default function PartnerAgentsContent() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg"><Users className="h-5 w-5 text-blue-700" /></div>
-              <div>
-                <p className="text-sm text-blue-600 font-medium">Total Agents</p>
-                <p className="text-xl font-bold text-blue-900">{stats.total}</p>
-                <p className="text-xs text-blue-500">Registered in your org</p>
-              </div>
-            </div>
-          </div>
+        {(() => {
+          const cards = [
+            {
+              gradient: "from-[#194977] to-[#2563EB]",
+              Icon: Users,
+              value: stats.total.toString(),
+              label: "Total Agents",
+              sub: "Registered in your org",
+              clickable: false,
+              filterKey: null as string | null,
+            },
+            {
+              gradient: "from-[#047857] to-[#10B981]",
+              Icon: UserCheck,
+              value: stats.activeCount.toString(),
+              label: "Active (7 days)",
+              sub: activityFilter === "active" ? "Click to clear filter" : "Click to filter",
+              clickable: true,
+              filterKey: "active",
+            },
+            {
+              gradient: "from-red-800 to-red-500",
+              Icon: UserX,
+              value: stats.noSalesCount.toString(),
+              label: "Zero Sales",
+              sub: "Need attention",
+              clickable: false,
+              filterKey: null,
+            },
+            {
+              gradient: "from-[#B45309] to-[#F59E0B]",
+              Icon: TrendingUp,
+              value: stats.totalSold.toLocaleString(),
+              label: "Total Stoves Sold",
+              sub: "Across all agents",
+              clickable: false,
+              filterKey: null,
+            },
+          ] as const;
 
-          <div
-            className={`bg-green-50 border rounded-lg p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all ${activityFilter === "active" ? "border-green-600 shadow-md" : "border-green-200"}`}
-            onClick={() => setActivityFilter((f) => f === "active" ? "all" : "active")}
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg"><UserCheck className="h-5 w-5 text-green-700" /></div>
-              <div>
-                <p className="text-sm text-green-600 font-medium">Active (7 days)</p>
-                <p className="text-xl font-bold text-green-900">{stats.activeCount}</p>
-                <p className="text-xs text-green-500">Click to filter</p>
-              </div>
-            </div>
-            {activityFilter === "active" && (
-              <p className="text-xs font-semibold mt-2 opacity-70 text-center text-green-700">✓ Filter active — click again to clear</p>
-            )}
-          </div>
+          return (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {cards.map(({ gradient, Icon, value, label, sub, clickable, filterKey }) => {
+                const isActive = clickable && filterKey !== null && activityFilter === filterKey;
+                const handleClick = clickable && filterKey !== null
+                  ? () => setActivityFilter((f) => f === filterKey ? "all" : filterKey)
+                  : undefined;
 
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 rounded-lg"><UserX className="h-5 w-5 text-red-700" /></div>
-              <div>
-                <p className="text-sm text-red-600 font-medium">Zero Sales</p>
-                <p className="text-xl font-bold text-red-900">{stats.noSalesCount}</p>
-                <p className="text-xs text-red-500">Need attention</p>
-              </div>
+                return isActive ? (
+                  <div
+                    key={label}
+                    onClick={handleClick}
+                    className={`relative overflow-hidden rounded-lg border-transparent px-4 py-3.5 shadow-md cursor-pointer transition-all bg-gradient-to-br ${gradient} ring-2 ring-white/40`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xl font-bold text-white tracking-tight leading-tight truncate">{value}</p>
+                        <p className="text-[11px] font-semibold text-white/80 mt-0.5">{label}</p>
+                        <p className="text-[10px] text-white/60 mt-0.5 truncate">{sub}</p>
+                      </div>
+                      <div className="rounded-lg p-1.5 bg-white/20 text-white shadow-sm shrink-0">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    key={label}
+                    onClick={handleClick}
+                    className={`relative overflow-hidden rounded-lg border bg-white px-4 py-3.5 shadow-sm transition-all group ${clickable ? "cursor-pointer hover:shadow-md" : ""}`}
+                  >
+                    <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient}`} />
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xl font-bold text-gray-900 tracking-tight leading-tight truncate">{value}</p>
+                        <p className="text-[11px] font-semibold text-gray-500 mt-0.5">{label}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5 truncate">{sub}</p>
+                      </div>
+                      <div className={`rounded-lg p-1.5 bg-gradient-to-br ${gradient} text-white shadow-sm shrink-0`}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
-
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 rounded-lg"><TrendingUp className="h-5 w-5 text-amber-700" /></div>
-              <div>
-                <p className="text-sm text-amber-600 font-medium">Total Stoves Sold</p>
-                <p className="text-xl font-bold text-amber-900">{stats.totalSold.toLocaleString()}</p>
-                <p className="text-xs text-amber-500">Across all agents</p>
-              </div>
-            </div>
-          </div>
-        </div>
+          );
+        })()}
 
         <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
           <div className="w-1/4 min-w-[180px] relative">
@@ -235,6 +274,32 @@ export default function PartnerAgentsContent() {
               <X className="h-4 w-4 mr-1" />Clear
             </Button>
           )}
+
+          <div className="ml-auto flex items-center gap-3">
+            <p className="text-sm text-gray-600">
+              Showing{" "}
+              <span className="font-medium">
+                {totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, totalRecords)}
+              </span>{" "}
+              of <span className="font-medium">{totalRecords}</span> records
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">per page:</span>
+              <Select value={pageSize.toString()} onValueChange={(v) => handlePageSizeChange(Number(v))}>
+                <SelectTrigger className="w-[65px] h-7 bg-white text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-sm font-bold text-green-500">
+              Total Agents: <span className="text-brand">{totalRecords}</span>
+            </p>
+          </div>
         </div>
 
         {agents.length === 0 && !loading ? (
@@ -269,6 +334,7 @@ export default function PartnerAgentsContent() {
             totalRecords={totalRecords}
             onPageChange={setCurrentPage}
             onPageSizeChange={handlePageSizeChange}
+            hidePaginationHeader
           />
         )}
       </div>

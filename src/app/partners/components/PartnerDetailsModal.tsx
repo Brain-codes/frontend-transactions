@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Building2, MapPin, Phone, Mail, User, Calendar, GitBranch } from "lucide-react";
+import { Building2, MapPin, Phone, Mail, User, Calendar, GitBranch, Package, ShoppingCart, Boxes } from "lucide-react";
 
 interface PartnerDetailsModalProps {
   partner: {
@@ -20,6 +20,9 @@ interface PartnerDetailsModalProps {
     contact_phone?: string | null;
     email?: string | null;
     assigned_at: string;
+    total_sales?: number | null;
+    approved_sales?: number | null;
+    pending_sales?: number | null;
   };
   onClose: () => void;
 }
@@ -137,18 +140,32 @@ const PartnerDetailsModal: React.FC<PartnerDetailsModalProps> = ({ partner, onCl
             </div>
           </SectionCard>
 
-          {/* Assignment Info */}
-          {/* <SectionCard title="Assignment Info">
-            <DetailItem
-              label="Assigned At"
-              value={
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3 text-gray-400" />
-                  {formatDate(partner.assigned_at)}
-                </span>
-              }
-            />
-          </SectionCard> */}
+          {/* Stove Statistics */}
+          <SectionCard title="Stove IDs">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="flex flex-col items-center justify-center bg-brand/5 border border-brand/20 rounded-md py-2 px-1">
+                <Package className="h-3.5 w-3.5 text-brand mb-1" />
+                <p className="text-base font-bold text-brand leading-none">
+                  {(partner.total_sales ?? 0).toLocaleString()}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 text-center">Stoves Received</p>
+              </div>
+              <div className="flex flex-col items-center justify-center bg-green-50 border border-green-200 rounded-md py-2 px-1">
+                <ShoppingCart className="h-3.5 w-3.5 text-green-600 mb-1" />
+                <p className="text-base font-bold text-green-700 leading-none">
+                  {(partner.approved_sales ?? 0).toLocaleString()}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 text-center">Stoves Sold</p>
+              </div>
+              <div className="flex flex-col items-center justify-center bg-orange-50 border border-orange-200 rounded-md py-2 px-1">
+                <Boxes className="h-3.5 w-3.5 text-orange-500 mb-1" />
+                <p className="text-base font-bold text-orange-600 leading-none">
+                  {(partner.pending_sales ?? 0).toLocaleString()}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 text-center">Stoves In Stock</p>
+              </div>
+            </div>
+          </SectionCard>
         </div>
 
         <div className="flex justify-end pt-2 border-t border-gray-100">

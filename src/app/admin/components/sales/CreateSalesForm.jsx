@@ -693,6 +693,7 @@ const CreateSalesForm = ({
                 type="date"
                 value={formData.salesDate}
                 onChange={(e) => handleInputChange("salesDate", e.target.value)}
+                max={new Date().toISOString().split("T")[0]}
                 className={errors.salesDate ? "border-red-500" : ""}
               />
             </FormField>

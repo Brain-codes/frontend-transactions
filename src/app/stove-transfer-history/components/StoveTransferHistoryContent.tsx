@@ -201,6 +201,7 @@ export default function StoveTransferHistoryContent() {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [datePreset, setDatePreset] = useState<"today" | "1w" | "1m" | "6m" | "year" | "custom" | "">("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -240,6 +241,28 @@ export default function StoveTransferHistoryContent() {
   useEffect(() => {
     setPage(1);
   }, [search, dateFrom, dateTo, sortOrder, pageSize]);
+
+  const applyPreset = (preset: "today" | "1w" | "1m" | "6m" | "year" | "custom") => {
+    setDatePreset(preset);
+    if (preset === "custom") return;
+    const now = new Date();
+    const to = now.toISOString().slice(0, 10);
+    const from = new Date(now);
+    if (preset === "today") { /* from = today */ }
+    else if (preset === "1w") from.setDate(from.getDate() - 7);
+    else if (preset === "1m") from.setMonth(from.getMonth() - 1);
+    else if (preset === "6m") from.setMonth(from.getMonth() - 6);
+    else if (preset === "year") { from.setMonth(0); from.setDate(1); }
+    setDateFrom(from.toISOString().slice(0, 10));
+    setDateTo(to);
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    setDateFrom("");
+    setDateTo("");
+    setDatePreset("");
+  };
 
   const openModal = (record: TransferRecord) => {
     setSelectedRecord(record);
@@ -286,29 +309,51 @@ export default function StoveTransferHistoryContent() {
               />
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-gray-500 whitespace-nowrap">From:</span>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="bg-white h-9 text-sm w-[140px]"
-              />
-            </div>
+            {/* Date preset dropdown */}
+            <Select
+              value={datePreset}
+              onValueChange={(v) => applyPreset(v as Parameters<typeof applyPreset>[0])}
+            >
+              <SelectTrigger className="w-[140px] h-9 bg-white text-sm">
+                <SelectValue placeholder="Date range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="1w">1 Week</SelectItem>
+                <SelectItem value="1m">1 Month</SelectItem>
+                <SelectItem value="6m">6 Months</SelectItem>
+                <SelectItem value="year">This Year</SelectItem>
+                <SelectItem value="custom">Custom</SelectItem>
+              </SelectContent>
+            </Select>
 
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-gray-500 whitespace-nowrap">To:</span>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="bg-white h-9 text-sm w-[140px]"
-              />
-            </div>
+            {/* Custom date inputs — shown only in custom mode */}
+            {datePreset === "custom" && (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-gray-500 whitespace-nowrap">From:</span>
+                  <Input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="bg-white h-9 text-sm w-[140px]"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-gray-500 whitespace-nowrap">To:</span>
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="bg-white h-9 text-sm w-[140px]"
+                  />
+                </div>
+              </>
+            )}
 
-            {(search || dateFrom || dateTo) && (
+            {(search || dateFrom || dateTo || datePreset) && (
               <Button
-                onClick={() => { setSearch(""); setDateFrom(""); setDateTo(""); }}
+                onClick={clearFilters}
                 size="sm"
                 variant="outline"
                 className="h-9"

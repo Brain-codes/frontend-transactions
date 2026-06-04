@@ -6,6 +6,7 @@ import { deleteAgent } from "./deleteOptions.ts";
 import { setAgentOrganizations, removeAgentOrganization } from "./organizationOptions.ts";
 import { getAgentStates, setAgentStates, removeAgentState } from "./stateOptions.ts";
 import { authenticateSuperAdmin, authenticateReadAccess, authenticateManagerOrAdmin } from "./authenticate.ts";
+import { getKpiStats } from "./kpiStats.ts";
 
 export async function handleRoute(req: Request, supabase: any) {
   const url = new URL(req.url);
@@ -29,6 +30,12 @@ export async function handleRoute(req: Request, supabase: any) {
 
   const authHeader = req.headers.get("Authorization") ?? "";
 
+  // ── GET /super-admin-agents/kpi-stats
+  if (method === "GET" && agentId === "kpi-stats" && !subResource) {
+    await authenticateManagerOrAdmin(supabase, authHeader);
+    return await getKpiStats(supabase, url.searchParams);
+  }
+
   // ── GET /super-admin-agents  (list)
   if (method === "GET" && !agentId) {
     const auth = await authenticateManagerOrAdmin(supabase, authHeader);
@@ -45,7 +52,7 @@ export async function handleRoute(req: Request, supabase: any) {
     if (["acsl_agent", "super_admin_agent"].includes(auth.userRole) && auth.userId !== agentId) {
       throw new Error("Unauthorized: You can only view your own assignments");
     }
-    return await getAgentOrganizations(supabase, agentId);
+    return await getAgentOrganizations(supabase, agentId, url.searchParams);
   }
 
   // ── GET /super-admin-agents/{id}/states

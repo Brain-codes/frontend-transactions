@@ -356,6 +356,9 @@ class AdminSalesService {
   }
 
   // Get sales for financial reports (uses get-sales-advanced with POST body)
+  /**
+   * @param {{ page?: number; limit?: number; search?: string; paymentStatus?: string; dateFrom?: string; dateTo?: string; createdBy?: string; paymentModelId?: string }} [params]
+   */
   async getFinancialReportSales({
     page = 1,
     limit = 500,
@@ -364,6 +367,7 @@ class AdminSalesService {
     dateFrom,
     dateTo,
     createdBy,
+    paymentModelId,
   } = {}) {
     try {
       const body = {
@@ -376,6 +380,7 @@ class AdminSalesService {
         ...(dateFrom ? { dateFrom } : {}),
         ...(dateTo ? { dateTo } : {}),
         ...(createdBy ? { createdBy } : {}),
+        ...(paymentModelId ? { paymentModelId } : {}),
       };
 
       const response = await fetch(

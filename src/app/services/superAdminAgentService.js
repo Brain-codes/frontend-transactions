@@ -47,6 +47,15 @@ class SuperAdminAgentService {
 
   // ─── Super Admin: Manage SAA Users ────────────────────────────────────────
 
+  // KPI stats for the agents manager dashboard
+  async getAgentKpiStats({ dateFrom, dateTo } = {}) {
+    const qs = new URLSearchParams();
+    if (dateFrom) qs.append("date_from", dateFrom);
+    if (dateTo) qs.append("date_to", dateTo);
+    const url = `${API_FUNCTIONS_URL}/super-admin-agents/kpi-stats${qs.toString() ? "?" + qs.toString() : ""}`;
+    return await this.request(url, { method: "GET" });
+  }
+
   // List all super admin agents (pass organization_id to filter by org assignment)
   async getSuperAdminAgents(params = {}) {
     const qs = new URLSearchParams();
@@ -97,11 +106,12 @@ class SuperAdminAgentService {
   // ─── Organization Assignments ──────────────────────────────────────────────
 
   // Get assigned organizations for an agent
-  async getAgentOrganizations(agentId) {
-    return await this.request(
-      `${API_FUNCTIONS_URL}/super-admin-agents/${agentId}/organizations`,
-      { method: "GET" }
-    );
+  async getAgentOrganizations(agentId, { dateFrom, dateTo } = {}) {
+    const qs = new URLSearchParams();
+    if (dateFrom) qs.append("date_from", dateFrom);
+    if (dateTo) qs.append("date_to", dateTo);
+    const url = `${API_FUNCTIONS_URL}/super-admin-agents/${agentId}/organizations${qs.toString() ? "?" + qs.toString() : ""}`;
+    return await this.request(url, { method: "GET" });
   }
 
   // Replace all org assignments for an agent (full replace)
