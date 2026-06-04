@@ -61,7 +61,7 @@ serve(async (req) => {
 
       supabase
         .from("sales")
-        .select("amount, total_paid, state_backup, payment_model_id")
+        .select("amount, total_paid, is_installment, state_backup, payment_model_id")
         .in("organization_id", assignedOrgIds)
         .gte("sales_date", startDate)
         .lt("sales_date", endOfYear),
@@ -69,7 +69,11 @@ serve(async (req) => {
 
     const sales = salesResult.data || [];
     const expectedReceivable = sales.reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const amountReceived = sales.reduce((s, r) => s + (Number(r.total_paid) || 0), 0);
+    // Outright sales are fully paid on the spot; only installment sales use total_paid
+    const amountReceived = sales.reduce((s, r) => {
+      const paid = r.is_installment ? (Number(r.total_paid) || 0) : (Number(r.amount) || 0);
+      return s + paid;
+    }, 0);
 
     // Sales by state
     const stateMap: Record<string, number> = {};

@@ -159,15 +159,45 @@ class SuperAdminAgentService {
   // ─── SAA Portal: Dashboard ────────────────────────────────────────────────
 
   // Get dashboard stats for the logged-in SAA
-  async getDashboardStats({ year } = {}) {
+  async getDashboardStats({ year, date_from, date_to } = {}) {
     return await this.request(
       `${API_FUNCTIONS_URL}/super-admin-agent-dashboard`,
       {
         method: "POST",
         headers: await this.getHeaders(),
-        body: JSON.stringify({ year: year ?? new Date().getFullYear() }),
+        body: JSON.stringify({
+          year: (!date_from && !date_to) ? (year ?? new Date().getFullYear()) : undefined,
+          date_from: date_from || undefined,
+          date_to: date_to || undefined,
+        }),
       }
     );
+  }
+
+  // Get stove IDs across all orgs managed by this agent
+  async getAgentStoveIds({ status, limit = 500, offset = 0 } = {}) {
+    try {
+      const headers = await this.getHeaders();
+      const response = await fetch(`${API_FUNCTIONS_URL}/get-agent-stove-ids`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          ...(status ? { status } : {}),
+          limit,
+          offset,
+        }),
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || `HTTP ${response.status}`);
+      }
+      const result = await response.json();
+      if (!result.success) throw new Error(result.message || "Failed to fetch stove IDs");
+      return { success: true, data: result.data, pagination: result.pagination, totals: result.totals };
+    } catch (error) {
+      console.error("getAgentStoveIds error:", error);
+      return { success: false, data: [], error: error.message };
+    }
   }
 
   // ─── SAA Portal: Sales ────────────────────────────────────────────────────

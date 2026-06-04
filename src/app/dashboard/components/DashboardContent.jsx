@@ -167,6 +167,9 @@ const DashboardContent = ({
   dashboardFilters = {}, onFilterChange = () => {}, onClearFilters = () => {},
   partnersList = [], loadingPartners = false, onPartnerSearch = () => {},
   availableBranches = [],
+  // Partner-specific date range and card interaction
+  dateFrom = null, dateTo = null, onDateFromChange = null, onDateToChange = null,
+  activeCard = null, onCardClick = null,
 }) => {
   const isSuperAdmin = role === "super_admin";
 
@@ -384,6 +387,36 @@ const DashboardContent = ({
                   </Button>
                 )}
               </>
+            )}
+
+            {/* Date range filter for partner / acsl_agent */}
+            {(role === "partner" || role === "acsl_agent") && onDateFromChange && onDateToChange && (
+              <div className="flex items-center gap-1.5">
+                <DatePicker
+                  value={dateFrom || ""}
+                  onChange={(v) => onDateFromChange(v || null)}
+                  placeholder="From date"
+                  className="w-[140px] [&_input]:h-8 [&_input]:text-xs [&_input]:pl-8 [&_svg]:h-3.5 [&_svg]:w-3.5"
+                />
+                <span className="text-xs text-muted-foreground">–</span>
+                <DatePicker
+                  value={dateTo || ""}
+                  onChange={(v) => onDateToChange(v || null)}
+                  placeholder="To date"
+                  className="w-[140px] [&_input]:h-8 [&_input]:text-xs [&_input]:pl-8 [&_svg]:h-3.5 [&_svg]:w-3.5"
+                  min={dateFrom || undefined}
+                />
+                {(dateFrom || dateTo) && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                    onClick={() => { onDateFromChange(null); onDateToChange(null); }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             )}
 
             <span className="text-sm font-medium text-gray-700">Year:</span>
@@ -610,8 +643,32 @@ const DashboardContent = ({
                   const raw = data?.[kpi.key] ?? 0;
                   const display = kpi.currency ? formatCurrency(raw) : raw.toLocaleString();
                   const sub = kpi.sub ?? `FY ${year}`;
-                  return (
-                    <div key={kpi.key} className="relative overflow-hidden rounded-lg border bg-white px-4 py-3 shadow-sm transition-shadow hover:shadow-md">
+                  const isActive = activeCard === kpi.key;
+                  const isClickable = (role === "partner" || role === "acsl_agent") && !!onCardClick && raw > 0;
+                  return isActive ? (
+                    <div
+                      key={kpi.key}
+                      onClick={() => onCardClick(kpi.key)}
+                      className={`relative overflow-hidden rounded-lg border-transparent px-4 py-3 shadow-md cursor-pointer transition-all bg-gradient-to-br ${kpi.gradient} ring-2 ring-white/40`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="mt-0.5 min-w-0 flex-1 pr-2">
+                          <p className="text-2xl font-bold text-white tracking-tight leading-tight break-all">{display}</p>
+                          <p className="text-xs font-semibold text-white/80 mt-0.5">{kpi.label}</p>
+                          <p className="text-xs text-white/60">{sub}</p>
+                        </div>
+                        <div className="rounded-lg p-2 bg-white/20 text-white shadow-sm shrink-0">
+                          <kpi.icon className="h-4 w-4" />
+                        </div>
+                      </div>
+                      <ChevronDown className="absolute bottom-2 right-2 h-3.5 w-3.5 text-white/70" />
+                    </div>
+                  ) : (
+                    <div
+                      key={kpi.key}
+                      onClick={isClickable ? () => onCardClick(kpi.key) : undefined}
+                      className={`relative overflow-hidden rounded-lg border bg-white px-4 py-3 shadow-sm transition-all group ${isClickable ? "cursor-pointer hover:shadow-md" : ""}`}
+                    >
                       <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${kpi.gradient}`} />
                       <div className="flex items-start justify-between">
                         <div className="mt-0.5 min-w-0 flex-1 pr-2">

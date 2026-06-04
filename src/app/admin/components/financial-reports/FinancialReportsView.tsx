@@ -94,6 +94,7 @@ interface FinancialReportsViewProps {
   onExportReady?: (fn: () => void) => void;
   onSelectionChange?: (count: number) => void;
   initialSearchTerm?: string;
+  initialPaymentStatus?: string;
 }
 
 const getAmountPaid = (sale: AdminSales): number =>
@@ -102,13 +103,13 @@ const getAmountPaid = (sale: AdminSales): number =>
 const getAmountOwed = (sale: AdminSales): number =>
   sale.is_installment ? sale.amount - (sale.total_paid ?? 0) : 0;
 
-const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, onEditSale, onDeleteSale, onApproveSale, viewFrom = "admin", selectedYear: externalSelectedYear, onYearChange: externalOnYearChange, availableYears: externalAvailableYears, onExportReady, onSelectionChange, initialSearchTerm }) => {
+const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, onEditSale, onDeleteSale, onApproveSale, viewFrom = "admin", selectedYear: externalSelectedYear, onYearChange: externalOnYearChange, availableYears: externalAvailableYears, onExportReady, onSelectionChange, initialSearchTerm, initialPaymentStatus }) => {
   const [allSales, setAllSales] = useState<AdminSales[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm ?? "");
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState("all");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState(initialPaymentStatus ?? "all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
