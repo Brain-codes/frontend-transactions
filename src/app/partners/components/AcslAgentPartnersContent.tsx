@@ -30,6 +30,9 @@ interface AssignedOrg {
   email?: string | null;
   assignment_id: string;
   assigned_at: string;
+  total_sales?: number | null;
+  approved_sales?: number | null;
+  pending_sales?: number | null;
 }
 
 export default function AcslAgentPartnersContent() {

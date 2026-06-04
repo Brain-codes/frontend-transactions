@@ -48,6 +48,7 @@ interface SalesAgentTableProps {
   totalRecords: number;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
+  hidePaginationHeader?: boolean;
 }
 
 const formatRelativeTime = (dateString: string | null | undefined): string => {
@@ -96,6 +97,7 @@ const SalesAgentTable: React.FC<SalesAgentTableProps> = ({
   totalRecords,
   onPageChange,
   onPageSizeChange,
+  hidePaginationHeader = false,
 }) => {
   const totalPages = Math.ceil(totalRecords / pageSize);
   const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
@@ -120,7 +122,7 @@ const SalesAgentTable: React.FC<SalesAgentTableProps> = ({
   return (
     <div className="space-y-0">
       {/* Pagination header */}
-      <div className="bg-blue-50 rounded-t-lg px-4 py-2 flex items-center justify-between">
+      {!hidePaginationHeader && <div className="bg-blue-50 rounded-t-lg px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <p className="text-sm text-gray-600">
             Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
@@ -143,7 +145,7 @@ const SalesAgentTable: React.FC<SalesAgentTableProps> = ({
         <p className="text-sm font-bold text-green-500">
           Total Agents: <span className="text-brand">{totalRecords}</span>
         </p>
-      </div>
+      </div>}
 
       {/* Table */}
       <div className="bg-white border-x border-gray-200 overflow-x-auto relative">

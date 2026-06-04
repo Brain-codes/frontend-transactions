@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { AdminSales } from "@/types/adminSales";
 import FinancialReportRowActions from "./FinancialReportRowActions";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface FinancialReportsTableProps {
   data: AdminSales[];
@@ -125,69 +126,69 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
       {/* Table */}
       <div className="bg-white border-x border-gray-200 overflow-x-auto mt-5">
         <Table>
-          <TableHeader>
-            <TableRow className="bg-brand hover:bg-brand">
+          <TableHeader className="bg-brand">
+            <TableRow className="hover:bg-brand">
               {onToggleSelect && (
-                <TableHead className="w-8 text-white">
-                  <input
-                    type="checkbox"
-                    ref={(el) => { if (el) el.indeterminate = somePageSelected; }}
+                <TableHead className="py-4 w-12 text-white">
+                  <Checkbox
+                    ref={(el: HTMLInputElement | null) => { if (el) el.indeterminate = somePageSelected; }}
                     checked={allPageSelected}
-                    onChange={onToggleSelectAll}
-                    className="h-4 w-4 rounded border-white cursor-pointer accent-white"
+                    onCheckedChange={onToggleSelectAll}
+                    className="border-white data-[state=checked]:bg-white data-[state=checked]:text-brand"
                   />
                 </TableHead>
               )}
-              <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Transaction ID</TableHead>
-              <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Customer</TableHead>
-              <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone</TableHead>
-              <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stove S/N</TableHead>
-              <TableHead className="text-white font-semibold text-xs whitespace-nowrap">State</TableHead>
+              <TableHead className="text-white font-semibold py-4 whitespace-nowrap">Transaction ID</TableHead>
+              <TableHead className="text-white font-semibold py-4 whitespace-nowrap">Customer</TableHead>
+              <TableHead className="text-white font-semibold py-4 whitespace-nowrap">Phone</TableHead>
+              <TableHead className="text-white font-semibold py-4 whitespace-nowrap">Stove S/N</TableHead>
+              <TableHead className="text-white font-semibold py-4 whitespace-nowrap">State</TableHead>
               <TableHead
-                className="text-white font-semibold text-xs whitespace-nowrap cursor-pointer select-none"
+                className="text-white font-semibold py-4 whitespace-nowrap cursor-pointer select-none"
                 onClick={onToggleSort}
               >
                 <div className="flex items-center gap-1">
                   Sales Date <ArrowUpDown className="h-3 w-3" />
                 </div>
               </TableHead>
-              <TableHead className="text-white font-semibold text-xs text-center whitespace-nowrap">Payment Status</TableHead>
+              <TableHead className="text-white font-semibold py-4 text-center whitespace-nowrap">Payment Status</TableHead>
               {viewFrom === "admin" && (
-                <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Sales Rep</TableHead>
+                <TableHead className="text-white font-semibold py-4 whitespace-nowrap">Sales Rep</TableHead>
               )}
               {viewFrom === "superAdmin" && (
-                <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner</TableHead>
+                <TableHead className="text-white font-semibold py-4 whitespace-nowrap">Partner</TableHead>
               )}
-              <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Payment Model</TableHead>
-              <TableHead className="text-white font-semibold text-xs text-right whitespace-nowrap">Expected Amount</TableHead>
-              <TableHead className="text-white font-semibold text-xs text-right whitespace-nowrap">Amount Paid</TableHead>
-              <TableHead className="text-white font-semibold text-xs text-right whitespace-nowrap">Amount Owed</TableHead>
-              <TableHead className="text-white font-semibold text-xs text-center whitespace-nowrap">Action</TableHead>
+              <TableHead className="text-white font-semibold py-4 whitespace-nowrap">Payment Model</TableHead>
+              <TableHead className="text-white font-semibold py-4 text-right whitespace-nowrap">Expected Amount</TableHead>
+              <TableHead className="text-white font-semibold py-4 text-right whitespace-nowrap">Amount Paid</TableHead>
+              <TableHead className="text-white font-semibold py-4 text-right whitespace-nowrap">Amount Owed</TableHead>
+              <TableHead className="text-white font-semibold py-4 text-center whitespace-nowrap">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className={loading ? "opacity-40" : ""}>
             {data.map((sale, idx) => (
-              <TableRow key={sale.id} className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} ${selectedIds?.has(sale.id) ? "ring-1 ring-inset ring-brand/40 bg-blue-50" : ""}`}>
+              <TableRow
+                key={sale.id}
+                className={`${idx % 2 === 0 ? "bg-white" : "bg-brand-light"} hover:bg-gray-50 ${selectedIds?.has(sale.id) ? "ring-1 ring-inset ring-brand/40" : ""}`}
+              >
                 {onToggleSelect && (
-                  <TableCell className="w-8">
-                    <input
-                      type="checkbox"
+                  <TableCell className="w-12">
+                    <Checkbox
                       checked={selectedIds?.has(sale.id) ?? false}
-                      onChange={() => onToggleSelect(sale.id)}
+                      onCheckedChange={() => onToggleSelect(sale.id)}
                       onClick={(e) => e.stopPropagation()}
-                      className="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand cursor-pointer"
                     />
                   </TableCell>
                 )}
-                <TableCell className="font-medium text-xs">{sale.transaction_id || "N/A"}</TableCell>
-                <TableCell className="text-xs">{sale.end_user_name || "N/A"}</TableCell>
-                <TableCell className="text-xs">{sale.phone || "N/A"}</TableCell>
-                <TableCell className="text-xs">{sale.stove_serial_no || "N/A"}</TableCell>
-                <TableCell className="text-xs">{sale.state_backup || "N/A"}</TableCell>
-                <TableCell className="text-xs">{formatDate(sale.sales_date || sale.created_at)}</TableCell>
+                <TableCell className="font-medium">{sale.transaction_id || "N/A"}</TableCell>
+                <TableCell>{sale.end_user_name || "N/A"}</TableCell>
+                <TableCell>{sale.phone || "N/A"}</TableCell>
+                <TableCell>{sale.stove_serial_no || "N/A"}</TableCell>
+                <TableCell>{sale.state_backup || "N/A"}</TableCell>
+                <TableCell>{formatDate(sale.sales_date || sale.created_at)}</TableCell>
                 <TableCell className="text-center">{getStatusBadge(sale)}</TableCell>
                 {viewFrom === "admin" && (
-                  <TableCell className="text-xs">
+                  <TableCell>
                     {sale.creator
                       ? sale.creator.role === "agent"
                         ? sale.creator.full_name
@@ -196,22 +197,22 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                   </TableCell>
                 )}
                 {viewFrom === "superAdmin" && (
-                  <TableCell className="text-xs">
+                  <TableCell>
                     {sale.organizations?.partner_name || sale.partner_name || "N/A"}
                   </TableCell>
                 )}
-                <TableCell className="text-xs">
+                <TableCell>
                   {sale.is_installment
                     ? (sale.payment_model?.name || "Installment")
                     : "Full Payment"}
                 </TableCell>
-                <TableCell className="text-right font-bold text-xs">
+                <TableCell className="text-right font-bold">
                   {formatCurrency(sale.amount ?? 0)}
                 </TableCell>
-                <TableCell className="text-right text-green-700 font-medium text-xs">
+                <TableCell className="text-right text-green-700 font-medium">
                   {formatCurrency(getAmountPaid(sale))}
                 </TableCell>
-                <TableCell className="text-right text-red-700 font-medium text-xs">
+                <TableCell className="text-right text-red-700 font-medium">
                   {formatCurrency(getAmountOwed(sale))}
                 </TableCell>
                 <TableCell className="text-center">

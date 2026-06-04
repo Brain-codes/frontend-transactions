@@ -57,6 +57,9 @@ import {
   ChevronUp,
   TrendingUp,
   Package,
+  Boxes,
+  Activity,
+  Download,
 } from "lucide-react";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import organizationsService from "../../services/organizationsService";
@@ -83,6 +86,8 @@ interface AcslAgent {
   assigned_organizations_count: number;
   assigned_states_count: number;
   total_partners_count: number;
+  assigned_states?: string[];
+  stove_summary?: { received: number; sold: number; available: number };
 }
 
 interface PartnerOrg {
@@ -380,9 +385,50 @@ function AssignPartnerModal({
                   })}
                 </div>
               )}
-                                      <span className="text-[10px] font-semibold leading-tight truncate w-full text-[#8c0000]">
-                                        Click to select state(s)
-                                      </span>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] font-semibold leading-tight text-[#8c0000]">
+                                  Click to select state(s)
+                                </span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newColorMap = { ...stateColorMap };
+                                      const usedIndices = new Set(Object.values(newColorMap));
+                                      let nextIdx = 0;
+                                      availableStates.filter(s => !selectedStates.has(s)).forEach(s => {
+                                        while (usedIndices.has(nextIdx)) nextIdx++;
+                                        newColorMap[s] = nextIdx;
+                                        usedIndices.add(nextIdx++);
+                                      });
+                                      setStateColorMap(newColorMap);
+                                      setSelectedStates(new Set(availableStates));
+                                      setSelectedDirectOrgIds(prev => {
+                                        const next = new Set(prev);
+                                        allOrgs.forEach(o => { if (o.state && availableStates.includes(o.state)) next.add(o.id); });
+                                        return next;
+                                      });
+                                    }}
+                                    className="text-[10px] font-semibold px-2 py-0.5 rounded border border-[#07376a]/40 bg-[#07376a]/10 text-[#07376a] hover:bg-[#07376a]/20 transition-colors"
+                                  >
+                                    Assign All
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedStates(new Set());
+                                      setSelectedDirectOrgIds(prev => {
+                                        const next = new Set(prev);
+                                        allOrgs.forEach(o => { if (o.state) next.delete(o.id); });
+                                        return next;
+                                      });
+                                    }}
+                                    className="text-[10px] font-semibold px-2 py-0.5 rounded border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
+                                  >
+                                    Unassign All
+                                  </button>
+                                </div>
+                              </div>
               <div className="relative">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                 <Input
@@ -887,6 +933,175 @@ function AgentStatesModal({
 }
 
 
+// ── Stock Modal ────────────────────────────────────────────────────────────────
+
+function StockModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const { supabase } = useAuth();
+  const PAGE_SIZE = 20;
+  const [stoves, setStoves] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setSearch(""); setPage(1); setStoves([]);
+    setLoading(true);
+    supabase
+      .from("stove_ids")
+      .select("id, stove_id, status, organization_id, organizations(partner_name, state)")
+      .eq("status", "available")
+      .order("stove_id", { ascending: true })
+      .then(({ data }: { data: any[] | null }) => setStoves(data || []))
+      .finally(() => setLoading(false));
+  }, [isOpen, supabase]);
+
+  useEffect(() => { setPage(1); }, [search]);
+
+  const filtered = stoves.filter((s) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      s.stove_id?.toLowerCase().includes(q) ||
+      (s.organizations as any)?.partner_name?.toLowerCase().includes(q) ||
+      (s.organizations as any)?.state?.toLowerCase().includes(q)
+    );
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const exportCSV = () => {
+    const rows = [
+      ["#", "Stove ID", "Partner", "State"],
+      ...filtered.map((s, i) => [
+        i + 1,
+        s.stove_id ?? "",
+        (s.organizations as any)?.partner_name ?? "—",
+        (s.organizations as any)?.state ?? "—",
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "stoves_in_stock.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportPDF = () => {
+    const win = window.open("", "_blank");
+    if (!win) return;
+    const rows = filtered
+      .map((s, i) => `<tr><td>${i + 1}</td><td>${s.stove_id ?? ""}</td><td>${(s.organizations as any)?.partner_name ?? "—"}</td><td>${(s.organizations as any)?.state ?? "—"}</td></tr>`)
+      .join("");
+    win.document.write(`<html><head><title>Stoves in Stock</title><style>
+      body{font-family:sans-serif;font-size:12px}
+      table{width:100%;border-collapse:collapse}
+      th,td{border:1px solid #ccc;padding:5px 8px;text-align:left}
+      th{background:#07376a;color:white}
+      tr:nth-child(even){background:#f0f5ff}
+      @media print{button{display:none}}
+    </style></head><body>
+    <h2 style="margin-bottom:8px">Stoves in Stock (${filtered.length})</h2>
+    <table><thead><tr><th>#</th><th>Stove ID</th><th>Partner</th><th>State</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <script>window.onload=function(){window.print()}</script>
+    </body></html>`);
+    win.document.close();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+        <DialogHeader className="px-5 py-3 bg-gradient-to-r from-primary/5 to-primary/10 border-b shrink-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle className="text-base font-bold text-foreground">Stoves in Stock</DialogTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {loading ? "Loading…" : (
+                  <span className="font-semibold text-primary">{stoves.length.toLocaleString()} stove{stoves.length !== 1 ? "s" : ""}</span>
+                )} currently available
+              </p>
+            </div>
+            <div className="flex gap-1.5">
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={exportCSV} disabled={loading || filtered.length === 0}>
+                <Download className="h-3 w-3 mr-1" />CSV
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={exportPDF} disabled={loading || filtered.length === 0}>
+                <Download className="h-3 w-3 mr-1" />PDF
+              </Button>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="px-5 py-2.5 border-b shrink-0">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search by stove ID, partner or state..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 h-8 text-xs bg-background"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-12">
+              <Boxes className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">{search ? "No stoves match your search." : "No stoves currently in stock."}</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-[#07376a] hover:bg-[#07376a]">
+                    <TableHead className="text-white font-semibold text-xs w-10">#</TableHead>
+                    <TableHead className="text-white font-semibold text-xs">Stove ID</TableHead>
+                    <TableHead className="text-white font-semibold text-xs">Partner</TableHead>
+                    <TableHead className="text-white font-semibold text-xs">State</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginated.map((s, idx) => (
+                    <TableRow key={s.id} className={idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"}>
+                      <TableCell className="text-xs text-gray-400">{(safePage - 1) * PAGE_SIZE + idx + 1}</TableCell>
+                      <TableCell className="text-xs font-mono font-semibold text-gray-900">{s.stove_id}</TableCell>
+                      <TableCell className="text-xs text-gray-700">{(s.organizations as any)?.partner_name || "—"}</TableCell>
+                      <TableCell className="text-xs text-gray-600">{(s.organizations as any)?.state || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+
+        {!loading && filtered.length > PAGE_SIZE && (
+          <div className="border-t border-gray-200 px-4 py-2.5 flex items-center justify-between bg-white shrink-0">
+            <p className="text-xs text-gray-500">
+              {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length.toLocaleString()}
+            </p>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => setPage(1)} disabled={safePage === 1}><ChevronsLeft className="h-3.5 w-3.5" /></Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}><ChevronLeft className="h-3.5 w-3.5 mr-0.5" />Prev</Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}>Next<ChevronRight className="h-3.5 w-3.5 ml-0.5" /></Button>
+              <Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => setPage(totalPages)} disabled={safePage >= totalPages}><ChevronsRight className="h-3.5 w-3.5" /></Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 interface PaginationInfo {
   currentPage: number;
   totalPages: number;
@@ -904,8 +1119,17 @@ export default function SuperAdminAgentsContent() {
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [performingAgentsCount, setPerformingAgentsCount] = useState(0);
-  const [loadingStats, setLoadingStats] = useState(false);
+  const [kpiStats, setKpiStats] = useState({
+    totalSoldByAgents: 0,
+    totalActiveAgents: 0,
+    mostActiveState: null as string | null,
+    mostActiveStateSales: 0,
+    totalActivePartners: 0,
+    stovesInStock: 0,
+  });
+  const [loadingKpi, setLoadingKpi] = useState(false);
+  const [activeAgentIdsInRange, setActiveAgentIdsInRange] = useState<Set<string>>(new Set());
+  const [showStockModal, setShowStockModal] = useState(false);
   const [agents, setAgents] = useState<AcslAgent[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -926,10 +1150,6 @@ export default function SuperAdminAgentsContent() {
 
   const [sortMode, setSortMode] = useState("default");
 
-  type AgentSummary = { states: string[]; received: number; sold: number; available: number };
-  const [agentSummaryData, setAgentSummaryData] = useState<Record<string, AgentSummary>>({});
-  const loadingAgentSummaryRef = useRef(new Set<string>());
-
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchAgents = useCallback(async () => {
     setLoading(true);
@@ -939,6 +1159,8 @@ export default function SuperAdminAgentsContent() {
       if (search.trim()) params.search = search.trim();
       if (statusFilter !== "all") params.status = statusFilter;
       if (roleFilter !== "all") params.role = roleFilter;
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
       const result = await superAdminAgentService.getSuperAdminAgents(params);
       setAgents(result.data || []);
       setPagination(result.pagination || null);
@@ -947,60 +1169,37 @@ export default function SuperAdminAgentsContent() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, statusFilter, roleFilter]);
+  }, [page, pageSize, search, statusFilter, roleFilter, dateFrom, dateTo]);
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
-  useEffect(() => { setPage(1); }, [search, statusFilter, roleFilter]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, roleFilter, dateFrom, dateTo]);
 
-  const loadAgentSummary = useCallback((agent: AcslAgent) => {
-    if (loadingAgentSummaryRef.current.has(agent.id)) return;
-    loadingAgentSummaryRef.current.add(agent.id);
-    superAdminAgentService.getAgentOrganizations(agent.id)
-      .then((res) => {
-        const orgs: any[] = res.data || [];
-        const states: string[] = ((res.assigned_states || []) as string[]).sort();
-        const received = orgs.reduce((s: number, o: any) => s + (o.total_sales ?? 0), 0);
-        const sold = res.agent_sold_count ?? orgs.reduce((s: number, o: any) => s + (o.approved_sales ?? 0), 0);
-        const available = orgs.reduce((s: number, o: any) => s + (o.pending_sales ?? 0), 0);
-        setAgentSummaryData((prev) => ({ ...prev, [agent.id]: { states, received, sold, available } }));
-      })
-      .catch(() => {
-        setAgentSummaryData((prev) => ({ ...prev, [agent.id]: { states: [], received: 0, sold: 0, available: 0 } }));
-      })
-      .finally(() => { loadingAgentSummaryRef.current.delete(agent.id); });
-  }, []);
 
-  useEffect(() => {
-    agents.forEach((agent) => {
-      if (agentSummaryData[agent.id] === undefined) loadAgentSummary(agent);
-    });
-  }, [agents]);
-
-  const fetchAgentStats = useCallback(async () => {
-    setLoadingStats(true);
+  const fetchKpiStats = useCallback(async () => {
+    setLoadingKpi(true);
     try {
-      const now = new Date();
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        .toISOString().split("T")[0];
-      const from = dateFrom || thirtyDaysAgo;
-      const to = dateTo || now.toISOString().split("T")[0];
-      const { data, error } = await supabase
-        .from("sales")
-        .select("created_by")
-        .eq("is_archived", false)
-        .gte("sales_date", from)
-        .lte("sales_date", to);
-      if (error) throw error;
-      const unique = new Set((data || []).map((s: any) => s.created_by));
-      setPerformingAgentsCount(unique.size);
+      const result = await superAdminAgentService.getAgentKpiStats({
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      });
+      const d = result.data;
+      setKpiStats({
+        totalSoldByAgents: d.totalSoldByAgents ?? 0,
+        totalActiveAgents: d.totalActiveAgents ?? 0,
+        mostActiveState: d.mostActiveState ?? null,
+        mostActiveStateSales: d.mostActiveStateSales ?? 0,
+        totalActivePartners: d.totalActivePartners ?? 0,
+        stovesInStock: d.stovesInStock ?? 0,
+      });
+      setActiveAgentIdsInRange(new Set<string>(d.activeAgentIds ?? []));
     } catch (err) {
-      console.error("Agent stats error:", err);
+      console.error("KPI stats error:", err);
     } finally {
-      setLoadingStats(false);
+      setLoadingKpi(false);
     }
-  }, [dateFrom, dateTo, supabase]);
+  }, [dateFrom, dateTo]);
 
-  useEffect(() => { fetchAgentStats(); }, [fetchAgentStats]);
+  useEffect(() => { fetchKpiStats(); }, [fetchKpiStats]);
 
 
   // ── Actions ────────────────────────────────────────────────────────────────
@@ -1032,19 +1231,33 @@ export default function SuperAdminAgentsContent() {
     return pages;
   };
 
-  const allSummaries = Object.values(agentSummaryData);
-  const totalSoldByAgents = allSummaries.reduce((sum, s) => sum + (s.sold ?? 0), 0);
-  const totalReceivedByAgents = allSummaries.reduce((sum, s) => sum + (s.received ?? 0), 0);
-  const topSoldAgent = agents.reduce<AcslAgent | null>((best, a) => {
-    const sold = agentSummaryData[a.id]?.sold ?? 0;
-    const bestSold = best ? (agentSummaryData[best.id]?.sold ?? 0) : -1;
-    return sold > bestSold ? a : best;
-  }, null);
-  const topReceivedAgent = agents.reduce<AcslAgent | null>((best, a) => {
-    const received = agentSummaryData[a.id]?.received ?? 0;
-    const bestReceived = best ? (agentSummaryData[best.id]?.received ?? 0) : -1;
-    return received > bestReceived ? a : best;
-  }, null);
+  const maxReceived = agents.reduce((max, a) => Math.max(max, a.stove_summary?.received ?? 0), 0);
+  const topReceivedAgents = agents.filter((a) => maxReceived > 0 && (a.stove_summary?.received ?? 0) === maxReceived);
+
+  const formatTopNames = (list: AcslAgent[]) => {
+    if (list.length === 0) return null;
+    return list.map((a) => a.full_name).join(" · ");
+  };
+
+  const sortedAgents = useMemo(() => {
+    const list = [...agents];
+    if (sortMode === "most_received") {
+      return list.sort((a, b) => (b.stove_summary?.received ?? 0) - (a.stove_summary?.received ?? 0));
+    }
+    if (sortMode === "most_sold") {
+      return list.sort((a, b) => (b.stove_summary?.sold ?? 0) - (a.stove_summary?.sold ?? 0));
+    }
+    if (sortMode === "active_agents") {
+      return list.filter((a) => activeAgentIdsInRange.has(a.id));
+    }
+    if (sortMode === "most_active_state" && kpiStats.mostActiveState) {
+      return list.filter((a) => a.assigned_states?.includes(kpiStats.mostActiveState!));
+    }
+    if (sortMode === "active_partners") {
+      return list.sort((a, b) => (b.total_partners_count ?? 0) - (a.total_partners_count ?? 0));
+    }
+    return list;
+  }, [agents, sortMode, activeAgentIdsInRange, kpiStats.mostActiveState]);
 
   return (
     <DashboardLayout currentRoute="agents" title="Agent Manager">
@@ -1065,100 +1278,139 @@ export default function SuperAdminAgentsContent() {
           }
         />
 
-        {/* KPI Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
+        {/* KPI Stat Cards — 6-card grid */}
+        {(() => {
+          const fmt = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+          // dateBadge: always shows something — for cards that always have date context
+          const dateBadge = (dateFrom || dateTo)
+            ? `${dateFrom ? fmt(dateFrom) : "…"} – ${dateTo ? fmt(dateTo) : "…"}`
+            : new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+          // explicitDateBadge: only shows when a date is explicitly set — for cards that are all-time by default
+          const explicitDateBadge = (dateFrom || dateTo) ? dateBadge : undefined;
+
+          const cards = [
             {
               gradient: "from-[#B45309] to-[#F59E0B]",
               Icon: Package,
-              value: totalReceivedByAgents > 0 ? totalReceivedByAgents.toLocaleString() : "—",
+              value: maxReceived > 0 ? maxReceived.toLocaleString() : "—",
               label: "Most Stoves Collected",
-              sub: topReceivedAgent ? topReceivedAgent.full_name : "By agent · Highest first",
-              subBadge: undefined as string | undefined,
-              onClick: () => setSortMode("most_received"),
-              active: sortMode === "most_received",
+              sub: formatTopNames(topReceivedAgents) ?? "By agent · Highest first",
+              badge: undefined as string | undefined,
+              mode: "most_received",
+              isModal: false,
             },
             {
               gradient: "from-[#194977] to-[#2563EB]",
               Icon: TrendingUp,
-              value: totalSoldByAgents > 0 ? totalSoldByAgents.toLocaleString() : "—",
-              label: "Most Active Agent",
-              sub: topSoldAgent ? topSoldAgent.full_name : "By stoves sold · Highest first",
-              subBadge: undefined as string | undefined,
-              onClick: () => setSortMode("most_sold"),
-              active: sortMode === "most_sold",
+              value: loadingKpi ? "—" : kpiStats.totalSoldByAgents.toLocaleString(),
+              label: "Total Stoves Sold (Agents)",
+              sub: "All agents combined",
+              badge: dateBadge,
+              mode: "most_sold",
+              isModal: false,
             },
             {
               gradient: "from-[#047857] to-[#10B981]",
-              Icon: TrendingUp,
-              value: loadingStats ? "—" : performingAgentsCount.toLocaleString(),
-              label: "Top Performing Agents",
-              sub: "with sales",
-              subBadge: (() => {
-                if (dateFrom && dateTo) {
-                  const fmt = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-                  return `${fmt(dateFrom)} – ${fmt(dateTo)}`;
-                }
-                return new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-              })(),
-              onClick: () => {},
-              active: false,
+              Icon: Activity,
+              value: loadingKpi ? "—" : kpiStats.totalActiveAgents.toLocaleString(),
+              label: "Total Active Agents",
+              sub: "Agents with sales",
+              badge: dateBadge,
+              mode: "active_agents",
+              isModal: false,
             },
-          ].map(({ gradient, Icon, value, label, sub, subBadge, onClick, active }) =>
-            active ? (
-              <div
-                key={label}
-                onClick={onClick}
-                className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md cursor-pointer transition-all bg-gradient-to-br ${gradient}`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="min-w-0 flex-1 pr-3">
-                    <p className="text-2xl font-bold text-white tracking-tight leading-tight">{value}</p>
-                    <p className="text-xs font-semibold text-white/80 mt-1">{label}</p>
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                      <p className="text-xs text-white/60 mt-0.5 w-full">{sub}</p>
+            {
+              gradient: "from-[#0e7490] to-[#06b6d4]",
+              Icon: MapPin,
+              value: loadingKpi ? "—" : (kpiStats.mostActiveState ?? "—"),
+              label: "Most Active State",
+              sub: kpiStats.mostActiveStateSales > 0 ? `${kpiStats.mostActiveStateSales} sale${kpiStats.mostActiveStateSales !== 1 ? "s" : ""} this period` : "No sales yet",
+              badge: dateBadge,
+              mode: "most_active_state",
+              isModal: false,
+            },
+            {
+              gradient: "from-[#6d28d9] to-[#8b5cf6]",
+              Icon: Building2,
+              value: loadingKpi ? "—" : kpiStats.totalActivePartners.toLocaleString(),
+              label: "Total Active Partners",
+              sub: "Partners with sales",
+              badge: dateBadge,
+              mode: "active_partners",
+              isModal: false,
+            },
+            {
+              gradient: "from-[#334155] to-[#64748b]",
+              Icon: Boxes,
+              value: loadingKpi ? "—" : kpiStats.stovesInStock.toLocaleString(),
+              label: "Stoves in Stock",
+              sub: (dateFrom || dateTo) ? "Received in selected period" : "Click to view all stove IDs",
+              badge: explicitDateBadge,
+              mode: null,
+              isModal: true,
+            },
+          ] as const;
+
+          return (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {cards.map(({ gradient, Icon, value, label, sub, badge, mode, isModal }) => {
+                const active = !isModal && mode !== null && sortMode === mode;
+                const handleClick = isModal
+                  ? () => setShowStockModal(true)
+                  : mode !== null
+                  ? () => setSortMode(sortMode === mode ? "default" : mode)
+                  : undefined;
+
+                return active ? (
+                  <div
+                    key={label}
+                    onClick={handleClick}
+                    className={`relative overflow-hidden rounded-lg border-transparent px-4 py-3.5 shadow-md cursor-pointer transition-all bg-gradient-to-br ${gradient} ring-2 ring-white/40`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xl font-bold text-white tracking-tight leading-tight truncate">{value}</p>
+                        <p className="text-[11px] font-semibold text-white/80 mt-0.5">{label}</p>
+                        <p className="text-[10px] text-white/60 mt-0.5 truncate">{sub}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <div className="rounded-lg p-1.5 bg-white/20 text-white shadow-sm">
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        {badge && (
+                          <span className="text-[9px] bg-white/20 text-white/90 px-1.5 py-0.5 rounded whitespace-nowrap">{badge}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    <div className="rounded-lg p-2 bg-white/20 text-white shadow-sm w-fit">
-                      <Icon className="h-4 w-4" />
+                ) : (
+                  <div
+                    key={label}
+                    onClick={handleClick}
+                    className="relative overflow-hidden rounded-lg border bg-white px-4 py-3.5 shadow-sm cursor-pointer transition-all hover:shadow-md group"
+                  >
+                    <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient}`} />
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xl font-bold text-gray-900 tracking-tight leading-tight truncate">{value}</p>
+                        <p className="text-[11px] font-semibold text-gray-500 mt-0.5">{label}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5 truncate">{sub}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <div className={`rounded-lg p-1.5 bg-gradient-to-br ${gradient} text-white shadow-sm`}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        {badge && (
+                          <span className="text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded whitespace-nowrap">{badge}</span>
+                        )}
+                      </div>
                     </div>
-                    {subBadge && (
-                      <span className="text-[10px] bg-white/20 text-white/90 px-1.5 py-0.5 rounded whitespace-nowrap">
-                        {subBadge}
-                      </span>
-                    )}
                   </div>
-                </div>
-              </div>
-            ) : (
-              <div
-                key={label}
-                onClick={onClick}
-                className="relative overflow-hidden rounded-lg border bg-white px-4 py-4 shadow-sm cursor-pointer transition-all hover:shadow-md"
-              >
-                <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient}`} />
-                <div className="flex items-start justify-between">
-                  <div className="min-w-0 flex-1 pr-3">
-                    <p className="text-2xl font-bold text-gray-900 tracking-tight leading-tight">{value}</p>
-                    <p className="text-xs font-semibold text-gray-500 mt-1">{label}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    <div className={`rounded-lg p-2 bg-gradient-to-br ${gradient} text-white shadow-sm w-fit`}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    {subBadge && (
-                      <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded whitespace-nowrap">
-                        {subBadge}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          )}
-        </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* Error */}
         {error && (
@@ -1255,6 +1507,22 @@ export default function SuperAdminAgentsContent() {
           </div>
         </div>
 
+        {/* Active filter banner */}
+        {sortMode !== "default" && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 border border-primary/20 rounded-lg text-xs text-primary">
+            <span className="font-semibold">
+              {sortMode === "most_received" && "Sorted by: Most Stoves Collected"}
+              {sortMode === "most_sold" && "Sorted by: Total Stoves Sold"}
+              {sortMode === "active_agents" && `Filtered to: Active Agents (${sortedAgents.length} of ${agents.length})`}
+              {sortMode === "most_active_state" && `Filtered to: Agents in ${kpiStats.mostActiveState ?? "most active state"}`}
+              {sortMode === "active_partners" && "Sorted by: Most Partners"}
+            </span>
+            <button onClick={() => setSortMode("default")} className="ml-auto flex items-center gap-1 hover:text-primary/70">
+              <X className="h-3 w-3" />Clear
+            </button>
+          </div>
+        )}
+
         {/* Table */}
         <div className="space-y-0">
           <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto relative">
@@ -1269,22 +1537,28 @@ export default function SuperAdminAgentsContent() {
                   <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Full Name</TableHead>
                   <TableHead className="text-white font-semibold text-xs whitespace-nowrap">States Assigned</TableHead>
                   <TableHead className="text-white font-semibold text-xs whitespace-nowrap text-center">Partners Assigned</TableHead>
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stoves (Assigned / Collected / Unattended)</TableHead>
+                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stoves (Assigned / Collected / In Stock)</TableHead>
                   <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Status</TableHead>
                   <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className={loading ? "opacity-40" : ""}>
-                {!loading && agents.length === 0 ? (
+                {!loading && sortedAgents.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-12">
                       <Users className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-500 font-medium">No agents found</p>
-                      <p className="text-gray-400 text-sm">Click "Create Agent" to add one.</p>
+                      <p className="text-gray-500 font-medium">
+                        {sortMode !== "default" ? "No agents match the active filter" : "No agents found"}
+                      </p>
+                      {sortMode !== "default" ? (
+                        <button onClick={() => setSortMode("default")} className="text-primary text-sm underline mt-1">Clear filter</button>
+                      ) : (
+                        <p className="text-gray-400 text-sm">Click "Create Agent" to add one.</p>
+                      )}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  agents.map((agent, idx) => (
+                  sortedAgents.map((agent, idx) => (
                     <TableRow
                       key={agent.id}
                       className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}
@@ -1294,13 +1568,13 @@ export default function SuperAdminAgentsContent() {
                       </TableCell>
                       {/* States — name badges, wrapping */}
                       <TableCell className="max-w-[260px]">
-                        {agentSummaryData[agent.id] === undefined ? (
-                          <Loader2 className="h-3 w-3 animate-spin text-gray-300" />
-                        ) : agentSummaryData[agent.id].states.length === 0 ? (
+                        {!agent.assigned_states ? (
+                          <span className="text-gray-400">—</span>
+                        ) : agent.assigned_states.length === 0 ? (
                           <span className="text-gray-400">—</span>
                         ) : (
                           <div className="flex flex-wrap gap-1 items-center">
-                            {agentSummaryData[agent.id].states.slice(0, 5).map((s) => (
+                            {agent.assigned_states.slice(0, 5).map((s) => (
                               <span
                                 key={s}
                                 className="bg-primary/10 text-primary text-[10px] font-mono px-1.5 py-0.5 rounded"
@@ -1308,13 +1582,13 @@ export default function SuperAdminAgentsContent() {
                                 {s}
                               </span>
                             ))}
-                            {agentSummaryData[agent.id].states.length > 5 && (
+                            {agent.assigned_states.length > 5 && (
                               <button
                                 onClick={() => setStatesModalAgent(agent)}
                                 className="text-[10px] font-semibold text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
                                 title="Click to view all assigned states"
                               >
-                                +{agentSummaryData[agent.id].states.length - 5} more
+                                +{agent.assigned_states.length - 5} more
                               </button>
                             )}
                           </div>
@@ -1344,22 +1618,22 @@ export default function SuperAdminAgentsContent() {
                       </TableCell>
                       {/* Stoves */}
                       <TableCell>
-                        {agentSummaryData[agent.id] === undefined ? (
-                          <Loader2 className="h-3 w-3 animate-spin text-gray-300" />
-                        ) : (
+                        {agent.stove_summary ? (
                           <div className="flex items-center gap-1.5 text-xs">
-                            <span className="font-medium text-purple-700" title="Received">
-                              {agentSummaryData[agent.id].received.toLocaleString()}
+                            <span className="font-medium text-purple-700" title="Assigned">
+                              {agent.stove_summary.received.toLocaleString()}
                             </span>
                             <span className="text-gray-300">/</span>
-                            <span className="font-medium text-blue-600" title="Sold">
-                              {agentSummaryData[agent.id].sold.toLocaleString()}
+                            <span className="font-medium text-blue-600" title="Collected">
+                              {agent.stove_summary.sold.toLocaleString()}
                             </span>
                             <span className="text-gray-300">/</span>
-                            <span className="font-medium text-green-600" title="Available">
-                              {agentSummaryData[agent.id].available.toLocaleString()}
+                            <span className="font-medium text-green-600" title="In Stock">
+                              {agent.stove_summary.available.toLocaleString()}
                             </span>
                           </div>
+                        ) : (
+                          <span className="text-gray-400">—</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -1518,19 +1792,13 @@ export default function SuperAdminAgentsContent() {
         isOpen={!!assignPartnerAgent}
         onClose={() => setAssignPartnerAgent(null)}
         onSuccess={() => {
-          if (assignPartnerAgent) {
-            // Evict cache so this agent's badges reload with fresh data
-            setAgentSummaryData((prev) => {
-              const next = { ...prev };
-              delete next[assignPartnerAgent.id];
-              return next;
-            });
-          }
           setAssignPartnerAgent(null);
           toast({ variant: "success", title: "Partner assignments updated" });
           fetchAgents();
         }}
       />
+
+      <StockModal isOpen={showStockModal} onClose={() => setShowStockModal(false)} />
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </DashboardLayout>

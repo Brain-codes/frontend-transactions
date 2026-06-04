@@ -52,9 +52,14 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  CheckCircle2,
+  CircleDashed,
 } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import paymentModelService from "../../services/paymentModelService";
+import adminSalesService from "../../services/adminSalesService";
+import FinancialReportsTable from "../../admin/components/financial-reports/FinancialReportsTable";
+import { AdminSales } from "@/types/adminSales";
 
 interface PaymentModel {
   id: string;
@@ -114,6 +119,58 @@ export default function PaymentModelsPage() {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+
+  // Top model sales modal
+  const [showTopModelModal, setShowTopModelModal] = useState(false);
+  const [topModelSales, setTopModelSales] = useState<AdminSales[]>([]);
+  const [topModelSalesLoading, setTopModelSalesLoading] = useState(false);
+  const [topModelSalesPage, setTopModelSalesPage] = useState(1);
+  const [topModelSalesPageSize, setTopModelSalesPageSize] = useState(10);
+  const [topModelSalesTotal, setTopModelSalesTotal] = useState(0);
+
+  const openTopModelModal = async () => {
+    if (!topModel) return;
+    const modelRecord = models.find((m) => m.name === topModel.name);
+    if (!modelRecord) return;
+    setShowTopModelModal(true);
+    setTopModelSalesLoading(true);
+    setTopModelSalesPage(1);
+    try {
+      const result = await adminSalesService.getFinancialReportSales({
+        page: 1,
+        limit: 10,
+        paymentModelId: modelRecord.id,
+      });
+      setTopModelSales(result.data || []);
+      setTopModelSalesTotal(result.pagination?.total || result.data?.length || 0);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: err.message || "Failed to load sales" });
+    } finally {
+      setTopModelSalesLoading(false);
+    }
+  };
+
+  const fetchTopModelSalesPage = async (page: number, size: number) => {
+    if (!topModel) return;
+    const modelRecord = models.find((m) => m.name === topModel.name);
+    if (!modelRecord) return;
+    setTopModelSalesLoading(true);
+    try {
+      const result = await adminSalesService.getFinancialReportSales({
+        page,
+        limit: size,
+        paymentModelId: modelRecord.id,
+      });
+      setTopModelSales(result.data || []);
+      setTopModelSalesTotal(result.pagination?.total || result.data?.length || 0);
+      setTopModelSalesPage(page);
+      setTopModelSalesPageSize(size);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: err.message || "Failed to load sales" });
+    } finally {
+      setTopModelSalesLoading(false);
+    }
+  };
 
   const fetchModels = useCallback(async () => {
     try {
@@ -298,81 +355,98 @@ export default function PaymentModelsPage() {
           />
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {/* Total Models */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Layers className="h-5 w-5 text-blue-700" />
-                </div>
-                <div>
-                  <p className="text-sm text-blue-600 font-medium">Total Models</p>
-                  <p className="text-xl font-bold text-blue-900">{models.length}</p>
-                  <p className="text-xs text-blue-500">All payment plans</p>
-                </div>
-              </div>
-            </div>
+          {(() => {
+            const cards = [
+              {
+                gradient: "from-[#194977] to-[#2563EB]",
+                Icon: Layers,
+                value: models.length.toString(),
+                label: "Total Models",
+                sub: "All payment plans",
+                clickable: false,
+                filterKey: null as string | null,
+              },
+              {
+                gradient: "from-[#047857] to-[#10B981]",
+                Icon: CheckCircle2,
+                value: activeCount.toString(),
+                label: "Active",
+                sub: statusFilter === "active" ? "Click to clear filter" : "Click to filter",
+                clickable: true,
+                filterKey: "active",
+              },
+              {
+                gradient: "from-[#334155] to-[#64748b]",
+                Icon: CircleDashed,
+                value: inactiveCount.toString(),
+                label: "Inactive",
+                sub: statusFilter === "inactive" ? "Click to clear filter" : "Click to filter",
+                clickable: true,
+                filterKey: "inactive",
+              },
+              {
+                gradient: "from-[#B45309] to-[#F59E0B]",
+                Icon: Trophy,
+                value: topModel ? topModel.name : "—",
+                label: "Top Used Model",
+                sub: topModel ? `${topModel.use_count} sale${topModel.use_count !== 1 ? "s" : ""} · Click to view` : "No sales yet",
+                clickable: !!topModel,
+                filterKey: null,
+                isTopModel: true,
+              },
+            ] as const;
 
-            {/* Active */}
-            <div
-              className={`bg-green-50 border rounded-lg p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all ${statusFilter === "active" ? "border-green-600 shadow-md" : "border-green-200"}`}
-              onClick={() => { setStatusFilter((f) => f === "active" ? "all" : "active"); setCurrentPage(1); }}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <ToggleRight className="h-5 w-5 text-green-700" />
-                </div>
-                <div>
-                  <p className="text-sm text-green-600 font-medium">Active</p>
-                  <p className="text-xl font-bold text-green-900">{activeCount}</p>
-                  <p className="text-xs text-green-500">Click to filter</p>
-                </div>
-              </div>
-              {statusFilter === "active" && (
-                <p className="text-xs font-semibold mt-2 opacity-70 text-center text-green-700">✓ Filter active — click again to clear</p>
-              )}
-            </div>
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {cards.map(({ gradient, Icon, value, label, sub, clickable, filterKey, ...rest }) => {
+                  const isTopModel = (rest as any).isTopModel === true;
+                  const isActive = clickable && filterKey !== null && statusFilter === filterKey;
+                  const handleClick = isTopModel
+                    ? openTopModelModal
+                    : clickable && filterKey !== null
+                    ? () => { setStatusFilter((f) => f === filterKey ? "all" : filterKey); setCurrentPage(1); }
+                    : undefined;
 
-            {/* Inactive */}
-            <div
-              className={`bg-gray-50 border rounded-lg p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all ${statusFilter === "inactive" ? "border-gray-500 shadow-md" : "border-gray-200"}`}
-              onClick={() => { setStatusFilter((f) => f === "inactive" ? "all" : "inactive"); setCurrentPage(1); }}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gray-100 rounded-lg">
-                  <ToggleLeft className="h-5 w-5 text-gray-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 font-medium">Inactive</p>
-                  <p className="text-xl font-bold text-gray-700">{inactiveCount}</p>
-                  <p className="text-xs text-gray-400">Click to filter</p>
-                </div>
-              </div>
-              {statusFilter === "inactive" && (
-                <p className="text-xs font-semibold mt-2 opacity-70 text-center text-gray-600">✓ Filter active — click again to clear</p>
-              )}
-            </div>
-
-            {/* Top Used Model */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-100 rounded-lg">
-                  <Trophy className="h-5 w-5 text-amber-700" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-amber-600 font-medium">Top Used Model</p>
-                  {topModel ? (
-                    <>
-                      <p className="text-sm font-bold text-amber-900 truncate" title={topModel.name}>{topModel.name}</p>
-                      <p className="text-xs text-amber-600">{topModel.use_count} sale{topModel.use_count !== 1 ? "s" : ""}</p>
-                    </>
+                  return isActive ? (
+                    <div
+                      key={label}
+                      onClick={handleClick}
+                      className={`relative overflow-hidden rounded-lg border-transparent px-4 py-3.5 shadow-md cursor-pointer transition-all bg-gradient-to-br ${gradient} ring-2 ring-white/40`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xl font-bold text-white tracking-tight leading-tight truncate">{value}</p>
+                          <p className="text-[11px] font-semibold text-white/80 mt-0.5">{label}</p>
+                          <p className="text-[10px] text-white/60 mt-0.5 truncate">{sub}</p>
+                        </div>
+                        <div className="rounded-lg p-1.5 bg-white/20 text-white shadow-sm shrink-0">
+                          <Icon className="h-4 w-4" />
+                        </div>
+                      </div>
+                    </div>
                   ) : (
-                    <p className="text-xs text-amber-500">No sales yet</p>
-                  )}
-                </div>
+                    <div
+                      key={label}
+                      onClick={handleClick}
+                      className={`relative overflow-hidden rounded-lg border bg-white px-4 py-3.5 shadow-sm transition-all group ${clickable ? "cursor-pointer hover:shadow-md" : ""}`}
+                    >
+                      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient}`} />
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xl font-bold text-gray-900 tracking-tight leading-tight truncate">{value}</p>
+                          <p className="text-[11px] font-semibold text-gray-500 mt-0.5">{label}</p>
+                          <p className="text-[10px] text-gray-400 mt-0.5 truncate">{sub}</p>
+                        </div>
+                        <div className={`rounded-lg p-1.5 bg-gradient-to-br ${gradient} text-white shadow-sm shrink-0`}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* Filter Bar */}
           <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
@@ -699,6 +773,40 @@ export default function PaymentModelsPage() {
                     <><Save className="h-4 w-4 mr-2" />{showCreateModal ? "Create" : "Save Changes"}</>
                   )}
                 </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Top Model Sales Modal */}
+        {showTopModelModal && topModel && (
+          <Dialog open onOpenChange={() => setShowTopModelModal(false)}>
+            <DialogContent className="max-w-[95vw] w-full max-h-[90vh] flex flex-col">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-amber-500" />
+                  {topModel.name}
+                </DialogTitle>
+                <DialogDescription>
+                  {topModel.use_count} sale{topModel.use_count !== 1 ? "s" : ""} using this payment model
+                </DialogDescription>
+              </DialogHeader>
+              <div className="overflow-y-auto flex-1 mt-2">
+                <FinancialReportsTable
+                  data={topModelSales}
+                  loading={topModelSalesLoading}
+                  currentPage={topModelSalesPage}
+                  pageSize={topModelSalesPageSize}
+                  totalRecords={topModelSalesTotal}
+                  onPageChange={(p) => fetchTopModelSalesPage(p, topModelSalesPageSize)}
+                  onPageSizeChange={(s) => fetchTopModelSalesPage(1, s)}
+                  onViewDetails={() => {}}
+                  onViewHistory={() => {}}
+                  onRecordPayment={() => {}}
+                  sortOrder="desc"
+                  onToggleSort={() => {}}
+                  viewFrom="superAdmin"
+                />
               </div>
             </DialogContent>
           </Dialog>

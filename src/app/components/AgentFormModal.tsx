@@ -668,9 +668,50 @@ export default function AgentFormModal({
                         </div>
                       )}
                       {/* State search */}
-                       <span className="text-[10px] font-semibold leading-tight truncate w-full text-[#8c0000]">
-                                        Click to select state(s)
-                                      </span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-semibold leading-tight text-[#8c0000]">
+                          Click to select state(s)
+                        </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newColorMap = { ...stateColorMap };
+                              const usedIndices = new Set(Object.values(newColorMap));
+                              let nextIdx = 0;
+                              availableStates.filter(s => !selectedStates.has(s)).forEach(s => {
+                                while (usedIndices.has(nextIdx)) nextIdx++;
+                                newColorMap[s] = nextIdx;
+                                usedIndices.add(nextIdx++);
+                              });
+                              setStateColorMap(newColorMap);
+                              setSelectedStates(new Set(availableStates));
+                              setSelectedDirectOrgIds(prev => {
+                                const next = new Set(prev);
+                                orgs.forEach(o => { if (o.state && availableStates.includes(o.state)) next.add(o.id); });
+                                return next;
+                              });
+                            }}
+                            className="text-[10px] font-semibold px-2 py-0.5 rounded border border-[#07376a]/40 bg-[#07376a]/10 text-[#07376a] hover:bg-[#07376a]/20 transition-colors"
+                          >
+                            Assign All
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedStates(new Set());
+                              setSelectedDirectOrgIds(prev => {
+                                const next = new Set(prev);
+                                orgs.forEach(o => { if (o.state) next.delete(o.id); });
+                                return next;
+                              });
+                            }}
+                            className="text-[10px] font-semibold px-2 py-0.5 rounded border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
+                          >
+                            Unassign All
+                          </button>
+                        </div>
+                      </div>
                       <div className="relative">
                         <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                         <Input

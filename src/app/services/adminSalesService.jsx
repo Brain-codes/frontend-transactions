@@ -364,6 +364,7 @@ class AdminSalesService {
     dateFrom,
     dateTo,
     createdBy,
+    paymentModelId,
   } = {}) {
     try {
       const body = {
@@ -376,6 +377,7 @@ class AdminSalesService {
         ...(dateFrom ? { dateFrom } : {}),
         ...(dateTo ? { dateTo } : {}),
         ...(createdBy ? { createdBy } : {}),
+        ...(paymentModelId ? { paymentModelId } : {}),
       };
 
       const response = await fetch(

@@ -26,20 +26,6 @@ export async function setAgentOrganizations(
     throw new Error(`Database error: ${agentError.message}`);
   }
 
-  // Validate all org IDs exist
-  if (orgIds.length > 0) {
-    const { data: orgs, error: orgsError } = await supabase
-      .from("organizations")
-      .select("id")
-      .in("id", orgIds);
-
-    if (orgsError) throw new Error(`Database error: ${orgsError.message}`);
-
-    if ((orgs || []).length !== orgIds.length) {
-      throw new Error("validation: One or more organization IDs are invalid");
-    }
-  }
-
   // Delete all existing assignments for this agent
   const { error: deleteError } = await supabase
     .from("acsl_agent_organizations")
@@ -48,19 +34,20 @@ export async function setAgentOrganizations(
 
   if (deleteError) throw new Error(`Failed to clear assignments: ${deleteError.message}`);
 
-  // Insert new assignments
+  // Insert new assignments in batches to avoid request size limits
   if (orgIds.length > 0) {
-    const inserts = orgIds.map((orgId) => ({
-      agent_id: agentId,
-      organization_id: orgId,
-      assigned_by: assignedBy,
-    }));
-
-    const { error: insertError } = await supabase
-      .from("acsl_agent_organizations")
-      .insert(inserts);
-
-    if (insertError) throw new Error(`Failed to assign organizations: ${insertError.message}`);
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < orgIds.length; i += BATCH_SIZE) {
+      const batch = orgIds.slice(i, i + BATCH_SIZE).map((orgId) => ({
+        agent_id: agentId,
+        organization_id: orgId,
+        assigned_by: assignedBy,
+      }));
+      const { error: insertError } = await supabase
+        .from("acsl_agent_organizations")
+        .insert(batch);
+      if (insertError) throw new Error(`Failed to assign organizations: ${insertError.message}`);
+    }
   }
 
   console.log(`✅ Assigned ${orgIds.length} organizations to agent ${agentId}`);

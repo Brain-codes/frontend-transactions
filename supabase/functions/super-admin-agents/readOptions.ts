@@ -83,44 +83,101 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams, m
   const { data: agents, error, count } = await query;
   if (error) throw new Error(`Database error: ${error.message}`);
 
-  // For each agent, compute the total unique partner count:
-  // direct org assignments + orgs covered by state assignments (excluding duplicates)
-  const agentsWithCounts = await Promise.all(
-    (agents || []).map(async (agent: any) => {
-      const [{ data: directOrgs }, { data: stateRows }] = await Promise.all([
-        supabase
-          .from("acsl_agent_organizations")
-          .select("organization_id")
-          .eq("agent_id", agent.id),
-        supabase
-          .from("acsl_agent_states")
-          .select("state")
-          .eq("agent_id", agent.id),
-      ]);
+  // ── Batch compute partner counts + stove stats for the whole page ──────────
+  const agentIdList = (agents || []).map((a: any) => a.id as string);
+  const dateFrom = searchParams.get("date_from") ?? null;
+  const dateTo   = searchParams.get("date_to")   ?? null;
 
-      const directOrgIds = new Set((directOrgs || []).map((r: any) => r.organization_id));
-      const assignedStates = (stateRows || []).map((r: any) => r.state);
+  // 1 & 2: direct org assignments + state assignments — 2 queries for the full page
+  const [{ data: allDirectOrgRows }, { data: allStateRows }] = await Promise.all([
+    supabase.from("acsl_agent_organizations").select("agent_id, organization_id").in("agent_id", agentIdList),
+    supabase.from("acsl_agent_states").select("agent_id, state").in("agent_id", agentIdList),
+  ]);
 
-      let stateOrgCount = 0;
-      if (assignedStates.length > 0) {
-        const { data: stateOrgRows } = await supabase
-          .from("organizations")
-          .select("id")
-          .in("state", assignedStates);
-        // Only count orgs not already directly assigned
-        stateOrgCount = (stateOrgRows || []).filter((o: any) => !directOrgIds.has(o.id)).length;
-      }
+  // 3: resolve all unique states → org IDs in one query
+  const allStates = [...new Set((allStateRows || []).map((r: any) => r.state as string))];
+  const stateToOrgIds: Record<string, string[]> = {};
+  if (allStates.length > 0) {
+    const { data: stateOrgRows } = await supabase
+      .from("organizations").select("id, state").in("state", allStates);
+    (stateOrgRows || []).forEach((o: any) => {
+      if (!stateToOrgIds[o.state]) stateToOrgIds[o.state] = [];
+      stateToOrgIds[o.state].push(o.id);
+    });
+  }
 
-      const totalPartners = directOrgIds.size + stateOrgCount;
+  // Build per-agent maps
+  const agentDirectIds: Record<string, Set<string>> = {};
+  const agentAllOrgIds: Record<string, Set<string>> = {};
+  const agentStates:    Record<string, string[]>     = {};
 
-      return {
-        ...agent,
-        assigned_organizations_count: directOrgIds.size,
-        assigned_states_count: assignedStates.length,
-        total_partners_count: totalPartners,
-      };
-    })
-  );
+  (allDirectOrgRows || []).forEach((r: any) => {
+    if (!agentDirectIds[r.agent_id])  agentDirectIds[r.agent_id]  = new Set();
+    if (!agentAllOrgIds[r.agent_id])  agentAllOrgIds[r.agent_id]  = new Set();
+    agentDirectIds[r.agent_id].add(r.organization_id);
+    agentAllOrgIds[r.agent_id].add(r.organization_id);
+  });
+  (allStateRows || []).forEach((r: any) => {
+    if (!agentStates[r.agent_id])    agentStates[r.agent_id]    = [];
+    if (!agentAllOrgIds[r.agent_id]) agentAllOrgIds[r.agent_id] = new Set();
+    agentStates[r.agent_id].push(r.state);
+    (stateToOrgIds[r.state] || []).forEach((oid) => agentAllOrgIds[r.agent_id].add(oid));
+  });
+
+  // 4: stove counts for all orgs across the page — 1 RPC call
+  const allOrgIdsList = [...new Set(Object.values(agentAllOrgIds).flatMap((s) => [...s]))];
+  const orgStoveStats: Record<string, { total: number; available: number }> = {};
+  if (allOrgIdsList.length > 0) {
+    const { data: stoveCounts } = await supabase.rpc("get_organization_stove_counts", { org_ids: allOrgIdsList });
+    (stoveCounts || []).forEach((r: any) => {
+      orgStoveStats[r.organization_id] = { total: r.total_count ?? 0, available: r.available_count ?? 0 };
+    });
+  }
+
+  // 5: all sales by these agents in the date range — 1 query
+  let agentSalesQ = supabase.from("sales").select("id, created_by").in("created_by", agentIdList);
+  if (dateFrom) agentSalesQ = agentSalesQ.gte("sales_date", dateFrom);
+  if (dateTo)   agentSalesQ = agentSalesQ.lte("sales_date", dateTo);
+  const { data: agentSalesRows } = await agentSalesQ;
+
+  const agentSaleIdMap: Record<string, string[]> = {};
+  (agentSalesRows || []).forEach((s: any) => {
+    if (!agentSaleIdMap[s.created_by]) agentSaleIdMap[s.created_by] = [];
+    agentSaleIdMap[s.created_by].push(s.id);
+  });
+
+  // 6: count stove_ids sold per sale in batches — scales with sales volume, not page size
+  const allSaleIds = Object.values(agentSaleIdMap).flat();
+  const soldBySaleId: Record<string, number> = {};
+  const BATCH = 200;
+  for (let i = 0; i < allSaleIds.length; i += BATCH) {
+    const { data: soldRows } = await supabase
+      .from("stove_ids").select("sale_id").in("sale_id", allSaleIds.slice(i, i + BATCH));
+    (soldRows || []).forEach((r: any) => {
+      soldBySaleId[r.sale_id] = (soldBySaleId[r.sale_id] || 0) + 1;
+    });
+  }
+  const agentSoldCount: Record<string, number> = {};
+  Object.entries(agentSaleIdMap).forEach(([aid, sids]) => {
+    agentSoldCount[aid] = sids.reduce((sum, sid) => sum + (soldBySaleId[sid] || 0), 0);
+  });
+
+  // Compose final list
+  const agentsWithCounts = (agents || []).map((agent: any) => {
+    const directIds = agentDirectIds[agent.id]  || new Set<string>();
+    const allIds    = agentAllOrgIds[agent.id]  || new Set<string>();
+    const states    = (agentStates[agent.id]    || []).sort();
+    const received  = [...allIds].reduce((s, oid) => s + (orgStoveStats[oid]?.total     ?? 0), 0);
+    const available = [...allIds].reduce((s, oid) => s + (orgStoveStats[oid]?.available ?? 0), 0);
+    return {
+      ...agent,
+      assigned_organizations_count: directIds.size,
+      assigned_states_count:        states.length,
+      total_partners_count:         allIds.size,
+      assigned_states:              states,
+      stove_summary: { received, sold: agentSoldCount[agent.id] ?? 0, available },
+    };
+  });
 
   if (organizationId && agentsWithCounts.length > 0) {
     const agentIds = agentsWithCounts.map((agent: any) => agent.id).filter(Boolean);
@@ -272,7 +329,9 @@ export async function getAgent(supabase: any, agentId: string) {
   };
 }
 
-export async function getAgentOrganizations(supabase: any, agentId: string) {
+export async function getAgentOrganizations(supabase: any, agentId: string, searchParams?: URLSearchParams) {
+  const dateFrom = searchParams?.get("date_from") ?? null;
+  const dateTo = searchParams?.get("date_to") ?? null;
   console.log("🔍 Fetching organizations for agent:", agentId);
 
   // Verify the agent exists
@@ -389,19 +448,23 @@ export async function getAgentOrganizations(supabase: any, agentId: string) {
     }
   }
 
-  // Count stoves sold specifically BY this agent (sales.created_by = agentId)
+  // Count stoves sold specifically BY this agent (date-filtered if params provided)
   let agentSoldCount = 0;
-  const { data: agentSaleRows } = await supabase
-    .from("sales")
-    .select("id")
-    .eq("created_by", agentId);
+  let salesQuery = supabase.from("sales").select("id").eq("created_by", agentId);
+  if (dateFrom) salesQuery = salesQuery.gte("sales_date", dateFrom);
+  if (dateTo) salesQuery = salesQuery.lte("sales_date", dateTo);
+  const { data: agentSaleRows } = await salesQuery;
   const agentSaleIds = (agentSaleRows || []).map((s: any) => s.id as string);
   if (agentSaleIds.length > 0) {
-    const { count } = await supabase
-      .from("stove_ids")
-      .select("id", { count: "exact", head: true })
-      .in("sale_id", agentSaleIds);
-    agentSoldCount = count ?? 0;
+    // Batch to avoid URL length limits
+    const BATCH = 200;
+    for (let i = 0; i < agentSaleIds.length; i += BATCH) {
+      const { count } = await supabase
+        .from("stove_ids")
+        .select("id", { count: "exact", head: true })
+        .in("sale_id", agentSaleIds.slice(i, i + BATCH));
+      agentSoldCount += count ?? 0;
+    }
   }
 
   // Annotate each org with accurate stove counts
