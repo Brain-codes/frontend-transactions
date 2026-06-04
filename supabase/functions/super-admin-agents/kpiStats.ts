@@ -93,6 +93,7 @@ export async function getKpiStats(supabase: any, searchParams: URLSearchParams) 
       totalActivePartners: activePartnerIds.length,
       stovesInStock: stovesInStock ?? 0,
       activeAgentIds,
+      activePartnerIds,
     },
   };
 }

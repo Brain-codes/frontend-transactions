@@ -1151,106 +1151,6 @@ export default function SuperAdminPartnersContent() {
             }
           />
 
-          {/* KPI Stat Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              {
-                gradient: "from-[#194977] to-[#2563EB]",
-                Icon: Building2,
-                value: loadingStats ? "—" : (stats.total_partners || pagination.total).toLocaleString(),
-                label: "Total Partners",
-                sub: "All registered partners",
-                onClick: () => { setSortMode("default"); handleFilterChange("partner_type", "all"); },
-                active: sortMode === "default" && filters.partner_type === "all",
-              },
-              {
-                gradient: "from-[#047857] to-[#10B981]",
-                Icon: TrendingUp,
-                value: loadingStats ? "—" : stats.performing_partners.toLocaleString(),
-                label: "Top Performing Partners",
-                sub: "with sales",
-                subBadge: (() => {
-                  if (dateFrom && dateTo) {
-                    const fmt = (d) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-                    return `${fmt(dateFrom)} – ${fmt(dateTo)}`;
-                  }
-                  return new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-                })(),
-                onClick: () => setSortMode("active"),
-                active: sortMode === "active",
-              },
-              {
-                gradient: "from-[#B45309] to-[#F59E0B]",
-                Icon: Package,
-                value: loadingStats ? "—" : stats.total_received.toLocaleString(),
-                label: "Most Stoves Received",
-                sub: "Total stoves received across all partners",
-                onClick: () => setSortMode("stoves_desc"),
-                active: sortMode === "stoves_desc",
-              },
-              {
-                gradient: "from-[#7C3AED] to-[#A78BFA]",
-                Icon: Boxes,
-                value: loadingStats ? "—" : stats.total_available.toLocaleString(),
-                label: "Available Inventory",
-                sub: "Total stove unsold across all partners",
-                onClick: () => setSortMode("available_desc"),
-                active: sortMode === "available_desc",
-              },
-            ].map(({ gradient, Icon, value, label, sub, subBadge, onClick, active }) =>
-              active ? (
-                <div
-                  key={label}
-                  onClick={onClick}
-                  className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md cursor-pointer transition-all bg-gradient-to-br ${gradient}`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="min-w-0 flex-1 pr-3">
-                      <p className="text-2xl font-bold text-white tracking-tight leading-tight">{value}</p>
-                      <p className="text-xs font-semibold text-white/80 mt-1">{label}</p>
-                      <p className="text-xs text-white/60 mt-0.5">{sub}</p>
-                    </div>
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                      <div className="rounded-lg p-2 bg-white/20 text-white shadow-sm w-fit">
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      {subBadge && (
-                        <span className="text-[10px] bg-white/20 text-white/90 px-1.5 py-0.5 rounded whitespace-nowrap">
-                          {subBadge}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div
-                  key={label}
-                  onClick={onClick}
-                  className="relative overflow-hidden rounded-lg border bg-white px-4 py-4 shadow-sm cursor-pointer transition-all hover:shadow-md"
-                >
-                  <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient}`} />
-                  <div className="flex items-start justify-between">
-                    <div className="min-w-0 flex-1 pr-3">
-                      <p className="text-2xl font-bold text-gray-900 tracking-tight leading-tight">{value}</p>
-                      <p className="text-xs font-semibold text-gray-500 mt-1">{label}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
-                    </div>
-                    <div className="flex flex-col items-end justify-between gap-2 shrink-0">
-                      <div className={`rounded-lg p-2 bg-gradient-to-br ${gradient} text-white shadow-sm w-fit`}>
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      {subBadge && (
-                        <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded whitespace-nowrap">
-                          {subBadge}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )
-            )}
-          </div>
-
           <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
             {/* Search */}
             <div className="w-1/4 min-w-[180px] relative">
@@ -1394,6 +1294,106 @@ export default function SuperAdminPartnersContent() {
               </div>
               <p className="text-sm font-bold text-green-500">Total: <span className="text-brand">{pagination.total}</span></p>
             </div>
+          </div>
+
+          {/* KPI Stat Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              {
+                gradient: "from-[#194977] to-[#2563EB]",
+                Icon: Building2,
+                value: loadingStats ? "—" : (stats.total_partners || pagination.total).toLocaleString(),
+                label: "Total Partners",
+                sub: "All registered partners",
+                onClick: () => { setSortMode("default"); handleFilterChange("partner_type", "all"); },
+                active: sortMode === "default" && filters.partner_type === "all",
+              },
+              {
+                gradient: "from-[#047857] to-[#10B981]",
+                Icon: TrendingUp,
+                value: loadingStats ? "—" : stats.performing_partners.toLocaleString(),
+                label: "Top Performing Partners",
+                sub: "with sales",
+                subBadge: (() => {
+                  if (dateFrom && dateTo) {
+                    const fmt = (d) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                    return `${fmt(dateFrom)} – ${fmt(dateTo)}`;
+                  }
+                  return new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+                })(),
+                onClick: () => setSortMode("active"),
+                active: sortMode === "active",
+              },
+              {
+                gradient: "from-[#B45309] to-[#F59E0B]",
+                Icon: Package,
+                value: loadingStats ? "—" : stats.total_received.toLocaleString(),
+                label: "Most Stoves Received",
+                sub: "Total stoves received across all partners",
+                onClick: () => setSortMode("stoves_desc"),
+                active: sortMode === "stoves_desc",
+              },
+              {
+                gradient: "from-[#7C3AED] to-[#A78BFA]",
+                Icon: Boxes,
+                value: loadingStats ? "—" : stats.total_available.toLocaleString(),
+                label: "Available Inventory",
+                sub: "Total stove unsold across all partners",
+                onClick: () => setSortMode("available_desc"),
+                active: sortMode === "available_desc",
+              },
+            ].map(({ gradient, Icon, value, label, sub, subBadge, onClick, active }) =>
+              active ? (
+                <div
+                  key={label}
+                  onClick={onClick}
+                  className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md cursor-pointer transition-all bg-gradient-to-br ${gradient}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0 flex-1 pr-3">
+                      <p className="text-2xl font-bold text-white tracking-tight leading-tight">{value}</p>
+                      <p className="text-xs font-semibold text-white/80 mt-1">{label}</p>
+                      <p className="text-xs text-white/60 mt-0.5">{sub}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <div className="rounded-lg p-2 bg-white/20 text-white shadow-sm w-fit">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      {subBadge && (
+                        <span className="text-[10px] bg-white/20 text-white/90 px-1.5 py-0.5 rounded whitespace-nowrap">
+                          {subBadge}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  key={label}
+                  onClick={onClick}
+                  className="relative overflow-hidden rounded-lg border bg-white px-4 py-4 shadow-sm cursor-pointer transition-all hover:shadow-md"
+                >
+                  <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient}`} />
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0 flex-1 pr-3">
+                      <p className="text-2xl font-bold text-gray-900 tracking-tight leading-tight">{value}</p>
+                      <p className="text-xs font-semibold text-gray-500 mt-1">{label}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
+                    </div>
+                    <div className="flex flex-col items-end justify-between gap-2 shrink-0">
+                      <div className={`rounded-lg p-2 bg-gradient-to-br ${gradient} text-white shadow-sm w-fit`}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      {subBadge && (
+                        <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded whitespace-nowrap">
+                          {subBadge}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            )}
           </div>
 
           <div className="space-y-0">
