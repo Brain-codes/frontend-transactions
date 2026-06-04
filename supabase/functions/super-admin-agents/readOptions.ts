@@ -13,6 +13,11 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams, m
   const organizationId = searchParams.get("organization_id") || "";
 
   const roleParam = searchParams.get("role") || "";
+  const VALID_ROLES = ["acsl_agent", "acsl_agent_manager", "super_admin_agent", "super_admin"];
+  const requestedRoles = roleParam
+    ? roleParam.split(",").map(r => r.trim()).filter(r => VALID_ROLES.includes(r))
+        .map(r => r === "super_admin_agent" ? "acsl_agent" : r)
+    : [];
 
   // When filtering by organization_id, resolve which agent IDs are assigned to that org
   // (either directly via acsl_agent_organizations, or via state assignment)
@@ -56,10 +61,10 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams, m
 
   if (filteredAgentIds !== null) {
     query = query.in("id", filteredAgentIds);
-  } else if (roleParam && ["acsl_agent", "acsl_agent_manager", "super_admin_agent", "super_admin"].includes(roleParam)) {
-    // Map legacy role param to new value
-    const mappedRole = roleParam === "super_admin_agent" ? "acsl_agent" : roleParam;
-    query = query.eq("role", mappedRole);
+  } else if (requestedRoles.length === 1) {
+    query = query.eq("role", requestedRoles[0]);
+  } else if (requestedRoles.length > 1) {
+    query = query.in("role", requestedRoles);
   } else {
     query = query.in("role", ["acsl_agent", "acsl_agent_manager", "super_admin"]);
   }

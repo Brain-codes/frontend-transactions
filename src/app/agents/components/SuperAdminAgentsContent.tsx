@@ -1407,7 +1407,9 @@ export default function SuperAdminAgentsContent() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [roleFilter, setRoleFilter] = useState("acsl_agent");
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(["acsl_agent"]);
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const roleDropdownRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
@@ -1430,7 +1432,7 @@ export default function SuperAdminAgentsContent() {
       const params: Record<string, string | number> = { page, limit: pageSize };
       if (search.trim()) params.search = search.trim();
       if (statusFilter !== "all") params.status = statusFilter;
-      if (roleFilter !== "all") params.role = roleFilter;
+      if (selectedRoles.length > 0 && selectedRoles.length < 3) params.role = selectedRoles.join(",");
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;
       const result = await superAdminAgentService.getSuperAdminAgents(params);
@@ -1441,10 +1443,20 @@ export default function SuperAdminAgentsContent() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, statusFilter, roleFilter, dateFrom, dateTo]);
+  }, [page, pageSize, search, statusFilter, selectedRoles, dateFrom, dateTo]);
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
-  useEffect(() => { setPage(1); }, [search, statusFilter, roleFilter, dateFrom, dateTo]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, selectedRoles, dateFrom, dateTo]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (roleDropdownRef.current && !roleDropdownRef.current.contains(e.target as Node)) {
+        setRoleDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
 
   const fetchKpiStats = useCallback(async () => {
@@ -1579,17 +1591,75 @@ export default function SuperAdminAgentsContent() {
               <SelectItem value="disabled">Disabled</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[150px] h-9 bg-white text-sm">
-              <SelectValue placeholder="All Roles" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Roles</SelectItem>
-              <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
-              <SelectItem value="acsl_agent_manager">ACSL Agent Manager</SelectItem>
-              <SelectItem value="super_admin">Super Admin</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Multi-select role filter */}
+          <div ref={roleDropdownRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setRoleDropdownOpen((o) => !o)}
+              className="flex items-center justify-between gap-2 h-9 px-3 bg-white border border-input rounded-md text-sm min-w-[160px] max-w-[220px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <span className="truncate text-left">
+                {selectedRoles.length === 0 || selectedRoles.length === 3
+                  ? "All Roles"
+                  : selectedRoles
+                      .map((r) =>
+                        r === "acsl_agent"
+                          ? "ACSL Agent"
+                          : r === "acsl_agent_manager"
+                          ? "Agent Manager"
+                          : "Super Admin"
+                      )
+                      .join(", ")}
+              </span>
+              <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 transition-transform ${roleDropdownOpen ? "rotate-180" : ""}`} />
+            </button>
+            {roleDropdownOpen && (
+              <div className="absolute z-50 mt-1 left-0 bg-white border border-gray-200 rounded-md shadow-lg py-1 min-w-[200px]">
+                {/* All Roles option */}
+                <button
+                  type="button"
+                  onClick={() => { setSelectedRoles([]); setPage(1); setRoleDropdownOpen(false); }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${selectedRoles.length === 0 ? "text-[#07376a] font-semibold" : "text-gray-700"}`}
+                >
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${selectedRoles.length === 0 ? "bg-[#07376a] border-[#07376a]" : "border-gray-300"}`}>
+                    {selectedRoles.length === 0 && <Check className="h-2.5 w-2.5 text-white" />}
+                  </div>
+                  All Roles
+                </button>
+                <div className="border-t border-gray-100 my-0.5" />
+                {(
+                  [
+                    { value: "acsl_agent", label: "ACSL Agent" },
+                    { value: "acsl_agent_manager", label: "ACSL Agent Manager" },
+                    { value: "super_admin", label: "Super Admin" },
+                  ] as const
+                ).map(({ value, label }) => {
+                  const checked = selectedRoles.includes(value);
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        setSelectedRoles((prev) => {
+                          const next = prev.includes(value)
+                            ? prev.filter((r) => r !== value)
+                            : [...prev, value];
+                          return next;
+                        });
+                        setPage(1);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-gray-50 transition-colors text-gray-700"
+                    >
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${checked ? "bg-[#07376a] border-[#07376a]" : "border-gray-300"}`}>
+                        {checked && <Check className="h-2.5 w-2.5 text-white" />}
+                      </div>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
           {/* Month picker */}
           <div className="flex items-center gap-1.5">
             <input
@@ -1636,9 +1706,9 @@ export default function SuperAdminAgentsContent() {
             />
           </div>
 
-          {(search || statusFilter !== "all" || roleFilter !== "acsl_agent" || dateFrom || dateTo) && (
+          {(search || statusFilter !== "all" || selectedRoles.length !== 1 || selectedRoles[0] !== "acsl_agent" || dateFrom || dateTo) && (
             <Button
-              onClick={() => { setSearch(""); setStatusFilter("all"); setRoleFilter("acsl_agent"); setDateFrom(""); setDateTo(""); setSelectedMonth(""); setPage(1); }}
+              onClick={() => { setSearch(""); setStatusFilter("all"); setSelectedRoles(["acsl_agent"]); setDateFrom(""); setDateTo(""); setSelectedMonth(""); setPage(1); }}
               size="sm"
               variant="outline"
               className="h-9"
