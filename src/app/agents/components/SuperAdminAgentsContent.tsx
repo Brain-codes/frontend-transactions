@@ -1288,11 +1288,11 @@ function StockModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle className="text-base font-bold text-foreground">Stoves in Stock</DialogTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              {/* <p className="text-xs text-muted-foreground mt-0.5">
                 {loading ? "Loading…" : (
                   <span className="font-semibold text-primary">{stoves.length.toLocaleString()} stove{stoves.length !== 1 ? "s" : ""}</span>
                 )} currently available
-              </p>
+              </p> */}
             </div>
             <div className="flex gap-1.5">
               <Button size="sm" variant="outline" className="h-7 text-xs" onClick={exportCSV} disabled={loading || filtered.length === 0}>
@@ -1684,7 +1684,7 @@ export default function SuperAdminAgentsContent() {
               gradient: "from-[#B45309] to-[#F59E0B]",
               Icon: Package,
               value: maxReceived > 0 ? maxReceived.toLocaleString() : "—",
-              label: "Most Stoves Collected",
+              label: "Most Stoves assigned to Agent",
               sub: formatTopNames(topReceivedAgents) ?? "By agent · Highest first",
               badge: undefined as string | undefined,
               mode: "most_received",
@@ -1694,7 +1694,7 @@ export default function SuperAdminAgentsContent() {
               gradient: "from-[#194977] to-[#2563EB]",
               Icon: TrendingUp,
               value: loadingKpi ? "—" : kpiStats.totalSoldByAgents.toLocaleString(),
-              label: "Total Stoves Sold (Agents)",
+              label: "Total Stoves Sold by Agents",
               sub: "All agents combined",
               badge: dateBadge,
               mode: "most_sold",
