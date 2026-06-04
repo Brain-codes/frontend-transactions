@@ -389,8 +389,8 @@ const DashboardContent = ({
               </>
             )}
 
-            {/* Date range filter for partner / acsl_agent */}
-            {(role === "partner" || role === "acsl_agent") && onDateFromChange && onDateToChange && (
+            {/* Date range filter for partner / acsl_agent / acsl_agent_manager */}
+            {(role === "partner" || role === "acsl_agent" || role === "acsl_agent_manager") && onDateFromChange && onDateToChange && (
               <div className="flex items-center gap-1.5">
                 <DatePicker
                   value={dateFrom || ""}
@@ -644,7 +644,7 @@ const DashboardContent = ({
                   const display = kpi.currency ? formatCurrency(raw) : raw.toLocaleString();
                   const sub = kpi.sub ?? `FY ${year}`;
                   const isActive = activeCard === kpi.key;
-                  const isClickable = (role === "partner" || role === "acsl_agent") && !!onCardClick && raw > 0;
+                  const isClickable = (role === "partner" || role === "acsl_agent" || role === "acsl_agent_manager") && !!onCardClick && raw > 0;
                   return isActive ? (
                     <div
                       key={kpi.key}

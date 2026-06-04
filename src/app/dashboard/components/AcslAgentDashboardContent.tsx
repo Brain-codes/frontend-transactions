@@ -12,7 +12,7 @@ import superAdminAgentService from "../../services/superAdminAgentService";
 const CURRENT_YEAR = new Date().getFullYear();
 
 const AcslAgentDashboardContent = () => {
-  const { user, getOrganizationId } = useAuth() as any;
+  const { user, userRole, getOrganizationId } = useAuth() as any;
   const [year, setYear] = useState(CURRENT_YEAR);
   const [dateFrom, setDateFrom] = useState<string | null>(null);
   const [dateTo, setDateTo] = useState<string | null>(null);
@@ -73,7 +73,7 @@ const AcslAgentDashboardContent = () => {
           loading={loading}
           year={year}
           onYearChange={setYear}
-          role="acsl_agent"
+          role={userRole === "acsl_agent_manager" ? "acsl_agent_manager" : "acsl_agent"}
           partners={partners}
           onFilterChange={() => {}}
           onClearFilters={() => {}}
