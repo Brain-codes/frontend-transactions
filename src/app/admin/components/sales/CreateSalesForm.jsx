@@ -692,7 +692,12 @@ const CreateSalesForm = ({
                 id="salesDate"
                 type="date"
                 value={formData.salesDate}
-                onChange={(e) => handleInputChange("salesDate", e.target.value)}
+                onChange={(e) => {
+                  const today = new Date().toISOString().split("T")[0];
+                  // iOS Safari ignores the `max` attribute, so clamp future dates here
+                  const value = e.target.value > today ? today : e.target.value;
+                  handleInputChange("salesDate", value);
+                }}
                 max={new Date().toISOString().split("T")[0]}
                 className={errors.salesDate ? "border-red-500" : ""}
               />
