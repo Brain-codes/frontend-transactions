@@ -7,10 +7,12 @@ import superAdminDashboardService from "../../services/superAdminDashboardServic
 import { useAuth } from "../../contexts/AuthContext";
 
 const CURRENT_YEAR = new Date().getFullYear();
+const ALL_YEARS = Array.from({ length: CURRENT_YEAR - 2023 }, (_, i) => 2024 + i);
 
 const SuperAdminDashboardContent = () => {
   const { supabase } = useAuth();
-  const [year, setYear] = useState(CURRENT_YEAR);
+  // Multi-select years. Empty array = "All Years".
+  const [years, setYears] = useState([CURRENT_YEAR]);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
 
@@ -51,10 +53,12 @@ const SuperAdminDashboardContent = () => {
     return [...new Set(filtered.map((b) => b.branch).filter(Boolean))].sort();
   })();
 
-  const fetchData = async (y, f = filters) => {
+  const fetchData = async (yrs, f = filters) => {
     setLoading(true);
     try {
-      const payload = { year: y };
+      // Empty selection = all years
+      const selectedYears = yrs.length ? yrs : ALL_YEARS;
+      const payload = { years: selectedYears };
 
       if (f.selectedGroup?.organization_ids?.length) {
         const allBranches = f.selectedGroup.branches || [];
@@ -94,7 +98,7 @@ const SuperAdminDashboardContent = () => {
     }
   };
 
-  useEffect(() => { fetchData(year, filters); }, [year, filters]);
+  useEffect(() => { fetchData(years, filters); }, [years, filters]);
 
   const normalized = data ? {
     stovesReceived: data.stovesReceivedByPartners ?? 0,
@@ -126,8 +130,8 @@ const SuperAdminDashboardContent = () => {
         <DashboardContent
           data={normalized}
           loading={loading}
-          year={year}
-          onYearChange={setYear}
+          years={years}
+          onYearsChange={setYears}
           role="super_admin"
           dashboardFilters={filters}
           onFilterChange={handleFilterChange}

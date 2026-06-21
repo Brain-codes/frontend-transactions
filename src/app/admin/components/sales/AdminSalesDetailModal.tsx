@@ -7,12 +7,13 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CreditCard, Clock, Plus, Loader2, Layers, CheckCircle2, XCircle } from "lucide-react";
+import { CreditCard, Clock, Plus, Loader2, Layers, CheckCircle2, XCircle, FileText, Download } from "lucide-react";
 import { AdminSales } from "@/types/adminSales";
 import type { SuperAdminSale } from "@/types/superAdminSales";
 import paymentModelService from "../../../services/paymentModelService";
 import adminSalesService from "../../../services/adminSalesService";
 import RecordPaymentModal from "./RecordPaymentModal";
+import { buildAgreementBlobUrl, downloadAgreementPDF } from "./agreement/AgreementPDFGenerator";
 
 interface InstallmentPayment {
   id: string;
@@ -98,6 +99,8 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [showRecordPayment, setShowRecordPayment] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [agreementPdfUrl, setAgreementPdfUrl] = useState<string | null>(null);
+  const [agreementLoading, setAgreementLoading] = useState(false);
   const [paymentSummary, setPaymentSummary] = useState<{
     total_paid: number;
     remaining_balance: number;
@@ -144,6 +147,35 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
     onSaleUpdated?.();
   };
 
+  // Generate the agreement PDF from the sale data and open it in the viewer
+  const handleViewAgreement = async () => {
+    if (!activeSale) return;
+    try {
+      setAgreementLoading(true);
+      const url = await buildAgreementBlobUrl(activeSale);
+      setAgreementPdfUrl(url);
+    } catch (err) {
+      console.error("Error generating agreement PDF:", err);
+    } finally {
+      setAgreementLoading(false);
+    }
+  };
+
+  const handleDownloadAgreement = async () => {
+    if (!activeSale) return;
+    try {
+      await downloadAgreementPDF(activeSale);
+    } catch (err) {
+      console.error("Error downloading agreement PDF:", err);
+    }
+  };
+
+  // Revoke the blob URL when the viewer closes to avoid leaks
+  const closeAgreementViewer = () => {
+    if (agreementPdfUrl) URL.revokeObjectURL(agreementPdfUrl);
+    setAgreementPdfUrl(null);
+  };
+
   if (!sale) return null;
 
   const totalPaid = paymentSummary?.total_paid ?? (activeSale?.total_paid || 0);
@@ -160,12 +192,6 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
     (viewFrom === "superAdmin"
       ? (sale as SuperAdminSale).stove_image?.url
       : (sale as AdminSales).stove_image_id?.url);
-
-  const agreementImageUrl =
-    activeSale?.agreement_image?.url ||
-    (viewFrom === "superAdmin"
-      ? (sale as SuperAdminSale).agreement_image?.url
-      : (sale as AdminSales).agreement_image_id?.url);
 
   // Address — get-sale returns address; list data may have addresses (superAdmin) or address (admin)
   const address =
@@ -322,17 +348,21 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
                     }
                   />
                   <DetailItem
-                    label="Agreement Image"
+                    label="Agreement Document"
                     value={
-                      agreementImageUrl ? (
-                        <Button
-                          size="sm"
-                          className="bg-brand hover:bg-brand/90 text-white h-6 text-[10px] px-2.5"
-                          onClick={() => setLightboxUrl(agreementImageUrl)}
-                        >
-                          View Agreement
-                        </Button>
-                      ) : undefined
+                      <Button
+                        size="sm"
+                        className="bg-brand hover:bg-brand/90 text-white h-6 text-[10px] px-2.5"
+                        onClick={handleViewAgreement}
+                        disabled={agreementLoading || fullSaleLoading}
+                      >
+                        {agreementLoading ? (
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        ) : (
+                          <FileText className="h-3 w-3 mr-1" />
+                        )}
+                        View Agreement
+                      </Button>
                     }
                   />
                   <DetailItem
@@ -531,6 +561,30 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
                 className="max-w-full max-h-[75vh] object-contain"
               />
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Agreement PDF Viewer */}
+      <Dialog open={!!agreementPdfUrl} onOpenChange={(v) => !v && closeAgreementViewer()}>
+        <DialogContent className="max-w-5xl w-[95vw] p-0 overflow-hidden flex flex-col max-h-[90vh]">
+          <DialogHeader className="px-4 py-3 border-b flex flex-row items-center justify-between shrink-0">
+            <DialogTitle className="text-sm font-semibold">Agreement Document</DialogTitle>
+            <Button
+              size="sm"
+              className="bg-brand hover:bg-brand/90 text-white h-7 text-xs"
+              onClick={handleDownloadAgreement}
+            >
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Download PDF
+            </Button>
+          </DialogHeader>
+          {agreementPdfUrl && (
+            <iframe
+              src={agreementPdfUrl}
+              title="Agreement Document"
+              className="w-full flex-1 min-h-[70vh] bg-gray-50"
+            />
           )}
         </DialogContent>
       </Dialog>

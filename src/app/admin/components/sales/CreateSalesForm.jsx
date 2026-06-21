@@ -1160,6 +1160,7 @@ const CreateSalesForm = ({
                 placeholder="Upload a clear photo of the stove"
                 error={errors.stoveImage}
               />
+              {/* TEMP: agreement document upload hidden for now — re-enable later
               <ImageUploadSection
                 label="Agreement Document *"
                 preview={agreementImagePreview}
@@ -1170,7 +1171,7 @@ const CreateSalesForm = ({
                 uploadIcon={FileText}
                 buttonText="Upload Agreement"
                 changeButtonText="Change Document"
-              />
+              /> */}
             </div>
           </div>
 

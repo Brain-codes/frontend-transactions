@@ -47,6 +47,7 @@ import {
   Search,
   X,
   ChevronDown,
+  Check,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -163,7 +164,9 @@ const RankTable = ({ title, rows, nameLabel = "Name" }) => (
 );
 
 const DashboardContent = ({
-  data, loading, year, onYearChange, role = "partner", partners = [],
+  data, loading, year, onYearChange,
+  years = null, onYearsChange = null,
+  role = "partner", partners = [],
   dashboardFilters = {}, onFilterChange = () => {}, onClearFilters = () => {},
   partnersList = [], loadingPartners = false, onPartnerSearch = () => {},
   availableBranches = [],
@@ -190,15 +193,18 @@ const DashboardContent = ({
   const [stateSearch, setStateSearch] = React.useState("");
   const [stateDropdownOpen, setStateDropdownOpen] = React.useState(false);
   const [branchDropdownOpen, setBranchDropdownOpen] = React.useState(false);
+  const [yearDropdownOpen, setYearDropdownOpen] = React.useState(false);
   const partnerDropdownRef = React.useRef(null);
   const stateDropdownRef = React.useRef(null);
   const branchDropdownRef = React.useRef(null);
+  const yearDropdownRef = React.useRef(null);
 
   React.useEffect(() => {
     const handler = (e) => {
       if (partnerDropdownRef.current && !partnerDropdownRef.current.contains(e.target)) setPartnerDropdownOpen(false);
       if (stateDropdownRef.current && !stateDropdownRef.current.contains(e.target)) setStateDropdownOpen(false);
       if (branchDropdownRef.current && !branchDropdownRef.current.contains(e.target)) setBranchDropdownOpen(false);
+      if (yearDropdownRef.current && !yearDropdownRef.current.contains(e.target)) setYearDropdownOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -207,6 +213,22 @@ const DashboardContent = ({
   const handlePartnerSearch = (val) => {
     setPartnerSearch(val);
     onPartnerSearch?.(val);
+  };
+
+  // Multi-year selection (empty array = all years). Falls back to single `year` prop.
+  const multiYear = Array.isArray(years) && typeof onYearsChange === "function";
+  const sortedYears = multiYear ? [...years].sort((a, b) => a - b) : [];
+  const allYearsSelected = multiYear && (years.length === 0 || years.length === YEARS.length);
+  const yearLabel = multiYear
+    ? (allYearsSelected ? "All Years" : sortedYears.join(", "))
+    : String(year);
+
+  const toggleYear = (y) => {
+    // Starting from "all" (empty) collapses to just the clicked year
+    const base = allYearsSelected ? [] : years;
+    const set = new Set(base);
+    set.has(y) ? set.delete(y) : set.add(y);
+    onYearsChange(Array.from(set).sort((a, b) => a - b));
   };
 
   const selectedPartner = dashboardFilters.selectedGroup || null;
@@ -420,16 +442,59 @@ const DashboardContent = ({
             )}
 
             <span className="text-sm font-medium text-gray-700">Year:</span>
-            <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
-              <SelectTrigger className="w-[100px] h-8 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {YEARS.map((y) => (
-                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {multiYear ? (
+              <div ref={yearDropdownRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setYearDropdownOpen((o) => !o)}
+                  className="flex items-center justify-between gap-2 h-8 px-3 bg-white border border-input rounded-md text-sm min-w-[120px] max-w-[200px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <span className="truncate text-left">{yearLabel}</span>
+                  <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 transition-transform ${yearDropdownOpen ? "rotate-180" : ""}`} />
+                </button>
+                {yearDropdownOpen && (
+                  <div className="absolute z-50 top-full right-0 mt-1 w-[160px] bg-white border border-gray-200 rounded-md shadow-lg py-1">
+                    <button
+                      type="button"
+                      onClick={() => onYearsChange([])}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-blue-50 text-left"
+                    >
+                      <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${allYearsSelected ? "bg-[#07376a] border-[#07376a]" : "border-gray-300"}`}>
+                        {allYearsSelected && <Check className="h-2.5 w-2.5 text-white" />}
+                      </span>
+                      All Years
+                    </button>
+                    {YEARS.map((y) => {
+                      const checked = !allYearsSelected && years.includes(y);
+                      return (
+                        <button
+                          key={y}
+                          type="button"
+                          onClick={() => toggleYear(y)}
+                          className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-blue-50 text-left"
+                        >
+                          <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${checked ? "bg-[#07376a] border-[#07376a]" : "border-gray-300"}`}>
+                            {checked && <Check className="h-2.5 w-2.5 text-white" />}
+                          </span>
+                          {y}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
+                <SelectTrigger className="w-[100px] h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {YEARS.map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         }
       />
@@ -492,7 +557,7 @@ const DashboardContent = ({
               <CardContent className="pt-4 pb-4 px-4">
                 {salesModelData.length === 0 ? (
                   <div className="flex items-center justify-center h-[200px] text-gray-400 text-xs">
-                    No sales data for {year}
+                    No sales data for {yearLabel}
                   </div>
                 ) : (
                   <>
@@ -551,7 +616,7 @@ const DashboardContent = ({
               <CardContent className="pt-4 pb-4 px-3">
                 {displayStates.length === 0 ? (
                   <div className="flex items-center justify-center h-[180px] text-gray-400 text-xs">
-                    No state data for {year}
+                    No state data for {yearLabel}
                   </div>
                 ) : (
                   <div style={{ height: displayStates.length * 64 }}>

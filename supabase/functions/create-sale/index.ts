@@ -215,9 +215,10 @@ serve(async (req) => {
     if (!stoveImageId || String(stoveImageId).trim() === "") {
       return jsonError("Stove image is required", 400);
     }
-    if (!agreementImageId || String(agreementImageId).trim() === "") {
-      return jsonError("Agreement image is required", 400);
-    }
+    // TEMP: agreement image not required for now — re-enable later
+    // if (!agreementImageId || String(agreementImageId).trim() === "") {
+    //   return jsonError("Agreement image is required", 400);
+    // }
     // ── Insert address ────────────────────────────────────────────────────────
     console.log("📍 Inserting address:", addressData);
     const { data: address, error: addressError } = await supabase

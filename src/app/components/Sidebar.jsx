@@ -105,6 +105,12 @@ const allNavItems = [
         route: "settings-system-config",
         href: "/admin/system-config",
       },
+      {
+        name: "Tools",
+        route: "settings-tools",
+        href: "/settings/tools",
+        superAdminOnly: true,
+      },
     ],
   },
   // {
@@ -250,7 +256,9 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
                   {/* Children */}
                   {isExpanded && (
                     <div className="ml-4 pl-4 border-l border-gray-200 space-y-0.5 mt-0.5">
-                      {item.children.map((child) => {
+                      {item.children
+                        .filter((child) => !child.superAdminOnly || isSuperAdmin)
+                        .map((child) => {
                         const isChildRouteActive =
                           currentRoute === child.route;
                         return (
@@ -302,23 +310,21 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
  
         </nav>
 
-        {/* Sales Monitoring App footer — super admin only */}
-        {isSuperAdmin && (
-          <div className="px-2 pb-4 pt-2 border-t border-gray-200 ">
-            <Link
-              href="/sales-monitoring-app"
-              onClick={() => navigateToRoute("/sales-monitoring-app")}
-              className={`scale-[.7] flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${
-                currentRoute === "sales-monitoring-app"
-                  ? "bg-white text-gray-900 font-medium"
-                  : "text-gray-700 hover:bg-white/50"
-              }`}
-            >
-              <Smartphone className="h-5 w-5" />
-              <span className="flex-1">Sales Monitoring App</span>
-            </Link>
-          </div>
-        )}
+        {/* Sales Monitoring App footer — visible to all users */}
+        <div className="px-2 pb-4 pt-2 border-t border-gray-200 shrink-0">
+          <Link
+            href="/sales-monitoring-app"
+            onClick={() => navigateToRoute("/sales-monitoring-app")}
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${
+              currentRoute === "sales-monitoring-app"
+                ? "bg-white text-gray-900 font-medium"
+                : "text-gray-700 hover:bg-white/50"
+            }`}
+          >
+            <Smartphone className="h-5 w-5 shrink-0" />
+            <span className="flex-1">Sales Monitoring App</span>
+          </Link>
+        </div>
       </div>
     </>
   );

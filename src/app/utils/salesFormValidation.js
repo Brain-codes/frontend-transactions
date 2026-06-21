@@ -80,9 +80,10 @@ export const validateSalesForm = (formData) => {
     errors.stoveImage = "Stove photo is required";
   }
 
-  if (!formData.agreementImageId) {
-    errors.agreementImage = "Agreement document is required";
-  }
+  // TEMP: agreement document not required for now — re-enable later
+  // if (!formData.agreementImageId) {
+  //   errors.agreementImage = "Agreement document is required";
+  // }
 
   // Signature validation - uses enhanced validation for both base64 and data URL formats
   if (!isValidSignature(formData.signature)) {

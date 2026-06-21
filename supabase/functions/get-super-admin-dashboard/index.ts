@@ -47,16 +47,38 @@ serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const year = body.year ?? new Date().getFullYear();
+    // Accept either a single `year` or an array of `years`. Empty/absent → current year.
+    const rawYears: number[] = Array.isArray(body.years) && body.years.length
+      ? body.years.map((y: any) => Number(y)).filter((y: number) => !isNaN(y))
+      : [Number(body.year) || new Date().getFullYear()];
+    const years = [...new Set(rawYears)].sort((a, b) => a - b);
+    const minYear = years[0];
+    const maxYear = years[years.length - 1];
+    // Years are contiguous (or a single year) when the span equals the count.
+    const yearsContiguous = maxYear - minYear + 1 === years.length;
+
     const organizationIds: string[] | null = body.organization_ids?.length ? body.organization_ids : null;
     const stateFilter: string | null = body.state || null;
     const branchFilter: string | null = body.branch || null;
 
-    // Custom date range overrides year-based range when both are provided
-    const startDate = body.date_from || `${year}-01-01`;
+    // Custom date range overrides year-based range when provided
+    const hasCustomDate = !!(body.date_from || body.date_to);
+    const startDate = body.date_from || `${minYear}-01-01`;
     const endOfYear = body.date_to
       ? (() => { const d = new Date(body.date_to); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); })()
-      : `${year + 1}-01-01`;
+      : `${maxYear + 1}-01-01`;
+
+    // Apply the date period to a query. Contiguous years / custom dates use a
+    // simple range; non-contiguous year sets use an OR of per-year ranges.
+    const applyPeriod = (query: any, col: string) => {
+      if (hasCustomDate || yearsContiguous) {
+        return query.gte(col, startDate).lt(col, endOfYear);
+      }
+      const orParts = years
+        .map((y) => `and(${col}.gte.${y}-01-01,${col}.lt.${y + 1}-01-01)`)
+        .join(",");
+      return query.or(orParts);
+    };
 
     // Resolve partner names from organization_ids (grouped partner may span multiple orgs)
     let partnerNames: string[] | null = null;
@@ -82,28 +104,31 @@ serve(async (req) => {
 
     const [receivedResult, soldCumulativeResult, salesResult] = await Promise.all([
       buildStovesReceivedQuery(
-        serviceClient
-          .from("stove_ids")
-          .select("*", { count: "exact", head: true })
-          .not("organization_id", "is", null)
-          .gte("created_at", startDate)
-          .lt("created_at", endOfYear)
+        applyPeriod(
+          serviceClient
+            .from("stove_ids")
+            .select("*", { count: "exact", head: true })
+            .not("organization_id", "is", null),
+          "created_at"
+        )
       ),
 
       buildSalesQuery(
-        serviceClient
-          .from("sales")
-          .select("*", { count: "exact", head: true })
-          .gte("sales_date", startDate)
-          .lt("sales_date", endOfYear)
+        applyPeriod(
+          serviceClient
+            .from("sales")
+            .select("*", { count: "exact", head: true }),
+          "sales_date"
+        )
       ),
 
       buildSalesQuery(
-        serviceClient
-          .from("sales")
-          .select("id, amount, total_paid, state_backup, partner_name, retailer_branch, payment_model_id, created_by")
-          .gte("sales_date", startDate)
-          .lt("sales_date", endOfYear)
+        applyPeriod(
+          serviceClient
+            .from("sales")
+            .select("id, amount, total_paid, state_backup, partner_name, retailer_branch, payment_model_id, created_by"),
+          "sales_date"
+        )
       ),
     ]);
 
