@@ -193,6 +193,13 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
       ? (sale as SuperAdminSale).stove_image?.url
       : (sale as AdminSales).stove_image_id?.url);
 
+  // Agreement image is optional — only present if one was uploaded at sale creation
+  const agreementImageUrl =
+    activeSale?.agreement_image?.url ||
+    (viewFrom === "superAdmin"
+      ? (sale as SuperAdminSale).agreement_image?.url
+      : (sale as AdminSales).agreement_image_id?.url);
+
   // Address — get-sale returns address; list data may have addresses (superAdmin) or address (admin)
   const address =
     activeSale?.address ||
@@ -348,21 +355,33 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
                     }
                   />
                   <DetailItem
-                    label="Agreement Document"
+                    label="Agreement"
                     value={
-                      <Button
-                        size="sm"
-                        className="bg-brand hover:bg-brand/90 text-white h-6 text-[10px] px-2.5"
-                        onClick={handleViewAgreement}
-                        disabled={agreementLoading || fullSaleLoading}
-                      >
-                        {agreementLoading ? (
-                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                        ) : (
-                          <FileText className="h-3 w-3 mr-1" />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          className="bg-brand hover:bg-brand/90 text-white h-6 text-[10px] px-2.5"
+                          onClick={handleViewAgreement}
+                          disabled={agreementLoading || fullSaleLoading}
+                        >
+                          {agreementLoading ? (
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          ) : (
+                            <FileText className="h-3 w-3 mr-1" />
+                          )}
+                          View Agreement Document
+                        </Button>
+                        {agreementImageUrl && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 text-[10px] px-2.5"
+                            onClick={() => setLightboxUrl(agreementImageUrl)}
+                          >
+                            View Agreement Image
+                          </Button>
                         )}
-                        View Agreement
-                      </Button>
+                      </div>
                     }
                   />
                   <DetailItem

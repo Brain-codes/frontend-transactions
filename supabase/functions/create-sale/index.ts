@@ -244,33 +244,88 @@ serve(async (req) => {
     console.log("🏡 Address inserted:", address.id);
 
     // ── Determine sale status ─────────────────────────────────────────────────
-    const requiredFields = [
-      transactionId,
-      stoveSerialNo,
-      salesDate,
-      contactPerson,
-      contactPhone,
-      endUserName,
-      phone,
-      partnerName,
-      amount,
-    ];
-    const hasAllRequiredFields = requiredFields.every(
-      (f) => f !== null && f !== undefined && String(f).trim() !== ""
-    );
-    const hasSignature = signature && String(signature).trim() !== "";
-    const hasStoveImage = stoveImageId != null;
-    const hasAgreementImage = agreementImageId != null;
+    // const requiredFields = [
+    //   transactionId,
+    //   stoveSerialNo,
+    //   salesDate,
+    //   contactPerson,
+    //   contactPhone,
+    //   endUserName,
+    //   phone,
+    //   partnerName,
+    //   amount,
+    // ];
+    // const hasAllRequiredFields = requiredFields.every(
+    //   (f) => f !== null && f !== undefined && String(f).trim() !== ""
+    // );
+    // const hasSignature = signature && String(signature).trim() !== "";
+    // const hasStoveImage = stoveImageId != null;
+    // const hasAgreementImage = agreementImageId != null;
 
-    let saleStatus = "incomplete";
-    if (hasAllRequiredFields && hasSignature && hasStoveImage && hasAgreementImage) {
-      saleStatus = "completed";
-    } else if (
-      hasAllRequiredFields &&
-      (hasSignature || hasStoveImage || hasAgreementImage)
-    ) {
-      saleStatus = "pending";
-    }
+    // let saleStatus = "incomplete";
+    // if (hasAllRequiredFields && hasSignature && hasStoveImage && hasAgreementImage) {
+    //   saleStatus = "completed";
+    // } else if (
+    //   hasAllRequiredFields &&
+    //   (hasSignature || hasStoveImage || hasAgreementImage)
+    // ) {
+    //   saleStatus = "pending";
+    // }
+
+    // ── Determine sale status ─────────────────────────────────────────────────
+// Agreement image is NOT compulsory, therefore it should not affect
+// whether a sale is completed or not.
+
+const requiredFields = [
+  transactionId,
+  stoveSerialNo,
+  salesDate,
+  contactPerson,
+  contactPhone,
+  endUserName,
+  phone,
+  partnerName,
+  saleAmount, // use the final amount being saved
+];
+
+const hasAllRequiredFields = requiredFields.every(
+  (f) => f !== null &&
+         f !== undefined &&
+         String(f).trim() !== ""
+);
+
+const hasSignature =
+  signature !== null &&
+  signature !== undefined &&
+  String(signature).trim() !== "";
+
+const hasStoveImage =
+  stoveImageId !== null &&
+  stoveImageId !== undefined &&
+  String(stoveImageId).trim() !== "";
+
+// Agreement image is optional
+let saleStatus = "incomplete";
+
+if (
+  hasAllRequiredFields &&
+  hasSignature &&
+  hasStoveImage
+) {
+  saleStatus = "completed";
+} else if (
+  hasAllRequiredFields &&
+  (hasSignature || hasStoveImage)
+) {
+  saleStatus = "pending";
+}
+
+console.log("📋 Sale status evaluation:", {
+  hasAllRequiredFields,
+  hasSignature,
+  hasStoveImage,
+  saleStatus,
+});
 
     // ── Insert sale ───────────────────────────────────────────────────────────
     console.log("📝 Inserting main sale with status:", saleStatus);
