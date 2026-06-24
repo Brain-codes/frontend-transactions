@@ -524,28 +524,33 @@ async function processOrganizationSync(
   let userCredentials: UserCreationResult | null = null;
 
   if (existingOrg) {
-    entries.push(mkEntry("org-sync", "info", `Partner "${orgData.partner_name}" (${orgData.partner_id}) already exists — updating`));
-    const { data: updatedOrg, error: updateError } = await supabase
-      .from("organizations")
-      .update({
-        partner_name: orgData.partner_name,
-        partner_type: orgData.partner_type || null,
-        email: orgData.email,
-        contact_person: orgData.contact_person,
-        contact_phone: orgData.contact_phone,
-        alternative_phone: orgData.alternative_phone,
-        address: orgData.address,
-        state: orgData.state,
-        branch: normalizeBranch(orgData.branch),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("partner_id", orgData.partner_id)
-      .select()
-      .single();
+    if (existingOrg.manually_edited) {
+      entries.push(mkEntry("org-sync", "info", `Partner "${orgData.partner_name}" (${orgData.partner_id}) has been manually edited — skipping contact detail update, stove IDs will still be processed`));
+      organization = existingOrg;
+    } else {
+      entries.push(mkEntry("org-sync", "info", `Partner "${orgData.partner_name}" (${orgData.partner_id}) already exists — updating`));
+      const { data: updatedOrg, error: updateError } = await supabase
+        .from("organizations")
+        .update({
+          partner_name: orgData.partner_name,
+          partner_type: orgData.partner_type || null,
+          email: orgData.email,
+          contact_person: orgData.contact_person,
+          contact_phone: orgData.contact_phone,
+          alternative_phone: orgData.alternative_phone,
+          address: orgData.address,
+          state: orgData.state,
+          branch: normalizeBranch(orgData.branch),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("partner_id", orgData.partner_id)
+        .select()
+        .single();
 
-    if (updateError) throw updateError;
-    organization = updatedOrg;
-    entries.push(mkEntry("org-sync", "success", `Partner updated (org ID: ${organization.id})`));
+      if (updateError) throw updateError;
+      organization = updatedOrg;
+      entries.push(mkEntry("org-sync", "success", `Partner updated (org ID: ${organization.id})`));
+    }
   } else {
     entries.push(mkEntry("org-sync", "info", `Partner "${orgData.partner_name}" (${orgData.partner_id}) is new — creating`));
     const { data: newOrg, error: createError } = await supabase

@@ -1,7 +1,7 @@
 // Route handler for organization operations
 
 import { getOrganization, getOrganizations } from "./read-operations.ts";
-import { createOrganization, updateOrganization } from "./write-operations.ts";
+import { createOrganization, updateOrganization, updatePartnerDetails } from "./write-operations.ts";
 import {
   deleteOrganization,
   hardDeleteOrganization,
@@ -72,6 +72,12 @@ export async function handleOrganizationRoute(
         throw new Error("Organization ID is required for update operations");
       }
       const updateData = await req.json();
+
+      // Restricted partner detail update (phone, email, username only)
+      if (url.searchParams.get("action") === "update-details") {
+        return await updatePartnerDetails(supabase, organizationId, updateData, userId);
+      }
+
       return await updateOrganization(
         supabase,
         organizationId,

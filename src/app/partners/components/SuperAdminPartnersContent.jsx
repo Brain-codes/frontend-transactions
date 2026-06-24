@@ -57,6 +57,7 @@ import {
 } from "lucide-react";
 import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AddPartnerModal from "../components/AddPartnerModal";
+import EditPartnerModal from "../components/EditPartnerModal";
 import AssignAgentModal from "../components/AssignAgentModal";
 import AdminSalesDetailModal from "../../admin/components/sales/AdminSalesDetailModal";
 import ViewCredentialModal from "../../admin/components/credentials/ViewCredentialModal";
@@ -821,6 +822,7 @@ export default function SuperAdminPartnersContent() {
   const [credentialOrg, setCredentialOrg] = useState(null);
   const [viewingCredential, setViewingCredential] = useState(null);
   const [agentsModalOrg, setAgentsModalOrg] = useState(null);
+  const [editingPartnerOrg, setEditingPartnerOrg] = useState(null);
   const [loadingCredentialOrgId, setLoadingCredentialOrgId] = useState(null);
   const [transferHistoryOrg, setTransferHistoryOrg] = useState(null);
 
@@ -1470,6 +1472,9 @@ export default function SuperAdminPartnersContent() {
                               <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="View Credentials" onClick={() => handleViewCredentials(org)} disabled={loadingCredentialOrgId === org.id}>
                                 {loadingCredentialOrgId === org.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}Credentials
                               </Button>
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs border-brand text-brand hover:bg-brand/10" title="Edit Partner Details" onClick={() => setEditingPartnerOrg(org)}>
+                                <Edit className="h-3.5 w-3.5 mr-1" />Edit
+                              </Button>
                               <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="Stove Transfer History" onClick={() => setTransferHistoryOrg(org)}>
                                 Stove Transfer History
                               </Button>
@@ -1570,6 +1575,15 @@ export default function SuperAdminPartnersContent() {
         </div>
 
         <AddPartnerModal isOpen={showAddPartnerModal} onClose={() => setShowAddPartnerModal(false)} onSuccess={() => { fetchOrganizations(); fetchTypeCounts(); }} />
+        <EditPartnerModal
+          organization={editingPartnerOrg}
+          isOpen={!!editingPartnerOrg}
+          onClose={() => setEditingPartnerOrg(null)}
+          onSuccess={(updatedOrg) => {
+            setEditingPartnerOrg(null);
+            fetchOrganizations();
+          }}
+        />
         <OrganizationFormModal isOpen={showFormModal} onClose={() => { setShowFormModal(false); setEditingOrganization(null); setFormSubmitLoading(false); }} onSubmit={handleFormSubmit} initialData={editingOrganization} loading={loading} submitLoading={formSubmitLoading} />
         <PartnerDetailModal organization={selectedOrganization} isOpen={!!selectedOrganization} onClose={() => setSelectedOrganization(null)} onEdit={handleEdit} />
         <StoveIdsModal organization={stoveIdsOrg} isOpen={!!stoveIdsOrg} onClose={() => setStoveIdsOrg(null)} initialFilter={stoveIdsFilter} />

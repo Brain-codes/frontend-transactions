@@ -8,6 +8,203 @@ import {
   findOrganizationAdmin,
 } from "./user-utils.ts";
 
+// ─── Update partner contact details (super admin only, restricted fields) ────
+
+export async function updatePartnerDetails(
+  supabase: any,
+  organizationId: string,
+  data: {
+    contact_phone?: string;
+    alternative_phone?: string;
+    email?: string;
+    username?: string;
+  },
+  userId: string
+) {
+  console.log(`📝 Updating partner details for org ${organizationId}...`);
+
+  // ── 0. Verify organization exists ────────────────────────────────────────
+
+  const { data: existingOrg, error: fetchOrgError } = await supabase
+    .from("organizations")
+    .select("*")
+    .eq("id", organizationId)
+    .single();
+
+  if (fetchOrgError || !existingOrg) {
+    throw new Error("Organization not found");
+  }
+
+  // ── 1. Fetch credential first — it holds the reliable user_id ────────────
+  // The profile lookup by organization_id + role is fragile (role may differ).
+  // credentials.user_id / profile_id is the authoritative link.
+
+  const { data: credential } = await supabase
+    .from("credentials")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .limit(1)
+    .maybeSingle();
+
+  const linkedUserId = credential?.user_id ?? credential?.profile_id ?? null;
+
+  // ── 2. Fetch linked profile via user_id ──────────────────────────────────
+
+  let profile: any = null;
+  if (linkedUserId) {
+    const { data: p } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", linkedUserId)
+      .maybeSingle();
+    profile = p ?? null;
+  }
+
+  // Fallback: search by organization_id without role filter
+  if (!profile) {
+    const { data: p } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .limit(1)
+      .maybeSingle();
+    profile = p ?? null;
+  }
+
+  const profileId: string | null = profile?.id ?? null;
+  console.log(`👤 Linked profile ID: ${profileId ?? "not found"}`);
+
+  // ── 3. Validate username uniqueness ─────────────────────────────────────
+
+  if (data.username && data.username !== (profile?.username ?? credential?.username ?? "")) {
+    const { data: existingByUsername } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("username", data.username)
+      .maybeSingle();
+
+    if (existingByUsername && existingByUsername.id !== profileId) {
+      throw new Error(`Username "${data.username}" is already taken`);
+    }
+
+    if (!existingByUsername) {
+      // Also check credentials table in case profile doesn't exist yet
+      const { data: existingCredUsername } = await supabase
+        .from("credentials")
+        .select("id")
+        .eq("username", data.username)
+        .neq("organization_id", organizationId)
+        .maybeSingle();
+
+      if (existingCredUsername) {
+        throw new Error(`Username "${data.username}" is already taken`);
+      }
+    }
+  }
+
+  // ── 4. Update organizations row ──────────────────────────────────────────
+
+  const orgUpdate: any = {
+    manually_edited: true,
+    updated_by: userId,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (data.contact_phone !== undefined) orgUpdate.contact_phone = data.contact_phone;
+  if (data.alternative_phone !== undefined) orgUpdate.alternative_phone = data.alternative_phone;
+  if (data.email) orgUpdate.email = data.email;
+
+  const { data: updatedOrg, error: orgUpdateError } = await supabase
+    .from("organizations")
+    .update(orgUpdate)
+    .eq("id", organizationId)
+    .select()
+    .single();
+
+  if (orgUpdateError) {
+    throw new Error(`Failed to update organization: ${orgUpdateError.message}`);
+  }
+
+  // ── 5. Update profiles row ───────────────────────────────────────────────
+
+  if (profileId) {
+    const profileUpdate: any = { updated_at: new Date().toISOString() };
+
+    if (data.username && data.username !== profile.username) {
+      profileUpdate.username = data.username;
+      console.log(`🔤 Updating profile username: ${profile.username} → ${data.username}`);
+    }
+
+    if (data.email && !data.email.endsWith("@internal.acsl.local") && !data.email.endsWith("@atmosfair.site")) {
+      if (data.email !== profile.email) {
+        profileUpdate.email = data.email;
+      }
+    }
+
+    if (Object.keys(profileUpdate).length > 1) {
+      const { error: profileUpdateError } = await supabase
+        .from("profiles")
+        .update(profileUpdate)
+        .eq("id", profileId);
+
+      if (profileUpdateError) {
+        console.warn("Profile update failed:", profileUpdateError.message);
+      } else {
+        console.log("✅ Profile updated (username/email)");
+      }
+    }
+  } else {
+    console.warn("⚠️ No linked profile found — username will not be updated in profiles table");
+  }
+
+  // ── 6. Update credentials row ────────────────────────────────────────────
+
+  if (credential) {
+    const credUpdate: any = { updated_at: new Date().toISOString() };
+
+    if (data.username && data.username !== credential.username) {
+      credUpdate.username = data.username;
+    }
+
+    if (data.email) {
+      credUpdate.email = data.email;
+      if (credential.is_dummy_email) credUpdate.is_dummy_email = false;
+    }
+
+    if (Object.keys(credUpdate).length > 1) {
+      const { error: credUpdateError } = await supabase
+        .from("credentials")
+        .update(credUpdate)
+        .eq("organization_id", organizationId);
+
+      if (credUpdateError) {
+        console.warn("Credentials update failed:", credUpdateError.message);
+      } else {
+        console.log("✅ Credentials updated");
+      }
+    }
+  }
+
+  // ── 7. Update auth email if changed ─────────────────────────────────────
+
+  if (profileId && data.email && data.email !== profile?.email) {
+    const { error: authEmailError } = await supabase.auth.admin.updateUserById(
+      profileId,
+      { email: data.email }
+    );
+    if (authEmailError) {
+      console.warn("Auth email update failed:", authEmailError.message);
+    } else {
+      console.log("✅ Auth email updated");
+    }
+  }
+
+  return {
+    data: { organization: updatedOrg },
+    message: "Partner details updated successfully",
+  };
+}
+
 export async function createOrganization(
   supabase: any,
   data: any,
