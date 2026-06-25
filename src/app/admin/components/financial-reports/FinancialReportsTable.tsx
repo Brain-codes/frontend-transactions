@@ -130,7 +130,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
               {onToggleSelect && (
                 <TableHead className="py-4 w-12 text-white">
                   <Checkbox
-                    ref={(el: HTMLInputElement | null) => { if (el) el.indeterminate = somePageSelected; }}
+                    ref={((el: HTMLInputElement | null) => { if (el) el.indeterminate = somePageSelected; }) as any}
                     checked={allPageSelected}
                     onCheckedChange={onToggleSelectAll}
                     className="border-white data-[state=checked]:bg-white data-[state=checked]:text-brand"
