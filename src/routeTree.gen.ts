@@ -10,33 +10,700 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as UserManagementIndexRouteImport } from './routes/user-management/index'
+import { Route as UnauthorizedIndexRouteImport } from './routes/unauthorized/index'
+import { Route as UitestIndexRouteImport } from './routes/uitest/index'
+import { Route as SuperAdminAgentsIndexRouteImport } from './routes/super-admin-agents/index'
+import { Route as SuperAdminAgentIndexRouteImport } from './routes/super-admin-agent/index'
+import { Route as StoveTransferHistoryIndexRouteImport } from './routes/stove-transfer-history/index'
+import { Route as StoveManagerIndexRouteImport } from './routes/stove-manager/index'
+import { Route as StoveManagementIndexRouteImport } from './routes/stove-management/index'
+import { Route as SalesIndexRouteImport } from './routes/sales/index'
+import { Route as SalesMonitoringAppIndexRouteImport } from './routes/sales-monitoring-app/index'
+import { Route as ProfileIndexRouteImport } from './routes/profile/index'
+import { Route as PaymentModelsIndexRouteImport } from './routes/payment-models/index'
+import { Route as PartnersIndexRouteImport } from './routes/partners/index'
+import { Route as MapIndexRouteImport } from './routes/map/index'
+import { Route as LoginIndexRouteImport } from './routes/login/index'
+import { Route as DownloadIndexRouteImport } from './routes/download/index'
+import { Route as DocsIndexRouteImport } from './routes/docs/index'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as AgreementImagesIndexRouteImport } from './routes/agreement-images/index'
+import { Route as AgentsIndexRouteImport } from './routes/agents/index'
+import { Route as AgentIndexRouteImport } from './routes/agent/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as SuperAdminAgentStoveIdsIndexRouteImport } from './routes/super-admin-agent/stove-ids/index'
+import { Route as SuperAdminAgentSalesIndexRouteImport } from './routes/super-admin-agent/sales/index'
+import { Route as SuperAdminAgentPartnersIndexRouteImport } from './routes/super-admin-agent/partners/index'
+import { Route as SettingsUserManagementIndexRouteImport } from './routes/settings/user-management/index'
+import { Route as SettingsToolsIndexRouteImport } from './routes/settings/tools/index'
+import { Route as SettingsSystemConfigIndexRouteImport } from './routes/settings/system-config/index'
+import { Route as SettingsPaymentModelsIndexRouteImport } from './routes/settings/payment-models/index'
+import { Route as SettingsCredentialsIndexRouteImport } from './routes/settings/credentials/index'
+import { Route as SalesManageIndexRouteImport } from './routes/sales/manage/index'
+import { Route as SalesFinancialReportsIndexRouteImport } from './routes/sales/financial-reports/index'
+import { Route as SalesIdIndexRouteImport } from './routes/sales/$id/index'
+import { Route as DocsSuperadminIndexRouteImport } from './routes/docs/superadmin/index'
+import { Route as DocsAdminIndexRouteImport } from './routes/docs/admin/index'
+import { Route as AdminSystemConfigIndexRouteImport } from './routes/admin/system-config/index'
+import { Route as AdminSettingsIndexRouteImport } from './routes/admin/settings/index'
+import { Route as AdminSalesIndexRouteImport } from './routes/admin/sales/index'
+import { Route as AdminPartnerAgentsIndexRouteImport } from './routes/admin/partner-agents/index'
+import { Route as AdminLogsIndexRouteImport } from './routes/admin/logs/index'
+import { Route as AdminCredentialsIndexRouteImport } from './routes/admin/credentials/index'
+import { Route as AdminBranchesIndexRouteImport } from './routes/admin/branches/index'
+import { Route as AdminAppConfigIndexRouteImport } from './routes/admin/app-config/index'
+import { Route as AdminAgreementImagesIndexRouteImport } from './routes/admin/agreement-images/index'
+import { Route as AdminAgentsIndexRouteImport } from './routes/admin/agents/index'
+import { Route as SuperAdminAgentSalesCreateIndexRouteImport } from './routes/super-admin-agent/sales/create/index'
+import { Route as DocsSuperadminSalesIndexRouteImport } from './routes/docs/superadmin/sales/index'
+import { Route as DocsAdminSalesIndexRouteImport } from './routes/docs/admin/sales/index'
+import { Route as AdminSalesFinancialReportsIndexRouteImport } from './routes/admin/sales/financial-reports/index'
+import { Route as AdminSalesCreateIndexRouteImport } from './routes/admin/sales/create/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UserManagementIndexRoute = UserManagementIndexRouteImport.update({
+  id: '/user-management/',
+  path: '/user-management/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnauthorizedIndexRoute = UnauthorizedIndexRouteImport.update({
+  id: '/unauthorized/',
+  path: '/unauthorized/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UitestIndexRoute = UitestIndexRouteImport.update({
+  id: '/uitest/',
+  path: '/uitest/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuperAdminAgentsIndexRoute = SuperAdminAgentsIndexRouteImport.update({
+  id: '/super-admin-agents/',
+  path: '/super-admin-agents/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuperAdminAgentIndexRoute = SuperAdminAgentIndexRouteImport.update({
+  id: '/super-admin-agent/',
+  path: '/super-admin-agent/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoveTransferHistoryIndexRoute =
+  StoveTransferHistoryIndexRouteImport.update({
+    id: '/stove-transfer-history/',
+    path: '/stove-transfer-history/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const StoveManagerIndexRoute = StoveManagerIndexRouteImport.update({
+  id: '/stove-manager/',
+  path: '/stove-manager/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoveManagementIndexRoute = StoveManagementIndexRouteImport.update({
+  id: '/stove-management/',
+  path: '/stove-management/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesIndexRoute = SalesIndexRouteImport.update({
+  id: '/sales/',
+  path: '/sales/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesMonitoringAppIndexRoute = SalesMonitoringAppIndexRouteImport.update({
+  id: '/sales-monitoring-app/',
+  path: '/sales-monitoring-app/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileIndexRoute = ProfileIndexRouteImport.update({
+  id: '/profile/',
+  path: '/profile/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentModelsIndexRoute = PaymentModelsIndexRouteImport.update({
+  id: '/payment-models/',
+  path: '/payment-models/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PartnersIndexRoute = PartnersIndexRouteImport.update({
+  id: '/partners/',
+  path: '/partners/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MapIndexRoute = MapIndexRouteImport.update({
+  id: '/map/',
+  path: '/map/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginIndexRoute = LoginIndexRouteImport.update({
+  id: '/login/',
+  path: '/login/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DownloadIndexRoute = DownloadIndexRouteImport.update({
+  id: '/download/',
+  path: '/download/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsIndexRoute = DocsIndexRouteImport.update({
+  id: '/docs/',
+  path: '/docs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/dashboard/',
+  path: '/dashboard/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgreementImagesIndexRoute = AgreementImagesIndexRouteImport.update({
+  id: '/agreement-images/',
+  path: '/agreement-images/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentsIndexRoute = AgentsIndexRouteImport.update({
+  id: '/agents/',
+  path: '/agents/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentIndexRoute = AgentIndexRouteImport.update({
+  id: '/agent/',
+  path: '/agent/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuperAdminAgentStoveIdsIndexRoute =
+  SuperAdminAgentStoveIdsIndexRouteImport.update({
+    id: '/super-admin-agent/stove-ids/',
+    path: '/super-admin-agent/stove-ids/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SuperAdminAgentSalesIndexRoute =
+  SuperAdminAgentSalesIndexRouteImport.update({
+    id: '/super-admin-agent/sales/',
+    path: '/super-admin-agent/sales/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SuperAdminAgentPartnersIndexRoute =
+  SuperAdminAgentPartnersIndexRouteImport.update({
+    id: '/super-admin-agent/partners/',
+    path: '/super-admin-agent/partners/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SettingsUserManagementIndexRoute =
+  SettingsUserManagementIndexRouteImport.update({
+    id: '/settings/user-management/',
+    path: '/settings/user-management/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SettingsToolsIndexRoute = SettingsToolsIndexRouteImport.update({
+  id: '/settings/tools/',
+  path: '/settings/tools/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsSystemConfigIndexRoute =
+  SettingsSystemConfigIndexRouteImport.update({
+    id: '/settings/system-config/',
+    path: '/settings/system-config/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SettingsPaymentModelsIndexRoute =
+  SettingsPaymentModelsIndexRouteImport.update({
+    id: '/settings/payment-models/',
+    path: '/settings/payment-models/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SettingsCredentialsIndexRoute =
+  SettingsCredentialsIndexRouteImport.update({
+    id: '/settings/credentials/',
+    path: '/settings/credentials/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SalesManageIndexRoute = SalesManageIndexRouteImport.update({
+  id: '/sales/manage/',
+  path: '/sales/manage/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesFinancialReportsIndexRoute =
+  SalesFinancialReportsIndexRouteImport.update({
+    id: '/sales/financial-reports/',
+    path: '/sales/financial-reports/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SalesIdIndexRoute = SalesIdIndexRouteImport.update({
+  id: '/sales/$id/',
+  path: '/sales/$id/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsSuperadminIndexRoute = DocsSuperadminIndexRouteImport.update({
+  id: '/docs/superadmin/',
+  path: '/docs/superadmin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsAdminIndexRoute = DocsAdminIndexRouteImport.update({
+  id: '/docs/admin/',
+  path: '/docs/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSystemConfigIndexRoute = AdminSystemConfigIndexRouteImport.update({
+  id: '/admin/system-config/',
+  path: '/admin/system-config/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSettingsIndexRoute = AdminSettingsIndexRouteImport.update({
+  id: '/admin/settings/',
+  path: '/admin/settings/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSalesIndexRoute = AdminSalesIndexRouteImport.update({
+  id: '/admin/sales/',
+  path: '/admin/sales/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminPartnerAgentsIndexRoute = AdminPartnerAgentsIndexRouteImport.update({
+  id: '/admin/partner-agents/',
+  path: '/admin/partner-agents/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLogsIndexRoute = AdminLogsIndexRouteImport.update({
+  id: '/admin/logs/',
+  path: '/admin/logs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCredentialsIndexRoute = AdminCredentialsIndexRouteImport.update({
+  id: '/admin/credentials/',
+  path: '/admin/credentials/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminBranchesIndexRoute = AdminBranchesIndexRouteImport.update({
+  id: '/admin/branches/',
+  path: '/admin/branches/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAppConfigIndexRoute = AdminAppConfigIndexRouteImport.update({
+  id: '/admin/app-config/',
+  path: '/admin/app-config/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAgreementImagesIndexRoute =
+  AdminAgreementImagesIndexRouteImport.update({
+    id: '/admin/agreement-images/',
+    path: '/admin/agreement-images/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AdminAgentsIndexRoute = AdminAgentsIndexRouteImport.update({
+  id: '/admin/agents/',
+  path: '/admin/agents/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuperAdminAgentSalesCreateIndexRoute =
+  SuperAdminAgentSalesCreateIndexRouteImport.update({
+    id: '/super-admin-agent/sales/create/',
+    path: '/super-admin-agent/sales/create/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DocsSuperadminSalesIndexRoute =
+  DocsSuperadminSalesIndexRouteImport.update({
+    id: '/docs/superadmin/sales/',
+    path: '/docs/superadmin/sales/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DocsAdminSalesIndexRoute = DocsAdminSalesIndexRouteImport.update({
+  id: '/docs/admin/sales/',
+  path: '/docs/admin/sales/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSalesFinancialReportsIndexRoute =
+  AdminSalesFinancialReportsIndexRouteImport.update({
+    id: '/admin/sales/financial-reports/',
+    path: '/admin/sales/financial-reports/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AdminSalesCreateIndexRoute = AdminSalesCreateIndexRouteImport.update({
+  id: '/admin/sales/create/',
+  path: '/admin/sales/create/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin/': typeof AdminIndexRoute
+  '/agent/': typeof AgentIndexRoute
+  '/agents/': typeof AgentsIndexRoute
+  '/agreement-images/': typeof AgreementImagesIndexRoute
+  '/dashboard/': typeof DashboardIndexRoute
+  '/docs/': typeof DocsIndexRoute
+  '/download/': typeof DownloadIndexRoute
+  '/login/': typeof LoginIndexRoute
+  '/map/': typeof MapIndexRoute
+  '/partners/': typeof PartnersIndexRoute
+  '/payment-models/': typeof PaymentModelsIndexRoute
+  '/profile/': typeof ProfileIndexRoute
+  '/sales-monitoring-app/': typeof SalesMonitoringAppIndexRoute
+  '/sales/': typeof SalesIndexRoute
+  '/stove-management/': typeof StoveManagementIndexRoute
+  '/stove-manager/': typeof StoveManagerIndexRoute
+  '/stove-transfer-history/': typeof StoveTransferHistoryIndexRoute
+  '/super-admin-agent/': typeof SuperAdminAgentIndexRoute
+  '/super-admin-agents/': typeof SuperAdminAgentsIndexRoute
+  '/uitest/': typeof UitestIndexRoute
+  '/unauthorized/': typeof UnauthorizedIndexRoute
+  '/user-management/': typeof UserManagementIndexRoute
+  '/admin/agents/': typeof AdminAgentsIndexRoute
+  '/admin/agreement-images/': typeof AdminAgreementImagesIndexRoute
+  '/admin/app-config/': typeof AdminAppConfigIndexRoute
+  '/admin/branches/': typeof AdminBranchesIndexRoute
+  '/admin/credentials/': typeof AdminCredentialsIndexRoute
+  '/admin/logs/': typeof AdminLogsIndexRoute
+  '/admin/partner-agents/': typeof AdminPartnerAgentsIndexRoute
+  '/admin/sales/': typeof AdminSalesIndexRoute
+  '/admin/settings/': typeof AdminSettingsIndexRoute
+  '/admin/system-config/': typeof AdminSystemConfigIndexRoute
+  '/docs/admin/': typeof DocsAdminIndexRoute
+  '/docs/superadmin/': typeof DocsSuperadminIndexRoute
+  '/sales/$id/': typeof SalesIdIndexRoute
+  '/sales/financial-reports/': typeof SalesFinancialReportsIndexRoute
+  '/sales/manage/': typeof SalesManageIndexRoute
+  '/settings/credentials/': typeof SettingsCredentialsIndexRoute
+  '/settings/payment-models/': typeof SettingsPaymentModelsIndexRoute
+  '/settings/system-config/': typeof SettingsSystemConfigIndexRoute
+  '/settings/tools/': typeof SettingsToolsIndexRoute
+  '/settings/user-management/': typeof SettingsUserManagementIndexRoute
+  '/super-admin-agent/partners/': typeof SuperAdminAgentPartnersIndexRoute
+  '/super-admin-agent/sales/': typeof SuperAdminAgentSalesIndexRoute
+  '/super-admin-agent/stove-ids/': typeof SuperAdminAgentStoveIdsIndexRoute
+  '/admin/sales/create/': typeof AdminSalesCreateIndexRoute
+  '/admin/sales/financial-reports/': typeof AdminSalesFinancialReportsIndexRoute
+  '/docs/admin/sales/': typeof DocsAdminSalesIndexRoute
+  '/docs/superadmin/sales/': typeof DocsSuperadminSalesIndexRoute
+  '/super-admin-agent/sales/create/': typeof SuperAdminAgentSalesCreateIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminIndexRoute
+  '/agent': typeof AgentIndexRoute
+  '/agents': typeof AgentsIndexRoute
+  '/agreement-images': typeof AgreementImagesIndexRoute
+  '/dashboard': typeof DashboardIndexRoute
+  '/docs': typeof DocsIndexRoute
+  '/download': typeof DownloadIndexRoute
+  '/login': typeof LoginIndexRoute
+  '/map': typeof MapIndexRoute
+  '/partners': typeof PartnersIndexRoute
+  '/payment-models': typeof PaymentModelsIndexRoute
+  '/profile': typeof ProfileIndexRoute
+  '/sales-monitoring-app': typeof SalesMonitoringAppIndexRoute
+  '/sales': typeof SalesIndexRoute
+  '/stove-management': typeof StoveManagementIndexRoute
+  '/stove-manager': typeof StoveManagerIndexRoute
+  '/stove-transfer-history': typeof StoveTransferHistoryIndexRoute
+  '/super-admin-agent': typeof SuperAdminAgentIndexRoute
+  '/super-admin-agents': typeof SuperAdminAgentsIndexRoute
+  '/uitest': typeof UitestIndexRoute
+  '/unauthorized': typeof UnauthorizedIndexRoute
+  '/user-management': typeof UserManagementIndexRoute
+  '/admin/agents': typeof AdminAgentsIndexRoute
+  '/admin/agreement-images': typeof AdminAgreementImagesIndexRoute
+  '/admin/app-config': typeof AdminAppConfigIndexRoute
+  '/admin/branches': typeof AdminBranchesIndexRoute
+  '/admin/credentials': typeof AdminCredentialsIndexRoute
+  '/admin/logs': typeof AdminLogsIndexRoute
+  '/admin/partner-agents': typeof AdminPartnerAgentsIndexRoute
+  '/admin/sales': typeof AdminSalesIndexRoute
+  '/admin/settings': typeof AdminSettingsIndexRoute
+  '/admin/system-config': typeof AdminSystemConfigIndexRoute
+  '/docs/admin': typeof DocsAdminIndexRoute
+  '/docs/superadmin': typeof DocsSuperadminIndexRoute
+  '/sales/$id': typeof SalesIdIndexRoute
+  '/sales/financial-reports': typeof SalesFinancialReportsIndexRoute
+  '/sales/manage': typeof SalesManageIndexRoute
+  '/settings/credentials': typeof SettingsCredentialsIndexRoute
+  '/settings/payment-models': typeof SettingsPaymentModelsIndexRoute
+  '/settings/system-config': typeof SettingsSystemConfigIndexRoute
+  '/settings/tools': typeof SettingsToolsIndexRoute
+  '/settings/user-management': typeof SettingsUserManagementIndexRoute
+  '/super-admin-agent/partners': typeof SuperAdminAgentPartnersIndexRoute
+  '/super-admin-agent/sales': typeof SuperAdminAgentSalesIndexRoute
+  '/super-admin-agent/stove-ids': typeof SuperAdminAgentStoveIdsIndexRoute
+  '/admin/sales/create': typeof AdminSalesCreateIndexRoute
+  '/admin/sales/financial-reports': typeof AdminSalesFinancialReportsIndexRoute
+  '/docs/admin/sales': typeof DocsAdminSalesIndexRoute
+  '/docs/superadmin/sales': typeof DocsSuperadminSalesIndexRoute
+  '/super-admin-agent/sales/create': typeof SuperAdminAgentSalesCreateIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin/': typeof AdminIndexRoute
+  '/agent/': typeof AgentIndexRoute
+  '/agents/': typeof AgentsIndexRoute
+  '/agreement-images/': typeof AgreementImagesIndexRoute
+  '/dashboard/': typeof DashboardIndexRoute
+  '/docs/': typeof DocsIndexRoute
+  '/download/': typeof DownloadIndexRoute
+  '/login/': typeof LoginIndexRoute
+  '/map/': typeof MapIndexRoute
+  '/partners/': typeof PartnersIndexRoute
+  '/payment-models/': typeof PaymentModelsIndexRoute
+  '/profile/': typeof ProfileIndexRoute
+  '/sales-monitoring-app/': typeof SalesMonitoringAppIndexRoute
+  '/sales/': typeof SalesIndexRoute
+  '/stove-management/': typeof StoveManagementIndexRoute
+  '/stove-manager/': typeof StoveManagerIndexRoute
+  '/stove-transfer-history/': typeof StoveTransferHistoryIndexRoute
+  '/super-admin-agent/': typeof SuperAdminAgentIndexRoute
+  '/super-admin-agents/': typeof SuperAdminAgentsIndexRoute
+  '/uitest/': typeof UitestIndexRoute
+  '/unauthorized/': typeof UnauthorizedIndexRoute
+  '/user-management/': typeof UserManagementIndexRoute
+  '/admin/agents/': typeof AdminAgentsIndexRoute
+  '/admin/agreement-images/': typeof AdminAgreementImagesIndexRoute
+  '/admin/app-config/': typeof AdminAppConfigIndexRoute
+  '/admin/branches/': typeof AdminBranchesIndexRoute
+  '/admin/credentials/': typeof AdminCredentialsIndexRoute
+  '/admin/logs/': typeof AdminLogsIndexRoute
+  '/admin/partner-agents/': typeof AdminPartnerAgentsIndexRoute
+  '/admin/sales/': typeof AdminSalesIndexRoute
+  '/admin/settings/': typeof AdminSettingsIndexRoute
+  '/admin/system-config/': typeof AdminSystemConfigIndexRoute
+  '/docs/admin/': typeof DocsAdminIndexRoute
+  '/docs/superadmin/': typeof DocsSuperadminIndexRoute
+  '/sales/$id/': typeof SalesIdIndexRoute
+  '/sales/financial-reports/': typeof SalesFinancialReportsIndexRoute
+  '/sales/manage/': typeof SalesManageIndexRoute
+  '/settings/credentials/': typeof SettingsCredentialsIndexRoute
+  '/settings/payment-models/': typeof SettingsPaymentModelsIndexRoute
+  '/settings/system-config/': typeof SettingsSystemConfigIndexRoute
+  '/settings/tools/': typeof SettingsToolsIndexRoute
+  '/settings/user-management/': typeof SettingsUserManagementIndexRoute
+  '/super-admin-agent/partners/': typeof SuperAdminAgentPartnersIndexRoute
+  '/super-admin-agent/sales/': typeof SuperAdminAgentSalesIndexRoute
+  '/super-admin-agent/stove-ids/': typeof SuperAdminAgentStoveIdsIndexRoute
+  '/admin/sales/create/': typeof AdminSalesCreateIndexRoute
+  '/admin/sales/financial-reports/': typeof AdminSalesFinancialReportsIndexRoute
+  '/docs/admin/sales/': typeof DocsAdminSalesIndexRoute
+  '/docs/superadmin/sales/': typeof DocsSuperadminSalesIndexRoute
+  '/super-admin-agent/sales/create/': typeof SuperAdminAgentSalesCreateIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/admin/'
+    | '/agent/'
+    | '/agents/'
+    | '/agreement-images/'
+    | '/dashboard/'
+    | '/docs/'
+    | '/download/'
+    | '/login/'
+    | '/map/'
+    | '/partners/'
+    | '/payment-models/'
+    | '/profile/'
+    | '/sales-monitoring-app/'
+    | '/sales/'
+    | '/stove-management/'
+    | '/stove-manager/'
+    | '/stove-transfer-history/'
+    | '/super-admin-agent/'
+    | '/super-admin-agents/'
+    | '/uitest/'
+    | '/unauthorized/'
+    | '/user-management/'
+    | '/admin/agents/'
+    | '/admin/agreement-images/'
+    | '/admin/app-config/'
+    | '/admin/branches/'
+    | '/admin/credentials/'
+    | '/admin/logs/'
+    | '/admin/partner-agents/'
+    | '/admin/sales/'
+    | '/admin/settings/'
+    | '/admin/system-config/'
+    | '/docs/admin/'
+    | '/docs/superadmin/'
+    | '/sales/$id/'
+    | '/sales/financial-reports/'
+    | '/sales/manage/'
+    | '/settings/credentials/'
+    | '/settings/payment-models/'
+    | '/settings/system-config/'
+    | '/settings/tools/'
+    | '/settings/user-management/'
+    | '/super-admin-agent/partners/'
+    | '/super-admin-agent/sales/'
+    | '/super-admin-agent/stove-ids/'
+    | '/admin/sales/create/'
+    | '/admin/sales/financial-reports/'
+    | '/docs/admin/sales/'
+    | '/docs/superadmin/sales/'
+    | '/super-admin-agent/sales/create/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/admin'
+    | '/agent'
+    | '/agents'
+    | '/agreement-images'
+    | '/dashboard'
+    | '/docs'
+    | '/download'
+    | '/login'
+    | '/map'
+    | '/partners'
+    | '/payment-models'
+    | '/profile'
+    | '/sales-monitoring-app'
+    | '/sales'
+    | '/stove-management'
+    | '/stove-manager'
+    | '/stove-transfer-history'
+    | '/super-admin-agent'
+    | '/super-admin-agents'
+    | '/uitest'
+    | '/unauthorized'
+    | '/user-management'
+    | '/admin/agents'
+    | '/admin/agreement-images'
+    | '/admin/app-config'
+    | '/admin/branches'
+    | '/admin/credentials'
+    | '/admin/logs'
+    | '/admin/partner-agents'
+    | '/admin/sales'
+    | '/admin/settings'
+    | '/admin/system-config'
+    | '/docs/admin'
+    | '/docs/superadmin'
+    | '/sales/$id'
+    | '/sales/financial-reports'
+    | '/sales/manage'
+    | '/settings/credentials'
+    | '/settings/payment-models'
+    | '/settings/system-config'
+    | '/settings/tools'
+    | '/settings/user-management'
+    | '/super-admin-agent/partners'
+    | '/super-admin-agent/sales'
+    | '/super-admin-agent/stove-ids'
+    | '/admin/sales/create'
+    | '/admin/sales/financial-reports'
+    | '/docs/admin/sales'
+    | '/docs/superadmin/sales'
+    | '/super-admin-agent/sales/create'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin/'
+    | '/agent/'
+    | '/agents/'
+    | '/agreement-images/'
+    | '/dashboard/'
+    | '/docs/'
+    | '/download/'
+    | '/login/'
+    | '/map/'
+    | '/partners/'
+    | '/payment-models/'
+    | '/profile/'
+    | '/sales-monitoring-app/'
+    | '/sales/'
+    | '/stove-management/'
+    | '/stove-manager/'
+    | '/stove-transfer-history/'
+    | '/super-admin-agent/'
+    | '/super-admin-agents/'
+    | '/uitest/'
+    | '/unauthorized/'
+    | '/user-management/'
+    | '/admin/agents/'
+    | '/admin/agreement-images/'
+    | '/admin/app-config/'
+    | '/admin/branches/'
+    | '/admin/credentials/'
+    | '/admin/logs/'
+    | '/admin/partner-agents/'
+    | '/admin/sales/'
+    | '/admin/settings/'
+    | '/admin/system-config/'
+    | '/docs/admin/'
+    | '/docs/superadmin/'
+    | '/sales/$id/'
+    | '/sales/financial-reports/'
+    | '/sales/manage/'
+    | '/settings/credentials/'
+    | '/settings/payment-models/'
+    | '/settings/system-config/'
+    | '/settings/tools/'
+    | '/settings/user-management/'
+    | '/super-admin-agent/partners/'
+    | '/super-admin-agent/sales/'
+    | '/super-admin-agent/stove-ids/'
+    | '/admin/sales/create/'
+    | '/admin/sales/financial-reports/'
+    | '/docs/admin/sales/'
+    | '/docs/superadmin/sales/'
+    | '/super-admin-agent/sales/create/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+  AgentIndexRoute: typeof AgentIndexRoute
+  AgentsIndexRoute: typeof AgentsIndexRoute
+  AgreementImagesIndexRoute: typeof AgreementImagesIndexRoute
+  DashboardIndexRoute: typeof DashboardIndexRoute
+  DocsIndexRoute: typeof DocsIndexRoute
+  DownloadIndexRoute: typeof DownloadIndexRoute
+  LoginIndexRoute: typeof LoginIndexRoute
+  MapIndexRoute: typeof MapIndexRoute
+  PartnersIndexRoute: typeof PartnersIndexRoute
+  PaymentModelsIndexRoute: typeof PaymentModelsIndexRoute
+  ProfileIndexRoute: typeof ProfileIndexRoute
+  SalesMonitoringAppIndexRoute: typeof SalesMonitoringAppIndexRoute
+  SalesIndexRoute: typeof SalesIndexRoute
+  StoveManagementIndexRoute: typeof StoveManagementIndexRoute
+  StoveManagerIndexRoute: typeof StoveManagerIndexRoute
+  StoveTransferHistoryIndexRoute: typeof StoveTransferHistoryIndexRoute
+  SuperAdminAgentIndexRoute: typeof SuperAdminAgentIndexRoute
+  SuperAdminAgentsIndexRoute: typeof SuperAdminAgentsIndexRoute
+  UitestIndexRoute: typeof UitestIndexRoute
+  UnauthorizedIndexRoute: typeof UnauthorizedIndexRoute
+  UserManagementIndexRoute: typeof UserManagementIndexRoute
+  AdminAgentsIndexRoute: typeof AdminAgentsIndexRoute
+  AdminAgreementImagesIndexRoute: typeof AdminAgreementImagesIndexRoute
+  AdminAppConfigIndexRoute: typeof AdminAppConfigIndexRoute
+  AdminBranchesIndexRoute: typeof AdminBranchesIndexRoute
+  AdminCredentialsIndexRoute: typeof AdminCredentialsIndexRoute
+  AdminLogsIndexRoute: typeof AdminLogsIndexRoute
+  AdminPartnerAgentsIndexRoute: typeof AdminPartnerAgentsIndexRoute
+  AdminSalesIndexRoute: typeof AdminSalesIndexRoute
+  AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute
+  AdminSystemConfigIndexRoute: typeof AdminSystemConfigIndexRoute
+  DocsAdminIndexRoute: typeof DocsAdminIndexRoute
+  DocsSuperadminIndexRoute: typeof DocsSuperadminIndexRoute
+  SalesIdIndexRoute: typeof SalesIdIndexRoute
+  SalesFinancialReportsIndexRoute: typeof SalesFinancialReportsIndexRoute
+  SalesManageIndexRoute: typeof SalesManageIndexRoute
+  SettingsCredentialsIndexRoute: typeof SettingsCredentialsIndexRoute
+  SettingsPaymentModelsIndexRoute: typeof SettingsPaymentModelsIndexRoute
+  SettingsSystemConfigIndexRoute: typeof SettingsSystemConfigIndexRoute
+  SettingsToolsIndexRoute: typeof SettingsToolsIndexRoute
+  SettingsUserManagementIndexRoute: typeof SettingsUserManagementIndexRoute
+  SuperAdminAgentPartnersIndexRoute: typeof SuperAdminAgentPartnersIndexRoute
+  SuperAdminAgentSalesIndexRoute: typeof SuperAdminAgentSalesIndexRoute
+  SuperAdminAgentStoveIdsIndexRoute: typeof SuperAdminAgentStoveIdsIndexRoute
+  AdminSalesCreateIndexRoute: typeof AdminSalesCreateIndexRoute
+  AdminSalesFinancialReportsIndexRoute: typeof AdminSalesFinancialReportsIndexRoute
+  DocsAdminSalesIndexRoute: typeof DocsAdminSalesIndexRoute
+  DocsSuperadminSalesIndexRoute: typeof DocsSuperadminSalesIndexRoute
+  SuperAdminAgentSalesCreateIndexRoute: typeof SuperAdminAgentSalesCreateIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +715,411 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/user-management/': {
+      id: '/user-management/'
+      path: '/user-management'
+      fullPath: '/user-management/'
+      preLoaderRoute: typeof UserManagementIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unauthorized/': {
+      id: '/unauthorized/'
+      path: '/unauthorized'
+      fullPath: '/unauthorized/'
+      preLoaderRoute: typeof UnauthorizedIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/uitest/': {
+      id: '/uitest/'
+      path: '/uitest'
+      fullPath: '/uitest/'
+      preLoaderRoute: typeof UitestIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/super-admin-agents/': {
+      id: '/super-admin-agents/'
+      path: '/super-admin-agents'
+      fullPath: '/super-admin-agents/'
+      preLoaderRoute: typeof SuperAdminAgentsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/super-admin-agent/': {
+      id: '/super-admin-agent/'
+      path: '/super-admin-agent'
+      fullPath: '/super-admin-agent/'
+      preLoaderRoute: typeof SuperAdminAgentIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stove-transfer-history/': {
+      id: '/stove-transfer-history/'
+      path: '/stove-transfer-history'
+      fullPath: '/stove-transfer-history/'
+      preLoaderRoute: typeof StoveTransferHistoryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stove-manager/': {
+      id: '/stove-manager/'
+      path: '/stove-manager'
+      fullPath: '/stove-manager/'
+      preLoaderRoute: typeof StoveManagerIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stove-management/': {
+      id: '/stove-management/'
+      path: '/stove-management'
+      fullPath: '/stove-management/'
+      preLoaderRoute: typeof StoveManagementIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/': {
+      id: '/sales/'
+      path: '/sales'
+      fullPath: '/sales/'
+      preLoaderRoute: typeof SalesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales-monitoring-app/': {
+      id: '/sales-monitoring-app/'
+      path: '/sales-monitoring-app'
+      fullPath: '/sales-monitoring-app/'
+      preLoaderRoute: typeof SalesMonitoringAppIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/': {
+      id: '/profile/'
+      path: '/profile'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof ProfileIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payment-models/': {
+      id: '/payment-models/'
+      path: '/payment-models'
+      fullPath: '/payment-models/'
+      preLoaderRoute: typeof PaymentModelsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/partners/': {
+      id: '/partners/'
+      path: '/partners'
+      fullPath: '/partners/'
+      preLoaderRoute: typeof PartnersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/map/': {
+      id: '/map/'
+      path: '/map'
+      fullPath: '/map/'
+      preLoaderRoute: typeof MapIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login/': {
+      id: '/login/'
+      path: '/login'
+      fullPath: '/login/'
+      preLoaderRoute: typeof LoginIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/download/': {
+      id: '/download/'
+      path: '/download'
+      fullPath: '/download/'
+      preLoaderRoute: typeof DownloadIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/': {
+      id: '/docs/'
+      path: '/docs'
+      fullPath: '/docs/'
+      preLoaderRoute: typeof DocsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/dashboard'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agreement-images/': {
+      id: '/agreement-images/'
+      path: '/agreement-images'
+      fullPath: '/agreement-images/'
+      preLoaderRoute: typeof AgreementImagesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agents/': {
+      id: '/agents/'
+      path: '/agents'
+      fullPath: '/agents/'
+      preLoaderRoute: typeof AgentsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agent/': {
+      id: '/agent/'
+      path: '/agent'
+      fullPath: '/agent/'
+      preLoaderRoute: typeof AgentIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/super-admin-agent/stove-ids/': {
+      id: '/super-admin-agent/stove-ids/'
+      path: '/super-admin-agent/stove-ids'
+      fullPath: '/super-admin-agent/stove-ids/'
+      preLoaderRoute: typeof SuperAdminAgentStoveIdsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/super-admin-agent/sales/': {
+      id: '/super-admin-agent/sales/'
+      path: '/super-admin-agent/sales'
+      fullPath: '/super-admin-agent/sales/'
+      preLoaderRoute: typeof SuperAdminAgentSalesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/super-admin-agent/partners/': {
+      id: '/super-admin-agent/partners/'
+      path: '/super-admin-agent/partners'
+      fullPath: '/super-admin-agent/partners/'
+      preLoaderRoute: typeof SuperAdminAgentPartnersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/user-management/': {
+      id: '/settings/user-management/'
+      path: '/settings/user-management'
+      fullPath: '/settings/user-management/'
+      preLoaderRoute: typeof SettingsUserManagementIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/tools/': {
+      id: '/settings/tools/'
+      path: '/settings/tools'
+      fullPath: '/settings/tools/'
+      preLoaderRoute: typeof SettingsToolsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/system-config/': {
+      id: '/settings/system-config/'
+      path: '/settings/system-config'
+      fullPath: '/settings/system-config/'
+      preLoaderRoute: typeof SettingsSystemConfigIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/payment-models/': {
+      id: '/settings/payment-models/'
+      path: '/settings/payment-models'
+      fullPath: '/settings/payment-models/'
+      preLoaderRoute: typeof SettingsPaymentModelsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/credentials/': {
+      id: '/settings/credentials/'
+      path: '/settings/credentials'
+      fullPath: '/settings/credentials/'
+      preLoaderRoute: typeof SettingsCredentialsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/manage/': {
+      id: '/sales/manage/'
+      path: '/sales/manage'
+      fullPath: '/sales/manage/'
+      preLoaderRoute: typeof SalesManageIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/financial-reports/': {
+      id: '/sales/financial-reports/'
+      path: '/sales/financial-reports'
+      fullPath: '/sales/financial-reports/'
+      preLoaderRoute: typeof SalesFinancialReportsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/$id/': {
+      id: '/sales/$id/'
+      path: '/sales/$id'
+      fullPath: '/sales/$id/'
+      preLoaderRoute: typeof SalesIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/superadmin/': {
+      id: '/docs/superadmin/'
+      path: '/docs/superadmin'
+      fullPath: '/docs/superadmin/'
+      preLoaderRoute: typeof DocsSuperadminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/admin/': {
+      id: '/docs/admin/'
+      path: '/docs/admin'
+      fullPath: '/docs/admin/'
+      preLoaderRoute: typeof DocsAdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/system-config/': {
+      id: '/admin/system-config/'
+      path: '/admin/system-config'
+      fullPath: '/admin/system-config/'
+      preLoaderRoute: typeof AdminSystemConfigIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/settings/': {
+      id: '/admin/settings/'
+      path: '/admin/settings'
+      fullPath: '/admin/settings/'
+      preLoaderRoute: typeof AdminSettingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/sales/': {
+      id: '/admin/sales/'
+      path: '/admin/sales'
+      fullPath: '/admin/sales/'
+      preLoaderRoute: typeof AdminSalesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/partner-agents/': {
+      id: '/admin/partner-agents/'
+      path: '/admin/partner-agents'
+      fullPath: '/admin/partner-agents/'
+      preLoaderRoute: typeof AdminPartnerAgentsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/logs/': {
+      id: '/admin/logs/'
+      path: '/admin/logs'
+      fullPath: '/admin/logs/'
+      preLoaderRoute: typeof AdminLogsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/credentials/': {
+      id: '/admin/credentials/'
+      path: '/admin/credentials'
+      fullPath: '/admin/credentials/'
+      preLoaderRoute: typeof AdminCredentialsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/branches/': {
+      id: '/admin/branches/'
+      path: '/admin/branches'
+      fullPath: '/admin/branches/'
+      preLoaderRoute: typeof AdminBranchesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/app-config/': {
+      id: '/admin/app-config/'
+      path: '/admin/app-config'
+      fullPath: '/admin/app-config/'
+      preLoaderRoute: typeof AdminAppConfigIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/agreement-images/': {
+      id: '/admin/agreement-images/'
+      path: '/admin/agreement-images'
+      fullPath: '/admin/agreement-images/'
+      preLoaderRoute: typeof AdminAgreementImagesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/agents/': {
+      id: '/admin/agents/'
+      path: '/admin/agents'
+      fullPath: '/admin/agents/'
+      preLoaderRoute: typeof AdminAgentsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/super-admin-agent/sales/create/': {
+      id: '/super-admin-agent/sales/create/'
+      path: '/super-admin-agent/sales/create'
+      fullPath: '/super-admin-agent/sales/create/'
+      preLoaderRoute: typeof SuperAdminAgentSalesCreateIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/superadmin/sales/': {
+      id: '/docs/superadmin/sales/'
+      path: '/docs/superadmin/sales'
+      fullPath: '/docs/superadmin/sales/'
+      preLoaderRoute: typeof DocsSuperadminSalesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/admin/sales/': {
+      id: '/docs/admin/sales/'
+      path: '/docs/admin/sales'
+      fullPath: '/docs/admin/sales/'
+      preLoaderRoute: typeof DocsAdminSalesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/sales/financial-reports/': {
+      id: '/admin/sales/financial-reports/'
+      path: '/admin/sales/financial-reports'
+      fullPath: '/admin/sales/financial-reports/'
+      preLoaderRoute: typeof AdminSalesFinancialReportsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/sales/create/': {
+      id: '/admin/sales/create/'
+      path: '/admin/sales/create'
+      fullPath: '/admin/sales/create/'
+      preLoaderRoute: typeof AdminSalesCreateIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminIndexRoute: AdminIndexRoute,
+  AgentIndexRoute: AgentIndexRoute,
+  AgentsIndexRoute: AgentsIndexRoute,
+  AgreementImagesIndexRoute: AgreementImagesIndexRoute,
+  DashboardIndexRoute: DashboardIndexRoute,
+  DocsIndexRoute: DocsIndexRoute,
+  DownloadIndexRoute: DownloadIndexRoute,
+  LoginIndexRoute: LoginIndexRoute,
+  MapIndexRoute: MapIndexRoute,
+  PartnersIndexRoute: PartnersIndexRoute,
+  PaymentModelsIndexRoute: PaymentModelsIndexRoute,
+  ProfileIndexRoute: ProfileIndexRoute,
+  SalesMonitoringAppIndexRoute: SalesMonitoringAppIndexRoute,
+  SalesIndexRoute: SalesIndexRoute,
+  StoveManagementIndexRoute: StoveManagementIndexRoute,
+  StoveManagerIndexRoute: StoveManagerIndexRoute,
+  StoveTransferHistoryIndexRoute: StoveTransferHistoryIndexRoute,
+  SuperAdminAgentIndexRoute: SuperAdminAgentIndexRoute,
+  SuperAdminAgentsIndexRoute: SuperAdminAgentsIndexRoute,
+  UitestIndexRoute: UitestIndexRoute,
+  UnauthorizedIndexRoute: UnauthorizedIndexRoute,
+  UserManagementIndexRoute: UserManagementIndexRoute,
+  AdminAgentsIndexRoute: AdminAgentsIndexRoute,
+  AdminAgreementImagesIndexRoute: AdminAgreementImagesIndexRoute,
+  AdminAppConfigIndexRoute: AdminAppConfigIndexRoute,
+  AdminBranchesIndexRoute: AdminBranchesIndexRoute,
+  AdminCredentialsIndexRoute: AdminCredentialsIndexRoute,
+  AdminLogsIndexRoute: AdminLogsIndexRoute,
+  AdminPartnerAgentsIndexRoute: AdminPartnerAgentsIndexRoute,
+  AdminSalesIndexRoute: AdminSalesIndexRoute,
+  AdminSettingsIndexRoute: AdminSettingsIndexRoute,
+  AdminSystemConfigIndexRoute: AdminSystemConfigIndexRoute,
+  DocsAdminIndexRoute: DocsAdminIndexRoute,
+  DocsSuperadminIndexRoute: DocsSuperadminIndexRoute,
+  SalesIdIndexRoute: SalesIdIndexRoute,
+  SalesFinancialReportsIndexRoute: SalesFinancialReportsIndexRoute,
+  SalesManageIndexRoute: SalesManageIndexRoute,
+  SettingsCredentialsIndexRoute: SettingsCredentialsIndexRoute,
+  SettingsPaymentModelsIndexRoute: SettingsPaymentModelsIndexRoute,
+  SettingsSystemConfigIndexRoute: SettingsSystemConfigIndexRoute,
+  SettingsToolsIndexRoute: SettingsToolsIndexRoute,
+  SettingsUserManagementIndexRoute: SettingsUserManagementIndexRoute,
+  SuperAdminAgentPartnersIndexRoute: SuperAdminAgentPartnersIndexRoute,
+  SuperAdminAgentSalesIndexRoute: SuperAdminAgentSalesIndexRoute,
+  SuperAdminAgentStoveIdsIndexRoute: SuperAdminAgentStoveIdsIndexRoute,
+  AdminSalesCreateIndexRoute: AdminSalesCreateIndexRoute,
+  AdminSalesFinancialReportsIndexRoute: AdminSalesFinancialReportsIndexRoute,
+  DocsAdminSalesIndexRoute: DocsAdminSalesIndexRoute,
+  DocsSuperadminSalesIndexRoute: DocsSuperadminSalesIndexRoute,
+  SuperAdminAgentSalesCreateIndexRoute: SuperAdminAgentSalesCreateIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
