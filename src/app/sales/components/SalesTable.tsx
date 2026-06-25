@@ -96,10 +96,10 @@ const SalesTable = ({
               checked={allCurrentPageSelected}
               onCheckedChange={(checked: boolean) => onSelectAll(checked)}
               aria-label="Select all items on this page"
-              ref={(el: HTMLInputElement | null) => {
+              ref={((el: HTMLInputElement | null) => {
                 if (el)
                   el.indeterminate = someSelected && !allCurrentPageSelected;
-              }}
+              }) as any}
               className="border-white data-[state=checked]:bg-white data-[state=checked]:text-brand"
             />
           </TableHead>
