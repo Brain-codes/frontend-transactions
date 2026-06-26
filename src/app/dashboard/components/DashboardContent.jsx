@@ -55,7 +55,7 @@ import PageHeader from "../../components/PageHeader";
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: CURRENT_YEAR - 2023 }, (_, i) => 2024 + i);
-const DARK_NAVY = "#194977";
+const DARK_NAVY = "#4a5d0f";
 const PIE_COLORS = ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#06b6d4"];
 
 const NIGERIAN_STATES = [
