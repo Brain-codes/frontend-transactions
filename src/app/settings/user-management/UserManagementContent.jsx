@@ -37,9 +37,11 @@ import {
   UserPlus,
   Users,
   Edit,
+  SquarePen,
   Trash2,
   UserX,
   UserCheck,
+
   Eye,
   EyeOff,
   AlertCircle,
