@@ -520,7 +520,7 @@ const UserManagementPage = () => {
             </div>
 
             {/* Table body */}
-            <div className="bg-white border-x border-gray-200 overflow-x-auto relative">
+            <div className="bg-white border-x border-t border-gray-200 rounded-t-lg overflow-x-auto relative">
               {loading && (
                 <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
                   <Loader2 className="h-6 w-6 animate-spin text-brand" />
@@ -529,13 +529,13 @@ const UserManagementPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-brand hover:bg-brand">
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Name</TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap first:rounded-tl-lg">Name</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Email</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Role</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Status</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Last Active</TableHead>
-                    <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">Actions</TableHead>
+                    <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap rounded-tr-lg">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className={loading ? "opacity-40" : ""}>
