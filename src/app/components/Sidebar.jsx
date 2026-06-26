@@ -215,22 +215,6 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
           })}
         </nav>
 
-        {canRoute("sales-monitoring-app") && (
-          <div className="px-2 pb-4 pt-2 border-t border-gray-200 shrink-0">
-            <Link
-              href="/sales-monitoring-app"
-              onClick={() => navigateToRoute("/sales-monitoring-app")}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-xs ${
-                currentRoute === "sales-monitoring-app"
-                  ? "bg-white text-gray-900 font-medium"
-                  : "text-gray-700 hover:bg-white/50"
-              }`}
-            >
-              <Smartphone className="h-4 w-4 shrink-0" />
-              <span className="flex-1">Sales Monitoring App</span>
-            </Link>
-          </div>
-        )}
       </div>
     </>
   );
