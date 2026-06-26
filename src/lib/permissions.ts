@@ -80,6 +80,7 @@ const ALL_ROUTES: RouteKey[] = [
   "partners",
   "partners-profiles",
   "agents",
+  "agents-profiles",
   "stove-management",
   "stove-manager",
   "stove-transfer-history",
