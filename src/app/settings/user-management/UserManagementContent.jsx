@@ -550,14 +550,14 @@ const UserManagementPage = () => {
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Role</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
-                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Last Active</TableHead>
+                    
                     <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className={loading ? "opacity-40" : ""}>
                   {users.length === 0 && !loading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-10 text-gray-500">
+                      <TableCell colSpan={6} className="text-center py-10 text-gray-500">
                         No users found
                       </TableCell>
                     </TableRow>
@@ -590,10 +590,6 @@ const UserManagementPage = () => {
 
                         </TableCell>
 
-                        {/* Last Active */}
-                        <TableCell className="text-sm text-gray-600">
-                          {formatRelativeTime(u.last_login)}
-                        </TableCell>
 
                         {/* Actions — kebab menu */}
                         <TableCell className="text-center">
@@ -673,6 +669,9 @@ const UserManagementPage = () => {
                               <DropdownMenuContent align="end" className="w-48">
                                 <div className="px-2 py-1 text-[11px] text-gray-500 bg-gray-50/80 rounded-t-sm font-medium border-b border-gray-100">
                                   Created: {formatDate(u.created_at)}
+                                </div>
+                                <div className="px-2 py-1 text-[11px] text-gray-500 bg-gray-50/80 font-medium border-b border-gray-100">
+                                  Last Active: {formatRelativeTime(u.last_login)}
                                 </div>
                                 {["acsl_agent", "super_admin_agent"].includes(u.role) && (
                                   <>
