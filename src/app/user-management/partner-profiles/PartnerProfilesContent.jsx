@@ -228,9 +228,8 @@ const PartnerProfilesContent = () => {
                                 type="button"
                                 onClick={() => setDetailsPartner(p)}
                                 aria-label="View details"
-                                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-slate-700 text-white text-xs font-medium shadow-sm hover:bg-slate-800 active:scale-[0.98] transition"
+                                className="inline-flex items-center justify-center h-8 px-3 rounded-md bg-slate-700 text-white text-xs font-medium shadow-sm hover:bg-slate-800 active:scale-[0.98] transition"
                               >
-                                <Eye className="h-3.5 w-3.5" />
                                 Details
                               </button>
                             </TooltipTrigger>
