@@ -197,7 +197,7 @@ const PartnerProfilesContent = () => {
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">State</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
-                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
+                <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className={loading ? "opacity-40" : ""}>
@@ -219,8 +219,8 @@ const PartnerProfilesContent = () => {
                     <TableCell className="text-sm text-gray-600">{p.state || "—"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{p.branch || "—"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{p.contact_phone || "—"}</TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-2">
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
                         <TooltipProvider delayDuration={150}>
                           <Tooltip>
                             <TooltipTrigger asChild>
