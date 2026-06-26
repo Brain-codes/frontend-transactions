@@ -14,6 +14,7 @@ export type RouteKey =
   | "sales-create"
   | "sales-financial-reports"
   | "partners"
+  | "partners-profiles"
   | "agents"
   | "stove-management"
   | "stove-manager"
@@ -76,6 +77,7 @@ const ALL_ROUTES: RouteKey[] = [
   "sales-create",
   "sales-financial-reports",
   "partners",
+  "partners-profiles",
   "agents",
   "stove-management",
   "stove-manager",
