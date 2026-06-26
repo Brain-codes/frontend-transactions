@@ -1,11 +1,12 @@
 
 import { createClientComponentClient } from "@/lib/supabaseClient";
 import { safeFetchManager } from "../../utils/safeFetch";
+import { supabaseUrl } from "@/lib/supabaseConfig";
 
 class OrganizationsAPIService {
   constructor() {
     this.supabase = createClientComponentClient();
-    this.baseUrl = import.meta.env.VITE_SUPABASE_URL;
+    this.baseUrl = supabaseUrl;
     this.functionName = "manage-organizations";
   }
 
