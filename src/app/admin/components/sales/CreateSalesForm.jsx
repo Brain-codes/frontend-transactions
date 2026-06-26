@@ -41,7 +41,7 @@ import ImageUploadSection from "../../../components/ui/ImageUploadSection";
 import SignatureCanvas from "../../../components/ui/SignatureCanvas";
 import paymentModelService from "../../../services/paymentModelService";
 import superAdminAgentService from "../../../services/superAdminAgentService";
-import { useAuth } from "../../../contexts/AuthContext";
+import { useAuth } from "../../../contexts/useAuth";
 
 const FormField = ({ label, error, children, htmlFor }) => (
   <div>

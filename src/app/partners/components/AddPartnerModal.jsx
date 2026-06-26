@@ -14,7 +14,7 @@ import Modal from "@/components/ui/modal";
 import { FormGrid, FormFieldWrapper } from "@/components/ui/form-grid";
 import { Plus, Trash2, Upload, X, Loader2 } from "lucide-react";
 import { lgaAndStates } from "../../constants";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/useAuth";
 import { useToast } from "@/components/ui/toast";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;

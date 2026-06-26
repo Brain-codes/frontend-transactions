@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { User, Mail, Building, Lock, Shield, Save, Eye, EyeOff, Loader2 } from "lucide-react";
 import PasswordStrengthIndicator from "./PasswordStrengthIndicator";
 import manageProfileService from "../services/manageProfileService";
-import { useToastNotification } from "../contexts/ToastContext";
+import { useToastNotification } from "../contexts/useToastNotification";
 
 interface UserProfileModalProps {
   open: boolean;

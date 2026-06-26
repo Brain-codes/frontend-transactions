@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { useState, useEffect } from "react";
 import { Loader2, X, FileText, Eye } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/useAuth";
 import AdminSalesDetailModal from "../admin/components/sales/AdminSalesDetailModal";
 import { useToast } from "@/components/ui/toast";
 

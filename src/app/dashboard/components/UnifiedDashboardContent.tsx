@@ -5,7 +5,7 @@ import DashboardLayout from "../../components/DashboardLayout";
 import DashboardContentBase from "./DashboardContent";
 import PartnerDashboardTableSection from "./PartnerDashboardTableSection";
 import SalesFormModal from "../../admin/components/sales/SalesFormModal";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/useAuth";
 import { usePermissions } from "../../hooks/usePermissions";
 import superAdminDashboardService from "../../services/superAdminDashboardService";
 import superAdminAgentService from "../../services/superAdminAgentService";

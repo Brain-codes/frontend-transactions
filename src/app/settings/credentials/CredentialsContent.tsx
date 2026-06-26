@@ -45,7 +45,7 @@ import CredentialsTable from "../../admin/components/credentials/CredentialsTabl
 import ViewCredentialModal from "../../admin/components/credentials/ViewCredentialModal";
 import ResetPasswordModal from "../../admin/components/credentials/ResetPasswordModal";
 import PageHeader from "../../components/PageHeader";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/useAuth";
 
 type TabKey = "partners" | "saa" | "super-admins";
 

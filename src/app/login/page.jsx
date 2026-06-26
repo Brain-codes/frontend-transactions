@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Image from "@/compat/Image";
 import { useRouter } from "@/compat/navigation";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/useAuth";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -19,7 +19,7 @@ import {
   Loader2,
   Eye,
 } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/useAuth";
 
 const StoveDetailModal = ({ open, onClose, stove }) => {
   const { supabase } = useAuth();

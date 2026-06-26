@@ -2,9 +2,9 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { LogOut, User, PanelLeft, Smartphone } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/useAuth";
 import { useRouter } from "@/compat/navigation";
-import { useToastNotification } from "../contexts/ToastContext";
+import { useToastNotification } from "../contexts/useToastNotification";
 import manageProfileService from "../services/manageProfileService";
 import UserProfileModal from "./UserProfileModal";
 

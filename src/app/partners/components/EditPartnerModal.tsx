@@ -11,7 +11,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Loader2, Save } from "lucide-react";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/useAuth";
 import { useToast } from "@/components/ui/toast";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;

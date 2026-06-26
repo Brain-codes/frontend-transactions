@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import CreateSalesForm from "./CreateSalesForm";
 import { CheckCircle2 } from "lucide-react";
-import { useAuth } from "../../../contexts/AuthContext";
+import { useAuth } from "../../../contexts/useAuth";
 
 const SalesFormModal = ({
   open,

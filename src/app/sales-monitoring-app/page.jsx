@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "@/compat/Link";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/useAuth";
 import {
   Download,
   Share2,

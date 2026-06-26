@@ -1,6 +1,6 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/useAuth";
 import { useToast } from "@/components/ui/toast";
 import salesAdvancedService from "../services/salesAdvancedAPIService";
 import { safeFetchManager } from "../../utils/safeFetch";

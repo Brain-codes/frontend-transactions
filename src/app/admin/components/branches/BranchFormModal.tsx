@@ -25,7 +25,7 @@ import type {
   CreateBranchData,
   UpdateBranchData,
 } from "@/types/branches";
-import { useAuth } from "@/app/contexts/AuthContext.jsx";
+import { useAuth } from "@/app/contexts/useAuth";
 
 interface BranchFormModalProps {
   open: boolean;

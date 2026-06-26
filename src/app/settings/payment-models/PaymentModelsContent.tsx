@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/useAuth";
 import DashboardLayout from "../../components/DashboardLayout";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import { useToast } from "@/components/ui/toast";

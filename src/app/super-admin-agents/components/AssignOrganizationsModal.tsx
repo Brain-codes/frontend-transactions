@@ -25,7 +25,7 @@ import {
 import superAdminAgentService from "../../services/superAdminAgentService";
 import organizationsService from "../../services/organizationsService";
 import { lgaAndStates } from "../../constants";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/useAuth";
 
 interface Agent {
   id: string;
