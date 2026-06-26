@@ -127,7 +127,7 @@ const KPI_CONFIG = [
 const RankTable = ({ title, rows, nameLabel = "Name" }) => (
   <Card>
     <CardHeader className="rounded-t-lg text-white py-2 px-4" style={{ backgroundColor: DARK_NAVY }}>
-      <CardTitle className="text-sm font-semibold">{title}</CardTitle>
+      <CardTitle className="text-base font-semibold">{title}</CardTitle>
     </CardHeader>
     <CardContent className="pt-0 px-0 pb-0">
       <Table>
@@ -250,7 +250,7 @@ const DashboardContent = ({
             {role === "acsl_agent" && (
               <Link
                 href="/partners"
-                className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-1.5 shadow-sm hover:border-[#07376a] hover:shadow-md transition-all"
+                className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-1.5 hover:border-[#07376a] transition-all"
               >
                 <span className="text-xs font-medium text-gray-500">My Assigned Partners</span>
                 <span className="text-sm font-bold text-[#07376a]">{partners.length}</span>
@@ -273,7 +273,7 @@ const DashboardContent = ({
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                   </button>
                   {partnerDropdownOpen && (
-                    <div className="absolute z-50 top-full right-0 mt-1 w-[350px] bg-white border border-gray-200 rounded-md shadow-lg">
+                    <div className="absolute z-50 top-full right-0 mt-1 w-[350px] bg-white border border-gray-200 rounded-md">
                       <div className="p-1.5 border-b border-gray-100">
                         <Input
                           autoFocus
@@ -342,7 +342,7 @@ const DashboardContent = ({
                       <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     </button>
                     {stateDropdownOpen && (
-                      <div className="absolute z-50 top-full right-0 mt-1 w-[160px] bg-white border border-gray-200 rounded-md shadow-lg">
+                      <div className="absolute z-50 top-full right-0 mt-1 w-[160px] bg-white border border-gray-200 rounded-md">
                         <div className="p-1.5 border-b border-gray-100">
                           <Input
                             autoFocus
@@ -383,7 +383,7 @@ const DashboardContent = ({
                       <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     </button>
                     {branchDropdownOpen && (
-                      <div className="absolute z-50 top-full right-0 mt-1 w-[160px] bg-white border border-gray-200 rounded-md shadow-lg">
+                      <div className="absolute z-50 top-full right-0 mt-1 w-[160px] bg-white border border-gray-200 rounded-md">
                         <div className="max-h-48 overflow-y-auto">
                           <button
                             onClick={() => { onFilterChange?.("branch", null); setBranchDropdownOpen(false); }}
@@ -456,7 +456,7 @@ const DashboardContent = ({
                   <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 transition-transform ${yearDropdownOpen ? "rotate-180" : ""}`} />
                 </button>
                 {yearDropdownOpen && (
-                  <div className="absolute z-50 top-full right-0 mt-1 w-[160px] bg-white border border-gray-200 rounded-md shadow-lg py-1">
+                  <div className="absolute z-50 top-full right-0 mt-1 w-[160px] bg-white border border-gray-200 rounded-md py-1">
                     <button
                       type="button"
                       onClick={() => onYearsChange([])}
@@ -530,9 +530,9 @@ const DashboardContent = ({
                 { label: "Available for Sale", value: available, color: "#a8c34a", pct: availPct },
               ];
               return (
-                <Card className="bg-white shadow-sm">
+                <Card className="bg-white">
                   <CardHeader className="rounded-t-lg text-white py-2 px-4" style={{ backgroundColor: DARK_NAVY }}>
-                    <CardTitle className="text-sm font-semibold">Stove Inventory Overview</CardTitle>
+                    <CardTitle className="text-base font-semibold">Stove Inventory Overview</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-4 pb-4 px-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
@@ -612,7 +612,7 @@ const DashboardContent = ({
                   <Link
                     key={kpi.key}
                     href={href ?? "#"}
-                    className="relative overflow-hidden rounded-lg border bg-white px-4 py-4 shadow-sm transition-shadow hover:shadow-md cursor-pointer block group"
+                    className="relative overflow-hidden rounded-lg border bg-white px-4 py-4 cursor-pointer block group"
                   >
                     <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${kpi.gradient}`} />
                     <div className="flex items-start justify-between">
@@ -621,7 +621,7 @@ const DashboardContent = ({
                         <p className="text-xs font-semibold text-gray-500 mt-1">{kpi.label}</p>
                         <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
                       </div>
-                      <div className={`rounded-lg p-2 bg-gradient-to-br ${kpi.gradient} text-white shadow-sm shrink-0`}>
+                      <div className={`rounded-lg p-2 bg-gradient-to-br ${kpi.gradient} text-white shrink-0`}>
                         <kpi.icon className="h-4 w-4" />
                       </div>
                     </div>
@@ -636,9 +636,9 @@ const DashboardContent = ({
           {/* Section B — Sales Analysis Charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 ">
             {/* Sales Model Analysis */}
-            <Card className="bg-white shadow-sm">
+            <Card className="bg-white">
               <CardHeader className="rounded-t-lg text-white py-2 px-4" style={{ backgroundColor: DARK_NAVY }}>
-                <CardTitle className="text-sm font-semibold">Sales Model Analysis</CardTitle>
+                <CardTitle className="text-base font-semibold">Sales Model Analysis</CardTitle>
               </CardHeader>
               <CardContent className="pt-4 pb-4 px-4">
                 {salesModelData.length === 0 ? (
@@ -683,9 +683,9 @@ const DashboardContent = ({
             </Card>
 
             {/* Sales by State */}
-            <Card className="bg-white shadow-sm">
+            <Card className="bg-white">
               <CardHeader className="rounded-t-lg text-white py-2 px-4 flex flex-row items-center justify-between" style={{ backgroundColor: DARK_NAVY }}>
-                <CardTitle className="text-sm font-semibold">Sales by State</CardTitle>
+                <CardTitle className="text-base font-semibold">Sales by State</CardTitle>
                 <Select value={stateLimit} onValueChange={setStateLimit}>
                   <SelectTrigger className="w-[80px] h-6 text-xs bg-white/20 border-white/30 text-white">
                     <SelectValue />
@@ -743,7 +743,7 @@ const DashboardContent = ({
               {statesWithNoSales.length > 0 && (
                 <Card>
                   <CardHeader className="rounded-t-lg text-white py-2 px-4" style={{ backgroundColor: DARK_NAVY }}>
-                    <CardTitle className="text-sm font-semibold">
+                    <CardTitle className="text-base font-semibold">
                       States with No Sales ({statesWithNoSales.length})
                     </CardTitle>
                   </CardHeader>
@@ -765,7 +765,7 @@ const DashboardContent = ({
         /* Non-super-admin view */
         <div className={(role === "acsl_agent" || role === "partner_agent") ? "" : "rounded-lg border bg-gray-50 overflow-hidden"}>
           {(role !== "acsl_agent" && role !== "partner_agent") && (
-            <div className="py-2 px-4 text-white font-semibold text-sm flex items-center justify-between" style={{ backgroundColor: DARK_NAVY }}>
+            <div className="py-2 px-4 text-white font-semibold text-base flex items-center justify-between" style={{ backgroundColor: DARK_NAVY }}>
               <span>Sales Report</span>
               <Link
                 href="/sales"
@@ -780,7 +780,7 @@ const DashboardContent = ({
             <div className="flex justify-end mb-4">
               <Link
                 href="/sales?create=true"
-                className="flex items-center justify-center gap-2 bg-[#07376a] text-white px-6 py-2.5 rounded-lg hover:bg-[#052a51] transition-colors text-sm font-semibold w-full sm:w-auto shadow-sm"
+                className="flex items-center justify-center gap-2 bg-[#07376a] text-white px-6 py-2.5 rounded-lg hover:bg-[#052a51] transition-colors text-sm font-semibold w-full sm:w-auto"
               >
                 <Plus className="h-4 w-4" />
                 Create Sales
@@ -800,7 +800,7 @@ const DashboardContent = ({
                     <div
                       key={kpi.key}
                       onClick={() => onCardClick(kpi.key)}
-                      className={`relative overflow-hidden rounded-lg border-transparent px-4 py-3 shadow-md cursor-pointer transition-all bg-gradient-to-br ${kpi.gradient} ring-2 ring-white/40`}
+                      className={`relative overflow-hidden rounded-lg border-transparent px-4 py-3 cursor-pointer transition-all bg-gradient-to-br ${kpi.gradient} ring-2 ring-white/40`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="mt-0.5 min-w-0 flex-1 pr-2">
@@ -808,7 +808,7 @@ const DashboardContent = ({
                           <p className="text-xs font-semibold text-white/80 mt-0.5">{kpi.label}</p>
                           <p className="text-xs text-white/60">{sub}</p>
                         </div>
-                        <div className="rounded-lg p-2 bg-white/20 text-white shadow-sm shrink-0">
+                        <div className="rounded-lg p-2 bg-white/20 text-white shrink-0">
                           <kpi.icon className="h-4 w-4" />
                         </div>
                       </div>
@@ -818,7 +818,7 @@ const DashboardContent = ({
                     <div
                       key={kpi.key}
                       onClick={isClickable ? () => onCardClick(kpi.key) : undefined}
-                      className={`relative overflow-hidden rounded-lg border bg-white px-4 py-3 shadow-sm transition-all group ${isClickable ? "cursor-pointer hover:shadow-md" : ""}`}
+                      className={`relative overflow-hidden rounded-lg border bg-white px-4 py-3 transition-all group ${isClickable ? "cursor-pointer" : ""}`}
                     >
                       <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${kpi.gradient}`} />
                       <div className="flex items-start justify-between">
@@ -827,7 +827,7 @@ const DashboardContent = ({
                           <p className="text-xs font-semibold text-gray-500 mt-0.5">{kpi.label}</p>
                           <p className="text-xs text-gray-400">{sub}</p>
                         </div>
-                        <div className={`rounded-lg p-2 bg-gradient-to-br ${kpi.gradient} text-white shadow-sm shrink-0`}>
+                        <div className={`rounded-lg p-2 bg-gradient-to-br ${kpi.gradient} text-white shrink-0`}>
                           <kpi.icon className="h-4 w-4" />
                         </div>
                       </div>
