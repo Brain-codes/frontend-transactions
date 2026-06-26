@@ -469,7 +469,7 @@ const DashboardContent = ({
         }
       />
 
-      {loading ? (
+      {loading && !data ? (
         <div className="flex items-center justify-center h-48">
           <div className="text-center">
             <Loader2 className="animate-spin h-8 w-8 mx-auto mb-2" style={{ color: DARK_NAVY }} />
