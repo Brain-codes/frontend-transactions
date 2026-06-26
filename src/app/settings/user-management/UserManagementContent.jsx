@@ -453,8 +453,7 @@ const UserManagementPage = () => {
             title="User Management"
             right={
               <Button
-                size="sm"
-                className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
+                className="bg-black hover:bg-gray-900 text-white text-sm h-10 px-4 flex items-center gap-1.5"
                 onClick={() => { resetForm(); setShowCreateModal(true); }}
               >
                 <UserPlus className="h-4 w-4" />
@@ -474,35 +473,36 @@ const UserManagementPage = () => {
                 placeholder="Search by name or email..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange("search", e.target.value)}
-                className="bg-white h-9 text-sm shadow-none border-gray-200"
+                className="bg-white h-9 text-xs shadow-none border-gray-200"
               />
             </div>
 
             {/* Status */}
             <Select value={filters.status || "all"} onValueChange={(v) => handleFilterChange("status", v === "all" ? "" : v)}>
-              <SelectTrigger className="w-[140px] h-9 bg-white text-sm shadow-none border-gray-200">
+              <SelectTrigger className="w-[140px] h-9 bg-white text-xs shadow-none border-gray-200">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="disabled">Disabled</SelectItem>
+              <SelectContent className="text-xs">
+                <SelectItem value="all" className="text-xs">All Status</SelectItem>
+                <SelectItem value="active" className="text-xs">Active</SelectItem>
+                <SelectItem value="disabled" className="text-xs">Disabled</SelectItem>
               </SelectContent>
             </Select>
 
             {/* Role */}
             <Select value={filters.role || "all"} onValueChange={(v) => handleFilterChange("role", v === "all" ? "" : v)}>
-              <SelectTrigger className="w-[170px] h-9 bg-white text-sm shadow-none border-gray-200">
+              <SelectTrigger className="w-[170px] h-9 bg-white text-xs shadow-none border-gray-200">
                 <SelectValue placeholder="All Roles" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="super_admin">Super Admin</SelectItem>
-                <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
-                <SelectItem value="partner">Partner Admin</SelectItem>
-                <SelectItem value="partner_agent">Partner Agent</SelectItem>
+              <SelectContent className="text-xs">
+                <SelectItem value="all" className="text-xs">All Roles</SelectItem>
+                <SelectItem value="super_admin" className="text-xs">Super Admin</SelectItem>
+                <SelectItem value="acsl_agent" className="text-xs">ACSL Agent</SelectItem>
+                <SelectItem value="partner" className="text-xs">Partner Admin</SelectItem>
+                <SelectItem value="partner_agent" className="text-xs">Partner Agent</SelectItem>
               </SelectContent>
             </Select>
+
 
             {/* Reset */}
             <Button
