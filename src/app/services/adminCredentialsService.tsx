@@ -1,6 +1,8 @@
 
 import { createClientComponentClient } from "@/lib/supabaseClient";
+import { supabaseUrl as SUPABASE_URL } from "@/lib/supabaseConfig";
 import tokenManager from "@/utils/tokenManager";
+
 
 interface Credential {
   partner_id: string;
@@ -66,12 +68,10 @@ class AdminCredentialsService {
    * Get base API URL
    */
   private getApiUrl(): string {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    if (!supabaseUrl) {
-      throw new Error("NEXT_PUBLIC_SUPABASE_URL is not configured");
-    }
-    return `${supabaseUrl}/functions/v1/manage-credentials`;
+    return `${SUPABASE_URL}/functions/v1/manage-credentials`;
   }
+
+
 
   /**
    * Fetch all credentials
