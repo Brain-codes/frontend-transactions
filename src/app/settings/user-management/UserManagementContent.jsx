@@ -639,7 +639,7 @@ const UserManagementPage = () => {
                                     onClick={() => { setSelectedUser(u); setShowDeleteModal(true); }}
                                     disabled={!!actionLoading}
                                     aria-label="Delete user"
-                                    className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-200 text-orange-600 hover:bg-orange-50 disabled:opacity-50"
+                                    className="h-8 w-8 inline-flex items-center justify-center rounded-md text-orange-600 hover:bg-orange-50 disabled:opacity-50"
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </button>
