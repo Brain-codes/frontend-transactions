@@ -177,14 +177,15 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
                     onClick={() => toggleExpand(item.route)}
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm w-full text-left ${
                       childActive
-                        ? "bg-[#1e3a5f] text-white font-medium hover:bg-[#1e3a5f]"
-                        : "text-gray-700 hover:bg-[#1e3a5f] hover:text-white"
+                        ? "bg-[#4a5d0f] text-white font-medium hover:bg-[#4a5d0f]"
+                        : "text-gray-700 hover:bg-[#4a5d0f] hover:text-white"
                     }`}
                   >
                     <item.icon className="h-[18px] w-[18px]" />
                     <span className="flex-1">{item.name}</span>
                     {isExpanded ? (
                       <ChevronUp className={`h-4 w-4 ${childActive ? "text-white/80" : "text-gray-400"}`} />
+
                     ) : (
                       <ChevronDown className={`h-4 w-4 ${childActive ? "text-white/80" : "text-gray-400"}`} />
                     )}
@@ -201,8 +202,9 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
                             onClick={() => navigateToRoute(child.href)}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
                               active
-                                ? "bg-blue-100 text-blue-900 font-medium hover:bg-blue-100"
-                                : "text-gray-600 hover:bg-blue-100 hover:text-blue-900"
+                                ? "bg-[#eef3c4] text-[#4a5d0f] font-medium hover:bg-[#eef3c4]"
+                                : "text-gray-600 hover:bg-[#eef3c4] hover:text-[#4a5d0f]"
+
                             }`}
                           >
                             <span>{child.name}</span>
@@ -223,8 +225,9 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
                 onClick={() => navigateToRoute(item.href)}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${
                   active
-                    ? "bg-[#1e3a5f] text-white font-medium hover:bg-[#1e3a5f]"
-                    : "text-gray-700 hover:bg-[#1e3a5f] hover:text-white"
+                    ? "bg-[#4a5d0f] text-white font-medium hover:bg-[#4a5d0f]"
+                    : "text-gray-700 hover:bg-[#4a5d0f] hover:text-white"
+
                 }`}
               >
                 <item.icon className="h-[18px] w-[18px]" />
