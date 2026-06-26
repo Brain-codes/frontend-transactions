@@ -100,9 +100,30 @@ const formatDate = (dateString) => {
 const getRoleLabel = (role) => {
   if (role === "super_admin") return "Super Admin";
   if (role === "acsl_agent" || role === "super_admin_agent") return "ACSL Agent";
+  if (role === "acsl_agent_manager") return "ACSL Agent Manager";
   if (role === "partner" || role === "admin") return "Partner";
   if (role === "partner_agent" || role === "agent") return "Partner Agent";
   return role;
+};
+
+const getRoleBadgeClasses = (role) => {
+  switch (role) {
+    case "super_admin":
+      return "bg-purple-100 text-purple-700";
+    case "acsl_agent_manager":
+      return "bg-indigo-100 text-indigo-700";
+    case "acsl_agent":
+    case "super_admin_agent":
+      return "bg-blue-100 text-blue-700";
+    case "partner":
+    case "admin":
+      return "bg-amber-100 text-amber-700";
+    case "partner_agent":
+    case "agent":
+      return "bg-teal-100 text-teal-700";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
 };
 
 const UserManagementPage = () => {
@@ -113,7 +134,7 @@ const UserManagementPage = () => {
   const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({
     page: 1,
-    page_size: 25,
+    page_size: 10,
     total_count: 0,
     total_pages: 0,
   });
@@ -187,7 +208,7 @@ const UserManagementPage = () => {
       if (result.pagination) {
         setPagination({
           page: result.pagination.currentPage || 1,
-          page_size: result.pagination.itemsPerPage || 25,
+          page_size: result.pagination.itemsPerPage || 10,
           total_count: result.pagination.totalItems || 0,
           total_pages: result.pagination.totalPages || 0,
         });
@@ -491,53 +512,31 @@ const UserManagementPage = () => {
 
           {/* Table */}
           <div className="space-y-0">
-            {/* Pagination header */}
+            {/* Top header — total + download only */}
             <div className="bg-blue-50 rounded-t-lg px-4 py-2 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <p className="text-sm text-gray-600">
-                  Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
-                  <span className="font-medium">{pagination.total_count}</span> users
-                </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">per page:</span>
-                  <Select value={pagination.page_size.toString()} onValueChange={handlePageSizeChange}>
-                    <SelectTrigger className="w-[65px] h-7 bg-white text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="25">25</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-bold text-green-500">
-                  Total Users: <span className="text-brand">{pagination.total_count}</span>
-                </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 px-2 text-xs flex items-center gap-1"
-                  onClick={() => {
-                    const headers = ["Name", "Email", "Phone", "Role", "Status", "Created At"];
-                    const rows = users.map((u) => [
-                      u.full_name || "",
-                      u.email || "",
-                      u.phone || "",
-                      u.role || "",
-                      u.status || "",
-                      u.created_at ? new Date(u.created_at).toLocaleDateString() : "",
-                    ]);
-                    downloadTableAsCSV(headers, rows, `users-${new Date().toISOString().slice(0, 10)}.csv`);
-                  }}
-                  disabled={users.length === 0}
-                >
-                  <Download className="h-3 w-3" />Download
-                </Button>
-              </div>
+              <p className="text-sm font-bold text-green-500">
+                Total Users: <span className="text-brand">{pagination.total_count}</span>
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs flex items-center gap-1"
+                onClick={() => {
+                  const headers = ["Name", "Email", "Phone", "Role", "Status", "Created At"];
+                  const rows = users.map((u) => [
+                    u.full_name || "",
+                    u.email || "",
+                    u.phone || "",
+                    u.role || "",
+                    u.status || "",
+                    u.created_at ? new Date(u.created_at).toLocaleDateString() : "",
+                  ]);
+                  downloadTableAsCSV(headers, rows, `users-${new Date().toISOString().slice(0, 10)}.csv`);
+                }}
+                disabled={users.length === 0}
+              >
+                <Download className="h-3 w-3" />Download
+              </Button>
             </div>
 
             {/* Table body */}
@@ -585,13 +584,9 @@ const UserManagementPage = () => {
                         <TableCell className="text-xs max-w-[180px] truncate">{u.email}</TableCell>
                         <TableCell className="text-xs text-gray-600">{u.phone || "—"}</TableCell>
 
-                        {/* Role — plain text, colored */}
+                        {/* Role — colored badge per role */}
                         <TableCell>
-                          <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                            u.role === "super_admin"
-                              ? "bg-purple-100 text-purple-700"
-                              : "bg-blue-100 text-blue-700"
-                          }`}>
+                          <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${getRoleBadgeClasses(u.role)}`}>
                             {getRoleLabel(u.role)}
                           </span>
                         </TableCell>
@@ -682,34 +677,52 @@ const UserManagementPage = () => {
             </div>
 
             {/* Pagination footer */}
-            {pagination.total_pages > 1 && (
-              <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
-                <p className="text-sm text-gray-600">
-                  Showing {startRecord} to {endRecord} of {pagination.total_count} users
-                </p>
-                <div className="flex items-center gap-1">
-                  <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => handlePageChange(1)} disabled={pagination.page === 1}>
-                    <ChevronsLeft className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handlePageChange(pagination.page - 1)} disabled={pagination.page === 1}>
-                    <ChevronLeft className="h-4 w-4 mr-1" />Prev
-                  </Button>
-                  {getVisiblePages().map((p) => (
-                    <Button
-                      key={p}
-                      variant={p === pagination.page ? "default" : "outline"}
-                      size="sm"
-                      className={`h-8 w-8 p-0 ${p === pagination.page ? "bg-brand text-white hover:bg-brand" : ""}`}
-                      onClick={() => handlePageChange(p)}
-                    >{p}</Button>
-                  ))}
-                  <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handlePageChange(pagination.page + 1)} disabled={pagination.page >= pagination.total_pages}>
-                    Next<ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => handlePageChange(pagination.total_pages)} disabled={pagination.page >= pagination.total_pages}>
-                    <ChevronsRight className="h-4 w-4" />
-                  </Button>
+            {users.length > 0 && (
+              <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-white">
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-gray-600">
+                    Showing <span className="font-medium">{startRecord}</span> to <span className="font-medium">{endRecord}</span> of <span className="font-medium">{pagination.total_count}</span> users
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">per page:</span>
+                    <Select value={pagination.page_size.toString()} onValueChange={handlePageSizeChange}>
+                      <SelectTrigger className="w-[70px] h-8 bg-white text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+                {pagination.total_pages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => handlePageChange(1)} disabled={pagination.page === 1}>
+                      <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handlePageChange(pagination.page - 1)} disabled={pagination.page === 1}>
+                      <ChevronLeft className="h-4 w-4 mr-1" />Prev
+                    </Button>
+                    {getVisiblePages().map((p) => (
+                      <Button
+                        key={p}
+                        variant={p === pagination.page ? "default" : "outline"}
+                        size="sm"
+                        className={`h-8 w-8 p-0 ${p === pagination.page ? "bg-brand text-white hover:bg-brand" : ""}`}
+                        onClick={() => handlePageChange(p)}
+                      >{p}</Button>
+                    ))}
+                    <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handlePageChange(pagination.page + 1)} disabled={pagination.page >= pagination.total_pages}>
+                      Next<ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => handlePageChange(pagination.total_pages)} disabled={pagination.page >= pagination.total_pages}>
+                      <ChevronsRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
