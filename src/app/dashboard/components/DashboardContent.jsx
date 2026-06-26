@@ -201,11 +201,14 @@ const DashboardContent = ({
   const [branchDropdownOpen, setBranchDropdownOpen] = React.useState(false);
   const [yearDropdownOpen, setYearDropdownOpen] = React.useState(false);
   const [monthsDropdownOpen, setMonthsDropdownOpen] = React.useState(false);
+  const [headerStateDropdownOpen, setHeaderStateDropdownOpen] = React.useState(false);
+  const [headerStateSearch, setHeaderStateSearch] = React.useState("");
   const partnerDropdownRef = React.useRef(null);
   const stateDropdownRef = React.useRef(null);
   const branchDropdownRef = React.useRef(null);
   const yearDropdownRef = React.useRef(null);
   const monthsDropdownRef = React.useRef(null);
+  const headerStateDropdownRef = React.useRef(null);
 
   React.useEffect(() => {
     const handler = (e) => {
@@ -214,6 +217,7 @@ const DashboardContent = ({
       if (branchDropdownRef.current && !branchDropdownRef.current.contains(e.target)) setBranchDropdownOpen(false);
       if (yearDropdownRef.current && !yearDropdownRef.current.contains(e.target)) setYearDropdownOpen(false);
       if (monthsDropdownRef.current && !monthsDropdownRef.current.contains(e.target)) setMonthsDropdownOpen(false);
+      if (headerStateDropdownRef.current && !headerStateDropdownRef.current.contains(e.target)) setHeaderStateDropdownOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -542,6 +546,55 @@ const DashboardContent = ({
                                   </button>
                                 ))
                               )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* State Filter */}
+                      <div ref={headerStateDropdownRef} className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setHeaderStateDropdownOpen((o) => !o)}
+                          className="flex items-center justify-between gap-2 h-8 px-3 rounded-md text-xs text-white border min-w-[140px] max-w-[220px] hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30"
+                          style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
+                        >
+                          <span className="truncate text-left">
+                            {dashboardFilters.state
+                              ? (NIGERIAN_STATES.find((s) => s.toLowerCase() === dashboardFilters.state.toLowerCase()) || dashboardFilters.state)
+                              : "All States"}
+                          </span>
+                          <ChevronDown className={`h-4 w-4 text-white/80 shrink-0 transition-transform ${headerStateDropdownOpen ? "rotate-180" : ""}`} />
+                        </button>
+                        {headerStateDropdownOpen && (
+                          <div className="absolute z-50 top-full right-0 mt-1 w-[200px] bg-white border border-gray-200 rounded-md text-gray-700">
+                            <div className="p-1.5 border-b border-gray-100">
+                              <Input
+                                autoFocus
+                                placeholder="Search state…"
+                                value={headerStateSearch}
+                                onChange={(e) => setHeaderStateSearch(e.target.value)}
+                                className="h-7 text-xs"
+                              />
+                            </div>
+                            <div className="max-h-56 overflow-y-auto py-1">
+                              <button
+                                type="button"
+                                onClick={() => { onFilterChange?.("state", null); onFilterChange?.("branch", null); setHeaderStateSearch(""); setHeaderStateDropdownOpen(false); }}
+                                className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${!dashboardFilters.state ? "font-semibold text-[#4a5d0f]" : ""}`}
+                              >
+                                All States
+                              </button>
+                              {NIGERIAN_STATES.filter((s) => s.toLowerCase().includes(headerStateSearch.toLowerCase())).map((s) => (
+                                <button
+                                  key={s}
+                                  type="button"
+                                  onClick={() => { onFilterChange?.("state", s.toLowerCase()); onFilterChange?.("branch", null); setHeaderStateSearch(""); setHeaderStateDropdownOpen(false); }}
+                                  className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${dashboardFilters.state === s.toLowerCase() ? "font-semibold text-[#4a5d0f]" : ""}`}
+                                >
+                                  {s}
+                                </button>
+                              ))}
                             </div>
                           </div>
                         )}
