@@ -1,55 +1,34 @@
-## Why navigation feels like a full reload
+# Improve HMR: move helpers/hooks out of component files
 
-Every authenticated page component wraps its own UI in `<ProtectedRoute><DashboardLayout>…</DashboardLayout></ProtectedRoute>`. Because the shell lives **inside** each page, routing between pages unmounts and remounts:
+## Why
+React Fast Refresh only preserves state when a module exports **components only**. If a file also exports a hook, helper, or context object, Vite falls back to a full page reload on every edit. The three context files in this project each export both a Provider component and a hook, which forces a reload whenever any descendant changes that touches the same module graph.
 
-- `DashboardLayout`, `TopNavigation`, `Sidebar`
-- `TopNavigation`'s `useEffect` that calls `manage-profile`
-- `ProtectedRoute`'s auth check spinner
+## Files to split
 
-That's why you see `manage-profile` fired repeatedly on every nav and a perceptible flash. TanStack `<Link>` is doing SPA navigation correctly — the perceived "reload" is the shell tearing down.
+Each of these gets two files: one for the Provider (component-only export) and one for the hook (no component export). All existing import paths keep working because we re-export from the original file.
 
-## Fix: hoist the shell into the root layout (rendered once)
+1. **`src/app/contexts/AuthContext.jsx`**
+   - Move `useAuth` → `src/app/contexts/useAuth.js`
+   - Keep `AuthProvider` (component) in `AuthContext.jsx`
+   - Re-export `useAuth` from `AuthContext.jsx` for back-compat
 
-Mount `ProtectedRoute` + `DashboardLayout` **once** inside `src/routes/__root.tsx`, around `<Outlet />`. Then strip the per-page wrappers so only page content swaps on navigation.
+2. **`src/app/contexts/SidebarContext.jsx`**
+   - Move `useSidebar` → `src/app/contexts/useSidebar.js`
+   - Keep `SidebarProvider` in `SidebarContext.jsx`
+   - Re-export
 
-### Steps
+3. **`src/app/contexts/ToastContext.jsx`**
+   - Move `useToastNotification` → `src/app/contexts/useToastNotification.js`
+   - Keep `ToastProvider` in `ToastContext.jsx`
+   - Re-export
 
-1. **`src/routes/__root.tsx`** — add an `AppShell` that reads the current pathname and:
-   - For public routes (`/login`, `/unauthorized`, `/download`, `/`-when-unauth, `/sales-monitoring-app` public viewer, etc.): render `<Outlet />` directly.
-   - For everything else: render `<ProtectedRoute><DashboardLayout><Outlet /></DashboardLayout></ProtectedRoute>`.
-   - Use `useRouterState({ select: s => s.location.pathname })` so the shell itself never unmounts on nav; only `<Outlet />` swaps.
+## What this changes for you
+- Edits to leaf components (tables, modals, sidebar items, page bodies) will hot-update in place — no reload, scroll position and form state preserved.
+- Edits to a Provider file itself will still reload (unavoidable — the whole tree depends on it).
+- Edits to `DashboardLayout.tsx` / `ProtectedRoute.tsx` will still reload because they sit at the top of the tree; that is expected.
 
-2. **Strip wrappers from page components** (14 files identified):
-   - `src/app/dashboard/components/UnifiedDashboardContent.tsx`
-   - `src/app/partners/components/PartnersContent.jsx`
-   - `src/app/sales/components/UnifiedSalesContent.tsx`
-   - `src/app/sales/financial-reports/page.tsx`
-   - `src/app/agents/components/SuperAdminAgentsContent.tsx`
-   - `src/app/agents/components/PartnerAgentsContent.tsx`
-   - `src/app/stove-management/components/StoveManagementContent.jsx`
-   - `src/app/settings/user-management/UserManagementContent.jsx`
-   - `src/app/user-management/user-groups/UserGroupsContent.tsx`
-   - `src/app/settings/tools/ToolsContent.tsx`
-   - `src/app/settings/payment-models/PaymentModelsContent.tsx`
-   - `src/app/settings/system-config/SystemConfigContent.jsx`
-   - `src/app/settings/credentials/CredentialsContent.tsx`
-   - `src/app/profile/page.tsx`
+## What this does NOT change
+- The Lovable preview iframe still refreshes once per agent turn when the HMR gate flushes — that is a sandbox behavior, not a code issue. Running `bun dev` locally would give you fully in-place updates after this refactor.
 
-   In each: remove the outer `<ProtectedRoute>` and `<DashboardLayout>` wrappers and drop the now-unused imports. Page returns just its own content.
-
-3. **`src/app/components/TopNavigation.jsx`** — stop refetching profile on every nav:
-   - Only fetch when `authUser?.id` changes (not on every `isAuthenticated` reference change), and skip if already loaded for that id.
-   - Add a module-level cache (or React Query `useQuery` with `staleTime: 5 * 60_000`) keyed by user id so the call is at most once per session.
-
-4. **`src/app/components/ProtectedRoute.tsx`** — confirm it short-circuits when a cached user exists (already done in earlier work) so the gate at the root doesn't flash a spinner on each navigation. If it currently renders a spinner while `loading`, gate the spinner behind "no cached user".
-
-### Out of scope
-- No route-file moves (no `_authenticated/` migration). The pathname-based shell in `__root.tsx` achieves the same persistence with minimal churn.
-- No backend / RLS changes.
-- No visual redesign — same sidebar, topnav, content.
-
-## Verification
-
-- Click between Dashboard → Partners → Agents → Sales → Stove Management → User Management. The sidebar and topnav must NOT flicker; only the main content swaps.
-- Network tab: `manage-profile` fires **once** per session, not on each nav.
-- Console: no auth-spinner flash and no remount logs from `AuthContext` during nav.
+## Out of scope
+- No logic changes, no UI changes, no behavior changes. Pure file-structure refactor.
