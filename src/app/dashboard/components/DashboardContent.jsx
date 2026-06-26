@@ -492,9 +492,10 @@ const DashboardContent = ({
                 { name: "Available", value: available, color: "#a8c34a" },
               ];
               const items = [
-                { label: "Total Stoves Received", value: received, color: "#1f2937", pct: null },
-                { label: "Total Sold to End Users", value: sold, color: "#4a5d0f", pct: soldPct },
-                { label: "Available for Sale", value: available, color: "#a8c34a", pct: availPct },
+                { label: "STOVES SOLD TO PARTNERS", value: received, color: "#1f2937", pct: null },
+                { label: "STOVES BOUGHT BY END USERS", value: sold, color: "#4a5d0f", pct: soldPct },
+                { label: "UNSOLD STOVES WITH PARTNERS", value: available, color: "#a8c34a", pct: availPct },
+
               ];
               return (
                 <Card className="bg-white shadow-none">
