@@ -199,8 +199,8 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
                 onClick={() => navigateToRoute(item.href)}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${
                   active
-                    ? "bg-white text-gray-900 font-medium"
-                    : "text-gray-700 hover:bg-white/50"
+                    ? "bg-[#1e3a5f] text-white font-medium hover:bg-[#1e3a5f]"
+                    : "text-gray-700 hover:bg-[#1e3a5f] hover:text-white"
                 }`}
               >
                 <item.icon className="h-[18px] w-[18px]" />
