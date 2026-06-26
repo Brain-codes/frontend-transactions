@@ -271,11 +271,31 @@ const UnifiedDashboardContent = () => {
     } finally {
       setLoading(false);
     }
-  }, [scope, year, years, dateFrom, dateTo, filters, buildSalesFilters]);
+  }, [scope, year, years, dateFrom, dateTo, filters, monthRange, buildSalesFilters]);
 
 
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Clear month filter if it becomes invalid (future month) after a year change.
+  useEffect(() => {
+    const months: number[] = Array.isArray(filters.months) ? filters.months : [];
+    if (!months.length) return;
+    const now = new Date();
+    const currentYearNum = now.getFullYear();
+    const currentMonthNum = now.getMonth() + 1;
+    const effectiveYear = scope === "global"
+      ? (years.length === 1 ? years[0] : currentYearNum)
+      : year;
+    const valid = months.filter((m) => {
+      if (effectiveYear > currentYearNum) return false;
+      if (effectiveYear === currentYearNum && m > currentMonthNum) return false;
+      return true;
+    });
+    if (valid.length !== months.length) {
+      setFilters((prev: any) => ({ ...prev, months: valid }));
+    }
+  }, [year, years, scope, filters.months]);
 
   // Normalize stats across services
   const normalized = useMemo(() => {
