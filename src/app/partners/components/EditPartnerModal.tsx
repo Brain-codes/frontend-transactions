@@ -10,11 +10,17 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Loader2, Save } from "lucide-react";
 import { useAuth } from "../../contexts/useAuth";
 import { useToast } from "@/components/ui/toast";
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+import { supabaseUrl as SUPABASE_URL } from "@/lib/supabaseConfig";
 
 const clean = (v: string | undefined | null) => {
   const s = (v ?? "").trim();
@@ -28,8 +34,11 @@ interface Organization {
   branch?: string;
   state?: string;
   email?: string;
+  contact_person?: string;
   contact_phone?: string;
   alternative_phone?: string;
+  address?: string;
+  partner_type?: string;
   manually_edited?: boolean;
 }
 
@@ -71,10 +80,12 @@ export default function EditPartnerModal({ organization, isOpen, onClose, onSucc
   const [credential, setCredential] = useState<Credential | null>(null);
 
   const [form, setForm] = useState({
+    partner_type: "partner",
+    contact_person: "",
     contact_phone: "",
     alternative_phone: "",
     email: "",
-    username: "",
+    address: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -82,10 +93,12 @@ export default function EditPartnerModal({ organization, isOpen, onClose, onSucc
   useEffect(() => {
     if (!isOpen || !organization) return;
     setForm({
+      partner_type: clean(organization.partner_type) || "partner",
+      contact_person: clean(organization.contact_person),
       contact_phone: clean(organization.contact_phone),
       alternative_phone: clean(organization.alternative_phone),
       email: clean(organization.email),
-      username: "",
+      address: clean(organization.address),
     });
     setErrors({});
     setCredential(null);
@@ -105,9 +118,6 @@ export default function EditPartnerModal({ organization, isOpen, onClose, onSucc
         const result = await res.json();
         const cred: Credential = result.data ?? null;
         setCredential(cred);
-        if (cred?.username) {
-          setForm((prev) => ({ ...prev, username: clean(cred.username) }));
-        }
         if (cred?.email && !cred.is_dummy_email) {
           setForm((prev) => ({ ...prev, email: clean(cred.email) }));
         }
@@ -133,13 +143,18 @@ export default function EditPartnerModal({ organization, isOpen, onClose, onSucc
     const payload: Record<string, string> = {};
     const newErrors: Record<string, string> = {};
 
+    const trimType = form.partner_type.trim();
+    const trimPerson = form.contact_person.trim();
     const trimPhone = form.contact_phone.trim();
     const trimAltPhone = form.alternative_phone.trim();
     const trimEmail = form.email.trim();
-    const trimUsername = form.username.trim();
+    const trimAddress = form.address.trim();
 
+    if (trimType !== (organization.partner_type ?? "")) payload.partner_type = trimType;
+    if (trimPerson !== (organization.contact_person ?? "")) payload.contact_person = trimPerson;
     if (trimPhone !== (organization.contact_phone ?? "")) payload.contact_phone = trimPhone;
     if (trimAltPhone !== (organization.alternative_phone ?? "")) payload.alternative_phone = trimAltPhone;
+    if (trimAddress !== (organization.address ?? "")) payload.address = trimAddress;
 
     if (canEditEmail && trimEmail && trimEmail !== (credential?.email ?? organization.email ?? "")) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimEmail)) {
@@ -147,10 +162,6 @@ export default function EditPartnerModal({ organization, isOpen, onClose, onSucc
       } else {
         payload.email = trimEmail;
       }
-    }
-
-    if (trimUsername && trimUsername !== (credential?.username ?? "")) {
-      payload.username = trimUsername;
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -179,10 +190,6 @@ export default function EditPartnerModal({ organization, isOpen, onClose, onSucc
       );
       const result = await res.json();
       if (!res.ok) {
-        if (result.error?.includes("already taken")) {
-          setErrors({ username: result.error });
-          return;
-        }
         throw new Error(result.error || result.message || "Update failed");
       }
       toast({ variant: "success", title: "Partner details updated" });
@@ -211,10 +218,33 @@ export default function EditPartnerModal({ organization, isOpen, onClose, onSucc
         <div className="flex-1 overflow-y-auto px-6 py-5">
           <div className="space-y-6">
 
+            {/* Type */}
+            <div>
+              <Label className="text-base font-semibold">Partner Type</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                <FormField label="Type">
+                  <Select value={form.partner_type} onValueChange={(v) => setField("partner_type", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="partner">Partner</SelectItem>
+                      <SelectItem value="customer">Customer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              </div>
+            </div>
+
             {/* Contact */}
             <div>
               <Label className="text-base font-semibold">Contact Details</Label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                <FormField label="Contact Person">
+                  <Input
+                    value={form.contact_person}
+                    onChange={(e) => setField("contact_person", e.target.value)}
+                    placeholder="Full name"
+                  />
+                </FormField>
                 <FormField label="Phone Number">
                   <Input
                     value={form.contact_phone}
@@ -229,15 +259,8 @@ export default function EditPartnerModal({ organization, isOpen, onClose, onSucc
                     placeholder="e.g. 08098765432"
                   />
                 </FormField>
-              </div>
-            </div>
-
-            {/* Email */}
-            <div>
-              <Label className="text-base font-semibold">Email</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                 {canEditEmail ? (
-                  <FormField label="Email Address (optional)" error={errors.email}>
+                  <FormField label="Email Address" error={errors.email}>
                     <Input
                       type="email"
                       value={form.email}
@@ -254,25 +277,17 @@ export default function EditPartnerModal({ organization, isOpen, onClose, onSucc
               </div>
             </div>
 
-            {/* Login */}
+            {/* Address */}
             <div>
-              {/* <Label className="text-base font-semibold">Login</Label> */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                {loadingCred ? (
-                  <div className="flex items-center gap-2 h-9">
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    <span className="text-sm text-muted-foreground">Loading…</span>
-                  </div>
-                ) : (
-                  <FormField label="Username" error={errors.username}>
-                    <Input
-                      value={form.username}
-                      onChange={(e) => setField("username", e.target.value)}
-                      placeholder="e.g. acsl001_partner"
-                      className={errors.username ? "border-red-500" : ""}
-                    />
-                  </FormField>
-                )}
+              <Label className="text-base font-semibold">Address</Label>
+              <div className="mt-2">
+                <FormField label="Street Address">
+                  <Input
+                    value={form.address}
+                    onChange={(e) => setField("address", e.target.value)}
+                    placeholder="Street address"
+                  />
+                </FormField>
               </div>
             </div>
 
