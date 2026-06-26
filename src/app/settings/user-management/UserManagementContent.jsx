@@ -515,16 +515,15 @@ const UserManagementPage = () => {
               <X className="h-4 w-4 mr-1" />
               Reset Filters
             </Button>
+
+            {/* Pagination count — far right */}
+            <p className="ml-auto text-sm text-gray-600">
+              Showing <span className="font-medium">{startRecord}</span> to <span className="font-medium">{endRecord}</span> of <span className="font-medium">{pagination.total_count}</span> users
+            </p>
           </div>
 
           {/* Table */}
           <div className="space-y-0">
-            {/* Top header — pagination count */}
-            <div className="px-1 py-2 flex items-center justify-between">
-              <p className="text-sm text-gray-600">
-                Showing <span className="font-medium">{startRecord}</span> to <span className="font-medium">{endRecord}</span> of <span className="font-medium">{pagination.total_count}</span> users
-              </p>
-            </div>
 
             {/* Table body */}
             <div className="bg-white border-x border-t border-gray-200 rounded-t-lg overflow-x-auto relative">
