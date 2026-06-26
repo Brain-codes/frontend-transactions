@@ -535,13 +535,13 @@ const UserManagementPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-brand hover:bg-brand">
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap first:rounded-tl-lg">Name</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Email</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Role</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Status</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Last Active</TableHead>
-                    <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap rounded-tr-lg">Actions</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Name</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Email</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Role</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Last Active</TableHead>
+                    <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className={loading ? "opacity-40" : ""}>
