@@ -219,8 +219,8 @@ const PartnerProfilesContent = () => {
                     <TableCell className="text-sm text-gray-600">{p.state || "—"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{p.branch || "—"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{p.contact_phone || "—"}</TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-2">
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
                         <TooltipProvider delayDuration={150}>
                           <Tooltip>
                             <TooltipTrigger asChild>
