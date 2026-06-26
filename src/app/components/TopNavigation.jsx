@@ -8,6 +8,11 @@ import { useToastNotification } from "../contexts/ToastContext";
 import manageProfileService from "../services/manageProfileService";
 import UserProfileModal from "./UserProfileModal";
 
+// Module-level cache so we don't re-fetch /manage-profile on every layout
+// mount or sidebar navigation. Keyed by user id.
+const profileCache = new Map();
+let inFlightProfilePromise = null;
+
 const TopNavigation = ({
   onToggleSidebar,
   hideSidebarToggle,
@@ -16,36 +21,56 @@ const TopNavigation = ({
   rightButton,
   user: authUser,
 }) => {
-  const { signOut, isAuthenticated } = useAuth();
+  const { signOut, isAuthenticated, user } = useAuth();
   const router = useRouter();
   const { toast } = useToastNotification();
-  
-  const [userProfile, setUserProfile] = useState(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
+
+  const userId = user?.id || authUser?.id || null;
+  const [userProfile, setUserProfile] = useState(() =>
+    userId ? profileCache.get(userId) || null : null,
+  );
+  const [loadingProfile, setLoadingProfile] = useState(
+    () => !(userId && profileCache.has(userId)),
+  );
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  const fetchUserProfile = async () => {
-    if (!isAuthenticated) {
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isAuthenticated || !userId) {
       setLoadingProfile(false);
       return;
     }
 
-    try {
-      const response = await manageProfileService.getProfile();
-      if (response.success && response.data) {
-        setUserProfile(response.data);
-      }
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
-    } finally {
+    if (profileCache.has(userId)) {
+      setUserProfile(profileCache.get(userId));
       setLoadingProfile(false);
+      return;
     }
-  };
 
-  useEffect(() => {
-    fetchUserProfile();
-  }, [isAuthenticated]);
+    setLoadingProfile(true);
+    const promise =
+      inFlightProfilePromise || manageProfileService.getProfile();
+    inFlightProfilePromise = promise;
+
+    promise
+      .then((response) => {
+        if (response?.success && response.data) {
+          profileCache.set(userId, response.data);
+          if (!cancelled) setUserProfile(response.data);
+        }
+      })
+      .catch((error) => console.error("Error fetching user profile:", error))
+      .finally(() => {
+        inFlightProfilePromise = null;
+        if (!cancelled) setLoadingProfile(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, userId]);
 
   // Navigate to login when user becomes unauthenticated
   useEffect(() => {
