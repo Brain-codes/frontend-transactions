@@ -262,72 +262,7 @@ const DashboardContent = ({
             {/* Super Admin Filters — inline in header */}
             {isSuperAdmin && (
               <>
-                {/* Partner Search Dropdown */}
-                <div className="relative" ref={partnerDropdownRef}>
-                  <button
-                    onClick={() => setPartnerDropdownOpen((o) => !o)}
-                    className="h-8 px-3 flex items-center gap-1.5 bg-white border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring w-[350px]"
-                  >
-                    <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className={`truncate flex-1 text-left ${!selectedPartner ? "text-muted-foreground" : ""}`}>
-                      {selectedPartner ? selectedPartner.base_name : "Filter by partner…"}
-                    </span>
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  </button>
-                  {partnerDropdownOpen && (
-                    <div className="absolute z-50 top-full right-0 mt-1 w-[350px] bg-white border border-gray-200 rounded-md">
-                      <div className="p-1.5 border-b border-gray-100">
-                        <Input
-                          autoFocus
-                          placeholder="Type partner name…"
-                          value={partnerSearch}
-                          onChange={(e) => handlePartnerSearch(e.target.value)}
-                          className="h-7 text-xs"
-                        />
-                      </div>
-                      <div className="max-h-52 overflow-y-auto">
-                        <button
-                          onClick={() => { onFilterChange?.("selectedGroup", null); setPartnerSearch(""); setPartnerDropdownOpen(false); onPartnerSearch?.(""); }}
-                          className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${!dashboardFilters.selectedGroup ? "font-semibold text-[#07376a]" : ""}`}
-                        >All Partners</button>
-                        {loadingPartners ? (
-                          <div className="px-3 py-2 text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />Loading…</div>
-                        ) : partnersList.length === 0 ? (
-                          <div className="px-3 py-2 text-xs text-muted-foreground">No partners found</div>
-                        ) : (
-                          partnersList.map((group) => (
-                            <button
-                              key={group.base_name}
-                              onClick={() => { onFilterChange?.("selectedGroup", group); setPartnerSearch(""); setPartnerDropdownOpen(false); onPartnerSearch?.(""); }}
-                              className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${dashboardFilters.selectedGroup?.base_name === group.base_name ? "font-semibold text-[#07376a]" : ""}`}
-                            >
-                              <span className="truncate block">{group.base_name}</span>
-                              {group.branch_count > 1 && <span className="text-xs text-muted-foreground">{group.branch_count} branches</span>}
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
 
-                {/* Date Range Filter */}
-                <div className="flex items-center gap-1.5">
-                  <DatePicker
-                    value={dashboardFilters.dateFrom || ""}
-                    onChange={(v) => onFilterChange?.("dateFrom", v || null)}
-                    placeholder="From date"
-                    className="w-[150px] [&_input]:h-8 [&_input]:text-xs [&_input]:pl-8 [&_svg]:h-3.5 [&_svg]:w-3.5"
-                  />
-                  <span className="text-xs text-muted-foreground">–</span>
-                  <DatePicker
-                    value={dashboardFilters.dateTo || ""}
-                    onChange={(v) => onFilterChange?.("dateTo", v || null)}
-                    placeholder="To date"
-                    className="w-[150px] [&_input]:h-8 [&_input]:text-xs [&_input]:pl-8 [&_svg]:h-3.5 [&_svg]:w-3.5"
-                    min={dashboardFilters.dateFrom || undefined}
-                  />
-                </div>
 
                 {/* State Filter — shows when partner selected */}
                 {dashboardFilters.selectedGroup && (
