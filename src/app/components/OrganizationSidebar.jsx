@@ -1,4 +1,5 @@
 
+import { supabaseUrl } from "@/lib/supabaseConfig";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

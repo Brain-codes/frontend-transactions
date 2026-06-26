@@ -1,4 +1,5 @@
 
+import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
 import DashboardContentBase from "./DashboardContent";

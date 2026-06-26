@@ -1,4 +1,5 @@
 
+import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";
 import { useState, useEffect } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
 import ProtectedRoute from "../../components/ProtectedRoute";

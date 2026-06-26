@@ -1,4 +1,5 @@
 // Super Admin Dashboard Service for fetching super admin dashboard statistics
+import { supabaseUrl } from "@/lib/supabaseConfig";
 import { createClientComponentClient } from "@/lib/supabaseClient";
 import tokenManager from "../../utils/tokenManager";
 
