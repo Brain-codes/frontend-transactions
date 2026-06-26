@@ -1115,6 +1115,7 @@ export default function PartnersContent() {
   };
 
   const filteredOrgs = organizationsData.filter((o) => {
+    if (scopedToAssigned && assignedOrgIds && !assignedOrgIds.has(o.id)) return false;
     if (filters.assigned_agents === "assigned") return orgAgentsData[o.id] !== undefined && orgAgentsData[o.id].length > 0;
     if (filters.assigned_agents === "unassigned") return orgAgentsData[o.id] !== undefined && orgAgentsData[o.id].length === 0;
     return true;
