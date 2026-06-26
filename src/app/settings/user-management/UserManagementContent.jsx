@@ -584,13 +584,9 @@ const UserManagementPage = () => {
                         <TableCell className="text-xs max-w-[180px] truncate">{u.email}</TableCell>
                         <TableCell className="text-xs text-gray-600">{u.phone || "—"}</TableCell>
 
-                        {/* Role — plain text, colored */}
+                        {/* Role — colored badge per role */}
                         <TableCell>
-                          <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                            u.role === "super_admin"
-                              ? "bg-purple-100 text-purple-700"
-                              : "bg-blue-100 text-blue-700"
-                          }`}>
+                          <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${getRoleBadgeClasses(u.role)}`}>
                             {getRoleLabel(u.role)}
                           </span>
                         </TableCell>
