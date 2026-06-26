@@ -192,7 +192,7 @@ const PartnerProfilesContent = () => {
           )}
           <Table>
             <TableHeader>
-              <TableRow className="bg-brand hover:bg-brand">
+              <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Partner</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">State</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
