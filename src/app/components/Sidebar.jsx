@@ -62,7 +62,7 @@ const allNavItems = [
       { name: "Tools", route: "settings-tools", href: "/settings/tools" },
     ],
   },
-  { name: "Profile", icon: User, route: "profile", href: "/profile" },
+  // { name: "Profile", icon: User, route: "profile", href: "/profile" },
 ];
 
 const Sidebar = ({ isOpen, onClose, currentRoute }) => {
