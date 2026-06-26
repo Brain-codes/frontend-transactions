@@ -493,8 +493,9 @@ const UserManagementPage = () => {
               </SelectTrigger>
               <SelectContent className="text-xs">
                 <SelectItem value="all" className="text-xs">All Status</SelectItem>
-                <SelectItem value="active" className="text-xs">Active</SelectItem>
+                <SelectItem value="active" className="text-xs">Enabled</SelectItem>
                 <SelectItem value="disabled" className="text-xs">Disabled</SelectItem>
+
               </SelectContent>
             </Select>
 
