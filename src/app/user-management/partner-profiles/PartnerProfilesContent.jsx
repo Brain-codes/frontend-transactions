@@ -220,7 +220,7 @@ const PartnerProfilesContent = () => {
                     <TableCell className="text-sm text-gray-600">{p.branch || "—"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{p.contact_phone || "—"}</TableCell>
                     <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex items-center justify-center gap-2">
                         <TooltipProvider delayDuration={150}>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -228,12 +228,13 @@ const PartnerProfilesContent = () => {
                                 type="button"
                                 onClick={() => setDetailsPartner(p)}
                                 aria-label="View details"
-                                className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-200 text-gray-800 hover:bg-gray-50"
+                                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-slate-700 text-white text-xs font-medium shadow-sm hover:bg-slate-800 active:scale-[0.98] transition"
                               >
-                                <Eye className="h-4 w-4" />
+                                <Eye className="h-3.5 w-3.5" />
+                                Details
                               </button>
                             </TooltipTrigger>
-                            <TooltipContent>Details</TooltipContent>
+                            <TooltipContent>View partner details</TooltipContent>
                           </Tooltip>
 
                           <Tooltip>
@@ -243,16 +244,17 @@ const PartnerProfilesContent = () => {
                                 onClick={() => handleViewCredentials(p)}
                                 disabled={loadingCredentialOrgId === p.id}
                                 aria-label="Credentials"
-                                className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-60"
+                                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-indigo-600 text-white text-xs font-medium shadow-sm hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-60"
                               >
                                 {loadingCredentialOrgId === p.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                 ) : (
-                                  <KeyRound className="h-4 w-4" />
+                                  <KeyRound className="h-3.5 w-3.5" />
                                 )}
+                                Credentials
                               </button>
                             </TooltipTrigger>
-                            <TooltipContent>Credentials</TooltipContent>
+                            <TooltipContent>View login credentials</TooltipContent>
                           </Tooltip>
 
                           <Tooltip>
@@ -261,15 +263,17 @@ const PartnerProfilesContent = () => {
                                 type="button"
                                 onClick={() => setEditingPartner(p)}
                                 aria-label="Edit partner"
-                                className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-200 text-orange-600 hover:bg-orange-50"
+                                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-orange-500 text-white text-xs font-medium shadow-sm hover:bg-orange-600 active:scale-[0.98] transition"
                               >
-                                <SquarePen className="h-4 w-4" />
+                                <SquarePen className="h-3.5 w-3.5" />
+                                Edit
                               </button>
                             </TooltipTrigger>
-                            <TooltipContent>Edit</TooltipContent>
+                            <TooltipContent>Edit partner</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </div>
+
                     </TableCell>
                   </TableRow>
                 ))
