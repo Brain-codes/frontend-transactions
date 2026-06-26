@@ -794,15 +794,16 @@ const DashboardContent = ({
                         {items.map((it) => (
                           <div key={it.label} className="flex items-center justify-between border-b border-gray-100 pb-2 last:border-0">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: it.color }} />
-                              <span className="text-sm font-medium text-gray-700 truncate">{it.label}</span>
+                              <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ background: it.color }} />
+                              <span className="text-base font-medium text-gray-700 truncate">{it.label}</span>
                             </div>
                             <div className="flex items-baseline gap-2 shrink-0">
-                              <span className="text-base font-bold text-gray-900">{it.value.toLocaleString()}</span>
+                              <span className="text-xl font-bold text-gray-900">{it.value.toLocaleString()}</span>
                               {it.pct !== null && (
-                                <span className="text-xs text-gray-400">{it.pct}%</span>
+                                <span className="text-sm text-gray-400">{it.pct}%</span>
                               )}
                             </div>
+
 
                           </div>
                         ))}
