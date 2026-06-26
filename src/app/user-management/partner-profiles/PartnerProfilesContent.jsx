@@ -211,8 +211,10 @@ const PartnerProfilesContent = () => {
                 pageRows.map((p, idx) => (
                   <TableRow
                     key={p.id}
-                    className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}
+                    className="hover:bg-[#eef3c4] text-gray-700"
+                    style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
                   >
+
                     <TableCell className="text-sm font-medium text-gray-900">{p.partner_name || "N/A"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{p.state || "—"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{p.branch || "—"}</TableCell>
