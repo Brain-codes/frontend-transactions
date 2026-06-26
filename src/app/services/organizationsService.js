@@ -12,7 +12,7 @@ class OrganizationsService {
       const { data, error } = await this.supabase
         .from("organizations")
         .select(
-          "id, partner_name, branch, state, contact_person, contact_phone, alternative_phone, email, address, created_at, updated_at"
+          "id, partner_id, partner_name, branch, state, contact_person, contact_phone, alternative_phone, email, address, created_at, updated_at"
         )
         .order("partner_name", { ascending: true });
 
@@ -68,7 +68,7 @@ class OrganizationsService {
       const { data, error } = await this.supabase
         .from("organizations")
         .select(
-          "id, partner_name, branch, state, contact_person, contact_phone, alternative_phone, email, address, created_at, updated_at"
+          "id, partner_id, partner_name, branch, state, contact_person, contact_phone, alternative_phone, email, address, created_at, updated_at"
         )
         .eq("id", id)
         .single();
@@ -106,7 +106,7 @@ class OrganizationsService {
       const { data, error } = await this.supabase
         .from("organizations")
         .select(
-          "id, partner_name, branch, state, contact_person, contact_phone, alternative_phone, email, address, created_at, updated_at"
+          "id, partner_id, partner_name, branch, state, contact_person, contact_phone, alternative_phone, email, address, created_at, updated_at"
         )
         .ilike("partner_name", `%${searchTerm}%`)
         .order("partner_name", { ascending: true });
