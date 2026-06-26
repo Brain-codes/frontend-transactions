@@ -544,7 +544,7 @@ const UserManagementPage = () => {
               )}
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-brand hover:bg-brand">
+                  <TableRow className="hover:opacity-100" style={{ backgroundColor: "#4a5d0f" }}>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Name</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Email</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone</TableHead>
@@ -565,7 +565,7 @@ const UserManagementPage = () => {
                     users.map((u, idx) => (
                       <TableRow
                         key={u.id}
-                        className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}
+                        className={`${idx % 2 === 0 ? "bg-white" : "bg-[#f4f7e3]"} hover:bg-[#eef3c4] text-gray-700`}
                       >
                         <TableCell className="text-sm font-medium text-gray-900">{u.full_name || "N/A"}</TableCell>
                         <TableCell className="text-sm max-w-[180px] truncate">{u.email}</TableCell>
