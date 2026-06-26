@@ -149,9 +149,10 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
         <div className="p-4">
           <div className="flex items-center gap-2">
             <Settings className="h-5 w-5 text-gray-600" />
-            <h2 className="font-bold text-lg" style={{ color: "rgb(7, 55, 106)" }}>
+            <h2 className="font-bold text-lg" style={{ color: "#4a5d0f" }}>
               CONTROL PANEL
             </h2>
+
           </div>
         </div>
 
