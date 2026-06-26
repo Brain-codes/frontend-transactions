@@ -228,7 +228,7 @@ const PartnerProfilesContent = () => {
                                 type="button"
                                 onClick={() => setDetailsPartner(p)}
                                 aria-label="View details"
-                                className="inline-flex items-center justify-center h-8 px-3 rounded-md bg-slate-700 text-white text-xs font-medium shadow-sm hover:bg-slate-800 active:scale-[0.98] transition"
+                                className="inline-flex items-center justify-center h-8 px-3 rounded-sm bg-slate-700 text-white text-xs font-medium shadow-sm hover:bg-slate-800 active:scale-[0.98] transition"
                               >
                                 Details
                               </button>
@@ -243,7 +243,7 @@ const PartnerProfilesContent = () => {
                                 onClick={() => handleViewCredentials(p)}
                                 disabled={loadingCredentialOrgId === p.id}
                                 aria-label="Credentials"
-                                className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-indigo-600 text-white text-xs font-medium shadow-sm hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-60"
+                                className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-sm bg-indigo-600 text-white text-xs font-medium shadow-sm hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-60"
                               >
                                 {loadingCredentialOrgId === p.id ? (
                                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -260,7 +260,7 @@ const PartnerProfilesContent = () => {
                                 type="button"
                                 onClick={() => setEditingPartner(p)}
                                 aria-label="Edit partner"
-                                className="inline-flex items-center justify-center h-8 px-3 rounded-md bg-orange-500 text-white text-xs font-medium shadow-sm hover:bg-orange-600 active:scale-[0.98] transition"
+                                className="inline-flex items-center justify-center h-8 px-3 rounded-sm bg-orange-500 text-white text-xs font-medium shadow-sm hover:bg-orange-600 active:scale-[0.98] transition"
                               >
                                 Edit
                               </button>
