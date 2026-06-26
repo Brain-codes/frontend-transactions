@@ -650,14 +650,7 @@ const UserManagementPage = () => {
                             </TooltipProvider>
 
                             <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0"
-                                  disabled={!!actionLoading}
-                                  aria-label="More user actions"
-                                >
+
 
                               <DropdownMenuTrigger asChild>
                                 <Button
