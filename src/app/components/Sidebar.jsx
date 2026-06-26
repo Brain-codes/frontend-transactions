@@ -202,8 +202,9 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
                             onClick={() => navigateToRoute(child.href)}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
                               active
-                                ? "bg-blue-100 text-blue-900 font-medium hover:bg-blue-100"
-                                : "text-gray-600 hover:bg-blue-100 hover:text-blue-900"
+                                ? "bg-[#eef3c4] text-[#4a5d0f] font-medium hover:bg-[#eef3c4]"
+                                : "text-gray-600 hover:bg-[#eef3c4] hover:text-[#4a5d0f]"
+
                             }`}
                           >
                             <span>{child.name}</span>
