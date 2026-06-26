@@ -502,55 +502,8 @@ const DashboardContent = ({
                   <CardHeader className="rounded-t-lg text-white py-2 px-4 flex flex-row items-center justify-between gap-3 flex-wrap" style={{ backgroundColor: DARK_NAVY }}>
                     <CardTitle className="text-base font-semibold">Sales Overview</CardTitle>
                     <div className="flex items-center gap-2 flex-wrap">
-                      {/* Partner Search Dropdown */}
-                      <div className="relative" ref={partnerDropdownRef}>
-                        <button
-                          onClick={() => setPartnerDropdownOpen((o) => !o)}
-                          className="h-8 px-3 flex items-center gap-1.5 rounded-md text-xs text-white border w-[260px] focus:outline-none focus:ring-2 focus:ring-white/30 hover:brightness-110"
-                          style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
-                        >
-                          <Search className="h-3.5 w-3.5 text-white/80 shrink-0" />
-                          <span className={`truncate flex-1 text-left ${!selectedPartner ? "text-white/70" : "text-white"}`}>
-                            {selectedPartner ? selectedPartner.base_name : "Filter by partner…"}
-                          </span>
-                          <ChevronDown className="h-3.5 w-3.5 text-white/80 shrink-0" />
-                        </button>
-                        {partnerDropdownOpen && (
-                          <div className="absolute z-50 top-full right-0 mt-1 w-[300px] bg-white border border-gray-200 rounded-md text-gray-700">
-                            <div className="p-1.5 border-b border-gray-100">
-                              <Input
-                                autoFocus
-                                placeholder="Type partner name…"
-                                value={partnerSearch}
-                                onChange={(e) => handlePartnerSearch(e.target.value)}
-                                className="h-7 text-xs"
-                              />
-                            </div>
-                            <div className="max-h-52 overflow-y-auto">
-                              <button
-                                onClick={() => { onFilterChange?.("selectedGroup", null); setPartnerSearch(""); setPartnerDropdownOpen(false); onPartnerSearch?.(""); }}
-                                className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${!dashboardFilters.selectedGroup ? "font-semibold text-[#4a5d0f]" : ""}`}
-                              >All Partners</button>
-                              {loadingPartners ? (
-                                <div className="px-3 py-2 text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />Loading…</div>
-                              ) : partnersList.length === 0 ? (
-                                <div className="px-3 py-2 text-xs text-muted-foreground">No partners found</div>
-                              ) : (
-                                partnersList.map((group) => (
-                                  <button
-                                    key={group.base_name}
-                                    onClick={() => { onFilterChange?.("selectedGroup", group); setPartnerSearch(""); setPartnerDropdownOpen(false); onPartnerSearch?.(""); }}
-                                    className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${dashboardFilters.selectedGroup?.base_name === group.base_name ? "font-semibold text-[#4a5d0f]" : ""}`}
-                                  >
-                                    <span className="truncate block">{group.base_name}</span>
-                                    {group.branch_count > 1 && <span className="text-xs text-muted-foreground">{group.branch_count} branches</span>}
-                                  </button>
-                                ))
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                      {/* Partner filter removed */}
+
 
                       {/* State Filter */}
                       <div ref={headerStateDropdownRef} className="relative">
