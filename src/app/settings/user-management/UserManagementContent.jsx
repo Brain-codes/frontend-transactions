@@ -569,7 +569,7 @@ const UserManagementPage = () => {
                       >
                         <TableCell className="text-sm font-medium text-gray-900">{u.full_name || "N/A"}</TableCell>
                         <TableCell className="text-sm max-w-[180px] truncate">{u.email}</TableCell>
-                        <TableCell className="text-sm text-gray-600">{u.phone || "—"}</TableCell>
+                        <TableCell className="text-sm text-gray-600">{u.phone || ""}</TableCell>
 
                         {/* Role — colored badge per role */}
                         <TableCell>
