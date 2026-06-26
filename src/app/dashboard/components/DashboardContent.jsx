@@ -631,6 +631,17 @@ const DashboardContent = ({
                         );
                       })()}
 
+                      {/* Clear filters */}
+                      <button
+                        type="button"
+                        onClick={() => onClearFilters?.()}
+                        title="Clear filters"
+                        className="inline-flex items-center gap-1 h-8 px-2 rounded-md text-xs text-white border hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30"
+                        style={{ backgroundColor: "transparent", borderColor: "rgba(255,255,255,0.4)" }}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Clear
+                      </button>
                     </div>
                   </CardHeader>
 
