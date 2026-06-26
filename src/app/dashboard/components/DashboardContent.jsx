@@ -199,10 +199,12 @@ const DashboardContent = ({
   const [stateDropdownOpen, setStateDropdownOpen] = React.useState(false);
   const [branchDropdownOpen, setBranchDropdownOpen] = React.useState(false);
   const [yearDropdownOpen, setYearDropdownOpen] = React.useState(false);
+  const [monthsDropdownOpen, setMonthsDropdownOpen] = React.useState(false);
   const partnerDropdownRef = React.useRef(null);
   const stateDropdownRef = React.useRef(null);
   const branchDropdownRef = React.useRef(null);
   const yearDropdownRef = React.useRef(null);
+  const monthsDropdownRef = React.useRef(null);
 
   React.useEffect(() => {
     const handler = (e) => {
@@ -210,6 +212,7 @@ const DashboardContent = ({
       if (stateDropdownRef.current && !stateDropdownRef.current.contains(e.target)) setStateDropdownOpen(false);
       if (branchDropdownRef.current && !branchDropdownRef.current.contains(e.target)) setBranchDropdownOpen(false);
       if (yearDropdownRef.current && !yearDropdownRef.current.contains(e.target)) setYearDropdownOpen(false);
+      if (monthsDropdownRef.current && !monthsDropdownRef.current.contains(e.target)) setMonthsDropdownOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
