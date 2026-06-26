@@ -18,7 +18,7 @@ import {
   Layers,
   ArrowLeftRight,
   ChevronDown,
-  ChevronRight,
+  ChevronUp,
   Smartphone,
   Map,
   CreditCard,
@@ -176,9 +176,9 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
                     <item.icon className="h-[18px] w-[18px]" />
                     <span className="flex-1">{item.name}</span>
                     {isExpanded ? (
-                      <ChevronDown className={`h-4 w-4 ${childActive ? "text-white/80" : "text-gray-400"}`} />
+                      <ChevronUp className={`h-4 w-4 ${childActive ? "text-white/80" : "text-gray-400"}`} />
                     ) : (
-                      <ChevronRight className={`h-4 w-4 ${childActive ? "text-white/80" : "text-gray-400"}`} />
+                      <ChevronDown className={`h-4 w-4 ${childActive ? "text-white/80" : "text-gray-400"}`} />
                     )}
                   </button>
 
