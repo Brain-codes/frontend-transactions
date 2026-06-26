@@ -198,7 +198,7 @@ const UserManagementPage = () => {
       if (currentFilters.role) params.append("role", currentFilters.role);
 
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-users?${params}`,
+        `${supabaseFunctionsUrl}/manage-users?${params}`,
         { headers: { Authorization: `Bearer ${session.access_token}` } },
       );
       const result = await res.json();
@@ -341,7 +341,7 @@ const UserManagementPage = () => {
       if (!userForm.auto_generate_password) payload.password = userForm.password;
 
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-users`,
+        `${supabaseFunctionsUrl}/manage-users`,
         { method: "POST", headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) },
       );
       const result = await res.json();
@@ -378,7 +378,7 @@ const UserManagementPage = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-users/${selectedUser.id}`,
+        `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
         { method: "PUT", headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" }, body: JSON.stringify({ full_name: userForm.full_name.trim(), phone: userForm.phone.trim() || null }) },
       );
       const result = await res.json();
@@ -402,7 +402,7 @@ const UserManagementPage = () => {
       const { data: { session } } = await supabase.auth.getSession();
       const newStatus = currentStatus === "active" ? "disabled" : "active";
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-users/${userId}`,
+        `${supabaseFunctionsUrl}/manage-users/${userId}`,
         { method: "PATCH", headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) },
       );
       const result = await res.json();
@@ -423,7 +423,7 @@ const UserManagementPage = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-users/${selectedUser.id}`,
+        `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
         { method: "DELETE", headers: { Authorization: `Bearer ${session.access_token}` } },
       );
       const result = await res.json();

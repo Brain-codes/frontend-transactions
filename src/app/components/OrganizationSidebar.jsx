@@ -37,7 +37,7 @@ const OrganizationSidebar = ({ onSelectOrganization, selectedOrgIds }) => {
       }
 
       try {
-        const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const baseUrl = supabaseUrl;
         const functionUrl = `${baseUrl}/functions/v1/get-organizations-grouped`;
 
         const {

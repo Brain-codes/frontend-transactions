@@ -143,7 +143,7 @@ export default function StoveManagementContent() {
       }
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-organizations-grouped?page=1&page_size=500`,
+        `${supabaseFunctionsUrl}/get-organizations-grouped?page=1&page_size=500`,
         { headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" } }
       );
       const result = await response.json();
@@ -166,7 +166,7 @@ export default function StoveManagementContent() {
       const params = new URLSearchParams();
       if (orgIds?.length > 0) params.append("organization_ids", orgIds.join(","));
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-stove-stats?${params}`,
+        `${supabaseFunctionsUrl}/get-stove-stats?${params}`,
         { headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" } }
       );
       const result = await response.json();
@@ -220,7 +220,7 @@ export default function StoveManagementContent() {
       if (!acslMode) params.append("sort_dir", currentSortDir || "desc");
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-stove-ids?${params}`,
+        `${supabaseFunctionsUrl}/manage-stove-ids?${params}`,
         { headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" } }
       );
       const result = await response.json();
@@ -315,14 +315,14 @@ export default function StoveManagementContent() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-stove-ids?id=${stove.id}`,
+        `${supabaseFunctionsUrl}/manage-stove-ids?id=${stove.id}`,
         { headers: { Authorization: `Bearer ${session.access_token}` } }
       );
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Failed to fetch stove details");
       if (result.status === "sold") {
         const saleResponse = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-sale?stove_serial_no=${result.stove_id}`,
+          `${supabaseFunctionsUrl}/get-sale?stove_serial_no=${result.stove_id}`,
           { headers: { Authorization: `Bearer ${session.access_token}` } }
         );
         const saleResult = await saleResponse.json();
@@ -342,7 +342,7 @@ export default function StoveManagementContent() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-stove-ids`,
+        `${supabaseFunctionsUrl}/manage-stove-ids`,
         {
           method: "POST",
           headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
