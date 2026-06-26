@@ -1,16 +1,7 @@
 
-import React, { createContext, useContext } from "react";
+import React from "react";
 import { useToast, ToastContainer } from "@/components/ui/toast";
-
-const ToastContext = createContext();
-
-export const useToastNotification = () => {
-  const context = useContext(ToastContext);
-  if (!context) {
-    throw new Error("useToastNotification must be used within a ToastProvider");
-  }
-  return context;
-};
+import { ToastContext } from "./useToastNotification";
 
 export const ToastProvider = ({ children }) => {
   const { toast, toasts, removeToast } = useToast();
