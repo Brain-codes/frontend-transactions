@@ -109,20 +109,20 @@ const getRoleLabel = (role) => {
 const getRoleBadgeClasses = (role) => {
   switch (role) {
     case "super_admin":
-      return "bg-fuchsia-100 text-fuchsia-800 border border-fuchsia-200 font-medium px-2.5 py-0.5 rounded text-xs";
+      return "bg-fuchsia-100 text-fuchsia-800 border border-fuchsia-200";
     case "acsl_agent_manager":
-      return "bg-rose-100 text-rose-800 border border-rose-200 font-medium px-2.5 py-0.5 rounded text-xs";
+      return "bg-rose-100 text-rose-800 border border-rose-200";
     case "acsl_agent":
     case "super_admin_agent":
-      return "bg-sky-100 text-sky-800 border border-sky-200 font-medium px-2.5 py-0.5 rounded text-xs";
+      return "bg-sky-100 text-sky-800 border border-sky-200";
     case "partner":
     case "admin":
-      return "bg-amber-100 text-amber-800 border border-amber-200 font-medium px-2.5 py-0.5 rounded text-xs";
+      return "bg-amber-100 text-amber-800 border border-amber-200";
     case "partner_agent":
     case "agent":
-      return "bg-emerald-100 text-emerald-800 border border-emerald-200 font-medium px-2.5 py-0.5 rounded text-xs";
+      return "bg-emerald-100 text-emerald-800 border border-emerald-200";
     default:
-      return "bg-gray-100 text-gray-800 border border-gray-200 font-medium px-2.5 py-0.5 rounded text-xs";
+      return "bg-gray-100 text-gray-800 border border-gray-200";
   }
 };
 
