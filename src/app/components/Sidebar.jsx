@@ -38,7 +38,7 @@ const allNavItems = [
     icon: ShieldCheck,
     route: "user-management",
     children: [
-      { name: "Users", route: "user-management-users", href: "/user-management/users" },
+      { name: "User Manager", route: "user-management-users", href: "/user-management/users" },
       { name: "User Groups", route: "user-management-groups", href: "/user-management/user-groups" },
     ],
   },
