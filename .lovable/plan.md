@@ -1,25 +1,55 @@
-## Problem
+## Why navigation feels like a full reload
 
-Network calls go to `undefined/functions/v1/manage-users` (and same for `get-organizations-grouped`, `get-super-admin-dashboard`). The server returns the SPA `index.html` 404 page, which the client tries to `JSON.parse`, producing:
+Every authenticated page component wraps its own UI in `<ProtectedRoute><DashboardLayout>…</DashboardLayout></ProtectedRoute>`. Because the shell lives **inside** each page, routing between pages unmounts and remounts:
 
-> Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+- `DashboardLayout`, `TopNavigation`, `Sidebar`
+- `TopNavigation`'s `useEffect` that calls `manage-profile`
+- `ProtectedRoute`'s auth check spinner
 
-Root cause: these files build URLs from `import.meta.env.VITE_SUPABASE_URL` directly. When the env var isn't injected at build time (e.g. `.env.local` missing after a sandbox rebuild), it resolves to `undefined`. The working calls (e.g. `manage-profile`) use the shared `src/lib/supabaseConfig.ts`, which already has a hardcoded fallback URL — so they keep working.
+That's why you see `manage-profile` fired repeatedly on every nav and a perceptible flash. TanStack `<Link>` is doing SPA navigation correctly — the perceived "reload" is the shell tearing down.
 
-## Fix
+## Fix: hoist the shell into the root layout (rendered once)
 
-Switch the broken callers to use the shared `supabaseFunctionsUrl` helper (which falls back to the hardcoded project URL when the env var is missing).
+Mount `ProtectedRoute` + `DashboardLayout` **once** inside `src/routes/__root.tsx`, around `<Outlet />`. Then strip the per-page wrappers so only page content swaps on navigation.
 
-### Files to update
+### Steps
 
-1. `src/app/settings/user-management/UserManagementContent.jsx` — all 5 `fetch` calls (lines 200, 343, 380, 404, 425): replace `${import.meta.env.VITE_SUPABASE_URL}/functions/v1` with `${supabaseFunctionsUrl}` and add the import from `@/lib/supabaseConfig`.
-2. `src/app/services/superAdminDashboardService.js` — same replacement for the `get-super-admin-dashboard` call.
-3. `src/app/dashboard/components/UnifiedDashboardContent.tsx` — same replacement for the `get-organizations-grouped` call.
-4. `src/app/stove-management/components/StoveManagementContent.jsx` — same replacement (audit-found, same pattern, would break identically when env is missing).
-5. `src/app/components/OrganizationSidebar.jsx` — same replacement.
+1. **`src/routes/__root.tsx`** — add an `AppShell` that reads the current pathname and:
+   - For public routes (`/login`, `/unauthorized`, `/download`, `/`-when-unauth, `/sales-monitoring-app` public viewer, etc.): render `<Outlet />` directly.
+   - For everything else: render `<ProtectedRoute><DashboardLayout><Outlet /></DashboardLayout></ProtectedRoute>`.
+   - Use `useRouterState({ select: s => s.location.pathname })` so the shell itself never unmounts on nav; only `<Outlet />` swaps.
 
-No backend / schema changes. No UI changes beyond fixing the data fetch.
+2. **Strip wrappers from page components** (14 files identified):
+   - `src/app/dashboard/components/UnifiedDashboardContent.tsx`
+   - `src/app/partners/components/PartnersContent.jsx`
+   - `src/app/sales/components/UnifiedSalesContent.tsx`
+   - `src/app/sales/financial-reports/page.tsx`
+   - `src/app/agents/components/SuperAdminAgentsContent.tsx`
+   - `src/app/agents/components/PartnerAgentsContent.tsx`
+   - `src/app/stove-management/components/StoveManagementContent.jsx`
+   - `src/app/settings/user-management/UserManagementContent.jsx`
+   - `src/app/user-management/user-groups/UserGroupsContent.tsx`
+   - `src/app/settings/tools/ToolsContent.tsx`
+   - `src/app/settings/payment-models/PaymentModelsContent.tsx`
+   - `src/app/settings/system-config/SystemConfigContent.jsx`
+   - `src/app/settings/credentials/CredentialsContent.tsx`
+   - `src/app/profile/page.tsx`
+
+   In each: remove the outer `<ProtectedRoute>` and `<DashboardLayout>` wrappers and drop the now-unused imports. Page returns just its own content.
+
+3. **`src/app/components/TopNavigation.jsx`** — stop refetching profile on every nav:
+   - Only fetch when `authUser?.id` changes (not on every `isAuthenticated` reference change), and skip if already loaded for that id.
+   - Add a module-level cache (or React Query `useQuery` with `staleTime: 5 * 60_000`) keyed by user id so the call is at most once per session.
+
+4. **`src/app/components/ProtectedRoute.tsx`** — confirm it short-circuits when a cached user exists (already done in earlier work) so the gate at the root doesn't flash a spinner on each navigation. If it currently renders a spinner while `loading`, gate the spinner behind "no cached user".
+
+### Out of scope
+- No route-file moves (no `_authenticated/` migration). The pathname-based shell in `__root.tsx` achieves the same persistence with minimal churn.
+- No backend / RLS changes.
+- No visual redesign — same sidebar, topnav, content.
 
 ## Verification
 
-After the edit, reload the User Management page: the request should hit `https://oeiwnpngbnkhcismhpgs.supabase.co/functions/v1/manage-users?...` (200 JSON), the table renders, and the dashboard's "Failed to fetch grouped partners" / "HTTP 404" errors disappear from the console.
+- Click between Dashboard → Partners → Agents → Sales → Stove Management → User Management. The sidebar and topnav must NOT flicker; only the main content swaps.
+- Network tab: `manage-profile` fires **once** per session, not on each nav.
+- Console: no auth-spinner flash and no remount logs from `AuthContext` during nav.
