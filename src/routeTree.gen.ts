@@ -31,6 +31,8 @@ import { Route as AgreementImagesIndexRouteImport } from './routes/agreement-ima
 import { Route as AgentsIndexRouteImport } from './routes/agents/index'
 import { Route as AgentIndexRouteImport } from './routes/agent/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as UserManagementUsersIndexRouteImport } from './routes/user-management/users/index'
+import { Route as UserManagementUserGroupsIndexRouteImport } from './routes/user-management/user-groups/index'
 import { Route as SuperAdminAgentStoveIdsIndexRouteImport } from './routes/super-admin-agent/stove-ids/index'
 import { Route as SuperAdminAgentSalesIndexRouteImport } from './routes/super-admin-agent/sales/index'
 import { Route as SuperAdminAgentPartnersIndexRouteImport } from './routes/super-admin-agent/partners/index'
@@ -170,6 +172,18 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UserManagementUsersIndexRoute =
+  UserManagementUsersIndexRouteImport.update({
+    id: '/user-management/users/',
+    path: '/user-management/users/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const UserManagementUserGroupsIndexRoute =
+  UserManagementUserGroupsIndexRouteImport.update({
+    id: '/user-management/user-groups/',
+    path: '/user-management/user-groups/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const SuperAdminAgentStoveIdsIndexRoute =
   SuperAdminAgentStoveIdsIndexRouteImport.update({
     id: '/super-admin-agent/stove-ids/',
@@ -363,6 +377,8 @@ export interface FileRoutesByFullPath {
   '/super-admin-agent/partners/': typeof SuperAdminAgentPartnersIndexRoute
   '/super-admin-agent/sales/': typeof SuperAdminAgentSalesIndexRoute
   '/super-admin-agent/stove-ids/': typeof SuperAdminAgentStoveIdsIndexRoute
+  '/user-management/user-groups/': typeof UserManagementUserGroupsIndexRoute
+  '/user-management/users/': typeof UserManagementUsersIndexRoute
   '/admin/sales/create/': typeof AdminSalesCreateIndexRoute
   '/admin/sales/financial-reports/': typeof AdminSalesFinancialReportsIndexRoute
   '/docs/admin/sales/': typeof DocsAdminSalesIndexRoute
@@ -414,6 +430,8 @@ export interface FileRoutesByTo {
   '/super-admin-agent/partners': typeof SuperAdminAgentPartnersIndexRoute
   '/super-admin-agent/sales': typeof SuperAdminAgentSalesIndexRoute
   '/super-admin-agent/stove-ids': typeof SuperAdminAgentStoveIdsIndexRoute
+  '/user-management/user-groups': typeof UserManagementUserGroupsIndexRoute
+  '/user-management/users': typeof UserManagementUsersIndexRoute
   '/admin/sales/create': typeof AdminSalesCreateIndexRoute
   '/admin/sales/financial-reports': typeof AdminSalesFinancialReportsIndexRoute
   '/docs/admin/sales': typeof DocsAdminSalesIndexRoute
@@ -466,6 +484,8 @@ export interface FileRoutesById {
   '/super-admin-agent/partners/': typeof SuperAdminAgentPartnersIndexRoute
   '/super-admin-agent/sales/': typeof SuperAdminAgentSalesIndexRoute
   '/super-admin-agent/stove-ids/': typeof SuperAdminAgentStoveIdsIndexRoute
+  '/user-management/user-groups/': typeof UserManagementUserGroupsIndexRoute
+  '/user-management/users/': typeof UserManagementUsersIndexRoute
   '/admin/sales/create/': typeof AdminSalesCreateIndexRoute
   '/admin/sales/financial-reports/': typeof AdminSalesFinancialReportsIndexRoute
   '/docs/admin/sales/': typeof DocsAdminSalesIndexRoute
@@ -519,6 +539,8 @@ export interface FileRouteTypes {
     | '/super-admin-agent/partners/'
     | '/super-admin-agent/sales/'
     | '/super-admin-agent/stove-ids/'
+    | '/user-management/user-groups/'
+    | '/user-management/users/'
     | '/admin/sales/create/'
     | '/admin/sales/financial-reports/'
     | '/docs/admin/sales/'
@@ -570,6 +592,8 @@ export interface FileRouteTypes {
     | '/super-admin-agent/partners'
     | '/super-admin-agent/sales'
     | '/super-admin-agent/stove-ids'
+    | '/user-management/user-groups'
+    | '/user-management/users'
     | '/admin/sales/create'
     | '/admin/sales/financial-reports'
     | '/docs/admin/sales'
@@ -621,6 +645,8 @@ export interface FileRouteTypes {
     | '/super-admin-agent/partners/'
     | '/super-admin-agent/sales/'
     | '/super-admin-agent/stove-ids/'
+    | '/user-management/user-groups/'
+    | '/user-management/users/'
     | '/admin/sales/create/'
     | '/admin/sales/financial-reports/'
     | '/docs/admin/sales/'
@@ -673,6 +699,8 @@ export interface RootRouteChildren {
   SuperAdminAgentPartnersIndexRoute: typeof SuperAdminAgentPartnersIndexRoute
   SuperAdminAgentSalesIndexRoute: typeof SuperAdminAgentSalesIndexRoute
   SuperAdminAgentStoveIdsIndexRoute: typeof SuperAdminAgentStoveIdsIndexRoute
+  UserManagementUserGroupsIndexRoute: typeof UserManagementUserGroupsIndexRoute
+  UserManagementUsersIndexRoute: typeof UserManagementUsersIndexRoute
   AdminSalesCreateIndexRoute: typeof AdminSalesCreateIndexRoute
   AdminSalesFinancialReportsIndexRoute: typeof AdminSalesFinancialReportsIndexRoute
   DocsAdminSalesIndexRoute: typeof DocsAdminSalesIndexRoute
@@ -834,6 +862,20 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/user-management/users/': {
+      id: '/user-management/users/'
+      path: '/user-management/users'
+      fullPath: '/user-management/users/'
+      preLoaderRoute: typeof UserManagementUsersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/user-management/user-groups/': {
+      id: '/user-management/user-groups/'
+      path: '/user-management/user-groups'
+      fullPath: '/user-management/user-groups/'
+      preLoaderRoute: typeof UserManagementUserGroupsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/super-admin-agent/stove-ids/': {
@@ -1073,6 +1115,8 @@ const rootRouteChildren: RootRouteChildren = {
   SuperAdminAgentPartnersIndexRoute: SuperAdminAgentPartnersIndexRoute,
   SuperAdminAgentSalesIndexRoute: SuperAdminAgentSalesIndexRoute,
   SuperAdminAgentStoveIdsIndexRoute: SuperAdminAgentStoveIdsIndexRoute,
+  UserManagementUserGroupsIndexRoute: UserManagementUserGroupsIndexRoute,
+  UserManagementUsersIndexRoute: UserManagementUsersIndexRoute,
   AdminSalesCreateIndexRoute: AdminSalesCreateIndexRoute,
   AdminSalesFinancialReportsIndexRoute: AdminSalesFinancialReportsIndexRoute,
   DocsAdminSalesIndexRoute: DocsAdminSalesIndexRoute,
@@ -1082,13 +1126,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -26,6 +26,9 @@ export type RouteKey =
   | "settings-system-config"
   | "settings-user-management"
   | "settings-tools"
+  | "user-management"
+  | "user-management-users"
+  | "user-management-groups"
   | "payment-models"
   | "profile"
   | "docs"
@@ -85,6 +88,9 @@ const ALL_ROUTES: RouteKey[] = [
   "settings-system-config",
   "settings-user-management",
   "settings-tools",
+  "user-management",
+  "user-management-users",
+  "user-management-groups",
   "payment-models",
   "profile",
   "docs",
