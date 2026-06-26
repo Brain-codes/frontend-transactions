@@ -141,12 +141,8 @@ const TopNavigation = ({
               <span className="text-sm font-medium text-gray-700">
                 {getWelcomeText()}
               </span>
-              {userProfile?.profile?.role && (
-                <span className="text-[10px] text-gray-500 font-normal">
-                  {userProfile.profile.role.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
-                </span>
-              )}
             </div>
+
           </Button>
 
           <Button 
