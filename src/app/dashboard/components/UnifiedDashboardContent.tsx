@@ -10,8 +10,24 @@ import { usePermissions } from "../../hooks/usePermissions";
 import superAdminDashboardService from "../../services/superAdminDashboardService";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import adminDashboardService from "../../services/adminDashboardService";
+import salesAdvancedService from "../../services/salesAdvancedAPIService";
 
-const DashboardContent = DashboardContentBase as any;
+const MONTH_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+// Aggregate raw sales rows into 12 monthly buckets keyed by short month name.
+function bucketMonthlySales(rows: any[]): { month: string; value: number }[] {
+  const counts = new Array(12).fill(0);
+  (rows || []).forEach((r: any) => {
+    const raw = r?.sales_date || r?.sale_date || r?.created_at;
+    if (!raw) return;
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return;
+    const qty = Number(r?.quantity ?? 1) || 1;
+    counts[d.getMonth()] += qty;
+  });
+  return MONTH_LABELS.map((m, i) => ({ month: m, value: counts[i] }));
+}
+
 
 const CURRENT_YEAR = new Date().getFullYear();
 const ALL_YEARS = Array.from({ length: CURRENT_YEAR - 2023 }, (_, i) => 2024 + i);
