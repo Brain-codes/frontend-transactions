@@ -512,31 +512,11 @@ const UserManagementPage = () => {
 
           {/* Table */}
           <div className="space-y-0">
-            {/* Top header — total + download only */}
-            <div className="bg-blue-50 rounded-t-lg px-4 py-2 flex items-center justify-between">
-              <p className="text-sm font-bold text-green-500">
-                Total Users: <span className="text-brand">{pagination.total_count}</span>
+            {/* Top header — pagination count */}
+            <div className="px-1 py-2 flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                Showing <span className="font-medium">{startRecord}</span> to <span className="font-medium">{endRecord}</span> of <span className="font-medium">{pagination.total_count}</span> users
               </p>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 px-2 text-xs flex items-center gap-1"
-                onClick={() => {
-                  const headers = ["Name", "Email", "Phone", "Role", "Status", "Created At"];
-                  const rows = users.map((u) => [
-                    u.full_name || "",
-                    u.email || "",
-                    u.phone || "",
-                    u.role || "",
-                    u.status || "",
-                    u.created_at ? new Date(u.created_at).toLocaleDateString() : "",
-                  ]);
-                  downloadTableAsCSV(headers, rows, `users-${new Date().toISOString().slice(0, 10)}.csv`);
-                }}
-                disabled={users.length === 0}
-              >
-                <Download className="h-3 w-3" />Download
-              </Button>
             </div>
 
             {/* Table body */}
