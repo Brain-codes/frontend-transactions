@@ -33,6 +33,15 @@ import Link from "@/compat/Link";
 // super_admin sees everything because usePermissions short-circuits to true.
 const allNavItems = [
   { name: "Dashboard", icon: LayoutDashboard, route: "dashboard", href: "/dashboard" },
+  {
+    name: "User Management",
+    icon: ShieldCheck,
+    route: "user-management",
+    children: [
+      { name: "Users", route: "user-management-users", href: "/user-management/users" },
+      { name: "User Groups", route: "user-management-groups", href: "/user-management/user-groups" },
+    ],
+  },
   { name: "Agent Manager", icon: Users, route: "agents", href: "/agents" },
   { name: "Partner Manager", icon: UserCheck, route: "partners", href: "/partners" },
   { name: "Sales Record", icon: ShoppingCart, route: "sales", href: "/sales" },
@@ -48,7 +57,6 @@ const allNavItems = [
     route: "settings",
     children: [
       { name: "Payment Models", route: "settings-payment-models", href: "/payment-models" },
-      { name: "User Management", route: "settings-user-management", href: "/settings/user-management" },
       { name: "Credentials", route: "settings-credentials", href: "/settings/credentials" },
       { name: "System Configuration", route: "settings-system-config", href: "/settings/system-config" },
       { name: "Tools", route: "settings-tools", href: "/settings/tools" },
