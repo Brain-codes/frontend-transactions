@@ -100,9 +100,30 @@ const formatDate = (dateString) => {
 const getRoleLabel = (role) => {
   if (role === "super_admin") return "Super Admin";
   if (role === "acsl_agent" || role === "super_admin_agent") return "ACSL Agent";
+  if (role === "acsl_agent_manager") return "ACSL Agent Manager";
   if (role === "partner" || role === "admin") return "Partner";
   if (role === "partner_agent" || role === "agent") return "Partner Agent";
   return role;
+};
+
+const getRoleBadgeClasses = (role) => {
+  switch (role) {
+    case "super_admin":
+      return "bg-purple-100 text-purple-700";
+    case "acsl_agent_manager":
+      return "bg-indigo-100 text-indigo-700";
+    case "acsl_agent":
+    case "super_admin_agent":
+      return "bg-blue-100 text-blue-700";
+    case "partner":
+    case "admin":
+      return "bg-amber-100 text-amber-700";
+    case "partner_agent":
+    case "agent":
+      return "bg-teal-100 text-teal-700";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
 };
 
 const UserManagementPage = () => {
