@@ -2,9 +2,11 @@
 // ACSL Agent Service (formerly Super Admin Agent Service)
 // Handles all API calls for acsl_agent user management and their portal operations
 import tokenManager from "../../utils/tokenManager";
+import { supabaseUrl } from "../../lib/supabaseConfig";
 
-const API_BASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const API_BASE_URL = supabaseUrl;
 const API_FUNCTIONS_URL = `${API_BASE_URL}/functions/v1`;
+
 
 class SuperAdminAgentService {
   // Get a valid auth token
