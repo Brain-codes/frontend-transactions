@@ -4,6 +4,7 @@ import { createClientComponentClient } from "@/lib/supabaseClient";
 import { supabaseFunctionsUrl, isSupabaseConfigured } from "@/lib/supabaseConfig";
 import profileService from "../services/profileService";
 import tokenManager from "../../utils/tokenManager";
+import { getCachedUser, getCachedRole, setCachedRole } from "@/lib/authCache";
 
 const AuthContext = createContext();
 
@@ -16,10 +17,20 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [storedProfileRole, setStoredProfileRole] = useState(null);
+  // Hydrate synchronously from localStorage so reloads don't flash
+  // "Verifying authentication...". The async getSession() below will
+  // refresh/replace this with the authoritative session.
+  const cachedUser = typeof window !== "undefined" ? getCachedUser() : null;
+  const cachedRole = typeof window !== "undefined" ? getCachedRole() : null;
+  const [user, setUser] = useState(cachedUser);
+  const [loading, setLoading] = useState(!cachedUser);
+  const [storedProfileRole, setStoredProfileRole] = useState(cachedRole);
   const supabase = createClientComponentClient();
+  // Persist role to localStorage so it's available synchronously on next load
+  useEffect(() => {
+    setCachedRole(storedProfileRole);
+  }, [storedProfileRole]);
+
 
   // Track the last user to detect actual user changes vs session refresh
   const lastUserRef = useRef(null);
