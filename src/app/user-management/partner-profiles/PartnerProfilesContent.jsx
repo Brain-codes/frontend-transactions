@@ -325,6 +325,22 @@ const PartnerProfilesContent = () => {
         />
       )}
 
+      <EditPartnerModal
+        organization={editingPartner}
+        isOpen={!!editingPartner}
+        onClose={() => setEditingPartner(null)}
+        onSuccess={() => {
+          setEditingPartner(null);
+          loadPartners();
+        }}
+      />
+
+      <ViewCredentialModal
+        isOpen={!!viewingCredential}
+        onClose={() => setViewingCredential(null)}
+        credential={viewingCredential}
+      />
+
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
