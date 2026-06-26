@@ -1,4 +1,5 @@
 import DashboardLayout from "@/app/components/DashboardLayout";
+import { Users } from "lucide-react";
 
 type Group = {
   name: string;
@@ -17,17 +18,15 @@ export default function UserGroupsContent() {
   return (
     <DashboardLayout currentRoute="user-management-groups" title="User Groups">
       <div className="p-6">
-        <div className="mb-4">
-          <h1 className="text-2xl font-semibold text-gray-900">User Groups</h1>
-          <p className="text-sm text-gray-600 mt-1">
-            All user groups in the system and their access roles.
-          </p>
+        <div className="mb-4 flex items-center gap-2">
+          <Users className="h-6 w-6 text-gray-900" />
+          <h1 className="text-2xl font-bold text-gray-900">User Groups</h1>
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
           <table className="w-full">
             <thead>
-              <tr style={{ backgroundColor: "rgb(7, 55, 106)" }}>
+              <tr style={{ backgroundColor: "#4a5d0f" }}>
                 <th className="text-left px-6 py-3 text-white font-semibold w-1/3">Name</th>
                 <th className="text-left px-6 py-3 text-white font-semibold">Description</th>
               </tr>
@@ -36,7 +35,8 @@ export default function UserGroupsContent() {
               {groups.map((g, i) => (
                 <tr
                   key={g.name}
-                  className={i % 2 === 1 ? "bg-blue-50/60" : "bg-white"}
+                  className={i % 2 === 1 ? "" : "bg-white"}
+                  style={i % 2 === 1 ? { backgroundColor: "#f4f7e3" } : undefined}
                 >
                   <td className="px-6 py-4 align-middle">
                     <span className="text-sm font-medium text-gray-900">{g.name}</span>
