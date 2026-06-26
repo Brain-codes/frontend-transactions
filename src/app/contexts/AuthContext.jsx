@@ -539,7 +539,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     loading,
     isAuthenticated,
@@ -554,16 +554,15 @@ export const AuthProvider = ({ children }) => {
     hasAdminAccess,
     userRole,
     storedProfileRole,
-    isAtmosfairUser, // TODO: TEMPORARY - Remove when implementing proper role-based navigation
+    isAtmosfairUser,
     signIn,
     signInWithCredentials,
     signOut,
     supabase,
-    // Profile-related methods
     getStoredProfile: () => profileService.getStoredProfileData(),
     getOrganizationId: () => profileService.getOrganizationId(),
     getUserDetails: () => profileService.getUserDetails(),
-  };
+  }), [user, loading, isAuthenticated, isSuperAdmin, isSuperAdminAgent, isAcslAgent, isAcslAgentManager, isAdmin, isPartner, isAgent, isPartnerAgent, hasAdminAccess, userRole, storedProfileRole, isAtmosfairUser, supabase]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
