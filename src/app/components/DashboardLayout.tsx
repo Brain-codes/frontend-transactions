@@ -85,7 +85,7 @@ const DashboardLayout = ({
       </div>
 
       {/* First-time password change modal */}
-      <FirstTimePasswordChangeModal userProfile={userProfile} />
+      {!isSuperAdmin && <FirstTimePasswordChangeModal userProfile={userProfile} />}
     </div>
   );
 };
