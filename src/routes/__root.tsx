@@ -157,8 +157,7 @@ function RootComponent() {
       <AuthProvider>
         <ToastProvider>
           <SidebarProvider>
-            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-            <Outlet />
+            <AppShell />
           </SidebarProvider>
         </ToastProvider>
       </AuthProvider>
