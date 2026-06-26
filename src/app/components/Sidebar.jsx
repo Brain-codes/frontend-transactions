@@ -57,7 +57,7 @@ const allNavItems = [
     route: "agents",
     children: [
       { name: "Agents Profile", route: "agents-profiles", href: "/agents/profiles" },
-      { name: "Track Performance", route: "agents", href: "/agents" },
+      { name: "Performance Report", route: "agents", href: "/agents" },
     ],
   },
   { name: "Sales Record", icon: ShoppingCart, route: "sales", href: "/sales" },
