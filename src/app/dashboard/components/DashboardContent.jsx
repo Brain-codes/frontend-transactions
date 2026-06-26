@@ -247,6 +247,19 @@ const DashboardContent = ({
     ? `${dashboardFilters.dateFrom || ""} – ${dashboardFilters.dateTo || ""}`.trim().replace(/^–\s*|\s*–$/, "")
     : yearLabel;
 
+  // Months multi-select (1..12). Stored on dashboardFilters.months.
+  const selectedMonths = Array.isArray(dashboardFilters.months) ? dashboardFilters.months : [];
+  const allMonthsSelected = selectedMonths.length === 0 || selectedMonths.length === 12;
+  const monthsLabel = allMonthsSelected
+    ? "All Months"
+    : [...selectedMonths].sort((a, b) => a - b).map((m) => MONTHS[m - 1]).join(", ");
+  const toggleMonth = (m) => {
+    const base = allMonthsSelected ? [] : selectedMonths;
+    const set = new Set(base);
+    set.has(m) ? set.delete(m) : set.add(m);
+    onFilterChange?.("months", Array.from(set).sort((a, b) => a - b));
+  };
+
 
   return (
     <div className="p-4 space-y-4">
