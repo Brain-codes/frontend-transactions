@@ -473,9 +473,133 @@ const DashboardContent = ({
               ];
               return (
                 <Card className="bg-white shadow-none">
-                  <CardHeader className="rounded-t-lg text-white py-2 px-4" style={{ backgroundColor: DARK_NAVY }}>
+                  <CardHeader className="rounded-t-lg text-white py-2 px-4 flex flex-row items-center justify-between gap-3 flex-wrap" style={{ backgroundColor: DARK_NAVY }}>
                     <CardTitle className="text-base font-semibold">Stove Inventory & Financial Overview</CardTitle>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Partner Search Dropdown */}
+                      <div className="relative" ref={partnerDropdownRef}>
+                        <button
+                          onClick={() => setPartnerDropdownOpen((o) => !o)}
+                          className="h-8 px-3 flex items-center gap-1.5 bg-white border border-input rounded-md text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-ring w-[260px]"
+                        >
+                          <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className={`truncate flex-1 text-left ${!selectedPartner ? "text-muted-foreground" : ""}`}>
+                            {selectedPartner ? selectedPartner.base_name : "Filter by partner…"}
+                          </span>
+                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        </button>
+                        {partnerDropdownOpen && (
+                          <div className="absolute z-50 top-full right-0 mt-1 w-[300px] bg-white border border-gray-200 rounded-md text-gray-700">
+                            <div className="p-1.5 border-b border-gray-100">
+                              <Input
+                                autoFocus
+                                placeholder="Type partner name…"
+                                value={partnerSearch}
+                                onChange={(e) => handlePartnerSearch(e.target.value)}
+                                className="h-7 text-xs"
+                              />
+                            </div>
+                            <div className="max-h-52 overflow-y-auto">
+                              <button
+                                onClick={() => { onFilterChange?.("selectedGroup", null); setPartnerSearch(""); setPartnerDropdownOpen(false); onPartnerSearch?.(""); }}
+                                className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${!dashboardFilters.selectedGroup ? "font-semibold text-[#07376a]" : ""}`}
+                              >All Partners</button>
+                              {loadingPartners ? (
+                                <div className="px-3 py-2 text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />Loading…</div>
+                              ) : partnersList.length === 0 ? (
+                                <div className="px-3 py-2 text-xs text-muted-foreground">No partners found</div>
+                              ) : (
+                                partnersList.map((group) => (
+                                  <button
+                                    key={group.base_name}
+                                    onClick={() => { onFilterChange?.("selectedGroup", group); setPartnerSearch(""); setPartnerDropdownOpen(false); onPartnerSearch?.(""); }}
+                                    className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${dashboardFilters.selectedGroup?.base_name === group.base_name ? "font-semibold text-[#07376a]" : ""}`}
+                                  >
+                                    <span className="truncate block">{group.base_name}</span>
+                                    {group.branch_count > 1 && <span className="text-xs text-muted-foreground">{group.branch_count} branches</span>}
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Date Range Filter */}
+                      <div className="flex items-center gap-1.5">
+                        <DatePicker
+                          value={dashboardFilters.dateFrom || ""}
+                          onChange={(v) => onFilterChange?.("dateFrom", v || null)}
+                          placeholder="From date"
+                          className="w-[140px] [&_input]:h-8 [&_input]:text-xs [&_input]:pl-8 [&_input]:text-gray-700 [&_svg]:h-3.5 [&_svg]:w-3.5"
+                        />
+                        <span className="text-xs text-white/70">–</span>
+                        <DatePicker
+                          value={dashboardFilters.dateTo || ""}
+                          onChange={(v) => onFilterChange?.("dateTo", v || null)}
+                          placeholder="To date"
+                          className="w-[140px] [&_input]:h-8 [&_input]:text-xs [&_input]:pl-8 [&_input]:text-gray-700 [&_svg]:h-3.5 [&_svg]:w-3.5"
+                          min={dashboardFilters.dateFrom || undefined}
+                        />
+                      </div>
+
+                      {/* Year Filter */}
+                      {multiYear ? (
+                        <div ref={yearDropdownRef} className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setYearDropdownOpen((o) => !o)}
+                            className="flex items-center justify-between gap-2 h-8 px-3 bg-white border border-input rounded-md text-xs text-gray-700 min-w-[110px] max-w-[200px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-ring"
+                          >
+                            <span className="truncate text-left">{yearLabel}</span>
+                            <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 transition-transform ${yearDropdownOpen ? "rotate-180" : ""}`} />
+                          </button>
+                          {yearDropdownOpen && (
+                            <div className="absolute z-50 top-full right-0 mt-1 w-[160px] bg-white border border-gray-200 rounded-md py-1 text-gray-700">
+                              <button
+                                type="button"
+                                onClick={() => onYearsChange([])}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-blue-50 text-left"
+                              >
+                                <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${allYearsSelected ? "bg-[#07376a] border-[#07376a]" : "border-gray-300"}`}>
+                                  {allYearsSelected && <Check className="h-2.5 w-2.5 text-white" />}
+                                </span>
+                                All Years
+                              </button>
+                              {YEARS.map((y) => {
+                                const checked = !allYearsSelected && years.includes(y);
+                                return (
+                                  <button
+                                    key={y}
+                                    type="button"
+                                    onClick={() => toggleYear(y)}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-blue-50 text-left"
+                                  >
+                                    <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${checked ? "bg-[#07376a] border-[#07376a]" : "border-gray-300"}`}>
+                                      {checked && <Check className="h-2.5 w-2.5 text-white" />}
+                                    </span>
+                                    {y}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
+                          <SelectTrigger className="w-[100px] h-8 text-xs bg-white text-gray-700">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {YEARS.map((y) => (
+                              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
                   </CardHeader>
+
                   <CardContent className="pt-5 pb-5 px-5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                       <div className="relative">
