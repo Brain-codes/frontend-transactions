@@ -138,7 +138,7 @@ const PartnerProfilesContent = () => {
       {/* Filter Bar */}
       <div
         className="p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3"
-        style={{ backgroundColor: "#FAFCFD" }}
+        style={{ backgroundColor: "#f4f7e3" }}
       >
         <div className="w-1/4 min-w-[180px]">
           <Input
@@ -192,7 +192,7 @@ const PartnerProfilesContent = () => {
           )}
           <Table>
             <TableHeader>
-              <TableRow className="bg-brand hover:bg-brand">
+              <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Partner</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">State</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
@@ -211,8 +211,10 @@ const PartnerProfilesContent = () => {
                 pageRows.map((p, idx) => (
                   <TableRow
                     key={p.id}
-                    className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}
+                    className="hover:bg-[#eef3c4] text-gray-700"
+                    style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
                   >
+
                     <TableCell className="text-sm font-medium text-gray-900">{p.partner_name || "N/A"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{p.state || "—"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{p.branch || "—"}</TableCell>
