@@ -1,4 +1,5 @@
 
+import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
 import DashboardContentBase from "./DashboardContent";
@@ -73,7 +74,7 @@ const UnifiedDashboardContent = () => {
       const params = new URLSearchParams({ page_size: "200" });
       if (search) params.set("search", search);
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-organizations-grouped?${params}`,
+        `${supabaseFunctionsUrl}/get-organizations-grouped?${params}`,
         { headers: { Authorization: `Bearer ${session.access_token}` } }
       );
       const result = await res.json();
