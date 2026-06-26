@@ -1,34 +1,28 @@
-# Fix: Monthly Sales chart not reflecting sold stoves
+## Goal
+Make Sales Overview filters actually drive every KPI on the donut and prevent picking future months.
 
-## Root cause
+## What's wrong today
 
-`DashboardContent.jsx` reads `data?.monthlySales` to build the chart, but the `get-super-admin-dashboard` Supabase edge function (and the two role-specific dashboard services) never return a `monthlySales` field. The fallback `?? []` collapses every month to zero — even when stoves are actually sold (e.g. the 2 reflected in the inventory tile).
+1. **State / Branch / Partner / Month / Year filters don't change "Stoves Sold to Partners" or "Unsold Stoves with Partners"** — those two values come from the `get-super-admin-dashboard` Supabase Edge Function. The frontend already sends `state`, `branch`, `organization_ids`, `date_from`, `date_to`, and `years` in the payload, but:
+   - The `months` filter from the UI is **never sent** to the edge function or to the sales fetch. Selecting a month is a no-op for the KPIs.
+   - The edge function's stove-transfer aggregation (received/unsold) may not be honoring `state` / `branch` (only the sales side does). This needs to be confirmed/fixed in the edge function itself — that code is not in the project repo, it lives in your Supabase project.
+2. **Future months are selectable** in the Months dropdown even when the selected year is the current year.
 
-## Approach
+## Plan
 
-Compute `monthlySales` in the browser from the same sales data the Sales Records view already uses (`salesAdvancedAPIService.getSalesData`), then merge it into the `data` object passed to `DashboardContent`. The aggregation runs alongside the existing dashboard fetch in `UnifiedDashboardContent.tsx` and reuses its current period filter (year / dateFrom / dateTo / state / branch / organization scope) so the chart always matches the rest of the dashboard.
+### Frontend fixes (`UnifiedDashboardContent.tsx` + `DashboardContent.jsx`)
 
-## Changes
+- When a single month is selected (and no custom date range is active), translate it into a `date_from` / `date_to` window for the selected year and send those to BOTH the stats edge function payload and `buildSalesFilters()`. This guarantees the donut, financial snapshot, and monthly chart all respond to the Month filter regardless of edge-function support.
+- Also forward `months` and `year` as explicit fields in the stats payload so the edge function can use them if/when it does.
+- In the Months dropdown, disable month options that are in the future relative to today when the selected year equals the current year (and disable all months if a future year is somehow selected). If the user changes year and the previously selected month becomes invalid, clear it.
 
-1. `src/app/dashboard/components/UnifiedDashboardContent.tsx`
-   - Add a second fetch (in parallel with the existing `getDashboardStats` call inside `fetchData`) that calls `salesAdvancedAPIService.getSalesData` with the active filters:
-     - Global scope: pass `dateFrom`/`dateTo` if set, otherwise derive Jan 1 – Dec 31 of the selected `years` (use min/max of the array). Forward `state`, `branch`, and `organization_ids` when present.
-     - ACSL agent / partner / partner_agent scope: pass `dateFrom`/`dateTo` if set, otherwise the selected `year`. Scope by `organization_id` / `agent_id` as the existing role services do.
-   - Reduce the returned sale rows into 12 monthly buckets keyed by `Jan…Dec` using each sale's `sales_date` (fallback to `created_at`). Each bucket sums stove count (`quantity` if present, otherwise 1 per row).
-   - Merge the result into the state: `setData({ ...statsResponse.data, monthlySales: bucketed })`. Keep the rest of the payload untouched so other tiles are unaffected.
-   - If the sales fetch fails, log and leave `monthlySales` as `[]` — the dashboard stats still render.
+### Backend follow-up (your Supabase Edge Function — not in this repo)
 
-2. `src/app/dashboard/components/DashboardContent.jsx`
-   - No structural change needed; the existing chart reader already handles `{ month, value }` shape. Confirm the bucket keys match the `MONTHS` array (`Jan`, `Feb`, …) used at line 657.
+- The KPIs "Stoves Sold to Partners" and "Unsold Stoves with Partners" are computed from the stove-transfer / inventory tables inside `get-super-admin-dashboard`. For the State / Branch / Partner filters to change those two numbers, that function must filter the transfer query by `organization_ids` (and by `state` / `branch` via the organizations join). If you confirm it currently ignores those filters, the fix has to land in the edge function — I can't edit it from here because the source isn't in the project.
 
-## Technical notes
+I'll flag this clearly after the frontend change so you know which piece (if any) still needs an edge-function update on your side.
 
-- Use a single `Promise.all([statsPromise, salesPromise])` so the chart loads in the same render as the rest of the dashboard — no extra spinner.
-- Restrict the sales request to fields needed for aggregation (`sales_date`, `quantity`) via `select`/`includeX: false` flags where supported, to keep the payload small.
-- The aggregation is pure and memoizable; keep it inside `fetchData` so it re-runs automatically whenever filters change (the `useCallback` deps already cover this).
-- No backend, schema, or edge-function changes. No styling changes to the chart.
+## Files touched
 
-## Out of scope
-
-- Server-side `monthlySales` in the Supabase edge function (can be migrated later without touching the UI contract).
-- Changes to the Sales Records view or to other dashboard tiles.
+- `src/app/dashboard/components/UnifiedDashboardContent.tsx` — include month-as-date-range in stats payload and sales filters; forward `months` / `year`.
+- `src/app/dashboard/components/DashboardContent.jsx` — disable future months in the Months dropdown; reset selection if it becomes invalid after a year change.
