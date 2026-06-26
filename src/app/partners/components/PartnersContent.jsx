@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { supabaseUrl as SUPABASE_URL } from "@/lib/supabaseConfig";
 import DashboardLayout from "../../components/DashboardLayout";
 import OrganizationFormModal from "../../components/OrganizationFormModal";
 import OrganizationDetailSidebar from "../../components/OrganizationDetailSidebar";
