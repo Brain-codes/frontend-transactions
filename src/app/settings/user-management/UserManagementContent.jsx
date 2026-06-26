@@ -491,53 +491,31 @@ const UserManagementPage = () => {
 
           {/* Table */}
           <div className="space-y-0">
-            {/* Pagination header */}
+            {/* Top header — total + download only */}
             <div className="bg-blue-50 rounded-t-lg px-4 py-2 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <p className="text-sm text-gray-600">
-                  Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
-                  <span className="font-medium">{pagination.total_count}</span> users
-                </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">per page:</span>
-                  <Select value={pagination.page_size.toString()} onValueChange={handlePageSizeChange}>
-                    <SelectTrigger className="w-[65px] h-7 bg-white text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="25">25</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-bold text-green-500">
-                  Total Users: <span className="text-brand">{pagination.total_count}</span>
-                </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 px-2 text-xs flex items-center gap-1"
-                  onClick={() => {
-                    const headers = ["Name", "Email", "Phone", "Role", "Status", "Created At"];
-                    const rows = users.map((u) => [
-                      u.full_name || "",
-                      u.email || "",
-                      u.phone || "",
-                      u.role || "",
-                      u.status || "",
-                      u.created_at ? new Date(u.created_at).toLocaleDateString() : "",
-                    ]);
-                    downloadTableAsCSV(headers, rows, `users-${new Date().toISOString().slice(0, 10)}.csv`);
-                  }}
-                  disabled={users.length === 0}
-                >
-                  <Download className="h-3 w-3" />Download
-                </Button>
-              </div>
+              <p className="text-sm font-bold text-green-500">
+                Total Users: <span className="text-brand">{pagination.total_count}</span>
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs flex items-center gap-1"
+                onClick={() => {
+                  const headers = ["Name", "Email", "Phone", "Role", "Status", "Created At"];
+                  const rows = users.map((u) => [
+                    u.full_name || "",
+                    u.email || "",
+                    u.phone || "",
+                    u.role || "",
+                    u.status || "",
+                    u.created_at ? new Date(u.created_at).toLocaleDateString() : "",
+                  ]);
+                  downloadTableAsCSV(headers, rows, `users-${new Date().toISOString().slice(0, 10)}.csv`);
+                }}
+                disabled={users.length === 0}
+              >
+                <Download className="h-3 w-3" />Download
+              </Button>
             </div>
 
             {/* Table body */}
