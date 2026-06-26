@@ -530,7 +530,7 @@ const DashboardContent = ({
                 { label: "Available for Sale", value: available, color: "#a8c34a", pct: availPct },
               ];
               return (
-                <Card className="bg-white">
+                <Card className="bg-white shadow-none">
                   <CardHeader className="rounded-t-lg text-white py-2 px-4" style={{ backgroundColor: DARK_NAVY }}>
                     <CardTitle className="text-base font-semibold">Stove Inventory & Financial Overview</CardTitle>
                   </CardHeader>
@@ -651,7 +651,7 @@ const DashboardContent = ({
           {/* Section B — Sales Analysis Charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 ">
             {/* Sales Model Analysis */}
-            <Card className="bg-white">
+            <Card className="bg-white shadow-none">
               <CardHeader className="rounded-t-lg text-white py-2 px-4" style={{ backgroundColor: DARK_NAVY }}>
                 <CardTitle className="text-base font-semibold">Sales Model Analysis</CardTitle>
               </CardHeader>
@@ -698,7 +698,7 @@ const DashboardContent = ({
             </Card>
 
             {/* Sales by State */}
-            <Card className="bg-white">
+            <Card className="bg-white shadow-none">
               <CardHeader className="rounded-t-lg text-white py-2 px-4 flex flex-row items-center justify-between" style={{ backgroundColor: DARK_NAVY }}>
                 <CardTitle className="text-base font-semibold">Sales by State</CardTitle>
                 <Select value={stateLimit} onValueChange={setStateLimit}>
