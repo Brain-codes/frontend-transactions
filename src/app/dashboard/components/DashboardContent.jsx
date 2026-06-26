@@ -480,13 +480,14 @@ const DashboardContent = ({
                       <div className="relative" ref={partnerDropdownRef}>
                         <button
                           onClick={() => setPartnerDropdownOpen((o) => !o)}
-                          className="h-8 px-3 flex items-center gap-1.5 bg-white border border-input rounded-md text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-ring w-[260px]"
+                          className="h-8 px-3 flex items-center gap-1.5 rounded-md text-xs text-white border w-[260px] focus:outline-none focus:ring-2 focus:ring-white/30 hover:brightness-110"
+                          style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
                         >
-                          <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className={`truncate flex-1 text-left ${!selectedPartner ? "text-muted-foreground" : ""}`}>
+                          <Search className="h-3.5 w-3.5 text-white/80 shrink-0" />
+                          <span className={`truncate flex-1 text-left ${!selectedPartner ? "text-white/70" : "text-white"}`}>
                             {selectedPartner ? selectedPartner.base_name : "Filter by partner…"}
                           </span>
-                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <ChevronDown className="h-3.5 w-3.5 text-white/80 shrink-0" />
                         </button>
                         {partnerDropdownOpen && (
                           <div className="absolute z-50 top-full right-0 mt-1 w-[300px] bg-white border border-gray-200 rounded-md text-gray-700">
@@ -502,7 +503,7 @@ const DashboardContent = ({
                             <div className="max-h-52 overflow-y-auto">
                               <button
                                 onClick={() => { onFilterChange?.("selectedGroup", null); setPartnerSearch(""); setPartnerDropdownOpen(false); onPartnerSearch?.(""); }}
-                                className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${!dashboardFilters.selectedGroup ? "font-semibold text-[#07376a]" : ""}`}
+                                className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${!dashboardFilters.selectedGroup ? "font-semibold text-[#4a5d0f]" : ""}`}
                               >All Partners</button>
                               {loadingPartners ? (
                                 <div className="px-3 py-2 text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />Loading…</div>
@@ -513,7 +514,7 @@ const DashboardContent = ({
                                   <button
                                     key={group.base_name}
                                     onClick={() => { onFilterChange?.("selectedGroup", group); setPartnerSearch(""); setPartnerDropdownOpen(false); onPartnerSearch?.(""); }}
-                                    className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${dashboardFilters.selectedGroup?.base_name === group.base_name ? "font-semibold text-[#07376a]" : ""}`}
+                                    className={`w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${dashboardFilters.selectedGroup?.base_name === group.base_name ? "font-semibold text-[#4a5d0f]" : ""}`}
                                   >
                                     <span className="truncate block">{group.base_name}</span>
                                     {group.branch_count > 1 && <span className="text-xs text-muted-foreground">{group.branch_count} branches</span>}
@@ -526,19 +527,22 @@ const DashboardContent = ({
                       </div>
 
                       {/* Date Range Filter */}
-                      <div className="flex items-center gap-1.5">
+                      <div
+                        className="flex items-center gap-1.5 rounded-md px-2 py-0.5 border"
+                        style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
+                      >
                         <DatePicker
                           value={dashboardFilters.dateFrom || ""}
                           onChange={(v) => onFilterChange?.("dateFrom", v || null)}
                           placeholder="From date"
-                          className="w-[140px] [&_input]:h-8 [&_input]:text-xs [&_input]:pl-8 [&_input]:text-gray-700 [&_svg]:h-3.5 [&_svg]:w-3.5"
+                          className="w-[140px] !bg-transparent !border-0 !text-white hover:!bg-white/10 [&_input]:h-8 [&_input]:text-xs [&_input]:pl-8 [&_input]:text-white [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:text-white/80"
                         />
-                        <span className="text-xs text-white/70">–</span>
+                        <span className="text-xs text-white/80">–</span>
                         <DatePicker
                           value={dashboardFilters.dateTo || ""}
                           onChange={(v) => onFilterChange?.("dateTo", v || null)}
                           placeholder="To date"
-                          className="w-[140px] [&_input]:h-8 [&_input]:text-xs [&_input]:pl-8 [&_input]:text-gray-700 [&_svg]:h-3.5 [&_svg]:w-3.5"
+                          className="w-[140px] !bg-transparent !border-0 !text-white hover:!bg-white/10 [&_input]:h-8 [&_input]:text-xs [&_input]:pl-8 [&_input]:text-white [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:text-white/80"
                           min={dashboardFilters.dateFrom || undefined}
                         />
                       </div>
@@ -549,10 +553,11 @@ const DashboardContent = ({
                           <button
                             type="button"
                             onClick={() => setYearDropdownOpen((o) => !o)}
-                            className="flex items-center justify-between gap-2 h-8 px-3 bg-white border border-input rounded-md text-xs text-gray-700 min-w-[110px] max-w-[200px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-ring"
+                            className="flex items-center justify-between gap-2 h-8 px-3 rounded-md text-xs text-white border min-w-[110px] max-w-[200px] hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30"
+                            style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
                           >
                             <span className="truncate text-left">{yearLabel}</span>
-                            <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 transition-transform ${yearDropdownOpen ? "rotate-180" : ""}`} />
+                            <ChevronDown className={`h-4 w-4 text-white/80 shrink-0 transition-transform ${yearDropdownOpen ? "rotate-180" : ""}`} />
                           </button>
                           {yearDropdownOpen && (
                             <div className="absolute z-50 top-full right-0 mt-1 w-[160px] bg-white border border-gray-200 rounded-md py-1 text-gray-700">
@@ -561,7 +566,7 @@ const DashboardContent = ({
                                 onClick={() => onYearsChange([])}
                                 className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-blue-50 text-left"
                               >
-                                <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${allYearsSelected ? "bg-[#07376a] border-[#07376a]" : "border-gray-300"}`}>
+                                <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${allYearsSelected ? "bg-[#4a5d0f] border-[#4a5d0f]" : "border-gray-300"}`}>
                                   {allYearsSelected && <Check className="h-2.5 w-2.5 text-white" />}
                                 </span>
                                 All Years
@@ -575,7 +580,7 @@ const DashboardContent = ({
                                     onClick={() => toggleYear(y)}
                                     className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-blue-50 text-left"
                                   >
-                                    <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${checked ? "bg-[#07376a] border-[#07376a]" : "border-gray-300"}`}>
+                                    <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${checked ? "bg-[#4a5d0f] border-[#4a5d0f]" : "border-gray-300"}`}>
                                       {checked && <Check className="h-2.5 w-2.5 text-white" />}
                                     </span>
                                     {y}
@@ -587,7 +592,10 @@ const DashboardContent = ({
                         </div>
                       ) : (
                         <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
-                          <SelectTrigger className="w-[100px] h-8 text-xs bg-white text-gray-700">
+                          <SelectTrigger
+                            className="w-[100px] h-8 text-xs text-white border hover:brightness-110"
+                            style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
+                          >
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
