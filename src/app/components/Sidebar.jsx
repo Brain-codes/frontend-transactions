@@ -42,7 +42,14 @@ const allNavItems = [
       { name: "User Groups", route: "user-management-groups", href: "/user-management/user-groups" },
     ],
   },
-  { name: "Manage Partners", icon: UserCheck, route: "partners", href: "/partners" },
+  {
+    name: "Manage Partners",
+    icon: UserCheck,
+    route: "partners",
+    children: [
+      { name: "Track Performance", route: "partners", href: "/partners" },
+    ],
+  },
   { name: "Agent Manager", icon: Users, route: "agents", href: "/agents" },
   { name: "Sales Record", icon: ShoppingCart, route: "sales", href: "/sales" },
   { name: "Financial Reports", icon: FileText, route: "sales-financial-reports", href: "/sales/financial-reports" },
