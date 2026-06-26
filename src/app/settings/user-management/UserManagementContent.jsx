@@ -595,8 +595,70 @@ const UserManagementPage = () => {
 
                         {/* Actions — kebab menu */}
                         <TableCell className="text-center">
-                          <div className="flex items-center justify-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <TooltipProvider delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditModal(u)}
+                                    disabled={!!actionLoading}
+                                    aria-label="Edit user"
+                                    className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-200 text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+                                  >
+                                    <SquarePen className="h-4 w-4" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent>Edit</TooltipContent>
+                              </Tooltip>
+
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleUserStatus(u.id, u.status)}
+                                    disabled={!!actionLoading}
+                                    aria-label={u.status === "active" ? "Unpublish user" : "Publish user"}
+                                    className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-200 text-orange-600 hover:bg-orange-50 disabled:opacity-50"
+                                  >
+                                    {u.status === "active" ? (
+                                      <UserX className="h-4 w-4" />
+                                    ) : (
+                                      <UserCheck className="h-4 w-4" />
+                                    )}
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {u.status === "active" ? "Unpublish" : "Publish"}
+                                </TooltipContent>
+                              </Tooltip>
+
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => { setSelectedUser(u); setShowDeleteModal(true); }}
+                                    disabled={!!actionLoading}
+                                    aria-label="Delete user"
+                                    className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-200 text-orange-600 hover:bg-orange-50 disabled:opacity-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent>Delete</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+
                             <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                  disabled={!!actionLoading}
+                                  aria-label="More user actions"
+                                >
+
                               <DropdownMenuTrigger asChild>
                                 <Button
                                   size="sm"
