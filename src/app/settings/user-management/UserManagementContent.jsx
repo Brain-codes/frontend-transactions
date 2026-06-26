@@ -581,11 +581,12 @@ const UserManagementPage = () => {
                         <TableCell>
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                             u.status === "active"
-                              ? "bg-green-100 text-green-700"
+                              ? "bg-black text-white"
                               : "bg-red-100 text-red-600"
                           }`}>
-                            {u.status ? u.status.charAt(0).toUpperCase() + u.status.slice(1) : "N/A"}
+                            {u.status === "active" ? "Enabled" : (u.status ? u.status.charAt(0).toUpperCase() + u.status.slice(1) : "N/A")}
                           </span>
+
                         </TableCell>
 
                         {/* Last Active */}
