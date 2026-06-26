@@ -238,11 +238,16 @@ const PartnerProfilesContent = () => {
                             <TooltipTrigger asChild>
                               <button
                                 type="button"
-                                onClick={() => toast({ variant: "info", title: "Credentials", description: "Coming soon" })}
+                                onClick={() => handleViewCredentials(p)}
+                                disabled={loadingCredentialOrgId === p.id}
                                 aria-label="Credentials"
-                                className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-200 text-indigo-600 hover:bg-indigo-50"
+                                className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-60"
                               >
-                                <KeyRound className="h-4 w-4" />
+                                {loadingCredentialOrgId === p.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <KeyRound className="h-4 w-4" />
+                                )}
                               </button>
                             </TooltipTrigger>
                             <TooltipContent>Credentials</TooltipContent>
@@ -252,7 +257,7 @@ const PartnerProfilesContent = () => {
                             <TooltipTrigger asChild>
                               <button
                                 type="button"
-                                onClick={() => toast({ variant: "info", title: "Edit Partner", description: "Coming soon" })}
+                                onClick={() => setEditingPartner(p)}
                                 aria-label="Edit partner"
                                 className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-200 text-orange-600 hover:bg-orange-50"
                               >
