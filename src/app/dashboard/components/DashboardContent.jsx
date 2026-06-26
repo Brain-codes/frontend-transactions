@@ -532,9 +532,9 @@ const DashboardContent = ({
               return (
                 <Card className="bg-white">
                   <CardHeader className="rounded-t-lg text-white py-2 px-4" style={{ backgroundColor: DARK_NAVY }}>
-                    <CardTitle className="text-base font-semibold">Stove Inventory Overview</CardTitle>
+                    <CardTitle className="text-base font-semibold">Stove Inventory & Financial Overview</CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-4 pb-4 px-4">
+                  <CardContent className="pt-5 pb-5 px-5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                       <div className="relative">
                         <ResponsiveContainer width="100%" height={260}>
@@ -586,50 +586,65 @@ const DashboardContent = ({
                         ))}
                       </div>
                     </div>
+
+                    {/* Divider */}
+                    <div className="my-5 flex items-center gap-3">
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                      <span className="text-[10px] font-semibold tracking-[0.15em] text-gray-400 uppercase">
+                        Financial Snapshot
+                      </span>
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                    </div>
+
+                    {/* Integrated Financial KPI tiles */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {KPI_CONFIG.slice(3).map((kpi) => {
+                        const raw = data?.[kpi.key] ?? 0;
+                        const display = kpi.currency ? formatCurrency(raw) : raw.toLocaleString();
+                        const hasDateRange = !!(dashboardFilters.dateFrom || dashboardFilters.dateTo);
+                        const sub = kpi.sub ?? (
+                          hasDateRange
+                            ? `${dashboardFilters.dateFrom || ""} – ${dashboardFilters.dateTo || ""}`.trim().replace(/^–\s*|\s*–$/, "")
+                            : `FY ${yearLabel}`
+                        );
+                        const partnerName = selectedPartner?.base_name;
+                        const href = kpi.destPath
+                          ? partnerName
+                            ? `${kpi.destPath}?${kpi.destParam}=${encodeURIComponent(partnerName)}`
+                            : kpi.destPath
+                          : undefined;
+                        return (
+                          <Link
+                            key={kpi.key}
+                            href={href ?? "#"}
+                            className={`relative overflow-hidden rounded-xl p-4 cursor-pointer block group bg-gradient-to-br ${kpi.gradient} text-white transition-transform hover:-translate-y-0.5`}
+                          >
+                            <div className="absolute -right-6 -bottom-6 opacity-15 pointer-events-none">
+                              <kpi.icon className="h-24 w-24" />
+                            </div>
+                            <div className="relative flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[11px] font-semibold uppercase tracking-wider text-white/80">
+                                  {kpi.label}
+                                </p>
+                                <p className="text-2xl font-bold tracking-tight leading-tight mt-2 break-all">
+                                  {display}
+                                </p>
+                                <p className="text-[11px] text-white/70 mt-1">{sub}</p>
+                              </div>
+                              <div className="rounded-lg p-2 bg-white/20 backdrop-blur-sm shrink-0">
+                                <kpi.icon className="h-4 w-4" />
+                              </div>
+                            </div>
+                            <ChevronRight className="absolute bottom-3 right-3 h-3.5 w-3.5 text-white/60 group-hover:text-white transition-colors" />
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </CardContent>
                 </Card>
               );
             })()}
-
-            {/* Financial KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {KPI_CONFIG.slice(3).map((kpi) => {
-                const raw = data?.[kpi.key] ?? 0;
-                const display = kpi.currency ? formatCurrency(raw) : raw.toLocaleString();
-                const hasDateRange = !!(dashboardFilters.dateFrom || dashboardFilters.dateTo);
-                const sub = kpi.sub ?? (
-                  hasDateRange
-                    ? `${dashboardFilters.dateFrom || ""} – ${dashboardFilters.dateTo || ""}`.trim().replace(/^–\s*|\s*–$/, "")
-                    : `FY ${yearLabel}`
-                );
-                const partnerName = selectedPartner?.base_name;
-                const href = kpi.destPath
-                  ? partnerName
-                    ? `${kpi.destPath}?${kpi.destParam}=${encodeURIComponent(partnerName)}`
-                    : kpi.destPath
-                  : undefined;
-                return (
-                  <Link
-                    key={kpi.key}
-                    href={href ?? "#"}
-                    className="relative overflow-hidden rounded-lg border bg-white px-4 py-4 cursor-pointer block group"
-                  >
-                    <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${kpi.gradient}`} />
-                    <div className="flex items-start justify-between">
-                      <div className="mt-0.5 min-w-0 flex-1 pr-2">
-                        <p className="text-2xl font-bold text-gray-900 tracking-tight leading-tight break-all">{display}</p>
-                        <p className="text-xs font-semibold text-gray-500 mt-1">{kpi.label}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
-                      </div>
-                      <div className={`rounded-lg p-2 bg-gradient-to-br ${kpi.gradient} text-white shrink-0`}>
-                        <kpi.icon className="h-4 w-4" />
-                      </div>
-                    </div>
-                    <ChevronRight className="absolute bottom-3 right-3 h-3.5 w-3.5 text-gray-300 group-hover:text-gray-500 transition-colors" />
-                  </Link>
-                );
-              })}
-            </div>
           </div>
 
 
