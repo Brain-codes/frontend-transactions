@@ -41,6 +41,9 @@ const deriveCurrentRouteFromPath = (pathname: string): string => {
   if (segments[0] === "partners" && segments[1] === "profiles") {
     return "partners-profiles";
   }
+  if (segments[0] === "agents" && segments[1] === "profiles") {
+    return "agents-profiles";
+  }
   return segments[0];
 };
 

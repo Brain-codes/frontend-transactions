@@ -32,6 +32,7 @@ import { Route as AgentsIndexRouteImport } from './routes/agents/index'
 import { Route as AgentIndexRouteImport } from './routes/agent/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as PartnersProfilesRouteImport } from './routes/partners/profiles'
+import { Route as AgentsProfilesRouteImport } from './routes/agents/profiles'
 import { Route as UserManagementUsersIndexRouteImport } from './routes/user-management/users/index'
 import { Route as UserManagementUserGroupsIndexRouteImport } from './routes/user-management/user-groups/index'
 import { Route as SuperAdminAgentStoveIdsIndexRouteImport } from './routes/super-admin-agent/stove-ids/index'
@@ -176,6 +177,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const PartnersProfilesRoute = PartnersProfilesRouteImport.update({
   id: '/partners/profiles',
   path: '/partners/profiles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentsProfilesRoute = AgentsProfilesRouteImport.update({
+  id: '/agents/profiles',
+  path: '/agents/profiles',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UserManagementUsersIndexRoute =
@@ -340,6 +346,7 @@ const AdminSalesCreateIndexRoute = AdminSalesCreateIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agents/profiles': typeof AgentsProfilesRoute
   '/partners/profiles': typeof PartnersProfilesRoute
   '/admin/': typeof AdminIndexRoute
   '/agent/': typeof AgentIndexRoute
@@ -394,6 +401,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agents/profiles': typeof AgentsProfilesRoute
   '/partners/profiles': typeof PartnersProfilesRoute
   '/admin': typeof AdminIndexRoute
   '/agent': typeof AgentIndexRoute
@@ -449,6 +457,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agents/profiles': typeof AgentsProfilesRoute
   '/partners/profiles': typeof PartnersProfilesRoute
   '/admin/': typeof AdminIndexRoute
   '/agent/': typeof AgentIndexRoute
@@ -505,6 +514,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/agents/profiles'
     | '/partners/profiles'
     | '/admin/'
     | '/agent/'
@@ -559,6 +569,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/agents/profiles'
     | '/partners/profiles'
     | '/admin'
     | '/agent'
@@ -613,6 +624,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/agents/profiles'
     | '/partners/profiles'
     | '/admin/'
     | '/agent/'
@@ -668,6 +680,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentsProfilesRoute: typeof AgentsProfilesRoute
   PartnersProfilesRoute: typeof PartnersProfilesRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AgentIndexRoute: typeof AgentIndexRoute
@@ -884,6 +897,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PartnersProfilesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/agents/profiles': {
+      id: '/agents/profiles'
+      path: '/agents/profiles'
+      fullPath: '/agents/profiles'
+      preLoaderRoute: typeof AgentsProfilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/user-management/users/': {
       id: '/user-management/users/'
       path: '/user-management/users'
@@ -1092,6 +1112,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentsProfilesRoute: AgentsProfilesRoute,
   PartnersProfilesRoute: PartnersProfilesRoute,
   AdminIndexRoute: AdminIndexRoute,
   AgentIndexRoute: AgentIndexRoute,

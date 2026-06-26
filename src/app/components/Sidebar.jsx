@@ -51,7 +51,15 @@ const allNavItems = [
       { name: "Track Performance", route: "partners", href: "/partners" },
     ],
   },
-  { name: "Manage Agents", icon: Users, route: "agents", href: "/agents" },
+  {
+    name: "Manage Agents",
+    icon: Users,
+    route: "agents",
+    children: [
+      { name: "Agents Profile", route: "agents-profiles", href: "/agents/profiles" },
+      { name: "Track Performance", route: "agents", href: "/agents" },
+    ],
+  },
   { name: "Sales Record", icon: ShoppingCart, route: "sales", href: "/sales" },
   { name: "Financial Reports", icon: FileText, route: "sales-financial-reports", href: "/sales/financial-reports" },
   { name: "Stove Management", icon: Tag, route: "stove-management", href: "/stove-management" },
