@@ -26,7 +26,11 @@ function bucketMonthlySales(rows: any[]): { month: string; value: number }[] {
     counts[d.getMonth()] += qty;
   });
   return MONTH_LABELS.map((m, i) => ({ month: m, value: counts[i] }));
+}
+
 const DashboardContent = DashboardContentBase as any;
+
+
 
 
 
