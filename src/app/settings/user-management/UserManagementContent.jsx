@@ -51,7 +51,15 @@ import {
   ArrowUp,
   ArrowDown,
   Download,
+  MoreVertical,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import PageHeader from "../../components/PageHeader";
 import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AssignOrganizationsModal from "../../super-admin-agents/components/AssignOrganizationsModal";
@@ -629,67 +637,58 @@ const UserManagementPage = () => {
                           {formatDate(u.created_at)}
                         </TableCell>
 
-                        {/* Actions — inline buttons */}
+                        {/* Actions — kebab menu */}
                         <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                            {/* Assign Partners — SAA only */}
-                            {["acsl_agent", "super_admin_agent"].includes(u.role) && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 px-2 text-xs text-brand border-brand/30 hover:bg-brand/5"
-                                onClick={() => { setSelectedUserForOrgs(u); setShowAssignOrgsModal(true); }}
-                                disabled={!!actionLoading}
-                              >
-                                <Building2 className="h-3 w-3 mr-1" />
-                                Assign
-                              </Button>
-                            )}
-
-                            {/* Edit */}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => openEditModal(u)}
-                              disabled={!!actionLoading}
-                            >
-                              <Edit className="h-3 w-3 mr-1" />
-                              Edit
-                            </Button>
-
-                            {/* Enable / Disable */}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className={`h-7 px-2 text-xs ${
-                                u.status === "active"
-                                  ? "text-amber-600 border-amber-200 hover:bg-amber-50"
-                                  : "text-green-600 border-green-200 hover:bg-green-50"
-                              }`}
-                              onClick={() => handleToggleUserStatus(u.id, u.status)}
-                              disabled={!!actionLoading}
-                            >
-                              {actionLoading === u.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : u.status === "active" ? (
-                                <><UserX className="h-3 w-3 mr-1" />Disable</>
-                              ) : (
-                                <><UserCheck className="h-3 w-3 mr-1" />Enable</>
-                              )}
-                            </Button>
-
-                            {/* Delete */}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 px-2 text-xs text-red-600 border-red-200 hover:bg-red-50"
-                              onClick={() => { setSelectedUser(u); setShowDeleteModal(true); }}
-                              disabled={!!actionLoading}
-                            >
-                              <Trash2 className="h-3 w-3 mr-1" />
-                              Delete
-                            </Button>
+                          <div className="flex items-center justify-center">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                  disabled={!!actionLoading}
+                                  aria-label="User actions"
+                                >
+                                  {actionLoading === u.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <MoreVertical className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-44">
+                                {["acsl_agent", "super_admin_agent"].includes(u.role) && (
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={() => { setSelectedUserForOrgs(u); setShowAssignOrgsModal(true); }}
+                                    >
+                                      <Building2 className="h-4 w-4 mr-2" />
+                                      Assign Partners
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                  </>
+                                )}
+                                <DropdownMenuItem onClick={() => openEditModal(u)}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleToggleUserStatus(u.id, u.status)}>
+                                  {u.status === "active" ? (
+                                    <><UserX className="h-4 w-4 mr-2 text-amber-600" />Disable</>
+                                  ) : (
+                                    <><UserCheck className="h-4 w-4 mr-2 text-green-600" />Enable</>
+                                  )}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-red-600 focus:text-red-600"
+                                  onClick={() => { setSelectedUser(u); setShowDeleteModal(true); }}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </TableCell>
                       </TableRow>
