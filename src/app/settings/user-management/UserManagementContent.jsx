@@ -554,7 +554,6 @@ const UserManagementPage = () => {
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Email</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Role</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Assigned to Partners</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Status</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Last Active</TableHead>
                     <TableHead
@@ -572,7 +571,7 @@ const UserManagementPage = () => {
                 <TableBody className={loading ? "opacity-40" : ""}>
                   {users.length === 0 && !loading ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-10 text-gray-500">
+                      <TableCell colSpan={8} className="text-center py-10 text-gray-500">
                         No users found
                       </TableCell>
                     </TableRow>
@@ -595,25 +594,6 @@ const UserManagementPage = () => {
                           }`}>
                             {getRoleLabel(u.role)}
                           </span>
-                        </TableCell>
-
-                        {/* Assigned Partners — inline pattern, no badges */}
-                        <TableCell>
-                          {["acsl_agent", "super_admin_agent"].includes(u.role) ? (
-                            <div className="flex items-center gap-1.5 text-xs">
-                              <span className="text-blue-700 font-medium">
-                                {u.assigned_organizations_count ?? 0}{" "}
-                                {(u.assigned_organizations_count ?? 0) === 1 ? "Organization" : "Organizations"}
-                              </span>
-                              <span className="text-gray-300">·</span>
-                              <span className="text-purple-600 font-medium">
-                                {u.assigned_states_count ?? 0}{" "}
-                                {(u.assigned_states_count ?? 0) === 1 ? "State" : "States"}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400 text-xs">—</span>
-                          )}
                         </TableCell>
 
                         {/* Status */}
@@ -659,6 +639,9 @@ const UserManagementPage = () => {
                               <DropdownMenuContent align="end" className="w-44">
                                 {["acsl_agent", "super_admin_agent"].includes(u.role) && (
                                   <>
+                                    <div className="px-2 py-1.5 text-[11px] text-gray-500 bg-gray-50/80 rounded-t-sm font-medium border-b border-gray-100">
+                                      Assigned: {u.assigned_organizations_count ?? 0} {(u.assigned_organizations_count ?? 0) === 1 ? "Org" : "Orgs"} · {u.assigned_states_count ?? 0} {(u.assigned_states_count ?? 0) === 1 ? "State" : "States"}
+                                    </div>
                                     <DropdownMenuItem
                                       onClick={() => { setSelectedUserForOrgs(u); setShowAssignOrgsModal(true); }}
                                     >
