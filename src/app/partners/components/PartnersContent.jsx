@@ -1491,15 +1491,21 @@ export default function PartnersContent() {
                               <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="View Details" onClick={() => handleViewDetails(org)}>
                                 Details
                               </Button>
-                              <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="View Credentials" onClick={() => handleViewCredentials(org)} disabled={loadingCredentialOrgId === org.id}>
-                                {loadingCredentialOrgId === org.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}Credentials
-                              </Button>
-                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs border-brand text-brand hover:bg-brand/10" title="Edit Partner Details" onClick={() => setEditingPartnerOrg(org)}>
-                                <Edit className="h-3.5 w-3.5 mr-1" />Edit
-                              </Button>
-                              <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="Stove Transfer History" onClick={() => setTransferHistoryOrg(org)}>
-                                Stove Transfer History
-                              </Button>
+                              {can("credentials") && (
+                                <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="View Credentials" onClick={() => handleViewCredentials(org)} disabled={loadingCredentialOrgId === org.id}>
+                                  {loadingCredentialOrgId === org.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}Credentials
+                                </Button>
+                              )}
+                              {can("edit-any-partner") && (
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-xs border-brand text-brand hover:bg-brand/10" title="Edit Partner Details" onClick={() => setEditingPartnerOrg(org)}>
+                                  <Edit className="h-3.5 w-3.5 mr-1" />Edit
+                                </Button>
+                              )}
+                              {can("manage-all-partners") && (
+                                <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="Stove Transfer History" onClick={() => setTransferHistoryOrg(org)}>
+                                  Stove Transfer History
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
