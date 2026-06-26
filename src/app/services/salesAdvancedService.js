@@ -5,9 +5,9 @@
 // - Format 2 is used by all internal applications (Admin, Super Admin, Mobile)
 // - The service automatically adds responseFormat: "format2" to all requests
 
-const API_BASE_URL =
-  import.meta.env.VITE_SUPABASE_URL ||
-  "https://your-supabase-project.supabase.co";
+import { supabaseUrl } from "@/lib/supabaseConfig";
+
+const API_BASE_URL = supabaseUrl;
 const API_FUNCTION_URL = `${API_BASE_URL}/functions/v1/get-sales-advanced`;
 
 class SalesAdvancedService {
