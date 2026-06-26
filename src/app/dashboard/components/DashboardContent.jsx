@@ -511,49 +511,127 @@ const DashboardContent = ({
         </div>
       ) : isSuperAdmin ? (
         <div className="space-y-8 px-4 pt-2">
-          {/* Section A — KPI Stat Cards */}
+          {/* Section A — Stove Inventory Doughnut + Financial KPIs */}
           <div className="space-y-4">
-            {[KPI_CONFIG.slice(0, 3), KPI_CONFIG.slice(3)].map((row, rowIdx) => (
-              <div key={rowIdx} className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {row.map((kpi) => {
-                  const raw = data?.[kpi.key] ?? 0;
-                  const display = kpi.currency ? formatCurrency(raw) : raw.toLocaleString();
-                  const hasDateRange = !!(dashboardFilters.dateFrom || dashboardFilters.dateTo);
-                  const sub = kpi.sub ?? (
-                    hasDateRange
-                      ? `${dashboardFilters.dateFrom || ""} – ${dashboardFilters.dateTo || ""}`.trim().replace(/^–\s*|\s*–$/, "")
-                      : `FY ${yearLabel}`
-                  );
-                  const partnerName = selectedPartner?.base_name;
-                  const href = kpi.destPath
-                    ? partnerName
-                      ? `${kpi.destPath}?${kpi.destParam}=${encodeURIComponent(partnerName)}`
-                      : kpi.destPath
-                    : undefined;
-                  return (
-                    <Link
-                      key={kpi.key}
-                      href={href ?? "#"}
-                      className="relative overflow-hidden rounded-lg border bg-white px-4 py-4 shadow-sm transition-shadow hover:shadow-md cursor-pointer block group"
-                    >
-                      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${kpi.gradient}`} />
-                      <div className="flex items-start justify-between">
-                        <div className="mt-0.5 min-w-0 flex-1 pr-2">
-                          <p className="text-2xl font-bold text-gray-900 tracking-tight leading-tight break-all">{display}</p>
-                          <p className="text-xs font-semibold text-gray-500 mt-1">{kpi.label}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
-                        </div>
-                        <div className={`rounded-lg p-2 bg-gradient-to-br ${kpi.gradient} text-white shadow-sm shrink-0`}>
-                          <kpi.icon className="h-4 w-4" />
+            {(() => {
+              const received = data?.stovesReceived ?? 0;
+              const sold = data?.stovesSold ?? 0;
+              const available = data?.availableStoves ?? 0;
+              const totalForPct = sold + available || 1;
+              const soldPct = ((sold / totalForPct) * 100).toFixed(1);
+              const availPct = ((available / totalForPct) * 100).toFixed(1);
+              const doughnutData = [
+                { name: "Sold", value: sold, color: "#4a5d0f" },
+                { name: "Available", value: available, color: "#a8c34a" },
+              ];
+              const items = [
+                { label: "Total Stoves Received", value: received, color: "#1f2937", pct: null },
+                { label: "Total Sold to End Users", value: sold, color: "#4a5d0f", pct: soldPct },
+                { label: "Available for Sale", value: available, color: "#a8c34a", pct: availPct },
+              ];
+              return (
+                <Card className="bg-white shadow-sm">
+                  <CardHeader className="rounded-t-lg text-white py-2 px-4" style={{ backgroundColor: DARK_NAVY }}>
+                    <CardTitle className="text-sm font-semibold">Stove Inventory Overview</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-4 pb-4 px-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                      <div className="relative">
+                        <ResponsiveContainer width="100%" height={260}>
+                          <PieChart>
+                            <Pie
+                              data={doughnutData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={70}
+                              outerRadius={100}
+                              paddingAngle={2}
+                              dataKey="value"
+                              nameKey="name"
+                              stroke="none"
+                            >
+                              {doughnutData.map((d, i) => (
+                                <Cell key={i} fill={d.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              formatter={(v, n) => [Number(v).toLocaleString(), n]}
+                              contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                          <span className="text-2xl font-bold text-gray-900 tracking-tight">
+                            {received.toLocaleString()}
+                          </span>
+                          <span className="text-[11px] font-semibold tracking-wider text-gray-500 mt-0.5">
+                            STOVES RECEIVED
+                          </span>
                         </div>
                       </div>
-                      <ChevronRight className="absolute bottom-3 right-3 h-3.5 w-3.5 text-gray-300 group-hover:text-gray-500 transition-colors" />
-                    </Link>
-                  );
-                })}
-              </div>
-            ))}
+                      <div className="space-y-3">
+                        {items.map((it) => (
+                          <div key={it.label} className="flex items-center justify-between border-b border-gray-100 pb-2 last:border-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: it.color }} />
+                              <span className="text-xs font-medium text-gray-600 truncate">{it.label}</span>
+                            </div>
+                            <div className="flex items-baseline gap-2 shrink-0">
+                              <span className="text-sm font-bold text-gray-900">{it.value.toLocaleString()}</span>
+                              {it.pct !== null && (
+                                <span className="text-[11px] text-gray-400">{it.pct}%</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
+            {/* Financial KPIs */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {KPI_CONFIG.slice(3).map((kpi) => {
+                const raw = data?.[kpi.key] ?? 0;
+                const display = kpi.currency ? formatCurrency(raw) : raw.toLocaleString();
+                const hasDateRange = !!(dashboardFilters.dateFrom || dashboardFilters.dateTo);
+                const sub = kpi.sub ?? (
+                  hasDateRange
+                    ? `${dashboardFilters.dateFrom || ""} – ${dashboardFilters.dateTo || ""}`.trim().replace(/^–\s*|\s*–$/, "")
+                    : `FY ${yearLabel}`
+                );
+                const partnerName = selectedPartner?.base_name;
+                const href = kpi.destPath
+                  ? partnerName
+                    ? `${kpi.destPath}?${kpi.destParam}=${encodeURIComponent(partnerName)}`
+                    : kpi.destPath
+                  : undefined;
+                return (
+                  <Link
+                    key={kpi.key}
+                    href={href ?? "#"}
+                    className="relative overflow-hidden rounded-lg border bg-white px-4 py-4 shadow-sm transition-shadow hover:shadow-md cursor-pointer block group"
+                  >
+                    <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${kpi.gradient}`} />
+                    <div className="flex items-start justify-between">
+                      <div className="mt-0.5 min-w-0 flex-1 pr-2">
+                        <p className="text-2xl font-bold text-gray-900 tracking-tight leading-tight break-all">{display}</p>
+                        <p className="text-xs font-semibold text-gray-500 mt-1">{kpi.label}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
+                      </div>
+                      <div className={`rounded-lg p-2 bg-gradient-to-br ${kpi.gradient} text-white shadow-sm shrink-0`}>
+                        <kpi.icon className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <ChevronRight className="absolute bottom-3 right-3 h-3.5 w-3.5 text-gray-300 group-hover:text-gray-500 transition-colors" />
+                  </Link>
+                );
+              })}
+            </div>
           </div>
+
 
           {/* Section B — Sales Analysis Charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 ">
