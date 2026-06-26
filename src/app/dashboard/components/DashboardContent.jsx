@@ -499,7 +499,7 @@ const DashboardContent = ({
               return (
                 <Card className="bg-white shadow-none">
                   <CardHeader className="rounded-t-lg text-white py-2 px-4 flex flex-row items-center justify-between gap-3 flex-wrap" style={{ backgroundColor: DARK_NAVY }}>
-                    <CardTitle className="text-base font-semibold">Stove Inventory & Financial Overview</CardTitle>
+                    <CardTitle className="text-base font-semibold">Sales Overview</CardTitle>
                     <div className="flex items-center gap-2 flex-wrap">
                       {/* Partner Search Dropdown */}
                       <div className="relative" ref={partnerDropdownRef}>
