@@ -38,6 +38,9 @@ import PageHeader from "../../components/PageHeader";
 import organizationsService from "../../services/organizationsService";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import PartnerDetailsModal from "../../partners/components/PartnerDetailsModal";
+import EditPartnerModal from "../../partners/components/EditPartnerModal";
+import ViewCredentialModal from "../../admin/components/credentials/ViewCredentialModal";
+import adminCredentialsService from "../../services/adminCredentialsService";
 
 const PAGE_SIZE = 10;
 
