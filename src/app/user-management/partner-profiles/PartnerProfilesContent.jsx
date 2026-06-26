@@ -243,13 +243,11 @@ const PartnerProfilesContent = () => {
                                 onClick={() => handleViewCredentials(p)}
                                 disabled={loadingCredentialOrgId === p.id}
                                 aria-label="Credentials"
-                                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-indigo-600 text-white text-xs font-medium shadow-sm hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-60"
+                                className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-indigo-600 text-white text-xs font-medium shadow-sm hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-60"
                               >
                                 {loadingCredentialOrgId === p.id ? (
                                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <KeyRound className="h-3.5 w-3.5" />
-                                )}
+                                ) : null}
                                 Credentials
                               </button>
                             </TooltipTrigger>
