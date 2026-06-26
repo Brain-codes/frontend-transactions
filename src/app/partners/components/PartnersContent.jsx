@@ -107,7 +107,7 @@ const StoveIdsModal = ({ organization, isOpen, onClose, initialFilter = "all" })
       const body = { organization_id: organization.id, limit: STOVE_PAGE_SIZE, offset };
       if (sf && sf !== "all") body.status = sf;
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-stove-ids`,
+        `${SUPABASE_URL}/functions/v1/get-stove-ids`,
         {
           method: "POST",
           headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
@@ -137,7 +137,7 @@ const StoveIdsModal = ({ organization, isOpen, onClose, initialFilter = "all" })
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-sale?id=${saleId}`,
+        `${SUPABASE_URL}/functions/v1/get-sale?id=${saleId}`,
         { headers: { Authorization: `Bearer ${session.access_token}` } }
       );
       const data = await res.json();
@@ -424,7 +424,7 @@ const StoveTransferHistoryModal = ({ organization, isOpen, onClose }) => {
       const params = new URLSearchParams({ limit: "200", offset: "0" });
       if (organization.partner_id) params.set("search", organization.partner_id);
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-transfer-history?${params}`,
+        `${SUPABASE_URL}/functions/v1/get-transfer-history?${params}`,
         { headers: { Authorization: `Bearer ${session.access_token}` } }
       );
       const data = await res.json();
@@ -909,7 +909,7 @@ export default function PartnersContent() {
         if (filters.state !== "all") params.set("state", filters.state);
         if (filters.search) params.set("search", filters.search);
         const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
+          `${SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
           { headers: { Authorization: `Bearer ${session.access_token}` } }
         );
         const result = await res.json();
@@ -934,7 +934,7 @@ export default function PartnersContent() {
       if (currentFilters.state && currentFilters.state !== "all") params.set("state", currentFilters.state);
       const qs = params.toString();
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-stove-stats${qs ? "?" + qs : ""}`,
+        `${SUPABASE_URL}/functions/v1/get-stove-stats${qs ? "?" + qs : ""}`,
         { headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" } }
       );
       const result = await res.json();
@@ -950,7 +950,7 @@ export default function PartnersContent() {
     setLoadingTypeCounts(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const base = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-organizations`;
+      const base = `${SUPABASE_URL}/functions/v1/manage-organizations`;
       const headers = { Authorization: `Bearer ${session.access_token}` };
       const [custRes, partRes] = await Promise.all([
         fetch(`${base}?partner_type=customer&limit=1&offset=0&include_admin_users=false`, { headers }),
@@ -1027,7 +1027,7 @@ export default function PartnersContent() {
       const { data: { session } } = await supabase.auth.getSession();
       const params = new URLSearchParams({ grouped: "true", organization_ids: org.id });
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-stove-ids?${params}`,
+        `${SUPABASE_URL}/functions/v1/manage-stove-ids?${params}`,
         { headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" } }
       );
       const result = await res.json();
