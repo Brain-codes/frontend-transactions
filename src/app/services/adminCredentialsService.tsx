@@ -1,6 +1,6 @@
 
 import { createClientComponentClient } from "@/lib/supabaseClient";
-import { SUPABASE_URL } from "@/lib/supabaseConfig";
+import { supabaseUrl as SUPABASE_URL } from "@/lib/supabaseConfig";
 import tokenManager from "@/utils/tokenManager";
 
 
