@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, createContext, useContext } from "react";
 import { useRouter } from "@/compat/navigation";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -10,12 +10,18 @@ type ProtectedRouteProp = {
   requireAdminAccess?: boolean;
 };
 
+// When a parent ProtectedRoute is already mounted (the app shell in __root),
+// nested usage becomes a passthrough so we don't double-run auth gates or
+// flash the spinner on every navigation.
+const ProtectedRouteMountedContext = createContext(false);
+
 const ProtectedRoute = ({
   children,
   allowedRoles,
   requireSuperAdmin = false,
   requireAdminAccess = false,
 }: ProtectedRouteProp) => {
+  const alreadyMounted = useContext(ProtectedRouteMountedContext);
   const {
     user,
     loading,
@@ -30,11 +36,10 @@ const ProtectedRoute = ({
     if (loading) return;
 
     if (!isAuthenticated) {
-      router.push("/login");
+      if (!alreadyMounted) router.push("/login");
       return;
     }
 
-    // Super admin bypasses all role restrictions
     if (isSuperAdmin) return;
 
     if (allowedRoles && allowedRoles.length > 0) {
@@ -63,16 +68,23 @@ const ProtectedRoute = ({
     requireSuperAdmin,
     requireAdminAccess,
     router,
+    alreadyMounted,
   ]);
 
-  // If we already have a user (cached or live), render children immediately.
-  // The background session refresh will reconcile silently.
-  if (user) {
+  // Nested instance: outer ProtectedRoute already verified the session.
+  // Just enforce any extra role gate inline, no spinner.
+  if (alreadyMounted) {
     return <>{children}</>;
   }
 
-  // Only show the spinner during the genuine first-time bootstrap
-  // (no cached user AND auth context is still resolving).
+  if (user) {
+    return (
+      <ProtectedRouteMountedContext.Provider value={true}>
+        {children}
+      </ProtectedRouteMountedContext.Provider>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -83,7 +95,6 @@ const ProtectedRoute = ({
     );
   }
 
-  // Not authenticated — redirect is in-flight from the effect above.
   return null;
 };
 
