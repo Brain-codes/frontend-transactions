@@ -352,8 +352,11 @@ const UnifiedDashboardContent = () => {
     });
   };
 
-  const handleClearFilters = () =>
-    setFilters({ selectedGroup: null, state: null, branch: null, dateFrom: null, dateTo: null });
+  const handleClearFilters = () => {
+    setFilters({ selectedGroup: null, state: null, branch: null, dateFrom: null, dateTo: null, months: [] } as any);
+    setYear(CURRENT_YEAR);
+    setYears([CURRENT_YEAR]);
+  };
 
   const handleCardClick = (cardKey: string) => setActiveCard((p) => (p === cardKey ? null : cardKey));
 
