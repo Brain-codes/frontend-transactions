@@ -131,6 +131,22 @@ const TopNavigation = ({
           {rightButton && <div className="hidden md:block">{rightButton}</div>}
 
           <Button
+            variant="outline"
+            size="sm"
+            asChild
+            className="hidden sm:inline-flex items-center gap-2 border-gray-200 text-gray-700 hover:bg-gray-50"
+          >
+            <a
+              href="/downloads/sales-monitoring-app.apk"
+              download="Atmosfair-Sales-Monitoring-App.apk"
+            >
+              <Download className="h-4 w-4" />
+              <span>Sales Monitoring App</span>
+            </a>
+          </Button>
+
+
+          <Button
             variant="ghost"
             size="sm"
             className="flex items-center gap-2 px-2 sm:px-3"
