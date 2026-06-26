@@ -25,7 +25,7 @@ const DashboardLayout = ({
   description = "",
   rightButton = null,
 }: DashboardLayoutProps) => {
-  const { user, signOut, isAgent, isPartnerAgent } = useAuth() as any;
+  const { user, signOut, isAgent, isPartnerAgent, isSuperAdmin } = useAuth() as any;
   // isPartnerAgent is the new name; isAgent is kept as backward compat alias in AuthContext
   const router = useRouter();
   const { sidebarOpen, toggleSidebar, closeSidebar } = useSidebar();
