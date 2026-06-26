@@ -602,7 +602,7 @@ const UserManagementPage = () => {
                                     onClick={() => openEditModal(u)}
                                     disabled={!!actionLoading}
                                     aria-label="Edit user"
-                                    className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-200 text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+                                    className="h-8 w-8 inline-flex items-center justify-center rounded-md text-gray-800 hover:bg-gray-50 disabled:opacity-50"
                                   >
                                     <SquarePen className="h-4 w-4" />
                                   </button>
