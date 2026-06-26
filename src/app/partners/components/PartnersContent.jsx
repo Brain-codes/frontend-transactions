@@ -784,9 +784,30 @@ const PartnerDetailModal = ({ organization, isOpen, onClose, onEdit }) => {
 
 // ── Main Content ──────────────────────────────────────────────────────────────
 
-export default function SuperAdminPartnersContent() {
-  const { supabase } = useAuth();
+export default function PartnersContent() {
+  const { supabase, user } = useAuth();
   const { toast, toasts, removeToast } = useToast();
+  const { can, isSuperAdmin } = usePermissions();
+
+  // Scope: super_admin sees all partners; ACSL agents/managers see only their assignments.
+  const scopedToAssigned = !isSuperAdmin;
+  const [assignedOrgIds, setAssignedOrgIds] = useState(null); // null = not loaded yet
+  const [assignedLoading, setAssignedLoading] = useState(scopedToAssigned);
+  useEffect(() => {
+    if (!scopedToAssigned) { setAssignedOrgIds(null); setAssignedLoading(false); return; }
+    if (!user?.id) return;
+    let cancelled = false;
+    setAssignedLoading(true);
+    superAdminAgentService.getAgentOrganizations(user.id)
+      .then((res) => {
+        if (cancelled) return;
+        const ids = new Set((res?.data || []).map((o) => o.id || o.organization_id).filter(Boolean));
+        setAssignedOrgIds(ids);
+      })
+      .catch(() => { if (!cancelled) setAssignedOrgIds(new Set()); })
+      .finally(() => { if (!cancelled) setAssignedLoading(false); });
+    return () => { cancelled = true; };
+  }, [scopedToAssigned, user?.id]);
 
   const ORG_CACHE_KEY = "partners_organizations_cache";
   const ORG_CACHE_TIMESTAMP_KEY = "partners_organizations_cache_timestamp";
