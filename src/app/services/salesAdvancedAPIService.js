@@ -2,10 +2,9 @@
 import { createClientComponentClient } from "@/lib/supabaseClient";
 import { safeFetchManager } from "../../utils/safeFetch";
 import { formatSalesDataToCSV, downloadCSV } from "../../utils/csvExportUtils";
+import { supabaseUrl } from "@/lib/supabaseConfig";
 
-const API_BASE_URL =
-  import.meta.env.VITE_SUPABASE_URL ||
-  "https://your-supabase-project.supabase.co";
+const API_BASE_URL = supabaseUrl;
 const API_FUNCTIONS_URL = `${API_BASE_URL}/functions/v1`;
 
 class SalesAdvancedService {
