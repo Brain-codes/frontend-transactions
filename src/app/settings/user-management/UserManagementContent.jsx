@@ -112,7 +112,7 @@ const getRoleBadgeClasses = (role) => {
     case "super_admin":
       return "bg-fuchsia-100 text-fuchsia-800 border border-fuchsia-200";
     case "acsl_agent_manager":
-      return "bg-rose-100 text-rose-800 border border-rose-200";
+      return "bg-yellow-100 text-yellow-800 border border-yellow-200";
     case "acsl_agent":
     case "super_admin_agent":
       return "bg-sky-100 text-sky-800 border border-sky-200";
