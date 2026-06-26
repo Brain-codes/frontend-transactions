@@ -464,21 +464,23 @@ const UserManagementPage = () => {
           />
 
           {/* Filter Bar */}
-          <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
+          <div
+            className="p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3"
+            style={{ backgroundColor: "#FAFCFD" }}
+          >
             {/* Search */}
-            <div className="w-1/4 min-w-[180px] relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <div className="w-1/4 min-w-[180px]">
               <Input
                 placeholder="Search by name or email..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange("search", e.target.value)}
-                className="pl-9 bg-white h-9 text-sm"
+                className="bg-white h-9 text-sm shadow-none border-gray-200"
               />
             </div>
 
             {/* Status */}
             <Select value={filters.status || "all"} onValueChange={(v) => handleFilterChange("status", v === "all" ? "" : v)}>
-              <SelectTrigger className="w-[140px] h-9 bg-white text-sm">
+              <SelectTrigger className="w-[140px] h-9 bg-white text-sm shadow-none border-gray-200">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
@@ -490,7 +492,7 @@ const UserManagementPage = () => {
 
             {/* Role */}
             <Select value={filters.role || "all"} onValueChange={(v) => handleFilterChange("role", v === "all" ? "" : v)}>
-              <SelectTrigger className="w-[170px] h-9 bg-white text-sm">
+              <SelectTrigger className="w-[170px] h-9 bg-white text-sm shadow-none border-gray-200">
                 <SelectValue placeholder="All Roles" />
               </SelectTrigger>
               <SelectContent>
@@ -502,13 +504,17 @@ const UserManagementPage = () => {
               </SelectContent>
             </Select>
 
-            {/* Clear */}
-            {hasActiveFilters && (
-              <Button onClick={handleClearFilters} size="sm" variant="outline" className="h-9">
-                <X className="h-4 w-4 mr-1" />
-                Clear
-              </Button>
-            )}
+            {/* Reset */}
+            <Button
+              onClick={handleClearFilters}
+              size="sm"
+              variant="outline"
+              className="h-9 bg-white shadow-none border-gray-200"
+              disabled={!hasActiveFilters}
+            >
+              <X className="h-4 w-4 mr-1" />
+              Reset Filters
+            </Button>
           </div>
 
           {/* Table */}
