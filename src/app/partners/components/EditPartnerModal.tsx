@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, User, Phone, Mail, MapPin, Tag } from "lucide-react";
 import { useAuth } from "../../contexts/useAuth";
 import { useToast } from "@/components/ui/toast";
 import { supabaseUrl as SUPABASE_URL } from "@/lib/supabaseConfig";
@@ -55,19 +55,39 @@ interface Props {
   onSuccess: (updatedOrg: Organization) => void;
 }
 
-const FormField = ({
+const Field = ({
   label,
+  icon: Icon,
   error,
   children,
 }: {
   label: string;
+  icon?: React.ComponentType<{ className?: string }>;
   error?: string;
   children: React.ReactNode;
 }) => (
-  <div>
-    <Label>{label}</Label>
+  <div className="space-y-1">
+    <Label className="text-[11px] font-medium text-gray-600 flex items-center gap-1.5">
+      {Icon && <Icon className="h-3 w-3 text-gray-400" />}
+      {label}
+    </Label>
     {children}
-    {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
+    {error && <p className="text-[11px] text-red-500">{error}</p>}
+  </div>
+);
+
+const Section = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) => (
+  <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+    <h3 className="text-[10px] font-semibold text-primary uppercase tracking-wider border-b border-primary/20 pb-1 mb-3">
+      {title}
+    </h3>
+    {children}
   </div>
 );
 
@@ -106,7 +126,7 @@ export default function EditPartnerModal({ organization, isOpen, onClose, onSucc
   }, [isOpen, organization?.id]);
 
   const loadCredential = async () => {
-    if (!organization) return;
+    if (!organization?.partner_id) return;
     setLoadingCred(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -114,13 +134,13 @@ export default function EditPartnerModal({ organization, isOpen, onClose, onSucc
         `${SUPABASE_URL}/functions/v1/manage-credentials?partner_id=${encodeURIComponent(organization.partner_id)}`,
         { headers: { Authorization: `Bearer ${session.access_token}` } }
       );
-      if (res.ok) {
-        const result = await res.json();
-        const cred: Credential = result.data ?? null;
-        setCredential(cred);
-        if (cred?.email && !cred.is_dummy_email) {
-          setForm((prev) => ({ ...prev, email: clean(cred.email) }));
-        }
+      if (!res.ok) return; // no credential row is fine; silently ignore
+      const result = await res.json().catch(() => null);
+      const cred: Credential | null = result?.data ?? null;
+      if (!cred) return;
+      setCredential(cred);
+      if (cred.email && !cred.is_dummy_email) {
+        setForm((prev) => ({ ...prev, email: clean(cred.email) }));
       }
     } catch {
       // non-critical
@@ -188,7 +208,7 @@ export default function EditPartnerModal({ organization, isOpen, onClose, onSucc
           body: JSON.stringify(payload),
         }
       );
-      const result = await res.json();
+      const result = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(result.error || result.message || "Update failed");
       }
@@ -206,111 +226,116 @@ export default function EditPartnerModal({ organization, isOpen, onClose, onSucc
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
-        <DialogHeader className="px-6 py-4 border-b shrink-0">
-          <DialogTitle className="text-base font-semibold">Edit Partner Details</DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
+      <DialogContent className="max-w-2xl w-[95vw] max-h-[88vh] p-0 gap-0 overflow-hidden flex flex-col">
+        <DialogHeader className="px-5 py-3 bg-gradient-to-r from-blue-50/80 to-sky-50/80 border-b shrink-0">
+          <DialogTitle className="text-base font-bold">Edit Partner Details</DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground mt-0.5">
             {organization.partner_name}
-            <span className="ml-2 font-mono text-xs">{organization.partner_id}</span>
+            <span className="ml-2 font-mono text-[11px] text-gray-500">
+              {organization.partner_id}
+            </span>
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5">
-          <div className="space-y-6">
-
-            {/* Type */}
-            <div>
-              <Label className="text-base font-semibold">Partner Type</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                <FormField label="Type">
-                  <Select value={form.partner_type} onValueChange={(v) => setField("partner_type", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="partner">Partner</SelectItem>
-                      <SelectItem value="customer">Customer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormField>
-              </div>
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+          <Section title="Partner">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Field label="Partner Type" icon={Tag}>
+                <Select value={form.partner_type} onValueChange={(v) => setField("partner_type", v)}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="partner">Partner</SelectItem>
+                    <SelectItem value="customer">Customer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Contact Person" icon={User}>
+                <Input
+                  value={form.contact_person}
+                  onChange={(e) => setField("contact_person", e.target.value)}
+                  placeholder="Full name"
+                  className="h-9 text-sm"
+                />
+              </Field>
             </div>
+          </Section>
 
-            {/* Contact */}
-            <div>
-              <Label className="text-base font-semibold">Contact Details</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                <FormField label="Contact Person">
+          <Section title="Contact">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Field label="Phone Number" icon={Phone}>
+                <Input
+                  value={form.contact_phone}
+                  onChange={(e) => setField("contact_phone", e.target.value)}
+                  placeholder="e.g. 08012345678"
+                  className="h-9 text-sm"
+                />
+              </Field>
+              <Field label="Alternative Phone" icon={Phone}>
+                <Input
+                  value={form.alternative_phone}
+                  onChange={(e) => setField("alternative_phone", e.target.value)}
+                  placeholder="e.g. 08098765432"
+                  className="h-9 text-sm"
+                />
+              </Field>
+              {canEditEmail ? (
+                <Field label="Email Address" icon={Mail} error={errors.email}>
                   <Input
-                    value={form.contact_person}
-                    onChange={(e) => setField("contact_person", e.target.value)}
-                    placeholder="Full name"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setField("email", e.target.value)}
+                    placeholder="partner@example.com"
+                    className={`h-9 text-sm ${errors.email ? "border-red-500" : ""}`}
                   />
-                </FormField>
-                <FormField label="Phone Number">
+                </Field>
+              ) : (
+                <Field label="Email Address" icon={Mail}>
                   <Input
-                    value={form.contact_phone}
-                    onChange={(e) => setField("contact_phone", e.target.value)}
-                    placeholder="e.g. 08012345678"
+                    value={credential?.email ?? organization.email ?? ""}
+                    readOnly
+                    className="h-9 text-sm bg-gray-100"
                   />
-                </FormField>
-                <FormField label="Alternative Phone">
-                  <Input
-                    value={form.alternative_phone}
-                    onChange={(e) => setField("alternative_phone", e.target.value)}
-                    placeholder="e.g. 08098765432"
-                  />
-                </FormField>
-                {canEditEmail ? (
-                  <FormField label="Email Address" error={errors.email}>
-                    <Input
-                      type="email"
-                      value={form.email}
-                      onChange={(e) => setField("email", e.target.value)}
-                      placeholder="partner@example.com"
-                      className={errors.email ? "border-red-500" : ""}
-                    />
-                  </FormField>
-                ) : (
-                  <FormField label="Email Address">
-                    <Input value={credential?.email ?? organization.email ?? ""} readOnly className="bg-gray-100" />
-                  </FormField>
-                )}
-              </div>
+                </Field>
+              )}
+              <Field label="Street Address" icon={MapPin}>
+                <Input
+                  value={form.address}
+                  onChange={(e) => setField("address", e.target.value)}
+                  placeholder="Street address"
+                  className="h-9 text-sm"
+                />
+              </Field>
             </div>
+          </Section>
 
-            {/* Address */}
-            <div>
-              <Label className="text-base font-semibold">Address</Label>
-              <div className="mt-2">
-                <FormField label="Street Address">
-                  <Input
-                    value={form.address}
-                    onChange={(e) => setField("address", e.target.value)}
-                    placeholder="Street address"
-                  />
-                </FormField>
-              </div>
+          {loadingCred && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Loading credential…
             </div>
-
-          </div>
+          )}
         </div>
 
-        <div className="px-6 py-4 border-t flex items-center justify-end gap-3 shrink-0">
-          <Button variant="outline" onClick={onClose} disabled={submitting}>
+        <div className="px-5 py-3 border-t flex items-center justify-end gap-2 shrink-0 bg-gray-50/50">
+          <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>
           <Button
+            size="sm"
             onClick={handleSubmit}
             disabled={submitting || loadingCred}
             className="bg-brand hover:bg-brand/90 text-white"
           >
             {submitting ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
                 Saving…
               </>
             ) : (
               <>
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="h-4 w-4 mr-1.5" />
                 Save Changes
               </>
             )}
