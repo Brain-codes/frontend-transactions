@@ -10,8 +10,29 @@ import { usePermissions } from "../../hooks/usePermissions";
 import superAdminDashboardService from "../../services/superAdminDashboardService";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import adminDashboardService from "../../services/adminDashboardService";
+import salesAdvancedService from "../../services/salesAdvancedAPIService";
+
+const MONTH_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+// Aggregate raw sales rows into 12 monthly buckets keyed by short month name.
+function bucketMonthlySales(rows: any[]): { month: string; value: number }[] {
+  const counts = new Array(12).fill(0);
+  (rows || []).forEach((r: any) => {
+    const raw = r?.sales_date || r?.sale_date || r?.created_at;
+    if (!raw) return;
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return;
+    const qty = Number(r?.quantity ?? 1) || 1;
+    counts[d.getMonth()] += qty;
+  });
+  return MONTH_LABELS.map((m, i) => ({ month: m, value: counts[i] }));
+}
 
 const DashboardContent = DashboardContentBase as any;
+
+
+
+
 
 const CURRENT_YEAR = new Date().getFullYear();
 const ALL_YEARS = Array.from({ length: CURRENT_YEAR - 2023 }, (_, i) => 2024 + i);
@@ -97,55 +118,129 @@ const UnifiedDashboardContent = () => {
     return [...new Set(filtered.map((b: any) => b.branch).filter(Boolean))].sort();
   }, [filters]);
 
-  // Fetch dashboard stats based on scope
+  // Build the sales-fetch filter that mirrors the active dashboard period filter
+  const buildSalesFilters = useCallback(() => {
+    const salesFilters: any = {
+      page: 1,
+      limit: 5000,
+      sortBy: "sales_date",
+      sortOrder: "desc",
+      includeAddress: false,
+      includeCreator: false,
+      includeImages: false,
+      responseFormat: "format2",
+    };
+
+    if (scope === "global") {
+      if (filters.dateFrom) salesFilters.dateFrom = filters.dateFrom;
+      if (filters.dateTo) salesFilters.dateTo = filters.dateTo;
+      if (!filters.dateFrom && !filters.dateTo) {
+        const ys = years.length ? years : ALL_YEARS;
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        salesFilters.dateFrom = `${minY}-01-01`;
+        salesFilters.dateTo = `${maxY}-12-31`;
+      }
+      if (filters.state) salesFilters.state = filters.state;
+      if (filters.branch) salesFilters.branch = filters.branch;
+      if (filters.selectedGroup?.organization_ids?.length) {
+        const allBranches = filters.selectedGroup.branches || [];
+        let orgIds = filters.selectedGroup.organization_ids;
+        if (filters.state) {
+          const stateIds = allBranches
+            .filter((b: any) => b.state?.toLowerCase() === filters.state.toLowerCase())
+            .map((b: any) => b.id);
+          if (stateIds.length) orgIds = stateIds;
+        }
+        if (filters.branch) {
+          const branchIds = allBranches.filter((b: any) => b.branch === filters.branch).map((b: any) => b.id);
+          if (branchIds.length) orgIds = branchIds;
+        }
+        salesFilters.organization_ids = orgIds;
+      }
+    } else {
+      if (dateFrom) salesFilters.dateFrom = dateFrom;
+      if (dateTo) salesFilters.dateTo = dateTo;
+      if (!dateFrom && !dateTo) {
+        salesFilters.dateFrom = `${year}-01-01`;
+        salesFilters.dateTo = `${year}-12-31`;
+      }
+      const orgId = getOrganizationId?.();
+      if (orgId) salesFilters.organization_id = orgId;
+    }
+
+    return salesFilters;
+  }, [scope, year, years, dateFrom, dateTo, filters, getOrganizationId]);
+
+  // Fetch dashboard stats based on scope (plus monthly sales aggregation)
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      let response: any;
-      if (scope === "global") {
-        const selectedYears = years.length ? years : ALL_YEARS;
-        const payload: any = { years: selectedYears };
-        if (filters.selectedGroup?.organization_ids?.length) {
-          const allBranches = filters.selectedGroup.branches || [];
-          let orgIds = filters.selectedGroup.organization_ids;
-          if (filters.state) {
-            const stateIds = allBranches
-              .filter((b: any) => b.state?.toLowerCase() === filters.state.toLowerCase())
-              .map((b: any) => b.id);
-            if (stateIds.length) orgIds = stateIds;
+      const statsPromise: Promise<any> = (() => {
+        if (scope === "global") {
+          const selectedYears = years.length ? years : ALL_YEARS;
+          const payload: any = { years: selectedYears };
+          if (filters.selectedGroup?.organization_ids?.length) {
+            const allBranches = filters.selectedGroup.branches || [];
+            let orgIds = filters.selectedGroup.organization_ids;
+            if (filters.state) {
+              const stateIds = allBranches
+                .filter((b: any) => b.state?.toLowerCase() === filters.state.toLowerCase())
+                .map((b: any) => b.id);
+              if (stateIds.length) orgIds = stateIds;
+            }
+            if (filters.branch) {
+              const branchIds = allBranches.filter((b: any) => b.branch === filters.branch).map((b: any) => b.id);
+              if (branchIds.length) orgIds = branchIds;
+            }
+            payload.organization_ids = orgIds;
           }
-          if (filters.branch) {
-            const branchIds = allBranches.filter((b: any) => b.branch === filters.branch).map((b: any) => b.id);
-            if (branchIds.length) orgIds = branchIds;
-          }
-          payload.organization_ids = orgIds;
+          if (filters.state) payload.state = filters.state;
+          if (filters.branch) payload.branch = filters.branch;
+          if (filters.dateFrom) payload.date_from = filters.dateFrom;
+          if (filters.dateTo) payload.date_to = filters.dateTo;
+          return superAdminDashboardService.getDashboardStats(payload);
+        } else if (scope === "acsl_agent" || scope === "partner_agent") {
+          return superAdminAgentService.getDashboardStats({
+            year: (!dateFrom && !dateTo) ? year : undefined,
+            date_from: dateFrom || undefined,
+            date_to: dateTo || undefined,
+          });
         }
-        if (filters.state) payload.state = filters.state;
-        if (filters.branch) payload.branch = filters.branch;
-        if (filters.dateFrom) payload.date_from = filters.dateFrom;
-        if (filters.dateTo) payload.date_to = filters.dateTo;
-        response = await superAdminDashboardService.getDashboardStats(payload);
-      } else if (scope === "acsl_agent" || scope === "partner_agent") {
-        response = await superAdminAgentService.getDashboardStats({
+        return adminDashboardService.getDashboardStats({
           year: (!dateFrom && !dateTo) ? year : undefined,
           date_from: dateFrom || undefined,
           date_to: dateTo || undefined,
         });
+      })();
+
+      const salesPromise = salesAdvancedService
+        .getSalesData(buildSalesFilters(), "POST", "DashboardMonthlySales")
+        .catch((err: any) => {
+          console.error("Monthly sales fetch failed:", err);
+          return null;
+        });
+
+      const [response, salesResp] = await Promise.all([statsPromise, salesPromise]);
+
+      const monthlySales = bucketMonthlySales(
+        Array.isArray(salesResp?.data) ? salesResp.data : (salesResp?.data?.sales ?? [])
+      );
+
+      if (response?.success) {
+        setData({ ...(response.data || {}), monthlySales });
       } else {
-        response = await adminDashboardService.getDashboardStats({
-          year: (!dateFrom && !dateTo) ? year : undefined,
-          date_from: dateFrom || undefined,
-          date_to: dateTo || undefined,
-        });
+        console.error("Dashboard fetch failed:", response?.error || response?.message);
+        setData((prev: any) => ({ ...(prev || {}), monthlySales }));
       }
-      if (response?.success) setData(response.data);
-      else console.error("Dashboard fetch failed:", response?.error || response?.message);
     } catch (err) {
       console.error("Dashboard error:", err);
     } finally {
       setLoading(false);
     }
-  }, [scope, year, years, dateFrom, dateTo, filters]);
+  }, [scope, year, years, dateFrom, dateTo, filters, buildSalesFilters]);
+
+
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -164,6 +259,7 @@ const UnifiedDashboardContent = () => {
         salesModelData: data.salesModelData ?? [],
         topPartners: data.topPartners ?? [],
         topAgents: data.topAgents ?? [],
+        monthlySales: data.monthlySales ?? [],
       };
     }
     if (scope === "partner") {
@@ -176,6 +272,7 @@ const UnifiedDashboardContent = () => {
         outstandingBalance: data.totalAmountOwed ?? 0,
         byState: data.byState ?? [],
         salesModelData: data.salesModelData ?? [],
+        monthlySales: data.monthlySales ?? [],
       };
     }
     // acsl_agent + partner_agent
@@ -188,7 +285,9 @@ const UnifiedDashboardContent = () => {
       outstandingBalance: data.outstandingBalance ?? 0,
       byState: data.byState ?? [],
       salesModelData: data.salesModelData ?? [],
+      monthlySales: data.monthlySales ?? [],
     };
+
   }, [data, scope]);
 
   const handleFilterChange = (field: string, value: any) => {
