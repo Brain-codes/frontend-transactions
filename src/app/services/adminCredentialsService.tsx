@@ -68,9 +68,9 @@ class AdminCredentialsService {
    * Get base API URL
    */
   private getApiUrl(): string {
-    const { SUPABASE_URL } = require("@/lib/supabaseConfig");
     return `${SUPABASE_URL}/functions/v1/manage-credentials`;
   }
+
 
 
   /**
