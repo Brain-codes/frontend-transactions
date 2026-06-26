@@ -1133,7 +1133,7 @@ export default function PartnersContent() {
   const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
 
   if (loading) return (
-    <DashboardLayout currentRoute="partners" title="Manage Partners">
+    <DashboardLayout currentRoute="partners" title="Track Performance">
       <div className="flex items-center justify-center h-64">
         <Loader2 className="animate-spin h-8 w-8 text-brand" />
       </div>
@@ -1141,7 +1141,7 @@ export default function PartnersContent() {
   );
 
   if (error && !error.includes("login")) return (
-    <DashboardLayout currentRoute="partners" title="Manage Partners">
+    <DashboardLayout currentRoute="partners" title="Track Performance">
       <div className="p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-600 text-sm">
           Error: {error}
@@ -1153,12 +1153,12 @@ export default function PartnersContent() {
 
   return (
     <>
-      <DashboardLayout currentRoute="partners" title="Manage Partners">
+      <DashboardLayout currentRoute="partners" title="Track Performance">
         <div className="p-6 space-y-5">
 
           <PageHeader
             icon={Building2}
-            title="Manage Partners"
+            title="Track Performance"
             right={
               <Button
                 size="sm"
