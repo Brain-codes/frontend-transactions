@@ -531,25 +531,52 @@ const DashboardContent = ({
                       </div>
 
                       {/* Date Range Filter */}
-                      <div
-                        className="flex items-center gap-1.5 rounded-md px-2 py-0.5 border"
-                        style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
-                      >
-                        <DatePicker
-                          value={dashboardFilters.dateFrom || ""}
-                          onChange={(v) => onFilterChange?.("dateFrom", v || null)}
-                          placeholder="From date"
-                          className="w-[140px] !bg-transparent !border-0 !text-white hover:!bg-white/10 [&_input]:h-8 [&_input]:text-xs [&_input]:pl-8 [&_input]:text-white [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:text-white/80"
-                        />
-                        <span className="text-xs text-white/80">–</span>
-                        <DatePicker
-                          value={dashboardFilters.dateTo || ""}
-                          onChange={(v) => onFilterChange?.("dateTo", v || null)}
-                          placeholder="To date"
-                          className="w-[140px] !bg-transparent !border-0 !text-white hover:!bg-white/10 [&_input]:h-8 [&_input]:text-xs [&_input]:pl-8 [&_input]:text-white [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:text-white/80"
-                          min={dashboardFilters.dateFrom || undefined}
-                        />
-                      </div>
+                      {(() => {
+                        const fromDate = dashboardFilters.dateFrom ? parseISO(dashboardFilters.dateFrom) : undefined;
+                        const toDate = dashboardFilters.dateTo ? parseISO(dashboardFilters.dateTo) : undefined;
+                        const label = fromDate && toDate
+                          ? `${format(fromDate, "MMM d, yyyy")} – ${format(toDate, "MMM d, yyyy")}`
+                          : fromDate
+                            ? `${format(fromDate, "MMM d, yyyy")} – …`
+                            : "Filter by date range";
+                        return (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                className="h-8 px-3 flex items-center gap-1.5 rounded-md text-xs text-white border hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30"
+                                style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
+                              >
+                                <CalendarIcon className="h-3.5 w-3.5 text-white/90" />
+                                <span className={!fromDate ? "text-white/80" : "text-white"}>{label}</span>
+                                {fromDate && (
+                                  <X
+                                    className="h-3.5 w-3.5 text-white/80 hover:text-white ml-1"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      onFilterChange?.("dateFrom", null);
+                                      onFilterChange?.("dateTo", null);
+                                    }}
+                                  />
+                                )}
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="end">
+                              <Calendar
+                                mode="range"
+                                selected={{ from: fromDate, to: toDate }}
+                                onSelect={(range) => {
+                                  onFilterChange?.("dateFrom", range?.from ? format(range.from, "yyyy-MM-dd") : null);
+                                  onFilterChange?.("dateTo", range?.to ? format(range.to, "yyyy-MM-dd") : null);
+                                }}
+                                numberOfMonths={2}
+                                className="p-3 pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        );
+                      })()}
 
                       {/* Year Filter */}
                       {multiYear ? (
