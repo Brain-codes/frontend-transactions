@@ -660,34 +660,52 @@ const UserManagementPage = () => {
             </div>
 
             {/* Pagination footer */}
-            {pagination.total_pages > 1 && (
-              <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
-                <p className="text-sm text-gray-600">
-                  Showing {startRecord} to {endRecord} of {pagination.total_count} users
-                </p>
-                <div className="flex items-center gap-1">
-                  <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => handlePageChange(1)} disabled={pagination.page === 1}>
-                    <ChevronsLeft className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handlePageChange(pagination.page - 1)} disabled={pagination.page === 1}>
-                    <ChevronLeft className="h-4 w-4 mr-1" />Prev
-                  </Button>
-                  {getVisiblePages().map((p) => (
-                    <Button
-                      key={p}
-                      variant={p === pagination.page ? "default" : "outline"}
-                      size="sm"
-                      className={`h-8 w-8 p-0 ${p === pagination.page ? "bg-brand text-white hover:bg-brand" : ""}`}
-                      onClick={() => handlePageChange(p)}
-                    >{p}</Button>
-                  ))}
-                  <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handlePageChange(pagination.page + 1)} disabled={pagination.page >= pagination.total_pages}>
-                    Next<ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => handlePageChange(pagination.total_pages)} disabled={pagination.page >= pagination.total_pages}>
-                    <ChevronsRight className="h-4 w-4" />
-                  </Button>
+            {users.length > 0 && (
+              <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-white">
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-gray-600">
+                    Showing <span className="font-medium">{startRecord}</span> to <span className="font-medium">{endRecord}</span> of <span className="font-medium">{pagination.total_count}</span> users
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">per page:</span>
+                    <Select value={pagination.page_size.toString()} onValueChange={handlePageSizeChange}>
+                      <SelectTrigger className="w-[70px] h-8 bg-white text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+                {pagination.total_pages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => handlePageChange(1)} disabled={pagination.page === 1}>
+                      <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handlePageChange(pagination.page - 1)} disabled={pagination.page === 1}>
+                      <ChevronLeft className="h-4 w-4 mr-1" />Prev
+                    </Button>
+                    {getVisiblePages().map((p) => (
+                      <Button
+                        key={p}
+                        variant={p === pagination.page ? "default" : "outline"}
+                        size="sm"
+                        className={`h-8 w-8 p-0 ${p === pagination.page ? "bg-brand text-white hover:bg-brand" : ""}`}
+                        onClick={() => handlePageChange(p)}
+                      >{p}</Button>
+                    ))}
+                    <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handlePageChange(pagination.page + 1)} disabled={pagination.page >= pagination.total_pages}>
+                      Next<ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => handlePageChange(pagination.total_pages)} disabled={pagination.page >= pagination.total_pages}>
+                      <ChevronsRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
