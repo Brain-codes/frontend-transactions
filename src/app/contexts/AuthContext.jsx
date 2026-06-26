@@ -26,6 +26,11 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(!cachedUser);
   const [storedProfileRole, setStoredProfileRole] = useState(cachedRole);
   const supabase = createClientComponentClient();
+  // Persist role to localStorage so it's available synchronously on next load
+  useEffect(() => {
+    setCachedRole(storedProfileRole);
+  }, [storedProfileRole]);
+
 
   // Track the last user to detect actual user changes vs session refresh
   const lastUserRef = useRef(null);
