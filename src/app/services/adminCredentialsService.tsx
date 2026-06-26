@@ -1,6 +1,8 @@
 
 import { createClientComponentClient } from "@/lib/supabaseClient";
+import { SUPABASE_URL } from "@/lib/supabaseConfig";
 import tokenManager from "@/utils/tokenManager";
+
 
 interface Credential {
   partner_id: string;
