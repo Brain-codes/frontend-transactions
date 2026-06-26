@@ -1,6 +1,7 @@
 
 import { createContext, useContext, useState, useEffect, useRef } from "react";
 import { createClientComponentClient } from "@/lib/supabaseClient";
+import { supabaseFunctionsUrl, isSupabaseConfigured } from "@/lib/supabaseConfig";
 import profileService from "../services/profileService";
 import tokenManager from "../../utils/tokenManager";
 
@@ -356,13 +357,14 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log("🔐 [AuthContext] Attempting credentials login...");
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      if (!supabaseUrl) {
-        throw new Error("Supabase URL is not configured");
+      if (!isSupabaseConfigured) {
+        throw new Error(
+          "Authentication is not configured. Please contact your administrator."
+        );
       }
 
       const response = await fetch(
-        `${supabaseUrl}/functions/v1/login-with-credentials`,
+        `${supabaseFunctionsUrl}/login-with-credentials`,
         {
           method: "POST",
           headers: {

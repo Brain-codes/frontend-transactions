@@ -1,6 +1,7 @@
 
 // Auth Service for handling login and profile management
 import { createClientComponentClient } from "@/lib/supabaseClient";
+import { supabaseFunctionsUrl, isSupabaseConfigured } from "@/lib/supabaseConfig";
 import profileService from "./profileService";
 
 class AuthService {
@@ -62,13 +63,11 @@ class AuthService {
   // Login with username or email using custom credentials endpoint
   async loginWithCredentials(identifier, password) {
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-
-      if (!supabaseUrl) {
-        throw new Error("Supabase URL is not configured");
+      if (!isSupabaseConfigured) {
+        throw new Error("Authentication is not configured. Please contact your administrator.");
       }
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/login-with-credentials`, {
+      const response = await fetch(`${supabaseFunctionsUrl}/login-with-credentials`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
