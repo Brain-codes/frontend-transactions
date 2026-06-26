@@ -60,7 +60,14 @@ const allNavItems = [
       { name: "Performance Report", route: "agents", href: "/agents" },
     ],
   },
-  { name: "Manage Sales", icon: ShoppingCart, route: "sales", href: "/sales" },
+  {
+    name: "Manage Sales",
+    icon: ShoppingCart,
+    route: "sales",
+    children: [
+      { name: "Sales Records", route: "sales", href: "/sales" },
+    ],
+  },
   { name: "Financial Reports", icon: FileText, route: "sales-financial-reports", href: "/sales/financial-reports" },
   { name: "Stove Management", icon: Tag, route: "stove-management", href: "/stove-management" },
   { name: "Stove Manager", icon: Package, route: "stove-manager", href: "/stove-manager" },
