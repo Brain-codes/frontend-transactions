@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unescaped-entities */
 
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/useAuth";
 import { useRouter } from "@/compat/navigation";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Home, LogOut } from "lucide-react";

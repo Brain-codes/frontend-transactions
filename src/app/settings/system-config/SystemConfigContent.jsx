@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { SlidersHorizontal, Shield, Save, CheckCircle2, Eye, EyeOff, Loader2, CheckCheck, Plus, Trash2, Pencil, Link, X, Copy, ToggleLeft, ToggleRight, AlertCircle, Mail, ChevronRight, ArrowLeft } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/useAuth";
 import EmailNotificationSettings from "./EmailNotificationSettings";
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL + "/functions/v1";

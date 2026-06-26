@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, createContext, useContext } from "react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/useAuth";
 import { useRouter } from "@/compat/navigation";
 import { useRouterState } from "@tanstack/react-router";
-import { useSidebar } from "../contexts/SidebarContext";
+import { useSidebar } from "../contexts/useSidebar";
 import Sidebar from "./Sidebar.jsx";
 import TopNavigation from "./TopNavigation";
 import FirstTimePasswordChangeModal from "./FirstTimePasswordChangeModal";

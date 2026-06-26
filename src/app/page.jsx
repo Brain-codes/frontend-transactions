@@ -1,6 +1,6 @@
 
 import { useEffect } from "react";
-import { useAuth } from "./contexts/AuthContext";
+import { useAuth } from "./contexts/useAuth";
 import { useRouter } from "@/compat/navigation";
 
 export default function Home() {

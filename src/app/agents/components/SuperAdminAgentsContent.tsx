@@ -63,7 +63,7 @@ import {
 } from "lucide-react";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import organizationsService from "../../services/organizationsService";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/useAuth";
 import { lgaAndStates } from "../../constants";
 import AgentFormModal from "../../components/AgentFormModal";
 import DeleteSuperAdminAgentModal from "../../super-admin-agents/components/DeleteSuperAdminAgentModal";

@@ -1,7 +1,7 @@
 
 import React, { useEffect, createContext, useContext } from "react";
 import { useRouter } from "@/compat/navigation";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/useAuth";
 
 type ProtectedRouteProp = {
   children?: React.ReactNode;

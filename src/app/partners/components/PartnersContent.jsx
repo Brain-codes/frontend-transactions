@@ -31,7 +31,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import useOrganizations from "../../hooks/useOrganizations";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/useAuth";
 import { usePermissions } from "../../hooks/usePermissions";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import { lgaAndStates } from "../../constants";

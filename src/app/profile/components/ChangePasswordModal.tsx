@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { FormGrid, FormFieldWrapper } from "@/components/ui/form-grid";
 import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 import manageProfileService from "@/app/services/manageProfileService";
-import { useToastNotification } from "@/app/contexts/ToastContext";
+import { useToastNotification } from "@/app/contexts/useToastNotification";
 
 interface ChangePasswordModalProps {
   isOpen: boolean;

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, ShoppingCart, Download, Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "@/compat/navigation";
 import PageHeader from "../../components/PageHeader";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/useAuth";
 import { usePermissions } from "../../hooks/usePermissions";
 import ApproveSaleConfirmModal from "@/app/admin/components/sales/ApproveSaleConfirmModal";
 // import ApproveSaleConfirmModal from "../../admin/components/sales/ApproveSaleConfirmModal";

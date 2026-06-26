@@ -14,7 +14,7 @@ import {
   CheckCircle2,
   ChevronLeft,
 } from "lucide-react";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/useAuth";
 
 // ── Primitives ────────────────────────────────────────────────────────────────
 const DetailItem = ({ label, value, highlight }) => (

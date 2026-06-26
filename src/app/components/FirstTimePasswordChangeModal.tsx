@@ -14,8 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Loader2, AlertCircle, Shield } from "lucide-react";
 import manageProfileService from "../services/manageProfileService";
-import { useToastNotification } from "../contexts/ToastContext";
-import { useAuth } from "../contexts/AuthContext";
+import { useToastNotification } from "../contexts/useToastNotification";
+import { useAuth } from "../contexts/useAuth";
 
 const STORAGE_KEY_PREFIX = "password_change_reminder_";
 const REMIND_LATER_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
