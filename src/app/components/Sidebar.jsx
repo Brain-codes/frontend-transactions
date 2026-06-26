@@ -151,18 +151,18 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
                 <div key={item.route}>
                   <button
                     onClick={() => toggleExpand(item.route)}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm w-full text-left ${
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-xs w-full text-left ${
                       childActive
                         ? "text-gray-900 font-medium"
                         : "text-gray-700 hover:bg-white/50"
                     }`}
                   >
-                    <item.icon className="h-5 w-5" />
+                    <item.icon className="h-4 w-4" />
                     <span className="flex-1">{item.name}</span>
                     {isExpanded ? (
-                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                      <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
                     ) : (
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                      <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
                     )}
                   </button>
 
@@ -175,7 +175,7 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
                             key={child.route}
                             href={child.href}
                             onClick={() => navigateToRoute(child.href)}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-xs ${
                               active
                                 ? "bg-white text-gray-900 font-medium"
                                 : "text-gray-600 hover:bg-white/50"
@@ -197,13 +197,13 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
                 key={item.route}
                 href={item.href}
                 onClick={() => navigateToRoute(item.href)}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-xs ${
                   active
                     ? "bg-white text-gray-900 font-medium"
                     : "text-gray-700 hover:bg-white/50"
                 }`}
               >
-                <item.icon className="h-5 w-5" />
+                <item.icon className="h-4 w-4" />
                 <span className="flex-1">{item.name}</span>
                 {item.badge && (
                   <Badge variant="secondary" className="text-xs px-2 py-1">
@@ -220,13 +220,13 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
             <Link
               href="/sales-monitoring-app"
               onClick={() => navigateToRoute("/sales-monitoring-app")}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-xs ${
                 currentRoute === "sales-monitoring-app"
                   ? "bg-white text-gray-900 font-medium"
                   : "text-gray-700 hover:bg-white/50"
               }`}
             >
-              <Smartphone className="h-5 w-5 shrink-0" />
+              <Smartphone className="h-4 w-4 shrink-0" />
               <span className="flex-1">Sales Monitoring App</span>
             </Link>
           </div>
