@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, PanelLeft, Download } from "lucide-react";
+import { LogOut, User, PanelLeft, Smartphone } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useRouter } from "@/compat/navigation";
 import { useToastNotification } from "../contexts/ToastContext";
