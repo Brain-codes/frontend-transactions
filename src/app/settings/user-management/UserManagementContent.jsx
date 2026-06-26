@@ -493,8 +493,9 @@ const UserManagementPage = () => {
               </SelectTrigger>
               <SelectContent className="text-xs">
                 <SelectItem value="all" className="text-xs">All Status</SelectItem>
-                <SelectItem value="active" className="text-xs">Active</SelectItem>
+                <SelectItem value="active" className="text-xs">Enabled</SelectItem>
                 <SelectItem value="disabled" className="text-xs">Disabled</SelectItem>
+
               </SelectContent>
             </Select>
 
@@ -581,11 +582,12 @@ const UserManagementPage = () => {
                         <TableCell>
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                             u.status === "active"
-                              ? "bg-green-100 text-green-700"
+                              ? "bg-black text-white"
                               : "bg-red-100 text-red-600"
                           }`}>
-                            {u.status ? u.status.charAt(0).toUpperCase() + u.status.slice(1) : "N/A"}
+                            {u.status === "active" ? "Enabled" : (u.status ? u.status.charAt(0).toUpperCase() + u.status.slice(1) : "N/A")}
                           </span>
+
                         </TableCell>
 
                         {/* Last Active */}
@@ -618,7 +620,7 @@ const UserManagementPage = () => {
                                     type="button"
                                     onClick={() => handleToggleUserStatus(u.id, u.status)}
                                     disabled={!!actionLoading}
-                                    aria-label={u.status === "active" ? "Unpublish user" : "Publish user"}
+                                    aria-label={u.status === "active" ? "Disable user" : "Enable user"}
                                     className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-200 text-orange-600 hover:bg-orange-50 disabled:opacity-50"
                                   >
                                     {u.status === "active" ? (
@@ -629,8 +631,9 @@ const UserManagementPage = () => {
                                   </button>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  {u.status === "active" ? "Unpublish" : "Publish"}
+                                  {u.status === "active" ? "Disable" : "Enable"}
                                 </TooltipContent>
+
                               </Tooltip>
 
                               <Tooltip>
