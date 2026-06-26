@@ -66,12 +66,10 @@ class AdminCredentialsService {
    * Get base API URL
    */
   private getApiUrl(): string {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    if (!supabaseUrl) {
-      throw new Error("NEXT_PUBLIC_SUPABASE_URL is not configured");
-    }
-    return `${supabaseUrl}/functions/v1/manage-credentials`;
+    const { SUPABASE_URL } = require("@/lib/supabaseConfig");
+    return `${SUPABASE_URL}/functions/v1/manage-credentials`;
   }
+
 
   /**
    * Fetch all credentials
