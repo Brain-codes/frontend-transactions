@@ -167,7 +167,10 @@ const TopNavigation = ({
           open={showProfileModal}
           onClose={() => setShowProfileModal(false)}
           profileData={userProfile}
-          onProfileUpdate={fetchUserProfile}
+          onProfileUpdate={(updated) => {
+            if (updated && userId) profileCache.set(userId, updated);
+            if (updated) setUserProfile(updated);
+          }}
         />
       )}
     </header>
