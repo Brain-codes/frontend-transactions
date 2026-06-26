@@ -86,20 +86,6 @@ const PartnerProfilesContent = () => {
     }
   };
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const res = await organizationsService.getAllOrganizations();
-      if (res.success) {
-        setPartners(res.data);
-      } else {
-        toast({ variant: "error", title: "Failed to load partners", description: res.error });
-      }
-      setLoading(false);
-    };
-    load();
-  }, []);
-
   const states = useMemo(() => {
     const s = new Set();
     partners.forEach((p) => p.state && s.add(p.state));
