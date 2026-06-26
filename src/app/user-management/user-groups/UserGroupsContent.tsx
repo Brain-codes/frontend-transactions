@@ -3,21 +3,14 @@ import DashboardLayout from "@/app/components/DashboardLayout";
 type Group = {
   name: string;
   description: string;
-  pill?: boolean;
 };
 
 const groups: Group[] = [
-  { name: "Accountant", description: "No description", pill: true },
-  { name: "Admin", description: "Full access to all application components" },
-  { name: "Data Monitoring Manager", description: "Access to Customer Management and Sales of Stoves", pill: true },
-  { name: "Data Monitoring Officer", description: "Officers responsible for data monitoring tasks" },
-  { name: "Executive", description: "Full access except User Management and Customer Management", pill: true },
-  { name: "Factory Manager", description: "Full access except Customer Management and Factory Management" },
-  { name: "Super Admin", description: "Unrestricted access to every feature and record", pill: true },
-  { name: "ACSL Agent Manager", description: "Manages ACSL agents and oversees assigned partners" },
-  { name: "ACSL Agent", description: "Handles assigned partners and creates sales", pill: true },
-  { name: "Partner", description: "Manages own organization, agents and sales records" },
-  { name: "Partner Agent", description: "Creates and manages sales for their partner organization", pill: true },
+  { name: "Super Admin", description: "Unrestricted access to every feature, record, and setting in the application." },
+  { name: "ACSL Agent Manager", description: "Manages ACSL agents and oversees their assigned partner organizations." },
+  { name: "ACSL Agent", description: "Handles assigned partners, manages stoves, and creates sales on their behalf." },
+  { name: "Partner", description: "Manages their own organization, partner agents, stoves, and sales records." },
+  { name: "Partner Agent", description: "Creates and manages sales for their partner organization." },
 ];
 
 export default function UserGroupsContent() {
@@ -46,13 +39,7 @@ export default function UserGroupsContent() {
                   className={i % 2 === 1 ? "bg-blue-50/60" : "bg-white"}
                 >
                   <td className="px-6 py-4 align-middle">
-                    {g.pill ? (
-                      <span className="inline-block px-3 py-1 rounded-full border border-gray-200 bg-gray-50 text-sm font-medium text-gray-800">
-                        {g.name}
-                      </span>
-                    ) : (
-                      <span className="text-sm font-medium text-gray-900">{g.name}</span>
-                    )}
+                    <span className="text-sm font-medium text-gray-900">{g.name}</span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">{g.description}</td>
                 </tr>
