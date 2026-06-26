@@ -113,7 +113,7 @@ const UserManagementPage = () => {
   const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({
     page: 1,
-    page_size: 25,
+    page_size: 10,
     total_count: 0,
     total_pages: 0,
   });
@@ -187,7 +187,7 @@ const UserManagementPage = () => {
       if (result.pagination) {
         setPagination({
           page: result.pagination.currentPage || 1,
-          page_size: result.pagination.itemsPerPage || 25,
+          page_size: result.pagination.itemsPerPage || 10,
           total_count: result.pagination.totalItems || 0,
           total_pages: result.pagination.totalPages || 0,
         });
