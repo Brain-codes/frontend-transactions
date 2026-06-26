@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import Page from "@/app/dashboard/page";
+import { lazy } from "react";
+
+const Page = lazy(() => import("@/app/dashboard/page"));
 
 export const Route = createFileRoute("/dashboard/")({
   component: Page,

@@ -90,10 +90,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
+      { rel: "stylesheet", href: appCss },
+      { rel: "preconnect", href: "https://oeiwnpngbnkhcismhpgs.supabase.co" },
+      { rel: "preconnect", href: "https://maps.googleapis.com" },
+      { rel: "preconnect", href: "https://maps.gstatic.com", crossOrigin: "" },
+      { rel: "dns-prefetch", href: "https://places.googleapis.com" },
     ],
   }),
   shellComponent: RootShell,

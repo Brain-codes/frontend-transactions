@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useState, useEffect, useRef } from "react";
+import { createContext, useContext, useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { createClientComponentClient } from "@/lib/supabaseClient";
 import { supabaseFunctionsUrl, isSupabaseConfigured } from "@/lib/supabaseConfig";
 import profileService from "../services/profileService";
@@ -7,6 +7,9 @@ import tokenManager from "../../utils/tokenManager";
 import { getCachedUser, getCachedRole, setCachedRole } from "@/lib/authCache";
 
 const AuthContext = createContext();
+
+// useLayoutEffect on the server logs a noisy warning; alias to useEffect there.
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -17,19 +20,30 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  // Hydrate synchronously from localStorage so reloads don't flash
-  // "Verifying authentication...". The async getSession() below will
-  // refresh/replace this with the authoritative session.
-  const cachedUser = typeof window !== "undefined" ? getCachedUser() : null;
-  const cachedRole = typeof window !== "undefined" ? getCachedRole() : null;
-  const [user, setUser] = useState(cachedUser);
-  const [loading, setLoading] = useState(!cachedUser);
-  const [storedProfileRole, setStoredProfileRole] = useState(cachedRole);
+  // Start with null on BOTH server and client so initial render matches
+  // (no hydration mismatch). Immediately swap to cached values in a layout
+  // effect — runs before the browser paints, so the spinner never appears
+  // when there's a valid cached session.
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [storedProfileRole, setStoredProfileRole] = useState(null);
   const supabase = createClientComponentClient();
+
+  useIsoLayoutEffect(() => {
+    const cachedUser = getCachedUser();
+    if (cachedUser) {
+      setUser(cachedUser);
+      setLoading(false);
+    }
+    const cachedRole = getCachedRole();
+    if (cachedRole) setStoredProfileRole(cachedRole);
+  }, []);
+
   // Persist role to localStorage so it's available synchronously on next load
   useEffect(() => {
     setCachedRole(storedProfileRole);
   }, [storedProfileRole]);
+
 
 
   // Track the last user to detect actual user changes vs session refresh
@@ -525,7 +539,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     loading,
     isAuthenticated,
@@ -540,16 +554,15 @@ export const AuthProvider = ({ children }) => {
     hasAdminAccess,
     userRole,
     storedProfileRole,
-    isAtmosfairUser, // TODO: TEMPORARY - Remove when implementing proper role-based navigation
+    isAtmosfairUser,
     signIn,
     signInWithCredentials,
     signOut,
     supabase,
-    // Profile-related methods
     getStoredProfile: () => profileService.getStoredProfileData(),
     getOrganizationId: () => profileService.getOrganizationId(),
     getUserDetails: () => profileService.getUserDetails(),
-  };
+  }), [user, loading, isAuthenticated, isSuperAdmin, isSuperAdminAgent, isAcslAgent, isAcslAgentManager, isAdmin, isPartner, isAgent, isPartnerAgent, hasAdminAccess, userRole, storedProfileRole, isAtmosfairUser, supabase]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
