@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, PanelLeft, Download } from "lucide-react";
+import { LogOut, User, PanelLeft, Smartphone } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useRouter } from "@/compat/navigation";
 import { useToastNotification } from "../contexts/ToastContext";
@@ -131,19 +131,20 @@ const TopNavigation = ({
           {rightButton && <div className="hidden md:block">{rightButton}</div>}
 
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             asChild
-            className="hidden sm:inline-flex items-center gap-2 border-gray-200 text-gray-700 hover:bg-gray-50"
+            className="hidden sm:inline-flex items-center gap-2 text-gray-700 hover:bg-gray-50 shadow-none"
           >
             <a
               href="/downloads/sales-monitoring-app.apk"
               download="Atmosfair-Sales-Monitoring-App.apk"
             >
-              <Download className="h-4 w-4" />
+              <Smartphone className="h-4 w-4" />
               <span>Sales Monitoring App</span>
             </a>
           </Button>
+
 
 
           <Button
