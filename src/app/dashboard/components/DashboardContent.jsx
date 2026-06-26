@@ -30,6 +30,8 @@ import {
   Tooltip,
   LabelList,
   ResponsiveContainer,
+  ComposedChart,
+  Line,
 } from "recharts";
 import {
   LayoutDashboard,
@@ -641,6 +643,56 @@ const DashboardContent = ({
                         );
                       })}
                     </div>
+
+                    {/* Divider — Monthly Sales */}
+                    <div className="mt-6 mb-4 flex items-center gap-3">
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                      <span className="text-[10px] font-semibold tracking-[0.15em] text-gray-400 uppercase">
+                        Monthly Sales
+                      </span>
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                    </div>
+
+                    {(() => {
+                      const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+                      const raw = data?.monthlySales ?? [];
+                      const map = new Map();
+                      raw.forEach((r) => {
+                        const k = (r.month ?? r.name ?? "").toString().slice(0, 3);
+                        map.set(k, Number(r.value ?? r.count ?? r.total ?? 0));
+                      });
+                      const monthly = MONTHS.map((m) => ({ month: m, value: map.get(m) ?? 0 }));
+                      return (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <ComposedChart data={monthly} margin={{ top: 24, right: 16, left: 0, bottom: 8 }}>
+                            <defs>
+                              <linearGradient id="monthlyBarFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#1e3a5f" />
+                                <stop offset="100%" stopColor="#bcd4f0" />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                            <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={{ stroke: "#e5e7eb" }} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                            <Tooltip
+                              formatter={(v) => [Number(v).toLocaleString(), "Sales"]}
+                              contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
+                            />
+                            <Bar dataKey="value" fill="url(#monthlyBarFill)" barSize={42} radius={[3, 3, 0, 0]} />
+                            <Line
+                              type="monotone"
+                              dataKey="value"
+                              stroke="#f59e0b"
+                              strokeWidth={2.5}
+                              dot={{ r: 4, fill: "#f59e0b", stroke: "#f59e0b" }}
+                              activeDot={{ r: 5 }}
+                            >
+                              <LabelList dataKey="value" position="top" fontSize={11} fill="#374151" />
+                            </Line>
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
               );
