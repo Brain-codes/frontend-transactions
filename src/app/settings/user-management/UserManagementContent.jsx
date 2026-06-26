@@ -557,20 +557,20 @@ const UserManagementPage = () => {
                         key={u.id}
                         className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}
                       >
-                        <TableCell className="text-xs font-medium text-gray-900">{u.full_name || "N/A"}</TableCell>
-                        <TableCell className="text-xs max-w-[180px] truncate">{u.email}</TableCell>
-                        <TableCell className="text-xs text-gray-600">{u.phone || "—"}</TableCell>
+                        <TableCell className="text-sm font-medium text-gray-900">{u.full_name || "N/A"}</TableCell>
+                        <TableCell className="text-sm max-w-[180px] truncate">{u.email}</TableCell>
+                        <TableCell className="text-sm text-gray-600">{u.phone || "—"}</TableCell>
 
                         {/* Role — colored badge per role */}
                         <TableCell>
-                          <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${getRoleBadgeClasses(u.role)}`}>
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${getRoleBadgeClasses(u.role)}`}>
                             {getRoleLabel(u.role)}
                           </span>
                         </TableCell>
 
                         {/* Status */}
                         <TableCell>
-                          <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                             u.status === "active"
                               ? "bg-green-100 text-green-700"
                               : "bg-red-100 text-red-600"
@@ -580,7 +580,7 @@ const UserManagementPage = () => {
                         </TableCell>
 
                         {/* Last Active */}
-                        <TableCell className="text-xs text-gray-600">
+                        <TableCell className="text-sm text-gray-600">
                           {formatRelativeTime(u.last_login)}
                         </TableCell>
 
