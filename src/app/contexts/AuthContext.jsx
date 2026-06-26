@@ -1,23 +1,16 @@
 
-import { createContext, useContext, useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { createClientComponentClient } from "@/lib/supabaseClient";
 import { supabaseFunctionsUrl, isSupabaseConfigured } from "@/lib/supabaseConfig";
 import profileService from "../services/profileService";
 import tokenManager from "../../utils/tokenManager";
 import { getCachedUser, getCachedRole, setCachedRole } from "@/lib/authCache";
-
-const AuthContext = createContext();
+import { AuthContext } from "./useAuth";
 
 // useLayoutEffect on the server logs a noisy warning; alias to useEffect there.
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
+
 
 export const AuthProvider = ({ children }) => {
   // Start with null on BOTH server and client so initial render matches
