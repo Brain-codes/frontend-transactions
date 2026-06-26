@@ -479,7 +479,7 @@ const UserManagementPage = () => {
 
             {/* Status */}
             <Select value={filters.status || "all"} onValueChange={(v) => handleFilterChange("status", v === "all" ? "" : v)}>
-              <SelectTrigger className="w-[140px] h-9 bg-white text-xs shadow-none border-gray-200">
+              <SelectTrigger className="w-[140px] h-9 bg-white text-xs shadow-none border-gray-200 text-gray-400 data-[placeholder]:text-gray-400">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent className="text-xs">
