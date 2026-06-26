@@ -642,6 +642,8 @@ const DashboardContent = ({
                                   onFilterChange?.("dateTo", range?.to ? format(range.to, "yyyy-MM-dd") : null);
                                 }}
                                 numberOfMonths={2}
+                                disabled={{ after: new Date() }}
+                                toDate={new Date()}
                                 className="p-3 pointer-events-auto"
                               />
                             </PopoverContent>
@@ -649,110 +651,63 @@ const DashboardContent = ({
                         );
                       })()}
 
-                      {/* Months Filter */}
-                      <div ref={monthsDropdownRef} className="relative">
-                        <button
-                          type="button"
-                          disabled={hasDateRange}
-                          onClick={() => setMonthsDropdownOpen((o) => !o)}
-                          className="flex items-center justify-between gap-2 h-8 px-3 rounded-md text-xs text-white border min-w-[130px] max-w-[260px] hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100"
-                          style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
-                        >
-                          <span className="truncate text-left">{monthsLabel}</span>
-                          <ChevronDown className={`h-4 w-4 text-white/80 shrink-0 transition-transform ${monthsDropdownOpen ? "rotate-180" : ""}`} />
-                        </button>
-                        {monthsDropdownOpen && !hasDateRange && (
-                          <div className="absolute z-50 top-full right-0 mt-1 w-[170px] bg-white border border-gray-200 rounded-md py-1 text-gray-700 max-h-72 overflow-y-auto">
-                            <button
-                              type="button"
-                              onClick={() => onFilterChange?.("months", [])}
-                              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-blue-50 text-left"
-                            >
-                              <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${allMonthsSelected ? "bg-[#4a5d0f] border-[#4a5d0f]" : "border-gray-300"}`}>
-                                {allMonthsSelected && <Check className="h-2.5 w-2.5 text-white" />}
-                              </span>
-                              All Months
-                            </button>
-                            {MONTHS.map((label, idx) => {
-                              const m = idx + 1;
-                              const checked = !allMonthsSelected && selectedMonths.includes(m);
-                              return (
-                                <button
-                                  key={m}
-                                  type="button"
-                                  onClick={() => toggleMonth(m)}
-                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-blue-50 text-left"
-                                >
-                                  <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${checked ? "bg-[#4a5d0f] border-[#4a5d0f]" : "border-gray-300"}`}>
-                                    {checked && <Check className="h-2.5 w-2.5 text-white" />}
-                                  </span>
-                                  {label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Year Filter */}
-                      {multiYear ? (
-                        <div ref={yearDropdownRef} className="relative">
-                          <button
-                            type="button"
+                      {/* Month Filter (single) */}
+                      {(() => {
+                        const currentMonth = Array.isArray(dashboardFilters.months) && dashboardFilters.months.length === 1
+                          ? String(dashboardFilters.months[0])
+                          : "all";
+                        return (
+                          <Select
+                            value={currentMonth}
+                            onValueChange={(v) => onFilterChange?.("months", v === "all" ? [] : [Number(v)])}
                             disabled={hasDateRange}
-                            onClick={() => setYearDropdownOpen((o) => !o)}
-                            className="flex items-center justify-between gap-2 h-8 px-3 rounded-md text-xs text-white border min-w-[110px] max-w-[200px] hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100"
-                            style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
                           >
-                            <span className="truncate text-left">{yearLabel}</span>
-                            <ChevronDown className={`h-4 w-4 text-white/80 shrink-0 transition-transform ${yearDropdownOpen ? "rotate-180" : ""}`} />
-                          </button>
-                          {yearDropdownOpen && !hasDateRange && (
-                            <div className="absolute z-50 top-full right-0 mt-1 w-[160px] bg-white border border-gray-200 rounded-md py-1 text-gray-700">
-                              <button
-                                type="button"
-                                onClick={() => onYearsChange([])}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-blue-50 text-left"
-                              >
-                                <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${allYearsSelected ? "bg-[#4a5d0f] border-[#4a5d0f]" : "border-gray-300"}`}>
-                                  {allYearsSelected && <Check className="h-2.5 w-2.5 text-white" />}
-                                </span>
-                                All Years
-                              </button>
-                              {YEARS.map((y) => {
-                                const checked = !allYearsSelected && years.includes(y);
-                                return (
-                                  <button
-                                    key={y}
-                                    type="button"
-                                    onClick={() => toggleYear(y)}
-                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-blue-50 text-left"
-                                  >
-                                    <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${checked ? "bg-[#4a5d0f] border-[#4a5d0f]" : "border-gray-300"}`}>
-                                      {checked && <Check className="h-2.5 w-2.5 text-white" />}
-                                    </span>
-                                    {y}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))} disabled={hasDateRange}>
-                          <SelectTrigger
-                            className="w-[100px] h-8 text-xs text-white border hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
-                          >
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {YEARS.map((y) => (
-                              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
+                            <SelectTrigger
+                              className="w-[130px] h-8 text-xs text-white border hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                              style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Months</SelectItem>
+                              {MONTHS.map((label, idx) => (
+                                <SelectItem key={idx + 1} value={String(idx + 1)}>{label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        );
+                      })()}
+
+                      {/* Year Filter (single) */}
+                      {(() => {
+                        const currentYear = multiYear
+                          ? (years.length === 1 ? String(years[0]) : "all")
+                          : String(year);
+                        const handleChange = (v) => {
+                          if (multiYear) {
+                            onYearsChange(v === "all" ? [] : [Number(v)]);
+                          } else {
+                            onYearChange(Number(v));
+                          }
+                        };
+                        return (
+                          <Select value={currentYear} onValueChange={handleChange} disabled={hasDateRange}>
+                            <SelectTrigger
+                              className="w-[110px] h-8 text-xs text-white border hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                              style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {multiYear && <SelectItem value="all">All Years</SelectItem>}
+                              {YEARS.map((y) => (
+                                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        );
+                      })()}
+
                     </div>
                   </CardHeader>
 
