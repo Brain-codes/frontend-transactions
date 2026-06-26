@@ -138,7 +138,7 @@ const PartnerProfilesContent = () => {
       {/* Filter Bar */}
       <div
         className="p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3"
-        style={{ backgroundColor: "#FAFCFD" }}
+        style={{ backgroundColor: "#f4f7e3" }}
       >
         <div className="w-1/4 min-w-[180px]">
           <Input
