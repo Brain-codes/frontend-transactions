@@ -381,60 +381,65 @@ const DashboardContent = ({
               </div>
             )}
 
-            <span className="text-sm font-medium text-gray-700">Year:</span>
-            {multiYear ? (
-              <div ref={yearDropdownRef} className="relative">
-                <button
-                  type="button"
-                  onClick={() => setYearDropdownOpen((o) => !o)}
-                  className="flex items-center justify-between gap-2 h-8 px-3 bg-white border border-input rounded-md text-sm min-w-[120px] max-w-[200px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <span className="truncate text-left">{yearLabel}</span>
-                  <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 transition-transform ${yearDropdownOpen ? "rotate-180" : ""}`} />
-                </button>
-                {yearDropdownOpen && (
-                  <div className="absolute z-50 top-full right-0 mt-1 w-[160px] bg-white border border-gray-200 rounded-md py-1">
+            {!isSuperAdmin && (
+              <>
+                <span className="text-sm font-medium text-gray-700">Year:</span>
+                {multiYear ? (
+                  <div ref={yearDropdownRef} className="relative">
                     <button
                       type="button"
-                      onClick={() => onYearsChange([])}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-blue-50 text-left"
+                      onClick={() => setYearDropdownOpen((o) => !o)}
+                      className="flex items-center justify-between gap-2 h-8 px-3 bg-white border border-input rounded-md text-sm min-w-[120px] max-w-[200px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-ring"
                     >
-                      <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${allYearsSelected ? "bg-[#07376a] border-[#07376a]" : "border-gray-300"}`}>
-                        {allYearsSelected && <Check className="h-2.5 w-2.5 text-white" />}
-                      </span>
-                      All Years
+                      <span className="truncate text-left">{yearLabel}</span>
+                      <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 transition-transform ${yearDropdownOpen ? "rotate-180" : ""}`} />
                     </button>
-                    {YEARS.map((y) => {
-                      const checked = !allYearsSelected && years.includes(y);
-                      return (
+                    {yearDropdownOpen && (
+                      <div className="absolute z-50 top-full right-0 mt-1 w-[160px] bg-white border border-gray-200 rounded-md py-1">
                         <button
-                          key={y}
                           type="button"
-                          onClick={() => toggleYear(y)}
+                          onClick={() => onYearsChange([])}
                           className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-blue-50 text-left"
                         >
-                          <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${checked ? "bg-[#07376a] border-[#07376a]" : "border-gray-300"}`}>
-                            {checked && <Check className="h-2.5 w-2.5 text-white" />}
+                          <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${allYearsSelected ? "bg-[#07376a] border-[#07376a]" : "border-gray-300"}`}>
+                            {allYearsSelected && <Check className="h-2.5 w-2.5 text-white" />}
                           </span>
-                          {y}
+                          All Years
                         </button>
-                      );
-                    })}
+                        {YEARS.map((y) => {
+                          const checked = !allYearsSelected && years.includes(y);
+                          return (
+                            <button
+                              key={y}
+                              type="button"
+                              onClick={() => toggleYear(y)}
+                              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-blue-50 text-left"
+                            >
+                              <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${checked ? "bg-[#07376a] border-[#07376a]" : "border-gray-300"}`}>
+                                {checked && <Check className="h-2.5 w-2.5 text-white" />}
+                              </span>
+                              {y}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
+                    <SelectTrigger className="w-[100px] h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {YEARS.map((y) => (
+                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
-              </div>
-            ) : (
-              <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
-                <SelectTrigger className="w-[100px] h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {YEARS.map((y) => (
-                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              </>
             )}
+
           </div>
         }
       />
