@@ -66,6 +66,7 @@ const allNavItems = [
     route: "sales",
     children: [
       { name: "Sales Records", route: "sales", href: "/sales" },
+      { name: "Sell Stove", route: "sales-create", href: "/sales/create" },
     ],
   },
   { name: "Financial Reports", icon: FileText, route: "sales-financial-reports", href: "/sales/financial-reports" },
