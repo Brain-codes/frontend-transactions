@@ -37,7 +37,7 @@ import {
 import PageHeader from "../../components/PageHeader";
 import organizationsService from "../../services/organizationsService";
 import { useToast, ToastContainer } from "@/components/ui/toast";
-import PartnerDetailsModal from "../../partners/components/PartnerDetailsModal";
+import PartnerDetailModal from "../../partners/components/PartnerDetailModal";
 import EditPartnerModal from "../../partners/components/EditPartnerModal";
 import ViewCredentialModal from "../../admin/components/credentials/ViewCredentialModal";
 import adminCredentialsService from "../../services/adminCredentialsService";
@@ -315,15 +315,12 @@ const PartnerProfilesContent = () => {
         )}
       </div>
 
-      {detailsPartner && (
-        <PartnerDetailsModal
-          partner={{
-            ...detailsPartner,
-            assigned_at: detailsPartner.created_at,
-          }}
-          onClose={() => setDetailsPartner(null)}
-        />
-      )}
+      <PartnerDetailModal
+        organization={detailsPartner}
+        isOpen={!!detailsPartner}
+        onClose={() => setDetailsPartner(null)}
+      />
+
 
       <EditPartnerModal
         organization={editingPartner}
