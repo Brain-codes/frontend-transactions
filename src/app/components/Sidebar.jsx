@@ -69,7 +69,7 @@ const allNavItems = [
       { name: "Sell Stove", route: "sales-create", href: "/sales/create" },
     ],
   },
-  { name: "Financial Reports", icon: FileText, route: "sales-financial-reports", href: "/sales/financial-reports" },
+  
   { name: "Stove Management", icon: Tag, route: "stove-management", href: "/stove-management" },
   { name: "Stove Manager", icon: Package, route: "stove-manager", href: "/stove-manager" },
   { name: "Transfer History", icon: ArrowLeftRight, route: "stove-transfer-history", href: "/stove-transfer-history" },
