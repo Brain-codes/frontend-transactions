@@ -561,7 +561,7 @@ const UserManagementPage = () => {
                 <TableBody className={loading ? "opacity-40" : ""}>
                   {users.length === 0 && !loading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-10 text-gray-500">
+                      <TableCell colSpan={7} className="text-center py-10 text-gray-500">
                         No users found
                       </TableCell>
                     </TableRow>
