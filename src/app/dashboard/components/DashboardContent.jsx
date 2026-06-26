@@ -609,6 +609,17 @@ const DashboardContent = ({
                         const currentMonth = Array.isArray(dashboardFilters.months) && dashboardFilters.months.length === 1
                           ? String(dashboardFilters.months[0])
                           : "all";
+                        const now = new Date();
+                        const currentYearNum = now.getFullYear();
+                        const currentMonthNum = now.getMonth() + 1;
+                        const effectiveYear = multiYear
+                          ? (years.length === 1 ? years[0] : currentYearNum)
+                          : year;
+                        const isMonthDisabled = (m) => {
+                          if (effectiveYear > currentYearNum) return true;
+                          if (effectiveYear === currentYearNum && m > currentMonthNum) return true;
+                          return false;
+                        };
                         return (
                           <Select
                             value={currentMonth}
@@ -624,7 +635,13 @@ const DashboardContent = ({
                             <SelectContent>
                               <SelectItem value="all">All Months</SelectItem>
                               {MONTHS.map((label, idx) => (
-                                <SelectItem key={idx + 1} value={String(idx + 1)}>{label}</SelectItem>
+                                <SelectItem
+                                  key={idx + 1}
+                                  value={String(idx + 1)}
+                                  disabled={isMonthDisabled(idx + 1)}
+                                >
+                                  {label}
+                                </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
