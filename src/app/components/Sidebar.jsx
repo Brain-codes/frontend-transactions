@@ -18,7 +18,7 @@ import {
   Layers,
   ArrowLeftRight,
   ChevronDown,
-  ChevronRight,
+  ChevronUp,
   Smartphone,
   Map,
   CreditCard,
