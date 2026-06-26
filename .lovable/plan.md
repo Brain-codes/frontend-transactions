@@ -1,36 +1,78 @@
-## Why you see it
+## Where time is being spent today
 
-Every hard reload, `AuthContext` starts with `loading = true` and `ProtectedRoute` renders a full-screen "Verifying authentication..." spinner until `supabase.auth.getSession()` resolves from `localStorage`. Even though the session is already on disk, the async round trip takes a few hundred ms — long enough to flash. The same happens on route changes that remount `ProtectedRoute` while a refresh is in flight.
+Quick audit of the current setup:
 
-## Fix (frontend only, no auth logic changes)
+1. **Every route eagerly imports its page module at the top of the route file** (`import Page from "@/app/dashboard/page"` etc.). That defeats TanStack's automatic code splitting — the entire app's page code lands in the initial bundle, so first load and route transitions are slower than they need to be.
+2. **One giant initial JS chunk** (sidebar, dashboard layout, all role-aware logic, every page) blocks first paint on every route.
+3. **Hydration mismatch from the recent auth change** (server renders `loading=true`, client hydrates with cached user) — currently throws away the SSR tree and re-renders on the client. Visible as a brief flash + warning.
+4. **No React Query defaults** — many lists refetch on every mount/focus instead of using cached data.
+5. **Sidebar + DashboardLayout re-render on every route change** because the user/role objects from `AuthContext` are new references each time.
+6. **Static assets** aren't preloaded; the LCP image (when present) is fetched after JS parses.
 
-1. **Synchronously hydrate from localStorage in `AuthContext`**
-   - On mount, read the Supabase auth token key (`sb-<project>-auth-token`) directly from `localStorage` before the async `getSession()` call.
-   - If a valid (non-expired) token exists: initialize `user`, `isAuthenticated`, role flags from it and set `loading = false` immediately. Then run `getSession()` in the background to refresh.
-   - If no token: keep current behavior (loading stays true only until `getSession()` returns — typically instant when there's nothing to load).
+## Plan — concrete changes
 
-2. **Stop blocking the whole app on `loading` in `ProtectedRoute`**
-   - If we already have a cached `user` (from step 1), render `children` immediately — no spinner.
-   - Only show the spinner when there is truly no session AND `loading` is still true (first-time login bootstrap).
-   - Keep the redirect-to-`/login` behavior for the genuine "no session" case.
+### 1. Code-split every page route (biggest win)
+Convert the 20+ route files under `src/routes/*` to lazy-load their page module instead of importing it at the top:
 
-3. **Persist last-known role/profile in `localStorage`**
-   - Cache `userRole`, `isSuperAdmin`, `hasAdminAccess` alongside the session so the sidebar/permissions don't flicker on reload while the profile re-fetches in the background.
-   - Refresh from the server after mount; reconcile silently.
+```tsx
+// before
+import Page from "@/app/dashboard/page";
+export const Route = createFileRoute("/dashboard/")({ component: Page });
 
-4. **Remove the 10-second timeout spinner UI** in `ProtectedRoute` (keep the safety redirect, but don't render the red "Authentication timeout" screen — it's only reachable in a broken state and adds nothing for the user).
+// after
+import { lazy } from "react";
+const Page = lazy(() => import("@/app/dashboard/page"));
+export const Route = createFileRoute("/dashboard/")({ component: Page });
+```
 
-5. **Quiet the auth state listener**
-   - In `AuthContext`'s `onAuthStateChange`, ignore `TOKEN_REFRESHED` and `INITIAL_SESSION` events when the user id hasn't changed — currently they re-trigger state updates that can briefly flip `loading`.
+Effect: initial bundle drops dramatically; each route only downloads its own chunk on first visit. Router preloading (already on by default) fetches the chunk on hover/intent, so transitions still feel instant.
 
-## Files to change
+### 2. Fix the hydration mismatch from the auth cache
+- Mark `AuthProvider` to skip SSR-side hydration for the cached state: use `useSyncExternalStore` (snapshot returns `null` on server, real cached user on client) instead of the current `typeof window` branch in `useState` initializer.
+- Result: no hydration warning, no flash, and the synchronous client read still happens before paint.
 
-- `src/app/contexts/AuthContext.jsx` — synchronous hydration, cached role, filtered listener
-- `src/app/components/ProtectedRoute.tsx` — render children when cached session exists, drop timeout UI
-- (optional) small helper `src/lib/authCache.ts` for read/write of cached auth snapshot
+### 3. Set sane React Query defaults
+In the `QueryClient` config (already present in router context):
+```ts
+defaultOptions: {
+  queries: {
+    staleTime: 60_000,           // 1 min — reuse cached data across nav
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false, // no refetch storm on tab focus
+    retry: 1,
+  },
+},
+```
+This alone eliminates many of the per-page reload spinners.
 
-## Result
+### 4. Memoize the layout shell
+- Wrap `Sidebar` and `DashboardLayout` in `React.memo`.
+- In `AuthContext`, memoize the context value with `useMemo` so descendants don't re-render unless `user`/`role`/`loading` actually change. Today the context value is a fresh object every render.
 
-- Hard reload on any protected page: app shell renders instantly, no spinner flash.
-- First-ever login still shows the spinner briefly (expected).
-- Token refresh in the background is invisible to the user.
+### 5. Preload critical assets in `__root.tsx`
+- Add `<link rel="preconnect">` for the Supabase URL and Google Maps origins.
+- Add `rel="modulepreload"` for the dashboard chunk (most users land there post-login).
+
+### 6. Drop dev-only console noise in production builds
+`AuthContext` logs a lot. Wrap the verbose logs in `if (import.meta.env.DEV)` so production isn't paying for `console.log` + JSON serialization on every auth event.
+
+### 7. Optional follow-up (only if still slow after the above)
+- Convert any large in-page tables to virtualized lists (`@tanstack/react-virtual`).
+- Defer Google Maps script loading until a map is actually mounted (lazy import in the map component) instead of at app boot.
+
+## Files touched (rough scope)
+
+- `src/routes/**/index.tsx` — switch to `lazy()` page imports (~25 files, mechanical change)
+- `src/app/contexts/AuthContext.jsx` — `useSyncExternalStore` + `useMemo`, gate logs
+- `src/router.tsx` (or wherever `QueryClient` is created) — `defaultOptions`
+- `src/app/components/Sidebar.jsx`, `src/app/components/DashboardLayout.tsx` — `React.memo`
+- `src/routes/__root.tsx` — preconnect/modulepreload hints
+
+## Expected impact
+
+- Initial JS shipped to first paint: roughly 60–80% smaller.
+- Route transitions: from "blank flash → render" to instant on hover-preloaded routes.
+- No more hydration warning and no "Verifying authentication..." flash on reload.
+- Cached pages re-open instantly instead of re-fetching.
+
+No behavior changes — purely loading/perf work.
