@@ -619,7 +619,7 @@ const UserManagementPage = () => {
                                     type="button"
                                     onClick={() => handleToggleUserStatus(u.id, u.status)}
                                     disabled={!!actionLoading}
-                                    aria-label={u.status === "active" ? "Unpublish user" : "Publish user"}
+                                    aria-label={u.status === "active" ? "Disable user" : "Enable user"}
                                     className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-200 text-orange-600 hover:bg-orange-50 disabled:opacity-50"
                                   >
                                     {u.status === "active" ? (
@@ -630,8 +630,9 @@ const UserManagementPage = () => {
                                   </button>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  {u.status === "active" ? "Unpublish" : "Publish"}
+                                  {u.status === "active" ? "Disable" : "Enable"}
                                 </TooltipContent>
+
                               </Tooltip>
 
                               <Tooltip>
