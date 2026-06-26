@@ -106,7 +106,7 @@ const TopNavigation = ({
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 shadow-sm relative z-30 flex-shrink-0">
+    <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 relative z-30 flex-shrink-0">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {!hideSidebarToggle && (
@@ -141,12 +141,8 @@ const TopNavigation = ({
               <span className="text-sm font-medium text-gray-700">
                 {getWelcomeText()}
               </span>
-              {userProfile?.profile?.role && (
-                <span className="text-[10px] text-gray-500 font-normal">
-                  {userProfile.profile.role.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
-                </span>
-              )}
             </div>
+
           </Button>
 
           <Button 
