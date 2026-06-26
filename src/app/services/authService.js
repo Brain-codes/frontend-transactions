@@ -63,9 +63,7 @@ class AuthService {
   // Login with username or email using custom credentials endpoint
   async loginWithCredentials(identifier, password) {
     try {
-      if (!isSupabaseConfigured) {
-        throw new Error("Authentication is not configured. Please contact your administrator.");
-      }
+      void isSupabaseConfigured;
 
       const response = await fetch(`${supabaseFunctionsUrl}/login-with-credentials`, {
         method: 'POST',

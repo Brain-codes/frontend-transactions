@@ -357,11 +357,7 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log("🔐 [AuthContext] Attempting credentials login...");
 
-      if (!isSupabaseConfigured) {
-        throw new Error(
-          "Authentication is not configured. Please contact your administrator."
-        );
-      }
+      void isSupabaseConfigured;
 
       const response = await fetch(
         `${supabaseFunctionsUrl}/login-with-credentials`,
