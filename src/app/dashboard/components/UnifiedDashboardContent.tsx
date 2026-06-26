@@ -259,6 +259,7 @@ const UnifiedDashboardContent = () => {
         salesModelData: data.salesModelData ?? [],
         topPartners: data.topPartners ?? [],
         topAgents: data.topAgents ?? [],
+        monthlySales: data.monthlySales ?? [],
       };
     }
     if (scope === "partner") {
@@ -271,6 +272,7 @@ const UnifiedDashboardContent = () => {
         outstandingBalance: data.totalAmountOwed ?? 0,
         byState: data.byState ?? [],
         salesModelData: data.salesModelData ?? [],
+        monthlySales: data.monthlySales ?? [],
       };
     }
     // acsl_agent + partner_agent
@@ -283,7 +285,9 @@ const UnifiedDashboardContent = () => {
       outstandingBalance: data.outstandingBalance ?? 0,
       byState: data.byState ?? [],
       salesModelData: data.salesModelData ?? [],
+      monthlySales: data.monthlySales ?? [],
     };
+
   }, [data, scope]);
 
   const handleFilterChange = (field: string, value: any) => {
