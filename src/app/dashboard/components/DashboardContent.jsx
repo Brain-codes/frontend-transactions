@@ -62,6 +62,7 @@ import PageHeader from "../../components/PageHeader";
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: CURRENT_YEAR - 2023 }, (_, i) => 2024 + i);
 const DARK_NAVY = "#4a5d0f";
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const PIE_COLORS = ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#06b6d4"];
 
 const NIGERIAN_STATES = [
@@ -199,10 +200,12 @@ const DashboardContent = ({
   const [stateDropdownOpen, setStateDropdownOpen] = React.useState(false);
   const [branchDropdownOpen, setBranchDropdownOpen] = React.useState(false);
   const [yearDropdownOpen, setYearDropdownOpen] = React.useState(false);
+  const [monthsDropdownOpen, setMonthsDropdownOpen] = React.useState(false);
   const partnerDropdownRef = React.useRef(null);
   const stateDropdownRef = React.useRef(null);
   const branchDropdownRef = React.useRef(null);
   const yearDropdownRef = React.useRef(null);
+  const monthsDropdownRef = React.useRef(null);
 
   React.useEffect(() => {
     const handler = (e) => {
@@ -210,6 +213,7 @@ const DashboardContent = ({
       if (stateDropdownRef.current && !stateDropdownRef.current.contains(e.target)) setStateDropdownOpen(false);
       if (branchDropdownRef.current && !branchDropdownRef.current.contains(e.target)) setBranchDropdownOpen(false);
       if (yearDropdownRef.current && !yearDropdownRef.current.contains(e.target)) setYearDropdownOpen(false);
+      if (monthsDropdownRef.current && !monthsDropdownRef.current.contains(e.target)) setMonthsDropdownOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -243,6 +247,19 @@ const DashboardContent = ({
   const periodLabel = hasDateRange
     ? `${dashboardFilters.dateFrom || ""} – ${dashboardFilters.dateTo || ""}`.trim().replace(/^–\s*|\s*–$/, "")
     : yearLabel;
+
+  // Months multi-select (1..12). Stored on dashboardFilters.months.
+  const selectedMonths = Array.isArray(dashboardFilters.months) ? dashboardFilters.months : [];
+  const allMonthsSelected = selectedMonths.length === 0 || selectedMonths.length === 12;
+  const monthsLabel = allMonthsSelected
+    ? "All Months"
+    : [...selectedMonths].sort((a, b) => a - b).map((m) => MONTHS[m - 1]).join(", ");
+  const toggleMonth = (m) => {
+    const base = allMonthsSelected ? [] : selectedMonths;
+    const set = new Set(base);
+    set.has(m) ? set.delete(m) : set.add(m);
+    onFilterChange?.("months", Array.from(set).sort((a, b) => a - b));
+  };
 
 
   return (
@@ -578,19 +595,65 @@ const DashboardContent = ({
                         );
                       })()}
 
+                      {/* Months Filter */}
+                      <div ref={monthsDropdownRef} className="relative">
+                        <button
+                          type="button"
+                          disabled={hasDateRange}
+                          onClick={() => setMonthsDropdownOpen((o) => !o)}
+                          className="flex items-center justify-between gap-2 h-8 px-3 rounded-md text-xs text-white border min-w-[130px] max-w-[260px] hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100"
+                          style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
+                        >
+                          <span className="truncate text-left">{monthsLabel}</span>
+                          <ChevronDown className={`h-4 w-4 text-white/80 shrink-0 transition-transform ${monthsDropdownOpen ? "rotate-180" : ""}`} />
+                        </button>
+                        {monthsDropdownOpen && !hasDateRange && (
+                          <div className="absolute z-50 top-full right-0 mt-1 w-[170px] bg-white border border-gray-200 rounded-md py-1 text-gray-700 max-h-72 overflow-y-auto">
+                            <button
+                              type="button"
+                              onClick={() => onFilterChange?.("months", [])}
+                              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-blue-50 text-left"
+                            >
+                              <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${allMonthsSelected ? "bg-[#4a5d0f] border-[#4a5d0f]" : "border-gray-300"}`}>
+                                {allMonthsSelected && <Check className="h-2.5 w-2.5 text-white" />}
+                              </span>
+                              All Months
+                            </button>
+                            {MONTHS.map((label, idx) => {
+                              const m = idx + 1;
+                              const checked = !allMonthsSelected && selectedMonths.includes(m);
+                              return (
+                                <button
+                                  key={m}
+                                  type="button"
+                                  onClick={() => toggleMonth(m)}
+                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-blue-50 text-left"
+                                >
+                                  <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${checked ? "bg-[#4a5d0f] border-[#4a5d0f]" : "border-gray-300"}`}>
+                                    {checked && <Check className="h-2.5 w-2.5 text-white" />}
+                                  </span>
+                                  {label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
                       {/* Year Filter */}
                       {multiYear ? (
                         <div ref={yearDropdownRef} className="relative">
                           <button
                             type="button"
+                            disabled={hasDateRange}
                             onClick={() => setYearDropdownOpen((o) => !o)}
-                            className="flex items-center justify-between gap-2 h-8 px-3 rounded-md text-xs text-white border min-w-[110px] max-w-[200px] hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30"
+                            className="flex items-center justify-between gap-2 h-8 px-3 rounded-md text-xs text-white border min-w-[110px] max-w-[200px] hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100"
                             style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
                           >
                             <span className="truncate text-left">{yearLabel}</span>
                             <ChevronDown className={`h-4 w-4 text-white/80 shrink-0 transition-transform ${yearDropdownOpen ? "rotate-180" : ""}`} />
                           </button>
-                          {yearDropdownOpen && (
+                          {yearDropdownOpen && !hasDateRange && (
                             <div className="absolute z-50 top-full right-0 mt-1 w-[160px] bg-white border border-gray-200 rounded-md py-1 text-gray-700">
                               <button
                                 type="button"
@@ -622,9 +685,9 @@ const DashboardContent = ({
                           )}
                         </div>
                       ) : (
-                        <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
+                        <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))} disabled={hasDateRange}>
                           <SelectTrigger
-                            className="w-[100px] h-8 text-xs text-white border hover:brightness-110"
+                            className="w-[100px] h-8 text-xs text-white border hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
                           >
                             <SelectValue />
