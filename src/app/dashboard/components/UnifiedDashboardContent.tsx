@@ -118,6 +118,22 @@ const UnifiedDashboardContent = () => {
     return [...new Set(filtered.map((b: any) => b.branch).filter(Boolean))].sort();
   }, [filters]);
 
+  // If a single month is picked (and there is no custom date range), translate it
+  // into a yyyy-mm-01 / yyyy-mm-last date window so every downstream query
+  // (stats edge fn + sales fetch) actually narrows by month.
+  const monthRange = useMemo(() => {
+    const months: number[] = Array.isArray(filters.months) ? filters.months : [];
+    if (months.length !== 1) return null;
+    if (filters.dateFrom || filters.dateTo) return null;
+    const m = months[0];
+    const y = scope === "global"
+      ? (years.length === 1 ? years[0] : new Date().getFullYear())
+      : year;
+    const mm = String(m).padStart(2, "0");
+    const last = new Date(y, m, 0).getDate();
+    return { from: `${y}-${mm}-01`, to: `${y}-${mm}-${String(last).padStart(2, "0")}` };
+  }, [filters.months, filters.dateFrom, filters.dateTo, years, year, scope]);
+
   // Build the sales-fetch filter that mirrors the active dashboard period filter
   const buildSalesFilters = useCallback(() => {
     const salesFilters: any = {
@@ -135,11 +151,16 @@ const UnifiedDashboardContent = () => {
       if (filters.dateFrom) salesFilters.dateFrom = filters.dateFrom;
       if (filters.dateTo) salesFilters.dateTo = filters.dateTo;
       if (!filters.dateFrom && !filters.dateTo) {
-        const ys = years.length ? years : ALL_YEARS;
-        const minY = Math.min(...ys);
-        const maxY = Math.max(...ys);
-        salesFilters.dateFrom = `${minY}-01-01`;
-        salesFilters.dateTo = `${maxY}-12-31`;
+        if (monthRange) {
+          salesFilters.dateFrom = monthRange.from;
+          salesFilters.dateTo = monthRange.to;
+        } else {
+          const ys = years.length ? years : ALL_YEARS;
+          const minY = Math.min(...ys);
+          const maxY = Math.max(...ys);
+          salesFilters.dateFrom = `${minY}-01-01`;
+          salesFilters.dateTo = `${maxY}-12-31`;
+        }
       }
       if (filters.state) salesFilters.state = filters.state;
       if (filters.branch) salesFilters.branch = filters.branch;
@@ -162,15 +183,20 @@ const UnifiedDashboardContent = () => {
       if (dateFrom) salesFilters.dateFrom = dateFrom;
       if (dateTo) salesFilters.dateTo = dateTo;
       if (!dateFrom && !dateTo) {
-        salesFilters.dateFrom = `${year}-01-01`;
-        salesFilters.dateTo = `${year}-12-31`;
+        if (monthRange) {
+          salesFilters.dateFrom = monthRange.from;
+          salesFilters.dateTo = monthRange.to;
+        } else {
+          salesFilters.dateFrom = `${year}-01-01`;
+          salesFilters.dateTo = `${year}-12-31`;
+        }
       }
       const orgId = getOrganizationId?.();
       if (orgId) salesFilters.organization_id = orgId;
     }
 
     return salesFilters;
-  }, [scope, year, years, dateFrom, dateTo, filters, getOrganizationId]);
+  }, [scope, year, years, dateFrom, dateTo, filters, monthRange, getOrganizationId]);
 
   // Fetch dashboard stats based on scope (plus monthly sales aggregation)
   const fetchData = useCallback(async () => {
