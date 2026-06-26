@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UserManagementIndexRouteImport } from './routes/user-management/index'
 import { Route as UnauthorizedIndexRouteImport } from './routes/unauthorized/index'
-import { Route as UitestIndexRouteImport } from './routes/uitest/index'
 import { Route as SuperAdminAgentsIndexRouteImport } from './routes/super-admin-agents/index'
 import { Route as SuperAdminAgentIndexRouteImport } from './routes/super-admin-agent/index'
 import { Route as StoveTransferHistoryIndexRouteImport } from './routes/stove-transfer-history/index'
@@ -73,11 +72,6 @@ const UserManagementIndexRoute = UserManagementIndexRouteImport.update({
 const UnauthorizedIndexRoute = UnauthorizedIndexRouteImport.update({
   id: '/unauthorized/',
   path: '/unauthorized/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const UitestIndexRoute = UitestIndexRouteImport.update({
-  id: '/uitest/',
-  path: '/uitest/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SuperAdminAgentsIndexRoute = SuperAdminAgentsIndexRouteImport.update({
@@ -345,7 +339,6 @@ export interface FileRoutesByFullPath {
   '/stove-transfer-history/': typeof StoveTransferHistoryIndexRoute
   '/super-admin-agent/': typeof SuperAdminAgentIndexRoute
   '/super-admin-agents/': typeof SuperAdminAgentsIndexRoute
-  '/uitest/': typeof UitestIndexRoute
   '/unauthorized/': typeof UnauthorizedIndexRoute
   '/user-management/': typeof UserManagementIndexRoute
   '/admin/agents/': typeof AdminAgentsIndexRoute
@@ -397,7 +390,6 @@ export interface FileRoutesByTo {
   '/stove-transfer-history': typeof StoveTransferHistoryIndexRoute
   '/super-admin-agent': typeof SuperAdminAgentIndexRoute
   '/super-admin-agents': typeof SuperAdminAgentsIndexRoute
-  '/uitest': typeof UitestIndexRoute
   '/unauthorized': typeof UnauthorizedIndexRoute
   '/user-management': typeof UserManagementIndexRoute
   '/admin/agents': typeof AdminAgentsIndexRoute
@@ -450,7 +442,6 @@ export interface FileRoutesById {
   '/stove-transfer-history/': typeof StoveTransferHistoryIndexRoute
   '/super-admin-agent/': typeof SuperAdminAgentIndexRoute
   '/super-admin-agents/': typeof SuperAdminAgentsIndexRoute
-  '/uitest/': typeof UitestIndexRoute
   '/unauthorized/': typeof UnauthorizedIndexRoute
   '/user-management/': typeof UserManagementIndexRoute
   '/admin/agents/': typeof AdminAgentsIndexRoute
@@ -504,7 +495,6 @@ export interface FileRouteTypes {
     | '/stove-transfer-history/'
     | '/super-admin-agent/'
     | '/super-admin-agents/'
-    | '/uitest/'
     | '/unauthorized/'
     | '/user-management/'
     | '/admin/agents/'
@@ -556,7 +546,6 @@ export interface FileRouteTypes {
     | '/stove-transfer-history'
     | '/super-admin-agent'
     | '/super-admin-agents'
-    | '/uitest'
     | '/unauthorized'
     | '/user-management'
     | '/admin/agents'
@@ -608,7 +597,6 @@ export interface FileRouteTypes {
     | '/stove-transfer-history/'
     | '/super-admin-agent/'
     | '/super-admin-agents/'
-    | '/uitest/'
     | '/unauthorized/'
     | '/user-management/'
     | '/admin/agents/'
@@ -661,7 +649,6 @@ export interface RootRouteChildren {
   StoveTransferHistoryIndexRoute: typeof StoveTransferHistoryIndexRoute
   SuperAdminAgentIndexRoute: typeof SuperAdminAgentIndexRoute
   SuperAdminAgentsIndexRoute: typeof SuperAdminAgentsIndexRoute
-  UitestIndexRoute: typeof UitestIndexRoute
   UnauthorizedIndexRoute: typeof UnauthorizedIndexRoute
   UserManagementIndexRoute: typeof UserManagementIndexRoute
   AdminAgentsIndexRoute: typeof AdminAgentsIndexRoute
@@ -714,13 +701,6 @@ declare module '@tanstack/react-router' {
       path: '/unauthorized'
       fullPath: '/unauthorized/'
       preLoaderRoute: typeof UnauthorizedIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/uitest/': {
-      id: '/uitest/'
-      path: '/uitest'
-      fullPath: '/uitest/'
-      preLoaderRoute: typeof UitestIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/super-admin-agents/': {
@@ -1069,7 +1049,6 @@ const rootRouteChildren: RootRouteChildren = {
   StoveTransferHistoryIndexRoute: StoveTransferHistoryIndexRoute,
   SuperAdminAgentIndexRoute: SuperAdminAgentIndexRoute,
   SuperAdminAgentsIndexRoute: SuperAdminAgentsIndexRoute,
-  UitestIndexRoute: UitestIndexRoute,
   UnauthorizedIndexRoute: UnauthorizedIndexRoute,
   UserManagementIndexRoute: UserManagementIndexRoute,
   AdminAgentsIndexRoute: AdminAgentsIndexRoute,

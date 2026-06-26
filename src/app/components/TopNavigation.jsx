@@ -116,9 +116,7 @@ const TopNavigation = ({
               <span className="text-sm font-medium text-gray-700">
                 {getWelcomeText()}
               </span>
-              {typeof window !== "undefined" && 
-               (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && 
-               userProfile?.profile?.role && (
+              {userProfile?.profile?.role && (
                 <span className="text-[10px] text-gray-500 font-normal">
                   {userProfile.profile.role.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
                 </span>

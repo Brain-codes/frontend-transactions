@@ -11,14 +11,25 @@ export type AppRole =
 export type RouteKey =
   | "dashboard"
   | "sales"
+  | "sales-create"
+  | "sales-financial-reports"
   | "partners"
   | "agents"
   | "stove-management"
   | "stove-manager"
   | "stove-transfer-history"
   | "agreement-images"
+  | "map"
   | "settings"
-  | "profile";
+  | "settings-payment-models"
+  | "settings-credentials"
+  | "settings-system-config"
+  | "settings-user-management"
+  | "settings-tools"
+  | "payment-models"
+  | "profile"
+  | "docs"
+  | "sales-monitoring-app";
 
 export type FeatureKey =
   | "global-filters"
@@ -34,7 +45,15 @@ export type FeatureKey =
   | "my-partners-filter"
   | "manage-agents"
   | "org-sales-view"
-  | "manage-acsl-agents-scoped";
+  | "manage-acsl-agents-scoped"
+  | "impersonate"
+  | "override-assignments"
+  | "approve-sales"
+  | "reset-any-password"
+  | "edit-any-partner"
+  | "edit-any-agent"
+  | "view-all-records"
+  | "tools";
 
 interface RolePermissions {
   routes: RouteKey[];
@@ -48,46 +67,72 @@ export const ROLE_ALIASES: Record<string, AppRole> = {
   agent: "partner_agent",
 };
 
+const ALL_ROUTES: RouteKey[] = [
+  "dashboard",
+  "sales",
+  "sales-create",
+  "sales-financial-reports",
+  "partners",
+  "agents",
+  "stove-management",
+  "stove-manager",
+  "stove-transfer-history",
+  "agreement-images",
+  "map",
+  "settings",
+  "settings-payment-models",
+  "settings-credentials",
+  "settings-system-config",
+  "settings-user-management",
+  "settings-tools",
+  "payment-models",
+  "profile",
+  "docs",
+  "sales-monitoring-app",
+];
+
+const ALL_FEATURES: FeatureKey[] = [
+  "global-filters",
+  "manage-all-partners",
+  "manage-acsl-agents",
+  "manage-partner-agents",
+  "payment-models",
+  "user-management",
+  "credentials",
+  "system-config",
+  "stove-allocation",
+  "create-sale",
+  "my-partners-filter",
+  "manage-agents",
+  "org-sales-view",
+  "manage-acsl-agents-scoped",
+  "impersonate",
+  "override-assignments",
+  "approve-sales",
+  "reset-any-password",
+  "edit-any-partner",
+  "edit-any-agent",
+  "view-all-records",
+  "tools",
+];
+
 export const PERMISSIONS: Record<string, RolePermissions> = {
+  // Super admin: every route, every feature.
   super_admin: {
-    routes: [
-      "dashboard",
-      "sales",
-      "partners",
-      "agents",
-      "stove-management",
-      "stove-manager",
-      "stove-transfer-history",
-      "agreement-images",
-      "settings",
-      "profile",
-    ],
-    features: [
-      "global-filters",
-      "manage-all-partners",
-      "manage-acsl-agents",
-      "manage-partner-agents",
-      "payment-models",
-      "user-management",
-      "credentials",
-      "system-config",
-      "stove-allocation",
-      "create-sale",
-      "my-partners-filter",
-      "manage-agents",
-      "org-sales-view",
-    ],
+    routes: ALL_ROUTES,
+    features: ALL_FEATURES,
   },
   acsl_agent_manager: {
-    // Same pages as super_admin except settings and transfer history — data is filtered to assigned states/partners
     routes: [
       "dashboard",
       "sales",
+      "sales-create",
       "partners",
       "agents",
       "stove-management",
       "stove-manager",
       "profile",
+      "sales-monitoring-app",
     ],
     features: [
       "my-partners-filter",
@@ -97,15 +142,33 @@ export const PERMISSIONS: Record<string, RolePermissions> = {
     ],
   },
   acsl_agent: {
-    routes: ["dashboard", "sales", "partners", "stove-management", "stove-manager", "profile"],
+    routes: [
+      "dashboard",
+      "sales",
+      "sales-create",
+      "partners",
+      "stove-management",
+      "stove-manager",
+      "profile",
+      "sales-monitoring-app",
+    ],
     features: ["my-partners-filter", "stove-allocation", "create-sale"],
   },
   partner: {
-    routes: ["dashboard", "sales", "agents", "stove-management", "stove-manager", "profile"],
+    routes: [
+      "dashboard",
+      "sales",
+      "sales-create",
+      "agents",
+      "stove-management",
+      "stove-manager",
+      "profile",
+      "sales-monitoring-app",
+    ],
     features: ["manage-agents", "org-sales-view", "create-sale"],
   },
   partner_agent: {
-    routes: ["dashboard", "sales", "stove-manager"],
+    routes: ["dashboard", "sales", "sales-create", "stove-manager", "profile", "sales-monitoring-app"],
     features: ["create-sale"],
   },
 };
@@ -118,4 +181,8 @@ export function resolveRole(role: string | null | undefined): string | null {
 export function getRolePermissions(role: string | null | undefined): RolePermissions {
   const resolved = resolveRole(role);
   return PERMISSIONS[resolved ?? ""] ?? { routes: [], features: [] };
+}
+
+export function isSuperAdminRole(role: string | null | undefined): boolean {
+  return resolveRole(role) === "super_admin";
 }
