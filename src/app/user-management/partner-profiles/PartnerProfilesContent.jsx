@@ -260,9 +260,8 @@ const PartnerProfilesContent = () => {
                                 type="button"
                                 onClick={() => setEditingPartner(p)}
                                 aria-label="Edit partner"
-                                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-orange-500 text-white text-xs font-medium shadow-sm hover:bg-orange-600 active:scale-[0.98] transition"
+                                className="inline-flex items-center justify-center h-8 px-3 rounded-md bg-orange-500 text-white text-xs font-medium shadow-sm hover:bg-orange-600 active:scale-[0.98] transition"
                               >
-                                <SquarePen className="h-3.5 w-3.5" />
                                 Edit
                               </button>
                             </TooltipTrigger>
