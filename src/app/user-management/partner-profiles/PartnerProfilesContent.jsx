@@ -38,6 +38,9 @@ import PageHeader from "../../components/PageHeader";
 import organizationsService from "../../services/organizationsService";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import PartnerDetailsModal from "../../partners/components/PartnerDetailsModal";
+import EditPartnerModal from "../../partners/components/EditPartnerModal";
+import ViewCredentialModal from "../../admin/components/credentials/ViewCredentialModal";
+import adminCredentialsService from "../../services/adminCredentialsService";
 
 const PAGE_SIZE = 10;
 
@@ -48,20 +51,40 @@ const PartnerProfilesContent = () => {
   const [filters, setFilters] = useState({ search: "", state: "" });
   const [page, setPage] = useState(1);
   const [detailsPartner, setDetailsPartner] = useState(null);
+  const [editingPartner, setEditingPartner] = useState(null);
+  const [viewingCredential, setViewingCredential] = useState(null);
+  const [loadingCredentialOrgId, setLoadingCredentialOrgId] = useState(null);
+
+  const loadPartners = async () => {
+    setLoading(true);
+    const res = await organizationsService.getAllOrganizations();
+    if (res.success) {
+      setPartners(res.data);
+    } else {
+      toast({ variant: "error", title: "Failed to load partners", description: res.error });
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const res = await organizationsService.getAllOrganizations();
-      if (res.success) {
-        setPartners(res.data);
-      } else {
-        toast({ variant: "error", title: "Failed to load partners", description: res.error });
-      }
-      setLoading(false);
-    };
-    load();
+    loadPartners();
   }, []);
+
+  const handleViewCredentials = async (org) => {
+    setLoadingCredentialOrgId(org.id);
+    try {
+      const res = await adminCredentialsService.getCredentialByPartnerId(org.partner_id);
+      if (res.success && res.data) {
+        setViewingCredential(res.data);
+      } else {
+        toast({ variant: "error", title: "No credentials found", description: res.error || "This partner has no credentials." });
+      }
+    } catch (err) {
+      toast({ variant: "error", title: "Error", description: err.message });
+    } finally {
+      setLoadingCredentialOrgId(null);
+    }
+  };
 
   const states = useMemo(() => {
     const s = new Set();
@@ -215,11 +238,16 @@ const PartnerProfilesContent = () => {
                             <TooltipTrigger asChild>
                               <button
                                 type="button"
-                                onClick={() => toast({ variant: "info", title: "Credentials", description: "Coming soon" })}
+                                onClick={() => handleViewCredentials(p)}
+                                disabled={loadingCredentialOrgId === p.id}
                                 aria-label="Credentials"
-                                className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-200 text-indigo-600 hover:bg-indigo-50"
+                                className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-60"
                               >
-                                <KeyRound className="h-4 w-4" />
+                                {loadingCredentialOrgId === p.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <KeyRound className="h-4 w-4" />
+                                )}
                               </button>
                             </TooltipTrigger>
                             <TooltipContent>Credentials</TooltipContent>
@@ -229,7 +257,7 @@ const PartnerProfilesContent = () => {
                             <TooltipTrigger asChild>
                               <button
                                 type="button"
-                                onClick={() => toast({ variant: "info", title: "Edit Partner", description: "Coming soon" })}
+                                onClick={() => setEditingPartner(p)}
                                 aria-label="Edit partner"
                                 className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-200 text-orange-600 hover:bg-orange-50"
                               >
@@ -296,6 +324,22 @@ const PartnerProfilesContent = () => {
           onClose={() => setDetailsPartner(null)}
         />
       )}
+
+      <EditPartnerModal
+        organization={editingPartner}
+        isOpen={!!editingPartner}
+        onClose={() => setEditingPartner(null)}
+        onSuccess={() => {
+          setEditingPartner(null);
+          loadPartners();
+        }}
+      />
+
+      <ViewCredentialModal
+        isOpen={!!viewingCredential}
+        onClose={() => setViewingCredential(null)}
+        credential={viewingCredential}
+      />
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
