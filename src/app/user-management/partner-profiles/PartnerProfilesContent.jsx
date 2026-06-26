@@ -51,6 +51,40 @@ const PartnerProfilesContent = () => {
   const [filters, setFilters] = useState({ search: "", state: "" });
   const [page, setPage] = useState(1);
   const [detailsPartner, setDetailsPartner] = useState(null);
+  const [editingPartner, setEditingPartner] = useState(null);
+  const [viewingCredential, setViewingCredential] = useState(null);
+  const [loadingCredentialOrgId, setLoadingCredentialOrgId] = useState(null);
+
+  const loadPartners = async () => {
+    setLoading(true);
+    const res = await organizationsService.getAllOrganizations();
+    if (res.success) {
+      setPartners(res.data);
+    } else {
+      toast({ variant: "error", title: "Failed to load partners", description: res.error });
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadPartners();
+  }, []);
+
+  const handleViewCredentials = async (org) => {
+    setLoadingCredentialOrgId(org.id);
+    try {
+      const res = await adminCredentialsService.getCredentialByPartnerId(org.partner_id);
+      if (res.success && res.data) {
+        setViewingCredential(res.data);
+      } else {
+        toast({ variant: "error", title: "No credentials found", description: res.error || "This partner has no credentials." });
+      }
+    } catch (err) {
+      toast({ variant: "error", title: "Error", description: err.message });
+    } finally {
+      setLoadingCredentialOrgId(null);
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
