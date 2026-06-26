@@ -225,18 +225,25 @@ const UnifiedDashboardContent = () => {
           if (filters.branch) payload.branch = filters.branch;
           if (filters.dateFrom) payload.date_from = filters.dateFrom;
           if (filters.dateTo) payload.date_to = filters.dateTo;
+          if (!filters.dateFrom && !filters.dateTo && monthRange) {
+            payload.date_from = monthRange.from;
+            payload.date_to = monthRange.to;
+          }
+          if (Array.isArray(filters.months) && filters.months.length) {
+            payload.months = filters.months;
+          }
           return superAdminDashboardService.getDashboardStats(payload);
         } else if (scope === "acsl_agent" || scope === "partner_agent") {
           return superAdminAgentService.getDashboardStats({
-            year: (!dateFrom && !dateTo) ? year : undefined,
-            date_from: dateFrom || undefined,
-            date_to: dateTo || undefined,
+            year: (!dateFrom && !dateTo && !monthRange) ? year : undefined,
+            date_from: dateFrom || monthRange?.from || undefined,
+            date_to: dateTo || monthRange?.to || undefined,
           });
         }
         return adminDashboardService.getDashboardStats({
-          year: (!dateFrom && !dateTo) ? year : undefined,
-          date_from: dateFrom || undefined,
-          date_to: dateTo || undefined,
+          year: (!dateFrom && !dateTo && !monthRange) ? year : undefined,
+          date_from: dateFrom || monthRange?.from || undefined,
+          date_to: dateTo || monthRange?.to || undefined,
         });
       })();
 
