@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -14,6 +15,37 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/app/contexts/AuthContext";
 import { ToastProvider } from "@/app/contexts/ToastContext";
 import { SidebarProvider } from "@/app/contexts/SidebarContext";
+import ProtectedRoute from "@/app/components/ProtectedRoute";
+import DashboardLayout from "@/app/components/DashboardLayout";
+
+// Routes whose top URL segment renders WITHOUT the authenticated shell.
+const PUBLIC_PATH_PREFIXES = [
+  "/login",
+  "/unauthorized",
+  "/download",
+  "/sales-monitoring-app",
+];
+
+function isPublicPath(pathname: string): boolean {
+  if (pathname === "/") return true;
+  return PUBLIC_PATH_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+}
+
+function AppShell() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  if (isPublicPath(pathname)) {
+    return <Outlet />;
+  }
+  return (
+    <ProtectedRoute>
+      <DashboardLayout>
+        <Outlet />
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
+}
 
 function NotFoundComponent() {
   return (
