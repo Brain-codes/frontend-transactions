@@ -555,15 +555,6 @@ const UserManagementPage = () => {
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Role</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Status</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Last Active</TableHead>
-                    <TableHead
-                      className="text-white font-semibold text-xs whitespace-nowrap cursor-pointer select-none"
-                      onClick={() => handleSort("created_at")}
-                    >
-                      <div className="flex items-center">
-                        Created At
-                        <SortIcon column="created_at" />
-                      </div>
-                    </TableHead>
                     <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
