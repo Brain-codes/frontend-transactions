@@ -642,6 +642,8 @@ const DashboardContent = ({
                                   onFilterChange?.("dateTo", range?.to ? format(range.to, "yyyy-MM-dd") : null);
                                 }}
                                 numberOfMonths={2}
+                                disabled={{ after: new Date() }}
+                                toDate={new Date()}
                                 className="p-3 pointer-events-auto"
                               />
                             </PopoverContent>
