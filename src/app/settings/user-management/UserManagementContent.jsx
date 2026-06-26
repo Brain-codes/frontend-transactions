@@ -598,11 +598,6 @@ const UserManagementPage = () => {
                           {formatRelativeTime(u.last_login)}
                         </TableCell>
 
-                        {/* Created At */}
-                        <TableCell className="text-xs text-gray-600">
-                          {formatDate(u.created_at)}
-                        </TableCell>
-
                         {/* Actions — kebab menu */}
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center">
@@ -622,10 +617,13 @@ const UserManagementPage = () => {
                                   )}
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuContent align="end" className="w-48">
+                                <div className="px-2 py-1 text-[11px] text-gray-500 bg-gray-50/80 rounded-t-sm font-medium border-b border-gray-100">
+                                  Created: {formatDate(u.created_at)}
+                                </div>
                                 {["acsl_agent", "super_admin_agent"].includes(u.role) && (
                                   <>
-                                    <div className="px-2 py-1.5 text-[11px] text-gray-500 bg-gray-50/80 rounded-t-sm font-medium border-b border-gray-100">
+                                    <div className="px-2 py-1.5 text-[11px] text-gray-500 bg-gray-50/80 font-medium border-b border-gray-100">
                                       Assigned: {u.assigned_organizations_count ?? 0} {(u.assigned_organizations_count ?? 0) === 1 ? "Org" : "Orgs"} · {u.assigned_states_count ?? 0} {(u.assigned_states_count ?? 0) === 1 ? "State" : "States"}
                                     </div>
                                     <DropdownMenuItem
