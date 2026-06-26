@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import useOrganizations from "../../hooks/useOrganizations";
 import { useAuth } from "../../contexts/AuthContext";
+import { usePermissions } from "../../hooks/usePermissions";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import { lgaAndStates } from "../../constants";
 import superAdminAgentService from "../../services/superAdminAgentService";
@@ -784,9 +785,30 @@ const PartnerDetailModal = ({ organization, isOpen, onClose, onEdit }) => {
 
 // ── Main Content ──────────────────────────────────────────────────────────────
 
-export default function SuperAdminPartnersContent() {
-  const { supabase } = useAuth();
+export default function PartnersContent() {
+  const { supabase, user } = useAuth();
   const { toast, toasts, removeToast } = useToast();
+  const { can, isSuperAdmin } = usePermissions();
+
+  // Scope: super_admin sees all partners; ACSL agents/managers see only their assignments.
+  const scopedToAssigned = !isSuperAdmin;
+  const [assignedOrgIds, setAssignedOrgIds] = useState(null); // null = not loaded yet
+  const [assignedLoading, setAssignedLoading] = useState(scopedToAssigned);
+  useEffect(() => {
+    if (!scopedToAssigned) { setAssignedOrgIds(null); setAssignedLoading(false); return; }
+    if (!user?.id) return;
+    let cancelled = false;
+    setAssignedLoading(true);
+    superAdminAgentService.getAgentOrganizations(user.id)
+      .then((res) => {
+        if (cancelled) return;
+        const ids = new Set((res?.data || []).map((o) => o.id || o.organization_id).filter(Boolean));
+        setAssignedOrgIds(ids);
+      })
+      .catch(() => { if (!cancelled) setAssignedOrgIds(new Set()); })
+      .finally(() => { if (!cancelled) setAssignedLoading(false); });
+    return () => { cancelled = true; };
+  }, [scopedToAssigned, user?.id]);
 
   const ORG_CACHE_KEY = "partners_organizations_cache";
   const ORG_CACHE_TIMESTAMP_KEY = "partners_organizations_cache_timestamp";
@@ -1093,6 +1115,7 @@ export default function SuperAdminPartnersContent() {
   };
 
   const filteredOrgs = organizationsData.filter((o) => {
+    if (scopedToAssigned && assignedOrgIds && !assignedOrgIds.has(o.id)) return false;
     if (filters.assigned_agents === "assigned") return orgAgentsData[o.id] !== undefined && orgAgentsData[o.id].length > 0;
     if (filters.assigned_agents === "unassigned") return orgAgentsData[o.id] !== undefined && orgAgentsData[o.id].length === 0;
     return true;
@@ -1468,15 +1491,21 @@ export default function SuperAdminPartnersContent() {
                               <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="View Details" onClick={() => handleViewDetails(org)}>
                                 Details
                               </Button>
-                              <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="View Credentials" onClick={() => handleViewCredentials(org)} disabled={loadingCredentialOrgId === org.id}>
-                                {loadingCredentialOrgId === org.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}Credentials
-                              </Button>
-                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs border-brand text-brand hover:bg-brand/10" title="Edit Partner Details" onClick={() => setEditingPartnerOrg(org)}>
-                                <Edit className="h-3.5 w-3.5 mr-1" />Edit
-                              </Button>
-                              <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="Stove Transfer History" onClick={() => setTransferHistoryOrg(org)}>
-                                Stove Transfer History
-                              </Button>
+                              {can("credentials") && (
+                                <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="View Credentials" onClick={() => handleViewCredentials(org)} disabled={loadingCredentialOrgId === org.id}>
+                                  {loadingCredentialOrgId === org.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}Credentials
+                                </Button>
+                              )}
+                              {can("edit-any-partner") && (
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-xs border-brand text-brand hover:bg-brand/10" title="Edit Partner Details" onClick={() => setEditingPartnerOrg(org)}>
+                                  <Edit className="h-3.5 w-3.5 mr-1" />Edit
+                                </Button>
+                              )}
+                              {can("manage-all-partners") && (
+                                <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="Stove Transfer History" onClick={() => setTransferHistoryOrg(org)}>
+                                  Stove Transfer History
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
