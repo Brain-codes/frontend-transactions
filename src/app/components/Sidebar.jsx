@@ -47,6 +47,7 @@ const allNavItems = [
     icon: UserCheck,
     route: "partners",
     children: [
+      { name: "Partner Profiles", route: "partners-profiles", href: "/partners/profiles" },
       { name: "Track Performance", route: "partners", href: "/partners" },
     ],
   },
