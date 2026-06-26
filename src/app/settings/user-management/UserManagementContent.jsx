@@ -63,6 +63,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 import PageHeader from "../../components/PageHeader";
 import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AssignOrganizationsModal from "../../super-admin-agents/components/AssignOrganizationsModal";
