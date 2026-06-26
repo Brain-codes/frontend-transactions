@@ -639,6 +639,9 @@ const UserManagementPage = () => {
                               <DropdownMenuContent align="end" className="w-44">
                                 {["acsl_agent", "super_admin_agent"].includes(u.role) && (
                                   <>
+                                    <div className="px-2 py-1.5 text-[11px] text-gray-500 bg-gray-50/80 rounded-t-sm font-medium border-b border-gray-100">
+                                      Assigned: {u.assigned_organizations_count ?? 0} {(u.assigned_organizations_count ?? 0) === 1 ? "Org" : "Orgs"} · {u.assigned_states_count ?? 0} {(u.assigned_states_count ?? 0) === 1 ? "State" : "States"}
+                                    </div>
                                     <DropdownMenuItem
                                       onClick={() => { setSelectedUserForOrgs(u); setShowAssignOrgsModal(true); }}
                                     >
