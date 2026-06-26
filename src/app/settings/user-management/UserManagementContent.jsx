@@ -544,7 +544,7 @@ const UserManagementPage = () => {
               )}
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-brand hover:bg-brand">
+                  <TableRow className="hover:opacity-100" style={{ backgroundColor: "#4a5d0f" }}>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Name</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Email</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone</TableHead>
