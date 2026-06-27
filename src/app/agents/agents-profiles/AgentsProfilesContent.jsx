@@ -58,6 +58,7 @@ const AgentsProfilesContent = () => {
 
   const [detailsAgent, setDetailsAgent] = useState(null);
   const [editingAgent, setEditingAgent] = useState(null);
+  const [assignAgent, setAssignAgent] = useState(null);
   const [credentialAgent, setCredentialAgent] = useState(null);
   const [credentialData, setCredentialData] = useState(null);
   const [loadingCredentialId, setLoadingCredentialId] = useState(null);
