@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
+import MonthlySalesChart from "../../partners/components/MonthlySalesChart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -2049,6 +2050,9 @@ export default function SuperAdminAgentsContent() {
             </Button>
           </div>
         )}
+
+        {/* Monthly Records Collection Chart */}
+        <MonthlySalesChart />
 
         {/* Active filter banner */}
         {sortMode !== "default" && (
