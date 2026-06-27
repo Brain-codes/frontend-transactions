@@ -1,38 +1,40 @@
-## Goal
-Make the "Sales by State" block on Track Performance look pixel-close to the attached reference, and ensure every Nigerian state appears in the bar list (zero-sale states included), with the Top filter controlling how many show.
+## Problem
 
-## Changes (single file: `src/app/partners/components/SalesByStateChart.jsx`)
+`CreateSalesForm` (used by `/sales/create`) decides how to source the organization based on `userRole`:
 
-1. **Seed all 36 states + FCT** so they always render even with zero sales:
-   - Maintain a constant `NIGERIAN_STATES` list (Abia, Adamawa, …, Zamfara, FCT).
-   - Build counts from sales rows, then merge into the full state list (missing states default to 0).
-   - Sort descending by value, then slice by `topN`. Zero-value states still render as a thin baseline tick (like Ondo/Benue in the reference).
+- **SAA roles** (`super_admin`, `acsl_agent`, `acsl_agent_manager`, `super_admin_agent`): show a partner picker, store the chosen org in `sessionStorage` (`saa_selected_org_id`).
+- **All other roles** (partner, partner_agent, anything new): read `organization_id` from the cached profile via `profileService.getOrganizationId()`.
 
-2. **Card shell** — match reference exactly:
-   - White card, `rounded-xl`, soft `shadow-sm`, light gray border.
-   - Header bar: solid navy `#1e3a5f`, title "Sales by State" left in white semibold.
+When that profile lookup returns nothing (stale cache, profile not yet fetched, user without an org assigned, or any role not in the SAA list), the form aborts with **"Organization ID not found. Please log in again."** That's the error currently blocking some users.
 
-3. **Header filter pills** (right side, white pill style from reference):
-   - "Filter by date range" — white pill, calendar icon, gray placeholder text, opens existing range Calendar popover (no future dates).
-   - "All Months" pill — white pill with chevron, opens months dropdown.
-   - "Top 10" pill — white pill with thicker white ring/border to look "selected" like the reference, opens 5/10/15/20/50.
-   - All three: `h-9`, `rounded-md`, subtle shadow, 12px font, consistent spacing.
+The user wants one single sales form that works for every role, with no role-based dead ends.
 
-4. **Chart (Recharts horizontal BarChart)**:
-   - `layout="vertical"`, height scales with row count (≈ `rows * 38px`, min 360).
-   - `barCategoryGap={4}` and `barSize={20}` so bars sit close together like the reference.
-   - Solid navy fill `#1e3a5f` for all bars (no gradient — reference uses a single tone with very subtle lightening at the bottom; we'll keep it uniform navy to match the dominant look).
-   - `YAxis`: state names, no axis line, no tick line, dark gray text.
-   - `XAxis`: numeric, light gray ticks, light axis line, `allowDecimals={false}`.
-   - `CartesianGrid`: dashed vertical lines only (`horizontal={false}`).
-   - `LabelList` on the right of each bar showing the value (gray, 11px).
-   - Tooltip: rounded, light border, "Sales" label.
+## Fix
 
-5. **Data logic** unchanged otherwise:
-   - Uses `salesAdvancedService.getSalesData` (same source as before).
-   - Filters by `dateRange` and `month` before aggregation.
-   - State key resolution falls back through `state_backup → state → address.state`; unknown values are dropped (not bucketed as "Unknown") so the 36 + FCT list stays clean.
+Make the form universally functional by removing the hard role gate and falling back to the partner picker whenever an org isn't already known.
 
-## Out of scope
-- No changes to `PartnersContent.jsx` layout, the Monthly Sales chart, or the Sales by Models placeholder.
-- No backend/service changes.
+### Changes to `src/app/admin/components/sales/CreateSalesForm.jsx`
+
+1. Replace the static `isSuperAdmin` flag with a dynamic `needsPartnerSelection` state:
+   - `true` whenever `profileService.getOrganizationId()` returns nothing AND no `saa_selected_org_id` is in sessionStorage.
+   - This covers SAA roles (no personal org) and any other user whose profile org is missing.
+2. Before computing it, await `profileService.fetchAndStoreProfile()` once on mount so a fresh login or cache miss is resolved before we decide.
+3. Drive partner search visibility, stove fetching, and the "Organization ID not found" guard off `needsPartnerSelection` instead of `isSuperAdmin`. Users with a valid profile org keep the current auto-flow; users without one (regardless of role) get the partner picker.
+4. Remove the `setError("Organization ID not found. Please log in again.")` line entirely — once the picker is the fallback, that dead end no longer exists. Show a small inline hint ("Select a partner to load available stoves") instead.
+5. Keep `userRole`/`userId` only to choose the partner data source:
+   - `super_admin` → `manage-organizations` (all partners).
+   - SAA agent roles → `superAdminAgentService.getAgentOrganizations(userId)` (their assigned partners).
+   - Any other role that ends up needing the picker → same `manage-organizations` listing, filtered by what RLS allows them to see. No new permission rules.
+6. On submit, source `organizationId` from (in order): selected partner → `saa_selected_org_id` → `profileService.getOrganizationId()`. Same precedence everywhere — no role branching.
+
+### Out of scope
+
+- No changes to routing, permissions, RLS, or the create-sale API.
+- No visual redesign of the form; only the gating logic and the partner-picker visibility change.
+
+## Verification
+
+- Log in as a partner with a valid org → form loads stoves automatically (unchanged).
+- Log in as `super_admin` → partner picker appears, then stoves load (unchanged).
+- Log in as any user whose profile is missing `organization_id` → partner picker now appears instead of the blocking error.
+- Confirm no console errors and the create flow completes for each case.
