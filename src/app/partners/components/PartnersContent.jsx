@@ -1490,8 +1490,8 @@ export default function PartnersContent() {
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
-                      <button type="button" onClick={() => cycleStoveSort("received")} className="inline-flex items-center gap-1 mx-auto hover:opacity-90" title="Sort by Received">
-                        Received <SortIcon col="received" />
+                      <button type="button" onClick={() => cycleStoveSort("received")} className="inline-flex items-center gap-1 mx-auto hover:opacity-90" title="Sort by Purchased">
+                        Purchased <SortIcon col="received" />
                       </button>
                     </TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
