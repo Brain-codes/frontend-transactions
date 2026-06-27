@@ -113,7 +113,36 @@ const PartnerProfilesContent = () => {
   const startRecord = filtered.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const endRecord = Math.min(currentPage * PAGE_SIZE, filtered.length);
 
+  // Fetch agent counts for currently visible partners (lazy, cached)
+  useEffect(() => {
+    const missing = pageRows.filter((p) => agentCounts[p.id] === undefined);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const results = await Promise.all(
+        missing.map(async (p) => {
+          try {
+            const res = await superAdminAgentService.getAgentsByOrganization(p.id);
+            const list = res?.data?.agents || res?.data || [];
+            const count = Array.isArray(list) ? list.length : 0;
+            return [p.id, count];
+          } catch {
+            return [p.id, 0];
+          }
+        })
+      );
+      if (cancelled) return;
+      setAgentCounts((prev) => {
+        const next = { ...prev };
+        results.forEach(([id, c]) => { next[id] = c; });
+        return next;
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [pageRows, agentCounts]);
+
   const hasActiveFilters = filters.search !== "" || filters.state !== "";
+
 
   const handleFilterChange = (field, value) => {
     setFilters((prev) => ({ ...prev, [field]: value }));
