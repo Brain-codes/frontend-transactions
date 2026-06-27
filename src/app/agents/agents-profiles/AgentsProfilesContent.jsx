@@ -485,6 +485,91 @@ const AgentsProfilesContent = () => {
         credential={credentialData}
       />
 
+      {/* States Assigned Modal */}
+      <Dialog open={!!statesModalAgent} onOpenChange={(o) => !o && setStatesModalAgent(null)}>
+        <DialogContent className="max-w-lg p-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4" style={{ backgroundColor: "#4a5d0f" }}>
+            <DialogTitle className="text-white text-base">
+              States Assigned — {statesModalAgent?.full_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
+            {statesModalLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-[#4a5d0f]" />
+              </div>
+            ) : statesModalList.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-6">No states assigned</p>
+            ) : (
+              <ul className="space-y-2">
+                {statesModalList.map((s, i) => {
+                  const name = typeof s === "string" ? s : (s.state || s.name || JSON.stringify(s));
+                  return (
+                    <li
+                      key={`${name}-${i}`}
+                      className="flex items-center gap-3 px-3 py-2 rounded-md border border-gray-100"
+                      style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
+                    >
+                      <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-[#eef3c4] text-[#4a5d0f]">
+                        <MapPin className="h-4 w-4" />
+                      </span>
+                      <span className="text-sm text-gray-800 font-medium">{name}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Partners Assigned Modal */}
+      <Dialog open={!!partnersModalAgent} onOpenChange={(o) => !o && setPartnersModalAgent(null)}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4" style={{ backgroundColor: "#4a5d0f" }}>
+            <DialogTitle className="text-white text-base">
+              Assigned Partners — {partnersModalAgent?.full_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[65vh] overflow-y-auto">
+            {partnersModalLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-5 w-5 animate-spin text-[#4a5d0f]" />
+              </div>
+            ) : partnersModalList.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-10">No partners assigned</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow style={{ backgroundColor: "#eef3c4" }} className="hover:bg-transparent">
+                    <TableHead className="text-[#4a5d0f] font-semibold text-xs">Partner Name</TableHead>
+                    <TableHead className="text-[#4a5d0f] font-semibold text-xs">State</TableHead>
+                    <TableHead className="text-[#4a5d0f] font-semibold text-xs">Branch</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {partnersModalList.map((p, i) => (
+                    <TableRow
+                      key={p.id || p.assignment_id || i}
+                      style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
+                    >
+                      <TableCell className="text-sm text-gray-900 font-medium">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-[#4a5d0f]" />
+                          {p.partner_name || p.name || "—"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-700">{p.state || "—"}</TableCell>
+                      <TableCell className="text-sm text-gray-700">{p.branch || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
