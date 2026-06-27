@@ -1368,7 +1368,7 @@ export default function PartnersContent() {
                 gradient: "from-[#7C3AED] to-[#A78BFA]",
                 Icon: Boxes,
                 value: loadingStats ? "—" : stats.total_available.toLocaleString(),
-                label: "Available Inventory",
+                label: "Unsold Stoves with Partners",
                 sub: "Total stove unsold across all partners",
                 onClick: () => setSortMode("available_desc"),
                 active: sortMode === "available_desc",
