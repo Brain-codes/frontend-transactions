@@ -1,26 +1,16 @@
-## Goal
+## Problem
 
-Make **Agents Profile** and **Agents Performance Report** show the exact same agent list by sourcing both from the same endpoint (`manage-users`) with the same role scope (all users regardless of role).
+`Agents Performance Report` (`SuperAdminAgentsContent.tsx`) defaults `selectedRoles = ["acsl_agent"]` and sends `role=acsl_agent` to `manage-users`, so only ACSL agents (12) appear. `Agents Profile` sends no role filter, so all 22 users show.
 
-Today they disagree because:
-- Performance Report → `manage-users` (all users, paginated)
-- Agents Profile → `super-admin-agents` (only ACSL agent roles)
+## Fix
 
-## Changes
+Edit `src/app/agents/components/SuperAdminAgentsContent.tsx`:
 
-### 1. Agents Profile (`src/app/agents/agents-profiles/AgentsProfilesContent.jsx`)
-- Replace the `superAdminAgentService.getSuperAdminAgents()` call in `loadAgents` with a fetch to `${supabaseFunctionsUrl}/manage-users?limit=5000&sortBy=created_at&sortOrder=desc` (same source as the Performance Report).
-- Map the response so existing fields (`id`, `full_name`, `email`, `role`, `assigned_organizations_count`, `assigned_states_count`, `created_at`, `status`) keep working.
-- Keep all existing UI: role filter, badges, States Assigned / Partners Assigned modals, "Assign a Partner" button, search.
-- Add the same response-safety guard used on the Performance Report (check content-type before `res.json()`) so an HTML error page never breaks the view.
+1. Change default `selectedRoles` from `["acsl_agent"]` to `[]` (treated as "all").
+2. Update `fetchAgents` to omit the `role` query param when `selectedRoles` is empty (i.e. show all roles by default). Keep the dropdown working so the user can still narrow if they want.
+3. Bump default `pageSize` from 25 so the full roster is visible (match Profile view's behavior — use 100 or a large value), since the user wants parity with the 22-row Profile view.
+4. Ensure the role dropdown UI reflects "All roles" when none selected.
 
-### 2. Agents Performance Report (`src/app/agents/components/SuperAdminAgentsContent.tsx`)
-- No data-source change (already on `manage-users`). Just confirm it uses `supabaseFunctionsUrl` from `@/lib/supabaseConfig` (done in the last fix).
+Result: Performance Report shows all 22 users by default, matching Agents Profile. Users keep optional filters.
 
-### 3. No other changes
-- Both menu links stay in the sidebar.
-- No edits to edge functions, routing, or permissions.
-
-## Result
-
-Both views read from the same endpoint with the same scope, so the agent counts and roster will match. Each page keeps its own layout and features (KPIs/pagination on Performance Report; role-grouped profile cards/modals on Agents Profile).
+No backend/edge-function changes; no other views touched.
