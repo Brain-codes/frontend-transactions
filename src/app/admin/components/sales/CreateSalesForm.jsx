@@ -157,9 +157,9 @@ const CreateSalesForm = ({
     };
   }, []);
 
-  // Debounced partner search for super admin roles (create mode only)
+  // Debounced partner search (any user without a known org can pick a partner)
   useEffect(() => {
-    if (!isSuperAdmin || isEditMode) return;
+    if (!needsPartnerSelection || isEditMode) return;
     if (!partnerSearch.trim()) {
       setPartners([]);
       return;
@@ -168,7 +168,18 @@ const CreateSalesForm = ({
     const t = setTimeout(async () => {
       setPartnersLoading(true);
       try {
-        if (userRole === "super_admin") {
+        // SAA agents (non-super_admin) see only their assigned partners.
+        // Super admins and everyone else without an org go through manage-organizations.
+        const isSaaAgent = isSuperAdmin && userRole !== "super_admin";
+        if (isSaaAgent) {
+          const result = await superAdminAgentService.getAgentOrganizations(userId);
+          const all = result.data || [];
+          const q = partnerSearch.trim().toLowerCase();
+          setPartners(all.filter((p) =>
+            (p.partner_name || "").toLowerCase().includes(q) ||
+            (p.branch || "").toLowerCase().includes(q)
+          ));
+        } else {
           const { data: { session } } = await supabase.auth.getSession();
           const params = new URLSearchParams({ limit: "50", offset: "0", search: partnerSearch.trim() });
           const res = await fetch(
@@ -177,14 +188,6 @@ const CreateSalesForm = ({
           );
           const result = await res.json();
           if (res.ok) setPartners(result.data || []);
-        } else {
-          const result = await superAdminAgentService.getAgentOrganizations(userId);
-          const all = result.data || [];
-          const q = partnerSearch.trim().toLowerCase();
-          setPartners(all.filter((p) =>
-            (p.partner_name || "").toLowerCase().includes(q) ||
-            (p.branch || "").toLowerCase().includes(q)
-          ));
         }
       } catch (err) {
         console.error("Error searching partners:", err);
@@ -194,7 +197,7 @@ const CreateSalesForm = ({
     }, 300);
 
     return () => clearTimeout(t);
-  }, [partnerSearch, isSuperAdmin, isEditMode, userRole, userId]);
+  }, [partnerSearch, needsPartnerSelection, isSuperAdmin, isEditMode, userRole, userId]);
 
   // Initialize form data on mount
   useEffect(() => {
