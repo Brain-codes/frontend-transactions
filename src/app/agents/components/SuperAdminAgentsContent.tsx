@@ -342,7 +342,7 @@ function AssignPartnerModal({
                 className={[
                   "flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-semibold transition-all",
                   mode === m
-                    ? "bg-[#07376a] text-white shadow-sm"
+                    ? "bg-[#4a5d0f] text-white shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
                 ].join(" ")}
               >
@@ -412,7 +412,7 @@ function AssignPartnerModal({
                                         return next;
                                       });
                                     }}
-                                    className="text-[10px] font-semibold px-2 py-0.5 rounded border border-[#07376a]/40 bg-[#07376a]/10 text-[#07376a] hover:bg-[#07376a]/20 transition-colors"
+                                    className="text-[10px] font-semibold px-2 py-0.5 rounded border border-[#4a5d0f]/40 bg-[#4a5d0f]/10 text-[#4a5d0f] hover:bg-[#4a5d0f]/20 transition-colors"
                                   >
                                     Assign All
                                   </button>
@@ -454,7 +454,7 @@ function AssignPartnerModal({
                         key={state}
                         type="button"
                         onClick={() => toggleState(state)}
-                        className="flex flex-col items-center px-1 py-1.5 rounded border text-center transition-colors bg-muted/30 border-border/50 text-gray-700 hover:bg-[#07376a]/10 hover:border-[#07376a]/40"
+                        className="flex flex-col items-center px-1 py-1.5 rounded border text-center transition-colors bg-muted/30 border-border/50 text-gray-700 hover:bg-[#4a5d0f]/10 hover:border-[#4a5d0f]/40"
                         title={`${state} — ${count} partner${count !== 1 ? "s" : ""}`}
                       >
                         <span className="text-[10px] font-semibold leading-tight truncate w-full">{state}</span>
@@ -495,7 +495,7 @@ function AssignPartnerModal({
                         className={[
                           "flex flex-col items-start px-2 py-1.5 rounded border text-left transition-colors",
                           selected
-                            ? "bg-[#07376a] border-[#07376a] hover:bg-[#07376a]/90"
+                            ? "bg-[#4a5d0f] border-[#4a5d0f] hover:bg-[#4a5d0f]/90"
                             : "bg-muted/30 border-border/50 hover:border-primary/40 hover:bg-muted/60",
                         ].join(" ")}
                       >
@@ -552,7 +552,7 @@ function AssignPartnerModal({
                           {/* Checkbox */}
                           <div className={[
                             "w-3.5 h-3.5 rounded border-2 shrink-0 flex items-center justify-center transition-colors",
-                            checked ? "bg-[#07376a] border-[#07376a]" : "border-gray-300",
+                            checked ? "bg-[#4a5d0f] border-[#4a5d0f]" : "border-gray-300",
                           ].join(" ")}>
                             {checked && <Check className="h-2 w-2 text-white" />}
                           </div>
@@ -581,7 +581,7 @@ function AssignPartnerModal({
           </Button>
           <Button
             size="sm"
-            className="h-7 text-xs bg-[#07376a] hover:bg-[#07376a]/90 text-white"
+            className="h-7 text-xs bg-[#4a5d0f] hover:bg-[#4a5d0f]/90 text-white"
             onClick={handleSave}
             disabled={saving || loading}
           >
@@ -735,7 +735,7 @@ function AgentPartnersModal({
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-[#07376a] hover:bg-[#07376a]">
+                  <TableRow className="bg-[#4a5d0f] hover:bg-[#4a5d0f]">
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                       Partner Name
                     </TableHead>
@@ -813,7 +813,7 @@ function AgentPartnersModal({
                   key={p}
                   variant={p === safePage ? "default" : "outline"}
                   size="sm"
-                  className={`h-7 w-7 p-0 text-xs ${p === safePage ? "bg-[#07376a] text-white hover:bg-[#07376a]" : ""}`}
+                  className={`h-7 w-7 p-0 text-xs ${p === safePage ? "bg-[#4a5d0f] text-white hover:bg-[#4a5d0f]" : ""}`}
                   onClick={() => setPage(p)}
                 >
                   {p}
@@ -1123,7 +1123,7 @@ function ActivePartnersModal({
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-[#07376a] hover:bg-[#07376a]">
+                  <TableRow className="bg-[#4a5d0f] hover:bg-[#4a5d0f]">
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">State</TableHead>
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Branch</TableHead>
@@ -1184,7 +1184,7 @@ function ActivePartnersModal({
                     key={p}
                     variant={p === safePage ? "default" : "outline"}
                     size="sm"
-                    className={`h-7 w-7 p-0 text-xs ${p === safePage ? "bg-[#07376a] text-white hover:bg-[#07376a]" : ""}`}
+                    className={`h-7 w-7 p-0 text-xs ${p === safePage ? "bg-[#4a5d0f] text-white hover:bg-[#4a5d0f]" : ""}`}
                     onClick={() => setPage(p)}
                   >
                     {p}
@@ -1334,7 +1334,7 @@ function StockModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-[#07376a] hover:bg-[#07376a]">
+                  <TableRow className="bg-[#4a5d0f] hover:bg-[#4a5d0f]">
                     <TableHead className="text-white font-semibold text-xs w-10">#</TableHead>
                     <TableHead className="text-white font-semibold text-xs">Stove ID</TableHead>
                     <TableHead className="text-white font-semibold text-xs">Partner</TableHead>
@@ -1602,24 +1602,26 @@ export default function SuperAdminAgentsContent() {
         />
 
         {/* Filters */}
-        <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
-          <div className="w-1/4 min-w-[180px] relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <div
+          className="p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3"
+          style={{ backgroundColor: "#f4f7e3" }}
+        >
+          <div className="w-1/4 min-w-[180px]">
             <Input
               placeholder="Search by name or email..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="pl-9 bg-white h-9 text-sm"
+              className="bg-white h-9 text-xs shadow-none border-gray-200"
             />
           </div>
           <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[150px] h-9 bg-white text-sm">
+            <SelectTrigger className="w-[150px] h-9 bg-white text-xs shadow-none border-gray-200">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="disabled">Disabled</SelectItem>
+            <SelectContent className="text-xs">
+              <SelectItem value="all" className="text-xs">All Statuses</SelectItem>
+              <SelectItem value="active" className="text-xs">Active</SelectItem>
+              <SelectItem value="disabled" className="text-xs">Disabled</SelectItem>
             </SelectContent>
           </Select>
           {/* Multi-select role filter */}
@@ -1627,7 +1629,7 @@ export default function SuperAdminAgentsContent() {
             <button
               type="button"
               onClick={() => setRoleDropdownOpen((o) => !o)}
-              className="flex items-center justify-between gap-2 h-9 px-3 bg-white border border-input rounded-md text-sm min-w-[160px] max-w-[220px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-ring"
+              className="flex items-center justify-between gap-2 h-9 px-3 bg-white border border-gray-200 rounded-md text-xs min-w-[160px] max-w-[220px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/30 shadow-none"
             >
               <span className="truncate text-left">
                 {selectedRoles.length === 0 || selectedRoles.length === 3
@@ -1650,9 +1652,9 @@ export default function SuperAdminAgentsContent() {
                 <button
                   type="button"
                   onClick={() => { setSelectedRoles([]); setPage(1); setRoleDropdownOpen(false); }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${selectedRoles.length === 0 ? "text-[#07376a] font-semibold" : "text-gray-700"}`}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${selectedRoles.length === 0 ? "text-[#4a5d0f] font-semibold" : "text-gray-700"}`}
                 >
-                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${selectedRoles.length === 0 ? "bg-[#07376a] border-[#07376a]" : "border-gray-300"}`}>
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${selectedRoles.length === 0 ? "bg-[#4a5d0f] border-[#4a5d0f]" : "border-gray-300"}`}>
                     {selectedRoles.length === 0 && <Check className="h-2.5 w-2.5 text-white" />}
                   </div>
                   All Roles
@@ -1681,7 +1683,7 @@ export default function SuperAdminAgentsContent() {
                       }}
                       className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-gray-50 transition-colors text-gray-700"
                     >
-                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${checked ? "bg-[#07376a] border-[#07376a]" : "border-gray-300"}`}>
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${checked ? "bg-[#4a5d0f] border-[#4a5d0f]" : "border-gray-300"}`}>
                         {checked && <Check className="h-2.5 w-2.5 text-white" />}
                       </div>
                       {label}
@@ -1712,7 +1714,7 @@ export default function SuperAdminAgentsContent() {
                 }
                 setPage(1);
               }}
-              className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[145px]"
+              className="h-9 bg-white border border-gray-200 rounded-md text-xs px-2 shadow-none focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/30 w-[145px]"
               style={{ colorScheme: "light" }}
             />
           </div>
@@ -1723,7 +1725,7 @@ export default function SuperAdminAgentsContent() {
               type="date"
               value={dateFrom}
               onChange={(e) => { setDateFrom(e.target.value); setSelectedMonth(""); }}
-              className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[140px]"
+              className="h-9 bg-white border border-gray-200 rounded-md text-xs px-2 shadow-none focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/30 w-[140px]"
               style={{ colorScheme: "light" }}
             />
             <span className="text-xs text-gray-400">–</span>
@@ -1732,42 +1734,27 @@ export default function SuperAdminAgentsContent() {
               value={dateTo}
               min={dateFrom || undefined}
               onChange={(e) => { setDateTo(e.target.value); setSelectedMonth(""); }}
-              className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[140px]"
+              className="h-9 bg-white border border-gray-200 rounded-md text-xs px-2 shadow-none focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/30 w-[140px]"
               style={{ colorScheme: "light" }}
             />
           </div>
 
-          {(search || statusFilter !== "all" || selectedRoles.length !== 1 || selectedRoles[0] !== "acsl_agent" || dateFrom || dateTo) && (
-            <Button
-              onClick={() => { setSearch(""); setStatusFilter("all"); setSelectedRoles(["acsl_agent"]); setDateFrom(""); setDateTo(""); setSelectedMonth(""); setPage(1); }}
-              size="sm"
-              variant="outline"
-              className="h-9"
-            >
-              <X className="h-4 w-4 mr-1" />Clear
-            </Button>
-          )}
-          <div className="ml-auto flex items-center gap-3">
-            <p className="text-sm text-gray-600">
-              Showing <span className="font-medium">{startItem}–{endItem}</span> of{" "}
-              <span className="font-medium">{totalItems.toLocaleString()}</span> agents
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">per page:</span>
-              <Select value={pageSize.toString()} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
-                <SelectTrigger className="w-[65px] h-7 bg-white text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <p className="text-sm font-bold text-green-500">
-              Total: <span className="text-[#07376a]">{totalItems.toLocaleString()}</span>
-            </p>
-          </div>
+          <Button
+            onClick={() => { setSearch(""); setStatusFilter("all"); setSelectedRoles(["acsl_agent"]); setDateFrom(""); setDateTo(""); setSelectedMonth(""); setPage(1); }}
+            size="sm"
+            variant="outline"
+            className="h-9 bg-white shadow-none border-gray-200"
+            disabled={!(search || statusFilter !== "all" || selectedRoles.length !== 1 || selectedRoles[0] !== "acsl_agent" || dateFrom || dateTo)}
+          >
+            <X className="h-4 w-4 mr-1" />
+            Reset Filters
+          </Button>
+
+          <p className="ml-auto text-sm text-gray-600">
+            Showing <span className="font-medium">{startItem}</span> to{" "}
+            <span className="font-medium">{endItem}</span> of{" "}
+            <span className="font-medium">{totalItems.toLocaleString()}</span> agents
+          </p>
         </div>
 
         {/* KPI Stat Cards — 6-card grid */}
@@ -1935,21 +1922,21 @@ export default function SuperAdminAgentsContent() {
 
         {/* Table */}
         <div className="space-y-0">
-          <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto relative">
+          <div className="bg-white border-x border-t border-gray-200 rounded-t-lg overflow-x-auto relative">
             {loading && (
               <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
-                <Loader2 className="h-6 w-6 animate-spin text-[#07376a]" />
+                <Loader2 className="h-6 w-6 animate-spin text-[#4a5d0f]" />
               </div>
             )}
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#07376a] hover:bg-[#07376a]">
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Full Name</TableHead>
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">States Assigned</TableHead>
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap text-center">Partners Assigned</TableHead>
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stoves (Assigned / Collected / In Stock)</TableHead>
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Status</TableHead>
-                  <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">Actions</TableHead>
+                <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Full Name</TableHead>
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">States Assigned</TableHead>
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Partners Assigned</TableHead>
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Stoves (Assigned / Collected / In Stock)</TableHead>
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
+                  <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className={loading ? "opacity-40" : ""}>
@@ -1971,9 +1958,10 @@ export default function SuperAdminAgentsContent() {
                   sortedAgents.map((agent, idx) => (
                     <TableRow
                       key={agent.id}
-                      className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}
+                      className="hover:bg-[#eef3c4] text-gray-700"
+                      style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
                     >
-                      <TableCell className="text-xs font-medium text-gray-900">
+                      <TableCell className="text-sm font-medium text-gray-900">
                           {agent.full_name}
                       </TableCell>
                       {/* States — name badges, wrapping */}
@@ -2059,7 +2047,7 @@ export default function SuperAdminAgentsContent() {
                         <div className="flex items-center justify-center gap-1">
                           <Button
                             size="sm"
-                            className="h-7 px-2 text-xs bg-[#07376a] hover:bg-[#07376a]/90 text-white"
+                            className="h-7 px-2 text-xs bg-[#4a5d0f] hover:bg-[#4a5d0f]/90 text-white"
                             onClick={() => setAssignPartnerAgent(agent)}
                           >
                             Assign Partner
@@ -2127,7 +2115,7 @@ export default function SuperAdminAgentsContent() {
                     key={p}
                     variant={p === page ? "default" : "outline"}
                     size="sm"
-                    className={`h-8 w-8 p-0 ${p === page ? "bg-[#07376a] text-white hover:bg-[#07376a]" : ""}`}
+                    className={`h-8 w-8 p-0 ${p === page ? "bg-[#4a5d0f] text-white hover:bg-[#4a5d0f]" : ""}`}
                     onClick={() => setPage(p)}
                   >
                     {p}
