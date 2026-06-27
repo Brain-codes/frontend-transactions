@@ -45,7 +45,7 @@ const AgentsProfilesContent = () => {
   const { toast, toasts, removeToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [agents, setAgents] = useState([]);
-  const [filters, setFilters] = useState({ search: "", status: "" });
+  const [filters, setFilters] = useState({ search: "", status: "", role: "" });
   const [page, setPage] = useState(1);
 
   const [detailsAgent, setDetailsAgent] = useState(null);
