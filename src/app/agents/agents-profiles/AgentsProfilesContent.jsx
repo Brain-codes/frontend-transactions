@@ -234,8 +234,6 @@ const AgentsProfilesContent = () => {
             <TableHeader>
               <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Full Name</TableHead>
-                <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Email</TableHead>
-                <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Role</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">States Assigned</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Partners Assigned</TableHead>
@@ -258,8 +256,6 @@ const AgentsProfilesContent = () => {
                     style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
                   >
                     <TableCell className="text-sm font-medium text-gray-900">{a.full_name || "N/A"}</TableCell>
-                    <TableCell className="text-sm text-gray-600">{a.email || "—"}</TableCell>
-                    <TableCell className="text-sm text-gray-600">{a.phone || "—"}</TableCell>
                     <TableCell className="text-sm">
                       {a.role ? (
                         <span
