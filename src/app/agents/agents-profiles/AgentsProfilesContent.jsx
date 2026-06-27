@@ -36,6 +36,7 @@ import superAdminAgentService from "../../services/superAdminAgentService";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import ViewSuperAdminAgentModal from "../../super-admin-agents/components/ViewSuperAdminAgentModal";
 import EditSuperAdminAgentModal from "../../super-admin-agents/components/EditSuperAdminAgentModal";
+import AssignOrganizationsModal from "../../super-admin-agents/components/AssignOrganizationsModal";
 import AgentViewCredentialModal from "../../admin/components/agents/AgentViewCredentialModal";
 import tokenManager from "@/utils/tokenManager";
 import {
