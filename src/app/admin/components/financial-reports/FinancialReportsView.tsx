@@ -306,15 +306,6 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
     try {
       setExporting(true);
 
-      // If specific rows are selected, export only those from client-side data
-      if (selectedIds.size > 0) {
-        const exportData = filteredSales.filter((s) => selectedIds.has(s.id));
-        if (exportData.length === 0) { alert("No data to export."); return; }
-        const { exportSalesDataToCSV } = await import("@/utils/csvExportUtils");
-        exportSalesDataToCSV(exportData, `sales-export-selected-${new Date().toISOString().slice(0, 10)}.csv`);
-        return;
-      }
-
       const result = await (adminSalesService as any).getSalesForExport({
         search: searchTerm || undefined,
         paymentStatus: paymentStatusFilter !== "all" ? paymentStatusFilter : undefined,
