@@ -33,7 +33,16 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Users,
+  Mail,
+  Phone,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import PageHeader from "../../components/PageHeader";
 import organizationsService from "../../services/organizationsService";
 import { useToast, ToastContainer } from "@/components/ui/toast";
