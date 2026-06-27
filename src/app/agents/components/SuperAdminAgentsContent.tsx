@@ -2086,20 +2086,24 @@ export default function SuperAdminAgentsContent() {
                 <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Full Name</TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
-                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Partners Assigned</TableHead>
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
+                    <button type="button" onClick={() => cycleStoveSort("partners")} className="inline-flex items-center gap-1 hover:underline">
+                      Partners Assigned <StoveSortIcon col="partners" />
+                    </button>
+                  </TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
                     <button type="button" onClick={() => cycleStoveSort("assigned")} className="inline-flex items-center gap-1 hover:underline">
-                      Assigned <StoveSortIcon col="assigned" />
+                      Records to collect <StoveSortIcon col="assigned" />
                     </button>
                   </TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
                     <button type="button" onClick={() => cycleStoveSort("collected")} className="inline-flex items-center gap-1 hover:underline">
-                      Collected <StoveSortIcon col="collected" />
+                      Records collected <StoveSortIcon col="collected" />
                     </button>
                   </TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
                     <button type="button" onClick={() => cycleStoveSort("in_stock")} className="inline-flex items-center gap-1 hover:underline">
-                      In Stock <StoveSortIcon col="in_stock" />
+                      Records not collected <StoveSortIcon col="in_stock" />
                     </button>
                   </TableHead>
                   <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
