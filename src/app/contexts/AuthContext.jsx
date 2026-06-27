@@ -401,7 +401,9 @@ export const AuthProvider = ({ children }) => {
           };
         }
 
-        const directProfile = profileService.getStoredProfileData();
+        const directProfileResponse = await profileService.fetchAndStoreProfile();
+        const directProfile =
+          directProfileResponse?.data || profileService.getStoredProfileData();
         if (directProfile?.role) setStoredProfileRole(directProfile.role);
 
         return {
@@ -447,7 +449,7 @@ export const AuthProvider = ({ children }) => {
       if (!response.ok) {
         console.error("🔐 [AuthContext] Credentials login failed:", responseData?.error);
 
-        if (response.status >= 500 || response.status === 404) {
+        if (isEmailIdentifier(trimmedIdentifier) || response.status >= 500 || response.status === 404) {
           return tryDirectEmailLogin();
         }
 
