@@ -252,6 +252,21 @@ const PartnerProfilesContent = () => {
                     <TableCell className="text-sm text-gray-600">{p.state || "—"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{p.branch || "—"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{p.contact_phone || "—"}</TableCell>
+                    <TableCell className="text-center">
+                      {agentCounts[p.id] === undefined ? (
+                        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-full text-xs font-medium bg-gray-100 text-gray-400">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        </span>
+                      ) : agentCounts[p.id] > 0 ? (
+                        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                          {agentCounts[p.id]}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-full text-xs font-semibold bg-rose-100 text-rose-700 border border-rose-200">
+                          0
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <TooltipProvider delayDuration={150}>
