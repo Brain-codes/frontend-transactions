@@ -1447,6 +1447,9 @@ export default function PartnersContent() {
 
           </div>
 
+          {/* Monthly Sales Chart */}
+          <MonthlySalesChart />
+
           <div className="space-y-0">
             <div className="flex items-center justify-between px-1 py-2">
               <p className="text-sm text-gray-600">
