@@ -387,18 +387,6 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
             })) : []}
           />
 
-          {/* Selection info bar */}
-          {selectedIds.size > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-brand font-medium">{selectedIds.size} sale{selectedIds.size !== 1 ? "s" : ""} selected — Export will include only these records</span>
-              <button
-                className="text-xs text-red-500 hover:text-red-700 font-medium border border-red-200 rounded px-2 py-0.5 hover:bg-red-50 transition-colors"
-                onClick={() => setSelectedIds(new Set())}
-              >
-                Clear
-              </button>
-            </div>
-          )}
 
           {/* Table */}
           <FinancialReportsTable
