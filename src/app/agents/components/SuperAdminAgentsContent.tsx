@@ -1534,39 +1534,45 @@ export default function SuperAdminAgentsContent() {
           ids.forEach((id) => allOrgIds.add(id));
         }
 
-        // 2. Stove counts per org (batched).
+        // 2. Stove counts per org (Assigned = total stoves at partner).
         const orgIds = Array.from(allOrgIds);
         const BATCH = 200;
-        const stoveCounts: Record<string, { total: number; sold: number; available: number }> = {};
+        const stoveTotalByOrg: Record<string, number> = {};
         for (let i = 0; i < orgIds.length; i += BATCH) {
           const slice = orgIds.slice(i, i + BATCH);
           const { data } = await supabase
             .from("stove_ids")
-            .select("organization_id, status")
+            .select("organization_id")
             .in("organization_id", slice)
             .eq("is_archived", false);
           (data || []).forEach((s: any) => {
             const oid = s.organization_id;
-            if (!stoveCounts[oid]) stoveCounts[oid] = { total: 0, sold: 0, available: 0 };
-            stoveCounts[oid].total++;
-            if (s.status === "sold") stoveCounts[oid].sold++;
-            else stoveCounts[oid].available++;
+            stoveTotalByOrg[oid] = (stoveTotalByOrg[oid] || 0) + 1;
           });
         }
         if (cancelled) return;
 
-        // 3. Merge stove_summary into agents.
+        // 3. Collected = actual sales records created by each agent.
+        const soldByAgent: Record<string, number> = {};
+        await Promise.all(
+          agents.map(async (a) => {
+            const { count } = await supabase
+              .from("sales")
+              .select("*", { count: "exact", head: true })
+              .eq("created_by", a.id);
+            soldByAgent[a.id] = count || 0;
+          })
+        );
+        if (cancelled) return;
+
+        // 4. Merge stove_summary into agents.
         setAgents((prev) =>
           prev.map((a) => {
             const orgs = agentToOrgIds[a.id] || [];
-            let received = 0, sold = 0, available = 0;
-            for (const oid of orgs) {
-              const c = stoveCounts[oid];
-              if (!c) continue;
-              received += c.total;
-              sold += c.sold;
-              available += c.available;
-            }
+            let received = 0;
+            for (const oid of orgs) received += stoveTotalByOrg[oid] || 0;
+            const sold = soldByAgent[a.id] || 0;
+            const available = Math.max(0, received - sold);
             return { ...a, stove_summary: { received, sold, available } };
           })
         );
@@ -1577,6 +1583,7 @@ export default function SuperAdminAgentsContent() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentIdsKey]);
+
 
 
   useEffect(() => {
