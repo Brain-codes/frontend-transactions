@@ -1399,7 +1399,7 @@ export default function PartnersContent() {
                 gradient: "from-[#047857] to-[#10B981]",
                 Icon: TrendingUp,
                 value: loadingStats ? "—" : stats.performing_partners.toLocaleString(),
-                label: "Stoves bought by Partners",
+                label: "Stoves Sold to End Users",
                 sub: "with sales",
                 subBadge: (() => {
                   if (dateFrom && dateTo) {
