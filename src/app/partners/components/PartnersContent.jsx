@@ -519,14 +519,12 @@ const StoveTransferHistoryModal = ({ organization, isOpen, onClose }) => {
                         const stoveIds = record.stove_ids ?? [];
                         const count = record.stove_count ?? stoveIds.length;
                         const factory = record.sales_factory || stoveIds[0]?.factory || "—";
-                        const salesPackage = record.sales_package || record.package_name || record.application_name || "—";
                         const salesRep = record.sales_rep || record.sales_rep_name || record.created_by_name || "—";
                         return (
                           <TableRow key={record.id || idx} className={idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]/40"}>
                             <TableCell className="text-xs font-mono font-medium text-gray-900">{record.transaction_id || "—"}</TableCell>
                             <TableCell className="text-xs whitespace-nowrap text-gray-700">{formatDate(record.transfer_date)}</TableCell>
                             <TableCell className="text-xs text-gray-700">{factory}</TableCell>
-                            <TableCell className="text-xs text-gray-700">{salesPackage}</TableCell>
                             <TableCell className="text-xs text-gray-700">{salesRep}</TableCell>
                             <TableCell className="text-xs text-center">
                               <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-full bg-[#eef3c4] text-[#4a5d0f] font-semibold">
