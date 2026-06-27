@@ -268,23 +268,8 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
     return filteredSales.slice(start, start + pageSize);
   }, [filteredSales, currentPage, pageSize]);
 
-  const handleToggleSelectAll = useCallback(() => {
-    const pageIds = paginatedSales.map((s) => s.id);
-    const allSelected = pageIds.every((id) => selectedIds.has(id));
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (allSelected) {
-        pageIds.forEach((id) => next.delete(id));
-      } else {
-        pageIds.forEach((id) => next.add(id));
-      }
-      return next;
-    });
-  }, [paginatedSales, selectedIds]);
-
   useEffect(() => {
     setCurrentPage(1);
-    setSelectedIds((prev) => (prev.size === 0 ? prev : new Set()));
   }, [searchTerm, paymentStatusFilter, startDate, endDate, pageSize, selectedState, selectedLGA, orgFilter, approvalFilter, selectedYears]);
 
   const hasActiveFilters = searchTerm !== "" || paymentStatusFilter !== "all" || startDate !== "" || endDate !== "" || selectedState !== "all" || selectedLGA !== "all" || orgFilter !== "all" || approvalFilter !== "all";
