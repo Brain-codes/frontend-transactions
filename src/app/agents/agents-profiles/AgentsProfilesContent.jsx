@@ -357,7 +357,6 @@ const AgentsProfilesContent = () => {
           setCredentialAgent(null);
           setCredentialData(null);
         }}
-        agent={credentialAgent}
         credential={credentialData}
       />
 
