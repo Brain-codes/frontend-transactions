@@ -1176,7 +1176,7 @@ export default function PartnersContent() {
             }
           />
 
-          <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
+          <div className="p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3" style={{ backgroundColor: "#f4f7e3" }}>
             {/* Search */}
             <div className="w-1/4 min-w-[180px] relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -1430,14 +1430,14 @@ export default function PartnersContent() {
               )}
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-brand hover:bg-brand">
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">State</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Branch</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone Number</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stoves (Received / Sold / Available)</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Agents Assigned</TableHead>
-                    <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">Actions</TableHead>
+                  <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Partner</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">State</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Stoves (Received / Sold / Available)</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Agents Assigned</TableHead>
+                    <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className={tableLoading ? "opacity-40" : ""}>
@@ -1452,13 +1452,13 @@ export default function PartnersContent() {
                   ) : (
                     sortedOrgs.map((org, idx) => (
                       <React.Fragment key={org.id}>
-                        <TableRow className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}>
-                          <TableCell className="text-xs font-medium text-gray-900">{org.partner_name}</TableCell>
-                          <TableCell className="text-xs">{org.state || "N/A"}</TableCell>
-                          <TableCell className="text-xs">{org.branch || "N/A"}</TableCell>
-                          <TableCell className="text-xs">{org.contact_phone || "—"}</TableCell>
+                        <TableRow className="hover:bg-[#eef3c4] text-gray-700" style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f4f7e3" }}>
+                          <TableCell className="text-sm font-medium text-gray-900">{org.partner_name}</TableCell>
+                          <TableCell className="text-sm">{org.state || "N/A"}</TableCell>
+                          <TableCell className="text-sm">{org.branch || "N/A"}</TableCell>
+                          <TableCell className="text-sm">{org.contact_phone || "—"}</TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1.5 text-xs">
+                            <div className="flex items-center gap-1.5 text-sm">
                               <button onClick={() => handleViewStoveIds(org, "all")} className="font-medium text-purple-700 hover:underline hover:text-purple-900 transition-colors" title="Total received">
                                 {org.total_stove_ids ?? 0}
                               </button>
