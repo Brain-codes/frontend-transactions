@@ -1421,7 +1421,7 @@ export default function SuperAdminAgentsContent() {
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
   const roleDropdownRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  const [pageSize, setPageSize] = useState(10);
 
   const [agentFormMode, setAgentFormMode] = useState<"create" | "edit" | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
