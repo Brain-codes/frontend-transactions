@@ -37,6 +37,7 @@ import {
   X,
   Loader2,
   Plus,
+  UserPlus,
   MoreVertical,
   Edit,
   Trash2,
