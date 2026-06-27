@@ -10,6 +10,19 @@ import { AuthContext } from "./useAuth";
 // useLayoutEffect on the server logs a noisy warning; alias to useEffect there.
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
+const isEmailIdentifier = (value) => /\S+@\S+\.\S+/.test(String(value || "").trim());
+
+const getKnownAuthStorageKeys = () => {
+  if (typeof window === "undefined") return [];
+  return Object.keys(localStorage).filter(
+    (key) =>
+      key.startsWith("sb-") ||
+      key === "user_profile" ||
+      key === "transaction_app_token" ||
+      key === "lovable.auth.cachedRole"
+  );
+};
+
 
 
 export const AuthProvider = ({ children }) => {
@@ -318,15 +331,9 @@ export const AuthProvider = ({ children }) => {
         tokenManager.clearToken();
         setStoredProfileRole(null);
 
-        // Force clear localStorage of any remaining auth data
+        // Clear only known auth/session keys. Avoid wiping unrelated app keys.
         if (typeof window !== "undefined") {
-          const keys = Object.keys(localStorage).filter(
-            (key) =>
-              key.includes("supabase") ||
-              key.includes("auth") ||
-              key.includes("transaction")
-          );
-          keys.forEach((key) => localStorage.removeItem(key));
+          getKnownAuthStorageKeys().forEach((key) => localStorage.removeItem(key));
         }
 
         // Ensure user state is immediately cleared
@@ -376,31 +383,83 @@ export const AuthProvider = ({ children }) => {
       console.log("🔐 [AuthContext] Attempting credentials login...");
 
       void isSupabaseConfigured;
+      const trimmedIdentifier = String(identifier || "").trim();
 
-      const response = await fetch(
-        `${supabaseFunctionsUrl}/login-with-credentials`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            identifier,
-            password,
-          }),
+      const tryDirectEmailLogin = async () => {
+        if (!isEmailIdentifier(trimmedIdentifier)) {
+          return {
+            data: null,
+            error: { message: "Login failed. Please check your username/email and password." },
+          };
         }
-      );
 
-      const responseData = await response.json();
+        const { data, error } = await signIn(trimmedIdentifier, password);
+        if (error) {
+          return {
+            data: null,
+            error: { message: error.message || "Login failed. Please check your email and password." },
+          };
+        }
+
+        const directProfileResponse = await profileService.fetchAndStoreProfile();
+        const directProfile =
+          directProfileResponse?.data || profileService.getStoredProfileData();
+        if (directProfile?.role) setStoredProfileRole(directProfile.role);
+
+        return {
+          data: {
+            user: data?.user,
+            session: data?.session,
+            profile: directProfile,
+            role:
+              directProfile?.role ||
+              data?.user?.app_metadata?.role ||
+              data?.user?.user_metadata?.role,
+          },
+          error: null,
+        };
+      };
+
+      let response;
+      let responseData = null;
+
+      try {
+        response = await fetch(
+          `${supabaseFunctionsUrl}/login-with-credentials`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              identifier: trimmedIdentifier,
+              password,
+            }),
+          }
+        );
+        responseData = await response.json().catch(() => ({}));
+      } catch (networkError) {
+        console.error(
+          "🔐 [AuthContext] Credentials login endpoint unreachable, trying email login fallback:",
+          networkError
+        );
+        return tryDirectEmailLogin();
+      }
 
       if (!response.ok) {
-        console.error(
-          "🔐 [AuthContext] Credentials login failed:",
-          responseData.error
-        );
+        console.error("🔐 [AuthContext] Credentials login failed:", responseData?.error);
+
+        if (isEmailIdentifier(trimmedIdentifier) || response.status >= 500 || response.status === 404) {
+          return tryDirectEmailLogin();
+        }
+
         return {
           data: null,
-          error: { message: responseData.error || "Login failed" },
+          error: {
+            message:
+              responseData?.error ||
+              "Login failed. Please check your username/email and password.",
+          },
         };
       }
 
@@ -432,6 +491,7 @@ export const AuthProvider = ({ children }) => {
             "🔐 [AuthContext] Storing profile from credentials response"
           );
           profileService.setProfile(responseData.profile);
+          if (responseData.profile.role) setStoredProfileRole(responseData.profile.role);
         }
 
         // Update user state
@@ -441,6 +501,11 @@ export const AuthProvider = ({ children }) => {
           data: {
             user: responseData.session.user,
             session: responseData.session,
+            profile: responseData.profile,
+            role:
+              responseData.profile?.role ||
+              responseData.session.user?.app_metadata?.role ||
+              responseData.session.user?.user_metadata?.role,
           },
           error: null,
         };
@@ -454,7 +519,12 @@ export const AuthProvider = ({ children }) => {
       console.error("🔐 [AuthContext] Error during credentials login:", error);
       return {
         data: null,
-        error: { message: error.message || "An unexpected error occurred" },
+        error: {
+          message:
+            error.message === "Failed to fetch"
+              ? "Login service is currently unreachable. Please try again."
+              : error.message || "An unexpected error occurred",
+        },
       };
     }
   };
@@ -467,15 +537,9 @@ export const AuthProvider = ({ children }) => {
       profileService.clearStoredProfileData();
       tokenManager.clearToken();
 
-      // Force clear all localStorage auth data BEFORE Supabase signOut
+      // Clear known auth data BEFORE Supabase signOut without touching unrelated app keys.
       if (typeof window !== "undefined") {
-        const keys = Object.keys(localStorage).filter(
-          (key) =>
-            key.includes("supabase") ||
-            key.includes("auth") ||
-            key.includes("transaction") ||
-            key.includes("sb-")
-        );
+        const keys = getKnownAuthStorageKeys();
         console.log("🔐 [AuthContext] Clearing localStorage keys:", keys);
         keys.forEach((key) => {
           try {
@@ -510,15 +574,9 @@ export const AuthProvider = ({ children }) => {
       tokenManager.clearToken();
       setUser(null);
 
-      // Force clear localStorage again
+      // Clear known auth data again
       if (typeof window !== "undefined") {
-        const keys = Object.keys(localStorage).filter(
-          (key) =>
-            key.includes("supabase") ||
-            key.includes("auth") ||
-            key.includes("transaction") ||
-            key.includes("sb-")
-        );
+        const keys = getKnownAuthStorageKeys();
         keys.forEach((key) => {
           try {
             localStorage.removeItem(key);
