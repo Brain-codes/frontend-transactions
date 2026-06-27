@@ -41,19 +41,6 @@ const MONTHS = [
 
 const TOP_OPTIONS = [5, 10, 15, 20, 50];
 
-const GREEN_SHADES = [
-  "#4a5d0f",
-  "#5a7012",
-  "#6a8316",
-  "#7a961a",
-  "#8aa92a",
-  "#9bbb3f",
-  "#aecc5e",
-  "#c1dd7e",
-  "#d4ee9e",
-  "#e2f3b8",
-];
-
 const SalesByStateChart = () => {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -114,21 +101,31 @@ const SalesByStateChart = () => {
 
   const monthLabel = MONTHS.find((m) => m.value === month)?.label ?? "All Months";
 
+  // Gradient blue shades, darkest at top (largest value) to lightest at bottom
+  const barColor = (i, total) => {
+    const t = total <= 1 ? 0 : i / (total - 1);
+    const lerp = (a, b) => Math.round(a + (b - a) * t);
+    // dark navy #1e3a5f -> light blue #bcd4f0
+    const r = lerp(30, 188);
+    const g = lerp(58, 212);
+    const b = lerp(95, 240);
+    return `rgb(${r}, ${g}, ${b})`;
+  };
+
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      {/* Header bar */}
-      <div className="bg-[#4a5d0f] px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 rounded-t-lg">
-        <h3 className="text-white text-[15px] font-semibold tracking-wide">Sales by State</h3>
-        <div className="flex flex-wrap items-center gap-2.5">
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+      {/* Navy header bar */}
+      <div className="bg-[#1e3a5f] px-5 py-3 flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-white text-[15px] font-semibold">Sales by State</h3>
+        <div className="flex flex-wrap items-center gap-2">
           <Popover open={calOpen} onOpenChange={setCalOpen}>
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md text-xs text-white border hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30"
-                style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
+                className="h-9 px-3.5 inline-flex items-center gap-2 rounded-md bg-white text-gray-700 text-xs font-medium shadow-sm border border-white/40 hover:bg-gray-50"
               >
-                <CalendarIcon className="h-3.5 w-3.5 text-white/90" />
-                <span className={dateRange.from ? "text-white" : "text-white/80"}>{dateLabel}</span>
+                <CalendarIcon className="h-3.5 w-3.5 text-gray-500" />
+                <span className={dateRange.from ? "text-gray-800" : "text-gray-500"}>{dateLabel}</span>
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
@@ -147,7 +144,7 @@ const SalesByStateChart = () => {
                 >
                   Clear
                 </Button>
-                <Button size="sm" onClick={() => setCalOpen(false)} className="bg-[#4a5d0f] hover:bg-[#3d4d0c] text-white">
+                <Button size="sm" onClick={() => setCalOpen(false)} className="bg-[#1e3a5f] hover:bg-[#162d49] text-white">
                   Apply
                 </Button>
               </div>
@@ -158,11 +155,10 @@ const SalesByStateChart = () => {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md text-xs text-white border hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30"
-                style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
+                className="h-9 px-3.5 inline-flex items-center gap-2 rounded-md bg-white text-gray-700 text-xs font-medium shadow-sm border border-white/40 hover:bg-gray-50"
               >
                 {monthLabel}
-                <ChevronDown className="h-3.5 w-3.5 text-white/90" />
+                <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
@@ -178,11 +174,10 @@ const SalesByStateChart = () => {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md text-xs text-white border hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30"
-                style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
+                className="h-9 px-3.5 inline-flex items-center gap-2 rounded-md bg-white text-gray-800 text-xs font-semibold shadow-sm border-2 border-white hover:bg-gray-50 ring-1 ring-white/40"
               >
                 Top {topN}
-                <ChevronDown className="h-3.5 w-3.5 text-white/90" />
+                <ChevronDown className="h-3.5 w-3.5 text-gray-600" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -197,71 +192,50 @@ const SalesByStateChart = () => {
       </div>
 
       {/* Chart */}
-      <div className="px-5 pt-6 pb-5 bg-white">
+      <div className="px-4 pt-5 pb-4 bg-white">
         {loading ? (
           <p className="text-xs text-gray-400 text-center py-16">Loading sales by state…</p>
         ) : chartData.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-16">No data for selected filters</p>
         ) : (
-          <ResponsiveContainer width="100%" height={Math.max(320, chartData.length * 42)}>
+          <ResponsiveContainer width="100%" height={Math.max(360, chartData.length * 38)}>
             <BarChart
               data={chartData}
               layout="vertical"
-              margin={{ top: 8, right: 64, left: 4, bottom: 8 }}
-              barCategoryGap="22%"
+              margin={{ top: 6, right: 56, left: 4, bottom: 8 }}
+              barCategoryGap={4}
             >
-              <defs>
-                {chartData.map((_, i) => {
-                  const t = chartData.length === 1 ? 0 : i / (chartData.length - 1);
-                  const lerp = (a, b) => Math.round(a + (b - a) * t);
-                  const r = lerp(74, 190);
-                  const g = lerp(93, 215);
-                  const b = lerp(15, 110);
-                  const start = `rgb(${r}, ${g}, ${b})`;
-                  const r2 = Math.min(255, r + 30);
-                  const g2 = Math.min(255, g + 25);
-                  const b2 = Math.min(255, b + 30);
-                  const end = `rgb(${r2}, ${g2}, ${b2})`;
-                  return (
-                    <linearGradient key={i} id={`sbsBar-${i}`} x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor={start} />
-                      <stop offset="100%" stopColor={end} />
-                    </linearGradient>
-                  );
-                })}
-              </defs>
-              <CartesianGrid strokeDasharray="3 4" stroke="#e5e7eb" horizontal={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
               <XAxis
                 type="number"
-                tick={{ fontSize: 11, fill: "#9ca3af" }}
-                axisLine={false}
+                tick={{ fontSize: 11, fill: "#6b7280" }}
+                axisLine={{ stroke: "#e5e7eb" }}
                 tickLine={false}
                 allowDecimals={false}
-                tickMargin={6}
               />
               <YAxis
                 type="category"
                 dataKey="name"
-                tick={{ fontSize: 13, fill: "#374151", fontWeight: 500 }}
+                tick={{ fontSize: 12, fill: "#374151" }}
                 axisLine={false}
                 tickLine={false}
-                width={86}
+                width={80}
               />
               <Tooltip
-                cursor={{ fill: "rgba(74, 93, 15, 0.06)" }}
+                cursor={{ fill: "rgba(30, 58, 95, 0.06)" }}
                 formatter={(v) => [Number(v).toLocaleString(), "Sales"]}
-                contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
+                contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
               />
-              <Bar dataKey="value" barSize={18} radius={[3, 6, 6, 3]}>
+              <Bar dataKey="value" barSize={20} radius={[0, 3, 3, 0]}>
                 {chartData.map((_, i) => (
-                  <Cell key={i} fill={`url(#sbsBar-${i})`} />
+                  <Cell key={i} fill={barColor(i, chartData.length)} />
                 ))}
                 <LabelList
                   dataKey="value"
                   position="right"
-                  fontSize={12}
-                  fontWeight={600}
-                  fill="#4a5d0f"
+                  fontSize={11}
+                  fontWeight={500}
+                  fill="#374151"
                   formatter={(v) => Number(v).toLocaleString()}
                 />
               </Bar>
@@ -274,4 +248,3 @@ const SalesByStateChart = () => {
 };
 
 export default SalesByStateChart;
-
