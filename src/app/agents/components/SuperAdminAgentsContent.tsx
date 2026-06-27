@@ -1957,37 +1957,6 @@ export default function SuperAdminAgentsContent() {
               mode: "active_agents",
               isModal: false,
             },
-            {
-              gradient: "from-[#0e7490] to-[#06b6d4]",
-              Icon: MapPin,
-              value: loadingKpi ? "—" : (kpiStats.mostActiveState ?? "—"),
-              label: "Most Active State",
-              sub: kpiStats.mostActiveStateSales > 0 ? `${kpiStats.mostActiveStateSales} sale${kpiStats.mostActiveStateSales !== 1 ? "s" : ""} this period` : "No sales yet",
-              badge: dateBadge,
-              mode: "most_active_state",
-              isModal: false,
-            },
-            {
-              gradient: "from-[#6d28d9] to-[#8b5cf6]",
-              Icon: Building2,
-              value: loadingKpi ? "—" : kpiStats.totalActivePartners.toLocaleString(),
-              label: "Total Active Partners",
-              sub: "Partners with sales · Click to view",
-              badge: dateBadge,
-              mode: null,
-              isModal: true,
-              onModalClick: () => setShowActivePartnersModal(true),
-            },
-            {
-              gradient: "from-[#334155] to-[#64748b]",
-              Icon: Boxes,
-              value: loadingKpi ? "—" : kpiStats.stovesInStock.toLocaleString(),
-              label: "Stoves in Stock",
-              sub: (dateFrom || dateTo) ? "Received in selected period" : "Click to view all stove IDs",
-              badge: explicitDateBadge,
-              mode: null,
-              isModal: true,
-            },
           ];
 
           return (
