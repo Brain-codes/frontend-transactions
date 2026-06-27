@@ -61,6 +61,45 @@ const AgentsProfilesContent = () => {
   const [credentialData, setCredentialData] = useState(null);
   const [loadingCredentialId, setLoadingCredentialId] = useState(null);
 
+  const [statesModalAgent, setStatesModalAgent] = useState(null);
+  const [statesModalList, setStatesModalList] = useState([]);
+  const [statesModalLoading, setStatesModalLoading] = useState(false);
+
+  const [partnersModalAgent, setPartnersModalAgent] = useState(null);
+  const [partnersModalList, setPartnersModalList] = useState([]);
+  const [partnersModalLoading, setPartnersModalLoading] = useState(false);
+
+  const openStatesModal = async (agent) => {
+    setStatesModalAgent(agent);
+    setStatesModalList([]);
+    setStatesModalLoading(true);
+    try {
+      const res = await superAdminAgentService.getAgentStates(agent.id);
+      const list = res?.data || res?.states || res || [];
+      setStatesModalList(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast({ variant: "error", title: "Failed to load states", description: err.message });
+    } finally {
+      setStatesModalLoading(false);
+    }
+  };
+
+  const openPartnersModal = async (agent) => {
+    setPartnersModalAgent(agent);
+    setPartnersModalList([]);
+    setPartnersModalLoading(true);
+    try {
+      const res = await superAdminAgentService.getAgentOrganizations(agent.id);
+      const list = res?.data || res?.organizations || res || [];
+      setPartnersModalList(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast({ variant: "error", title: "Failed to load partners", description: err.message });
+    } finally {
+      setPartnersModalLoading(false);
+    }
+  };
+  const [loadingCredentialId, setLoadingCredentialId] = useState(null);
+
   const loadAgents = async () => {
     setLoading(true);
     try {
