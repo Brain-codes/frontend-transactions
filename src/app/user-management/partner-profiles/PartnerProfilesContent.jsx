@@ -421,6 +421,66 @@ const PartnerProfilesContent = () => {
         credential={viewingCredential}
       />
 
+      <Dialog open={!!agentsModalPartner} onOpenChange={(o) => !o && setAgentsModalPartner(null)}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4" style={{ backgroundColor: "#4a5d0f" }}>
+            <DialogTitle className="text-white flex items-center gap-2 text-base">
+              <Users className="h-5 w-5" />
+              Assigned ACSL Agents
+            </DialogTitle>
+            {agentsModalPartner && (
+              <p className="text-white/80 text-xs mt-1">
+                {agentsModalPartner.partner_name}
+                {agentsModalPartner.branch ? ` — ${agentsModalPartner.branch}` : ""}
+              </p>
+            )}
+          </DialogHeader>
+          <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
+            {agentsModalLoading ? (
+              <div className="flex items-center justify-center py-10 text-gray-500">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading agents...
+              </div>
+            ) : agentsModalList.length === 0 ? (
+              <div className="text-center py-10 text-gray-500 text-sm">No agents assigned.</div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-semibold text-gray-900">{agentsModalList.length}</span> agent{agentsModalList.length === 1 ? "" : "s"} assigned
+                  </p>
+                </div>
+                <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+                  {agentsModalList.map((a, i) => (
+                    <li
+                      key={a.id || i}
+                      className="px-4 py-3 flex items-center gap-3"
+                      style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
+                    >
+                      <div className="h-9 w-9 rounded-full bg-[#4a5d0f] text-white flex items-center justify-center text-sm font-semibold shrink-0">
+                        {(a.full_name || a.email || "?").trim().charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900 truncate">{a.full_name || "—"}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-0.5 text-xs text-gray-600">
+                          <span className="inline-flex items-center gap-1 truncate">
+                            <Mail className="h-3 w-3 text-gray-400" />
+                            {a.email || "—"}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Phone className="h-3 w-3 text-gray-400" />
+                            {a.phone || "—"}
+                          </span>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
