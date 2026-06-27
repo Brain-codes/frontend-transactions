@@ -74,6 +74,8 @@ const CreateSalesForm = ({
   const router = useRouter();
   const { supabase } = useAuth();
   const isSuperAdmin = SAA_ROLES.includes(userRole);
+  // True when no organization context exists yet — show partner picker regardless of role
+  const [needsPartnerSelection, setNeedsPartnerSelection] = useState(false);
   const [loading, setLoading] = useState(false);
   const [availableStoves, setAvailableStoves] = useState([]);
   const [stovesLoading, setStovesLoading] = useState(true);
