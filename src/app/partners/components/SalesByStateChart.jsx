@@ -8,7 +8,6 @@ import {
   CartesianGrid,
   Tooltip,
   LabelList,
-  Cell,
 } from "recharts";
 import { Calendar as CalendarIcon, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
@@ -22,6 +21,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import salesAdvancedService from "../../services/salesAdvancedAPIService";
+
+const NIGERIAN_STATES = [
+  "Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno",
+  "Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT","Gombe","Imo",
+  "Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa",
+  "Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba",
+  "Yobe","Zamfara",
+];
+
+const STATE_LOOKUP = NIGERIAN_STATES.reduce((acc, s) => {
+  acc[s.toLowerCase()] = s;
+  return acc;
+}, {});
+// Aliases
+STATE_LOOKUP["abuja"] = "FCT";
+STATE_LOOKUP["fct - abuja"] = "FCT";
+STATE_LOOKUP["federal capital territory"] = "FCT";
 
 const MONTHS = [
   { value: "all", label: "All Months" },
@@ -39,7 +55,7 @@ const MONTHS = [
   { value: "11", label: "December" },
 ];
 
-const TOP_OPTIONS = [5, 10, 15, 20, 50];
+const TOP_OPTIONS = [5, 10, 15, 20, 37];
 
 const SalesByStateChart = () => {
   const [rows, setRows] = useState([]);
@@ -70,7 +86,7 @@ const SalesByStateChart = () => {
   }, []);
 
   const chartData = useMemo(() => {
-    const counts = {};
+    const counts = Object.fromEntries(NIGERIAN_STATES.map((s) => [s, 0]));
     rows.forEach((r) => {
       const raw = r?.sales_date || r?.sale_date || r?.created_at;
       if (!raw) return;
@@ -83,9 +99,12 @@ const SalesByStateChart = () => {
         if (d > end) return;
       }
       if (month !== "all" && d.getMonth() !== Number(month)) return;
-      const state = r?.state_backup || r?.state || r?.address?.state || "Unknown";
+      const rawState = r?.state_backup || r?.state || r?.address?.state;
+      if (!rawState) return;
+      const normalized = STATE_LOOKUP[String(rawState).trim().toLowerCase()];
+      if (!normalized) return;
       const qty = Number(r?.quantity ?? 1) || 1;
-      counts[state] = (counts[state] || 0) + qty;
+      counts[normalized] += qty;
     });
     return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
@@ -101,20 +120,9 @@ const SalesByStateChart = () => {
 
   const monthLabel = MONTHS.find((m) => m.value === month)?.label ?? "All Months";
 
-  // Gradient blue shades, darkest at top (largest value) to lightest at bottom
-  const barColor = (i, total) => {
-    const t = total <= 1 ? 0 : i / (total - 1);
-    const lerp = (a, b) => Math.round(a + (b - a) * t);
-    // dark navy #1e3a5f -> light blue #bcd4f0
-    const r = lerp(30, 188);
-    const g = lerp(58, 212);
-    const b = lerp(95, 240);
-    return `rgb(${r}, ${g}, ${b})`;
-  };
-
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-      {/* Navy header bar */}
+      {/* Navy header */}
       <div className="bg-[#1e3a5f] px-5 py-3 flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-white text-[15px] font-semibold">Sales by State</h3>
         <div className="flex flex-wrap items-center gap-2">
@@ -122,7 +130,7 @@ const SalesByStateChart = () => {
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="h-9 px-3.5 inline-flex items-center gap-2 rounded-md bg-white text-gray-700 text-xs font-medium shadow-sm border border-white/40 hover:bg-gray-50"
+                className="h-9 px-3.5 inline-flex items-center gap-2 rounded-md bg-white text-gray-700 text-xs font-medium shadow-sm hover:bg-gray-50"
               >
                 <CalendarIcon className="h-3.5 w-3.5 text-gray-500" />
                 <span className={dateRange.from ? "text-gray-800" : "text-gray-500"}>{dateLabel}</span>
@@ -155,7 +163,7 @@ const SalesByStateChart = () => {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="h-9 px-3.5 inline-flex items-center gap-2 rounded-md bg-white text-gray-700 text-xs font-medium shadow-sm border border-white/40 hover:bg-gray-50"
+                className="h-9 px-3.5 inline-flex items-center gap-2 rounded-md bg-white text-gray-700 text-xs font-medium shadow-sm hover:bg-gray-50"
               >
                 {monthLabel}
                 <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
@@ -174,7 +182,7 @@ const SalesByStateChart = () => {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="h-9 px-3.5 inline-flex items-center gap-2 rounded-md bg-white text-gray-800 text-xs font-semibold shadow-sm border-2 border-white hover:bg-gray-50 ring-1 ring-white/40"
+                className="h-9 px-3.5 inline-flex items-center gap-2 rounded-md bg-white text-gray-800 text-xs font-semibold shadow-sm ring-2 ring-white hover:bg-gray-50"
               >
                 Top {topN}
                 <ChevronDown className="h-3.5 w-3.5 text-gray-600" />
@@ -195,15 +203,13 @@ const SalesByStateChart = () => {
       <div className="px-4 pt-5 pb-4 bg-white">
         {loading ? (
           <p className="text-xs text-gray-400 text-center py-16">Loading sales by state…</p>
-        ) : chartData.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-16">No data for selected filters</p>
         ) : (
-          <ResponsiveContainer width="100%" height={Math.max(360, chartData.length * 38)}>
+          <ResponsiveContainer width="100%" height={Math.max(360, chartData.length * 32)}>
             <BarChart
               data={chartData}
               layout="vertical"
               margin={{ top: 6, right: 56, left: 4, bottom: 8 }}
-              barCategoryGap={4}
+              barCategoryGap={2}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
               <XAxis
@@ -219,22 +225,19 @@ const SalesByStateChart = () => {
                 tick={{ fontSize: 12, fill: "#374151" }}
                 axisLine={false}
                 tickLine={false}
-                width={80}
+                width={84}
+                interval={0}
               />
               <Tooltip
                 cursor={{ fill: "rgba(30, 58, 95, 0.06)" }}
                 formatter={(v) => [Number(v).toLocaleString(), "Sales"]}
                 contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
               />
-              <Bar dataKey="value" barSize={20} radius={[0, 3, 3, 0]}>
-                {chartData.map((_, i) => (
-                  <Cell key={i} fill={barColor(i, chartData.length)} />
-                ))}
+              <Bar dataKey="value" fill="#1e3a5f" barSize={18} radius={[0, 2, 2, 0]} minPointSize={2}>
                 <LabelList
                   dataKey="value"
                   position="right"
                   fontSize={11}
-                  fontWeight={500}
                   fill="#374151"
                   formatter={(v) => Number(v).toLocaleString()}
                 />
