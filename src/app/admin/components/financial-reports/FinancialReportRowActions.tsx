@@ -48,18 +48,6 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
         </Button>
       )}
 
-      {/* Details button */}
-      {viewFrom !== "agent" && (
-        <Button
-          variant="default"
-          size="sm"
-          className="h-7 text-xs bg-black hover:bg-gray-800 text-white rounded-none"
-          onClick={() => onViewDetails(sale)}
-        >
-          Details
-        </Button>
-      )}
-
       {/* Approve button (ACSL Agent only) */}
       {onApproveSale && !sale.agent_approved && (
         <Button
@@ -148,6 +136,18 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Details button */}
+      {viewFrom !== "agent" && (
+        <Button
+          variant="default"
+          size="sm"
+          className="h-7 text-xs bg-[#4A5D0F] hover:bg-[#3a4a0c] text-white rounded-none"
+          onClick={() => onViewDetails(sale)}
+        >
+          Details
+        </Button>
+      )}
     </div>
   );
 };
