@@ -110,25 +110,25 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
         <Table className="text-xs">
           <TableHeader className="bg-[#4a5d0f]">
             <TableRow className="hover:bg-[#4a5d0f]">
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Transaction ID</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Trans #</TableHead>
               <TableHead
                 className="text-white font-semibold py-2 px-1 whitespace-nowrap cursor-pointer select-none"
                 onClick={onToggleSort}
               >
                 <div className="flex items-center gap-1">
-                  Sales Date <ArrowUpDown className="h-3 w-3" />
+                  Date <ArrowUpDown className="h-3 w-3" />
                 </div>
               </TableHead>
               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">End User</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Phone Number</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Phone #</TableHead>
               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">State</TableHead>
               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Stove ID</TableHead>
               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Payment Model</TableHead>
               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Partner</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Expected Amount</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Amount Paid</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Expected</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Paid</TableHead>
               <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Balance</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 text-center whitespace-nowrap">Actions</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 text-center whitespace-nowrap"> </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className={loading ? "opacity-40" : ""}>
