@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { AdminSales } from "@/types/adminSales";
 import FinancialReportRowActions from "./FinancialReportRowActions";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface FinancialReportsTableProps {
   data: AdminSales[];
@@ -31,9 +30,6 @@ interface FinancialReportsTableProps {
   onToggleSort: () => void;
   // "admin" shows Agent column, "superAdmin" shows Partner column, "agent" hides both
   viewFrom?: "admin" | "superAdmin" | "agent";
-  selectedIds?: Set<string>;
-  onToggleSelect?: (id: string) => void;
-  onToggleSelectAll?: () => void;
 }
 
 const formatCurrency = (amount: number) =>
@@ -57,11 +53,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
   data, loading, currentPage, pageSize, totalRecords,
   onPageChange, onPageSizeChange, onViewDetails, onViewHistory, onRecordPayment,
   onApproveSale, onEditSale, onDeleteSale, sortOrder, onToggleSort, viewFrom = "admin",
-  selectedIds, onToggleSelect, onToggleSelectAll,
 }) => {
-  const pageIds = data.map((s) => s.id);
-  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds?.has(id));
-  const somePageSelected = !allPageSelected && pageIds.some((id) => selectedIds?.has(id));
   const totalPages = Math.ceil(totalRecords / pageSize);
   const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endRecord = Math.min(currentPage * pageSize, totalRecords);
@@ -118,16 +110,6 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
         <Table className="text-xs">
           <TableHeader className="bg-[#4a5d0f]">
             <TableRow className="hover:bg-[#4a5d0f]">
-              {onToggleSelect && (
-                <TableHead className="py-2 px-1 w-10 text-white">
-                  <Checkbox
-                    ref={((el: HTMLInputElement | null) => { if (el) el.indeterminate = somePageSelected; }) as any}
-                    checked={allPageSelected}
-                    onCheckedChange={onToggleSelectAll}
-                    className="border-white data-[state=checked]:bg-white data-[state=checked]:text-[#4a5d0f]"
-                  />
-                </TableHead>
-              )}
               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Transaction ID</TableHead>
               <TableHead
                 className="text-white font-semibold py-2 px-1 whitespace-nowrap cursor-pointer select-none"
@@ -153,17 +135,8 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
             {data.map((sale, idx) => (
               <TableRow
                 key={sale.id}
-                className={`${idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]"} hover:bg-gray-50 ${selectedIds?.has(sale.id) ? "ring-1 ring-inset ring-[#4a5d0f]/40" : ""}`}
+                className={`${idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]"} hover:bg-gray-50`}
               >
-                {onToggleSelect && (
-                  <TableCell className="py-1 px-1 w-10">
-                    <Checkbox
-                      checked={selectedIds?.has(sale.id) ?? false}
-                      onCheckedChange={() => onToggleSelect(sale.id)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </TableCell>
-                )}
                 <TableCell className="py-1 px-1 font-medium whitespace-nowrap">{sale.transaction_id || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{formatDate(sale.sales_date || sale.created_at)}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{sale.end_user_name || "N/A"}</TableCell>

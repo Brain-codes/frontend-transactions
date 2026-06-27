@@ -138,17 +138,6 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
     saveSelectedYears(years);
   };
   const [exporting, setExporting] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  useEffect(() => { onSelectionChange?.(selectedIds.size); }, [selectedIds.size, onSelectionChange]);
-
-  const handleToggleSelect = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  }, []);
 
   const stateList = useMemo(() => Object.keys(lgaAndStates).sort(), []);
   const lgaList = useMemo(
@@ -279,23 +268,8 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
     return filteredSales.slice(start, start + pageSize);
   }, [filteredSales, currentPage, pageSize]);
 
-  const handleToggleSelectAll = useCallback(() => {
-    const pageIds = paginatedSales.map((s) => s.id);
-    const allSelected = pageIds.every((id) => selectedIds.has(id));
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (allSelected) {
-        pageIds.forEach((id) => next.delete(id));
-      } else {
-        pageIds.forEach((id) => next.add(id));
-      }
-      return next;
-    });
-  }, [paginatedSales, selectedIds]);
-
   useEffect(() => {
     setCurrentPage(1);
-    setSelectedIds((prev) => (prev.size === 0 ? prev : new Set()));
   }, [searchTerm, paymentStatusFilter, startDate, endDate, pageSize, selectedState, selectedLGA, orgFilter, approvalFilter, selectedYears]);
 
   const hasActiveFilters = searchTerm !== "" || paymentStatusFilter !== "all" || startDate !== "" || endDate !== "" || selectedState !== "all" || selectedLGA !== "all" || orgFilter !== "all" || approvalFilter !== "all";
@@ -331,15 +305,6 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
   const handleExport = async () => {
     try {
       setExporting(true);
-
-      // If specific rows are selected, export only those from client-side data
-      if (selectedIds.size > 0) {
-        const exportData = filteredSales.filter((s) => selectedIds.has(s.id));
-        if (exportData.length === 0) { alert("No data to export."); return; }
-        const { exportSalesDataToCSV } = await import("@/utils/csvExportUtils");
-        exportSalesDataToCSV(exportData, `sales-export-selected-${new Date().toISOString().slice(0, 10)}.csv`);
-        return;
-      }
 
       const result = await (adminSalesService as any).getSalesForExport({
         search: searchTerm || undefined,
@@ -422,18 +387,6 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
             })) : []}
           />
 
-          {/* Selection info bar */}
-          {selectedIds.size > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-brand font-medium">{selectedIds.size} sale{selectedIds.size !== 1 ? "s" : ""} selected — Export will include only these records</span>
-              <button
-                className="text-xs text-red-500 hover:text-red-700 font-medium border border-red-200 rounded px-2 py-0.5 hover:bg-red-50 transition-colors"
-                onClick={() => setSelectedIds(new Set())}
-              >
-                Clear
-              </button>
-            </div>
-          )}
 
           {/* Table */}
           <FinancialReportsTable
@@ -453,9 +406,6 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
             sortOrder={sortOrder}
             onToggleSort={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
             viewFrom={viewFrom === "acsl_agent" ? "agent" : viewFrom}
-            selectedIds={selectedIds}
-            onToggleSelect={handleToggleSelect}
-            onToggleSelectAll={handleToggleSelectAll}
           />
         </>
       )}
