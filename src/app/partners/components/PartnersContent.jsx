@@ -1196,6 +1196,13 @@ export default function PartnersContent() {
     return 0;
   });
 
+  const displayedOrgs = (() => {
+    if (!stoveSort.key || !stoveSort.direction) return sortedOrgs;
+    const field = stoveSortKeyMap[stoveSort.key];
+    const dir = stoveSort.direction === "asc" ? 1 : -1;
+    return [...sortedOrgs].sort((a, b) => (((a[field] ?? 0) - (b[field] ?? 0)) * dir));
+  })();
+
   const startRecord = organizationsData.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
   const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
 
