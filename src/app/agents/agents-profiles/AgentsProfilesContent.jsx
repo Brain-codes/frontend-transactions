@@ -45,7 +45,7 @@ const AgentsProfilesContent = () => {
   const { toast, toasts, removeToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [agents, setAgents] = useState([]);
-  const [filters, setFilters] = useState({ search: "", status: "" });
+  const [filters, setFilters] = useState({ search: "", status: "", role: "" });
   const [page, setPage] = useState(1);
 
   const [detailsAgent, setDetailsAgent] = useState(null);
@@ -97,9 +97,30 @@ const AgentsProfilesContent = () => {
     }
   };
 
+  const roles = useMemo(() => {
+    const s = new Set();
+    agents.forEach((a) => a.role && s.add(a.role));
+    return Array.from(s).sort();
+  }, [agents]);
+
+  const formatRole = (r) =>
+    (r || "")
+      .split("_")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+
+  const ROLE_BADGE = {
+    acsl_agent: "bg-blue-100 text-blue-700",
+    acsl_agent_manager: "bg-purple-100 text-purple-700",
+    super_admin: "bg-red-100 text-red-700",
+    partner: "bg-amber-100 text-amber-700",
+    partner_agent: "bg-teal-100 text-teal-700",
+  };
+
   const filtered = useMemo(() => {
     return agents.filter((a) => {
       if (filters.status && a.status !== filters.status) return false;
+      if (filters.role && a.role !== filters.role) return false;
       if (filters.search) {
         const q = filters.search.toLowerCase();
         const hay = `${a.full_name ?? ""} ${a.email ?? ""} ${a.phone ?? ""}`.toLowerCase();
@@ -115,7 +136,7 @@ const AgentsProfilesContent = () => {
   const startRecord = filtered.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const endRecord = Math.min(currentPage * PAGE_SIZE, filtered.length);
 
-  const hasActiveFilters = filters.search !== "" || filters.status !== "";
+  const hasActiveFilters = filters.search !== "" || filters.status !== "" || filters.role !== "";
 
   const handleFilterChange = (field, value) => {
     setFilters((prev) => ({ ...prev, [field]: value }));
@@ -123,7 +144,7 @@ const AgentsProfilesContent = () => {
   };
 
   const handleClearFilters = () => {
-    setFilters({ search: "", status: "" });
+    setFilters({ search: "", status: "", role: "" });
     setPage(1);
   };
 
@@ -168,6 +189,21 @@ const AgentsProfilesContent = () => {
           </SelectContent>
         </Select>
 
+        <Select
+          value={filters.role || "all"}
+          onValueChange={(v) => handleFilterChange("role", v === "all" ? "" : v)}
+        >
+          <SelectTrigger className="w-[180px] h-9 bg-white text-xs shadow-none border-gray-200 text-gray-400 data-[placeholder]:text-gray-400">
+            <SelectValue placeholder="All Roles" />
+          </SelectTrigger>
+          <SelectContent className="text-xs">
+            <SelectItem value="all" className="text-xs">All Roles</SelectItem>
+            {roles.map((r) => (
+              <SelectItem key={r} value={r} className="text-xs">{formatRole(r)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Button
           onClick={handleClearFilters}
           size="sm"
@@ -200,6 +236,7 @@ const AgentsProfilesContent = () => {
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Full Name</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Email</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone</TableHead>
+                <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Role</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">States Assigned</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Partners Assigned</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
@@ -209,7 +246,7 @@ const AgentsProfilesContent = () => {
             <TableBody className={loading ? "opacity-40" : ""}>
               {pageRows.length === 0 && !loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10 text-gray-500">
+                  <TableCell colSpan={8} className="text-center py-10 text-gray-500">
                     No agents found
                   </TableCell>
                 </TableRow>
@@ -223,6 +260,19 @@ const AgentsProfilesContent = () => {
                     <TableCell className="text-sm font-medium text-gray-900">{a.full_name || "N/A"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{a.email || "—"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{a.phone || "—"}</TableCell>
+                    <TableCell className="text-sm">
+                      {a.role ? (
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            ROLE_BADGE[a.role] || "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {formatRole(a.role)}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
                     <TableCell className="text-sm text-gray-600 text-center">{a.assigned_states_count ?? 0}</TableCell>
                     <TableCell className="text-sm text-gray-600 text-center">{a.total_partners_count ?? a.assigned_organizations_count ?? 0}</TableCell>
                     <TableCell className="text-sm">
