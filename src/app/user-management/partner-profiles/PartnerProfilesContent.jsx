@@ -51,6 +51,41 @@ import EditPartnerModal from "../../partners/components/EditPartnerModal";
 import ViewCredentialModal from "../../admin/components/credentials/ViewCredentialModal";
 import adminCredentialsService from "../../services/adminCredentialsService";
 import superAdminAgentService from "../../services/superAdminAgentService";
+import adminAgentService from "../../services/adminAgentService.jsx";
+
+const ROLE_LABELS = {
+  acsl_agent: "ACSL Agent",
+  acsl_agent_manager: "ACSL Agent Manager",
+  partner_agent: "Partner Agent",
+  partner: "Partner",
+};
+const ROLE_BADGE = {
+  acsl_agent: "bg-blue-100 text-blue-700",
+  acsl_agent_manager: "bg-indigo-100 text-indigo-700",
+  partner_agent: "bg-amber-100 text-amber-700",
+  partner: "bg-emerald-100 text-emerald-700",
+};
+const formatRole = (r) => ROLE_LABELS[r] || (r ? r.replace(/_/g, " ") : "—");
+
+async function fetchAllAgentsForOrg(orgId) {
+  const [acslRes, partnerRes] = await Promise.all([
+    superAdminAgentService.getAgentsByOrganization(orgId).catch(() => null),
+    adminAgentService.getSalesAgents({ organization_id: orgId, limit: 100 }).catch(() => null),
+  ]);
+  const acslList = acslRes?.data?.agents || acslRes?.data || [];
+  const partnerList = partnerRes?.data?.agents || partnerRes?.data || [];
+  const tagged = [
+    ...(Array.isArray(acslList) ? acslList : []).map((a) => ({ ...a, role: a.role || "acsl_agent" })),
+    ...(Array.isArray(partnerList) ? partnerList : []).map((a) => ({ ...a, role: a.role || "partner_agent" })),
+  ];
+  const seen = new Set();
+  return tagged.filter((a) => {
+    const k = a.id || a.email;
+    if (!k || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
 
 const PAGE_SIZE = 10;
 
@@ -74,10 +109,9 @@ const PartnerProfilesContent = () => {
     setAgentsModalLoading(true);
     setAgentsModalList([]);
     try {
-      const res = await superAdminAgentService.getAgentsByOrganization(partner.id);
-      const list = res?.data?.agents || res?.data || [];
-      setAgentsModalList(Array.isArray(list) ? list : []);
-      setAgentCounts((prev) => ({ ...prev, [partner.id]: Array.isArray(list) ? list.length : 0 }));
+      const list = await fetchAllAgentsForOrg(partner.id);
+      setAgentsModalList(list);
+      setAgentCounts((prev) => ({ ...prev, [partner.id]: list.length }));
     } catch (err) {
       toast({ variant: "error", title: "Failed to load agents", description: err.message });
     } finally {
@@ -150,10 +184,8 @@ const PartnerProfilesContent = () => {
       const results = await Promise.all(
         missing.map(async (p) => {
           try {
-            const res = await superAdminAgentService.getAgentsByOrganization(p.id);
-            const list = res?.data?.agents || res?.data || [];
-            const count = Array.isArray(list) ? list.length : 0;
-            return [p.id, count];
+            const list = await fetchAllAgentsForOrg(p.id);
+            return [p.id, list.length];
           } catch {
             return [p.id, 0];
           }
@@ -257,7 +289,7 @@ const PartnerProfilesContent = () => {
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">State</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
-                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Assigned ACSL Agents</TableHead>
+                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Assigned Agents</TableHead>
                 <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -426,7 +458,7 @@ const PartnerProfilesContent = () => {
           <DialogHeader className="px-6 py-4" style={{ backgroundColor: "#4a5d0f" }}>
             <DialogTitle className="text-white flex items-center gap-2 text-base">
               <Users className="h-5 w-5" />
-              Assigned ACSL Agents
+              Assigned Agents
             </DialogTitle>
             {agentsModalPartner && (
               <p className="text-white/80 text-xs mt-1">
@@ -460,7 +492,12 @@ const PartnerProfilesContent = () => {
                         {(a.full_name || a.email || "?").trim().charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 truncate">{a.full_name || "—"}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium text-gray-900 truncate">{a.full_name || "—"}</p>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${ROLE_BADGE[a.role] || "bg-gray-100 text-gray-700"}`}>
+                            {formatRole(a.role)}
+                          </span>
+                        </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-0.5 text-xs text-gray-600">
                           <span className="inline-flex items-center gap-1 truncate">
                             <Mail className="h-3 w-3 text-gray-400" />
