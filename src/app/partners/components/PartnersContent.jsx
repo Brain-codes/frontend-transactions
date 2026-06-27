@@ -1183,15 +1183,14 @@ export default function PartnersContent() {
           <div className="p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3" style={{ backgroundColor: "#f4f7e3" }}>
             {/* Search */}
             <div className="w-1/4 min-w-[180px] relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input placeholder="Search by name, ID, branch..." value={filters.search} onChange={(e) => handleFilterChange("search", e.target.value)} className="pl-9 bg-white h-9 text-sm" />
+              <Input placeholder="Search by name, ID, branch..." value={filters.search} onChange={(e) => handleFilterChange("search", e.target.value)} className="bg-white h-9 text-sm shadow-none" />
             </div>
 
             {/* Searchable State Filter */}
             <div className="relative w-[155px]" ref={stateDropdownRef}>
               <button
                 onClick={() => setStateDropdownOpen((o) => !o)}
-                className="w-full h-9 px-3 flex items-center justify-between bg-white border border-input rounded-md text-sm text-left focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full h-9 px-3 flex items-center justify-between bg-white border border-input rounded-md text-sm text-left focus:outline-none focus:ring-2 focus:ring-ring shadow-none"
               >
                 <span className={filters.state === "all" ? "text-muted-foreground" : ""}>
                   {filters.state === "all" ? "All States" : nigerianStates.find((s) => s.toLowerCase() === filters.state) || filters.state}
@@ -1231,7 +1230,7 @@ export default function PartnersContent() {
               <div className="relative w-[155px]" ref={branchDropdownRef}>
                 <button
                   onClick={() => setBranchDropdownOpen((o) => !o)}
-                  className="w-full h-9 px-3 flex items-center justify-between bg-white border border-input rounded-md text-sm text-left focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full h-9 px-3 flex items-center justify-between bg-white border border-input rounded-md text-sm text-left focus:outline-none focus:ring-2 focus:ring-ring shadow-none"
                 >
                   <span className={!filters.branch ? "text-muted-foreground" : ""}>
                     {filters.branch || "All Branches"}
@@ -1272,7 +1271,7 @@ export default function PartnersContent() {
 
             {/* Assigned Agents Filter */}
             <Select value={filters.assigned_agents} onValueChange={(v) => handleFilterChange("assigned_agents", v)}>
-              <SelectTrigger className="w-[155px] h-9 bg-white text-sm"><SelectValue placeholder="All Agents" /></SelectTrigger>
+              <SelectTrigger className="w-[155px] h-9 bg-white text-sm shadow-none"><SelectValue placeholder="All Agents" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Agents</SelectItem>
                 <SelectItem value="assigned">Assigned</SelectItem>
@@ -1281,49 +1280,61 @@ export default function PartnersContent() {
             </Select>
 
             {/* Date Range Filter */}
-            <div className="flex items-center gap-1.5">
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[140px]"
-                style={{ colorScheme: "light" }}
-              />
-              <span className="text-xs text-gray-400">–</span>
-              <input
-                type="date"
-                value={dateTo}
-                min={dateFrom || undefined}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[140px]"
-                style={{ colorScheme: "light" }}
-              />
-            </div>
+            {(() => {
+              const fromDate = dateFrom ? parseISO(dateFrom) : undefined;
+              const toDate = dateTo ? parseISO(dateTo) : undefined;
+              const label = fromDate && toDate
+                ? `${format(fromDate, "MMM d, yyyy")} – ${format(toDate, "MMM d, yyyy")}`
+                : fromDate
+                  ? `${format(fromDate, "MMM d, yyyy")} – …`
+                  : "Filter by date range";
+              return (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="h-9 px-3 flex items-center gap-1.5 rounded-md text-sm bg-white border border-input text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-ring shadow-none"
+                    >
+                      <CalendarIcon className="h-3.5 w-3.5 text-gray-500" />
+                      <span className={!fromDate ? "text-muted-foreground" : ""}>{label}</span>
+                      {fromDate && (
+                        <X
+                          className="h-3.5 w-3.5 text-gray-400 hover:text-gray-700 ml-1"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDateFrom("");
+                            setDateTo("");
+                          }}
+                        />
+                      )}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="range"
+                      selected={{ from: fromDate, to: toDate }}
+                      onSelect={(range) => {
+                        setDateFrom(range?.from ? format(range.from, "yyyy-MM-dd") : "");
+                        setDateTo(range?.to ? format(range.to, "yyyy-MM-dd") : "");
+                      }}
+                      numberOfMonths={2}
+                      disabled={{ after: new Date() }}
+                      toDate={new Date()}
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              );
+            })()}
 
             {hasActiveFilters && (
-              <Button onClick={handleClearFilters} size="sm" variant="outline" className="h-9">
+              <Button onClick={handleClearFilters} size="sm" variant="outline" className="h-9 shadow-none">
                 <X className="h-4 w-4 mr-1" />Clear
               </Button>
             )}
-            <div className="flex items-center gap-3 ml-auto">
-              <p className="text-sm text-gray-600">
-                Showing <span className="font-medium">{startRecord}–{endRecord}</span> of <span className="font-medium">{pagination.total}</span> partners
-              </p>
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm text-gray-500">per page:</span>
-                <Select value={pagination.limit?.toString() ?? "10"} onValueChange={handlePageSizeChange}>
-                  <SelectTrigger className="w-[65px] h-7 bg-white text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <p className="text-sm font-bold text-green-500">Total: <span className="text-brand">{pagination.total}</span></p>
-            </div>
           </div>
+
 
           {/* KPI Stat Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
