@@ -1629,7 +1629,7 @@ export default function SuperAdminAgentsContent() {
             <button
               type="button"
               onClick={() => setRoleDropdownOpen((o) => !o)}
-              className="flex items-center justify-between gap-2 h-9 px-3 bg-white border border-input rounded-md text-sm min-w-[160px] max-w-[220px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-ring"
+              className="flex items-center justify-between gap-2 h-9 px-3 bg-white border border-gray-200 rounded-md text-xs min-w-[160px] max-w-[220px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/30 shadow-none"
             >
               <span className="truncate text-left">
                 {selectedRoles.length === 0 || selectedRoles.length === 3
