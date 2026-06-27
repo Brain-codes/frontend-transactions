@@ -65,6 +65,25 @@ const PartnerProfilesContent = () => {
   const [viewingCredential, setViewingCredential] = useState(null);
   const [loadingCredentialOrgId, setLoadingCredentialOrgId] = useState(null);
   const [agentCounts, setAgentCounts] = useState({}); // orgId -> count
+  const [agentsModalPartner, setAgentsModalPartner] = useState(null);
+  const [agentsModalList, setAgentsModalList] = useState([]);
+  const [agentsModalLoading, setAgentsModalLoading] = useState(false);
+
+  const openAgentsModal = async (partner) => {
+    setAgentsModalPartner(partner);
+    setAgentsModalLoading(true);
+    setAgentsModalList([]);
+    try {
+      const res = await superAdminAgentService.getAgentsByOrganization(partner.id);
+      const list = res?.data?.agents || res?.data || [];
+      setAgentsModalList(Array.isArray(list) ? list : []);
+      setAgentCounts((prev) => ({ ...prev, [partner.id]: Array.isArray(list) ? list.length : 0 }));
+    } catch (err) {
+      toast({ variant: "error", title: "Failed to load agents", description: err.message });
+    } finally {
+      setAgentsModalLoading(false);
+    }
+  };
 
 
   const loadPartners = async () => {
