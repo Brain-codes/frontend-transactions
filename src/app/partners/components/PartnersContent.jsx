@@ -1393,7 +1393,7 @@ export default function PartnersContent() {
               </p>
               <Button
                 size="sm"
-                className="h-8 px-3 text-xs flex items-center gap-1 bg-black hover:bg-black/90 text-white shadow-none rounded-none"
+                className="h-8 px-3 text-xs flex items-center gap-1 bg-black hover:bg-black/90 text-white shadow-none rounded-md"
                 onClick={() => {
                   const headers = ["Partner Name", "Type", "Branch", "State", "Contact Person", "Contact Phone", "Email", "Total Stoves", "Sold", "Available"];
                   const rows = organizationsData.map((org) => [org.partner_name, org.partner_type || "", org.branch || "", org.state || "", org.contact_person || "", org.contact_phone || "", org.email || "", org.total_stove_ids ?? "", org.sold_stove_ids ?? "", org.available_stove_ids ?? ""]);
@@ -1423,7 +1423,7 @@ export default function PartnersContent() {
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Sold</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Available</TableHead>
                     
-                    <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
+                    <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className={tableLoading ? "opacity-40" : ""}>
