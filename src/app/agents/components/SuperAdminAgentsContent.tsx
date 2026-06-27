@@ -2064,7 +2064,15 @@ export default function SuperAdminAgentsContent() {
 
         {/* Table */}
         <div className="space-y-0">
+          <div className="flex items-center justify-between px-1 pb-2">
+            <p className="text-sm text-gray-600">
+              Showing <span className="font-medium">{startItem}</span> to{" "}
+              <span className="font-medium">{endItem}</span> of{" "}
+              <span className="font-medium">{totalItems.toLocaleString()}</span> agents
+            </p>
+          </div>
           <div className="bg-white border-x border-t border-gray-200 rounded-t-lg overflow-x-auto relative">
+
             {loading && (
               <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
                 <Loader2 className="h-6 w-6 animate-spin text-[#4a5d0f]" />
