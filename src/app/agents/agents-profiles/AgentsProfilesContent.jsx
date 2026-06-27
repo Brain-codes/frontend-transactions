@@ -316,8 +316,40 @@ const AgentsProfilesContent = () => {
                         "—"
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-gray-600 text-center">{a.assigned_states_count ?? 0}</TableCell>
-                    <TableCell className="text-sm text-gray-600 text-center">{a.total_partners_count ?? a.assigned_organizations_count ?? 0}</TableCell>
+                    <TableCell className="text-sm text-center">
+                      {(() => {
+                        const n = a.assigned_states_count ?? 0;
+                        const cls = n > 0
+                          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                          : "bg-rose-100 text-rose-700 hover:bg-rose-200";
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => openStatesModal(a)}
+                            className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-semibold transition ${cls}`}
+                          >
+                            {n}
+                          </button>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell className="text-sm text-center">
+                      {(() => {
+                        const n = a.total_partners_count ?? a.assigned_organizations_count ?? 0;
+                        const cls = n > 0
+                          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                          : "bg-rose-100 text-rose-700 hover:bg-rose-200";
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => openPartnersModal(a)}
+                            className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-semibold transition ${cls}`}
+                          >
+                            {n}
+                          </button>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell className="text-sm">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
