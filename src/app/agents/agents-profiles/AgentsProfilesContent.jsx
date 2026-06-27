@@ -260,6 +260,19 @@ const AgentsProfilesContent = () => {
                     <TableCell className="text-sm font-medium text-gray-900">{a.full_name || "N/A"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{a.email || "—"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{a.phone || "—"}</TableCell>
+                    <TableCell className="text-sm">
+                      {a.role ? (
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            ROLE_BADGE[a.role] || "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {formatRole(a.role)}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
                     <TableCell className="text-sm text-gray-600 text-center">{a.assigned_states_count ?? 0}</TableCell>
                     <TableCell className="text-sm text-gray-600 text-center">{a.total_partners_count ?? a.assigned_organizations_count ?? 0}</TableCell>
                     <TableCell className="text-sm">
