@@ -1359,7 +1359,7 @@ export default function PartnersContent() {
                 gradient: "from-[#B45309] to-[#F59E0B]",
                 Icon: Package,
                 value: loadingStats ? "—" : stats.total_received.toLocaleString(),
-                label: "Most Stoves Received",
+                label: "Stoves Sold to End Users",
                 sub: "Total stoves received across all partners",
                 onClick: () => setSortMode("stoves_desc"),
                 active: sortMode === "stoves_desc",
