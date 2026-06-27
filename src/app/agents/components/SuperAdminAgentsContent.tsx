@@ -1480,10 +1480,12 @@ export default function SuperAdminAgentsContent() {
       setPagination(
         p
           ? {
-              page: p.currentPage ?? p.page ?? page,
-              limit: p.itemsPerPage ?? p.limit ?? pageSize,
-              total: p.totalItems ?? p.total ?? rows.length,
+              currentPage: p.currentPage ?? p.page ?? page,
+              itemsPerPage: p.itemsPerPage ?? p.limit ?? pageSize,
+              totalItems: p.totalItems ?? p.total ?? rows.length,
               totalPages: p.totalPages ?? 1,
+              hasNextPage: p.hasNextPage ?? false,
+              hasPrevPage: p.hasPrevPage ?? false,
             }
           : null,
       );
