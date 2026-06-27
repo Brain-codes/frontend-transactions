@@ -505,23 +505,46 @@ const AgentsProfilesContent = () => {
             ) : statesModalList.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-6">No states assigned</p>
             ) : (
-              <ul className="space-y-2">
-                {statesModalList.map((s, i) => {
-                  const name = typeof s === "string" ? s : (s.state || s.name || JSON.stringify(s));
+              <>
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search states..."
+                    value={statesSearch}
+                    onChange={(e) => setStatesSearch(e.target.value)}
+                    className="pl-9 h-9 text-sm"
+                  />
+                </div>
+                {(() => {
+                  const q = statesSearch.trim().toLowerCase();
+                  const filtered = statesModalList.filter((s) => {
+                    const name = typeof s === "string" ? s : (s.state || s.name || "");
+                    return !q || String(name).toLowerCase().includes(q);
+                  });
+                  if (filtered.length === 0) {
+                    return <p className="text-sm text-gray-500 text-center py-6">No matching states</p>;
+                  }
                   return (
-                    <li
-                      key={`${name}-${i}`}
-                      className="flex items-center gap-3 px-3 py-2 rounded-md border border-gray-100"
-                      style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
-                    >
-                      <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-[#eef3c4] text-[#4a5d0f]">
-                        <MapPin className="h-4 w-4" />
-                      </span>
-                      <span className="text-sm text-gray-800 font-medium">{name}</span>
-                    </li>
+                    <ul className="space-y-2">
+                      {filtered.map((s, i) => {
+                        const name = typeof s === "string" ? s : (s.state || s.name || JSON.stringify(s));
+                        return (
+                          <li
+                            key={`${name}-${i}`}
+                            className="flex items-center gap-3 px-3 py-2 rounded-md border border-gray-100"
+                            style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
+                          >
+                            <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-[#eef3c4] text-[#4a5d0f]">
+                              <MapPin className="h-4 w-4" />
+                            </span>
+                            <span className="text-sm text-gray-800 font-medium">{name}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   );
-                })}
-              </ul>
+                })()}
+              </>
             )}
           </div>
         </DialogContent>
