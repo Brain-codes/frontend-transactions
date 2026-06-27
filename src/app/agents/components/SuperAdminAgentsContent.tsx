@@ -1998,7 +1998,7 @@ export default function SuperAdminAgentsContent() {
             {
               gradient: "from-[#7C3AED] to-[#A78BFA]",
               Icon: Boxes,
-              value: loading ? "—" : totalUnsold.toLocaleString(),
+              value: totalsReady ? totalUnsold.toLocaleString() : "—",
               label: "Unsold / Unretrieved Stoves",
               sub: "Remaining in stock",
             },
