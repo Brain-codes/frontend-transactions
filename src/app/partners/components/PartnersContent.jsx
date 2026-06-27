@@ -1458,7 +1458,7 @@ export default function PartnersContent() {
                           <TableCell className="text-sm">{org.branch || "N/A"}</TableCell>
                           <TableCell className="text-sm">{org.contact_phone || "—"}</TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1.5 text-xs">
+                            <div className="flex items-center gap-1.5 text-sm">
                               <button onClick={() => handleViewStoveIds(org, "all")} className="font-medium text-purple-700 hover:underline hover:text-purple-900 transition-colors" title="Total received">
                                 {org.total_stove_ids ?? 0}
                               </button>
