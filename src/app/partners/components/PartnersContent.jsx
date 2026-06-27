@@ -55,6 +55,9 @@ import {
   Tag,
   TrendingUp,
   Boxes,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AddPartnerModal from "../components/AddPartnerModal";
@@ -907,6 +910,20 @@ export default function PartnersContent() {
   const loadingAgentOrgIdsRef = useRef(new Set());
 
   const [sortMode, setSortMode] = useState("default");
+  const [stoveSort, setStoveSort] = useState({ key: null, direction: null });
+  const cycleStoveSort = (key) => {
+    setStoveSort((prev) => {
+      if (prev.key !== key) return { key, direction: "asc" };
+      if (prev.direction === "asc") return { key, direction: "desc" };
+      if (prev.direction === "desc") return { key: null, direction: null };
+      return { key, direction: "asc" };
+    });
+  };
+  const stoveSortKeyMap = { received: "total_stove_ids", sold: "sold_stove_ids", available: "available_stove_ids" };
+  const SortIcon = ({ col }) => {
+    if (stoveSort.key !== col || !stoveSort.direction) return <ArrowUpDown className="w-3.5 h-3.5 opacity-70" />;
+    return stoveSort.direction === "asc" ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />;
+  };
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [filters, setFilters] = useState({ search: "", state: "all", partner_type: "all", assigned_agents: "all", branch: "" });
@@ -1178,6 +1195,13 @@ export default function PartnersContent() {
     if (sortMode === "available_desc") return (b.available_stove_ids ?? 0) - (a.available_stove_ids ?? 0);
     return 0;
   });
+
+  const displayedOrgs = (() => {
+    if (!stoveSort.key || !stoveSort.direction) return sortedOrgs;
+    const field = stoveSortKeyMap[stoveSort.key];
+    const dir = stoveSort.direction === "asc" ? 1 : -1;
+    return [...sortedOrgs].sort((a, b) => (((a[field] ?? 0) - (b[field] ?? 0)) * dir));
+  })();
 
   const startRecord = organizationsData.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
   const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
@@ -1465,9 +1489,21 @@ export default function PartnersContent() {
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">State</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
-                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Received</TableHead>
-                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Sold</TableHead>
-                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Available</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
+                      <button type="button" onClick={() => cycleStoveSort("received")} className="inline-flex items-center gap-1 mx-auto hover:opacity-90" title="Sort by Received">
+                        Received <SortIcon col="received" />
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
+                      <button type="button" onClick={() => cycleStoveSort("sold")} className="inline-flex items-center gap-1 mx-auto hover:opacity-90" title="Sort by Sold">
+                        Sold <SortIcon col="sold" />
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
+                      <button type="button" onClick={() => cycleStoveSort("available")} className="inline-flex items-center gap-1 mx-auto hover:opacity-90" title="Sort by Available">
+                        Available <SortIcon col="available" />
+                      </button>
+                    </TableHead>
                     
                     <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap"></TableHead>
                   </TableRow>
@@ -1482,7 +1518,7 @@ export default function PartnersContent() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    sortedOrgs.map((org, idx) => (
+                    displayedOrgs.map((org, idx) => (
                       <React.Fragment key={org.id}>
                         <TableRow className="hover:bg-[#eef3c4] text-gray-700" style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f4f7e3" }}>
                           <TableCell className="text-sm font-medium text-gray-900">{org.partner_name}</TableCell>

@@ -1,26 +1,31 @@
-## Problem
+## Add sortable Received / Sold / Available columns to Track Performance
 
-Clicking **Credentials** in the Partner Profiles view always errors out with "No credentials found" / edge-function 404 (`JSON object requested, multiple (or no) rows returned`), even for partners that do have credentials.
+Add three-state column sorting to the **Received**, **Sold**, and **Available** column headers in the Track Performance table (`src/app/partners/components/PartnersContent.jsx`).
 
-## Root cause
+### Behavior
 
-`PartnerProfilesContent` loads its rows via `organizationsService.getAllOrganizations()` and then calls `adminCredentialsService.getCredentialByPartnerId(org.partner_id)`.
+Each of the three headers becomes clickable with a sort indicator next to the label. Clicking cycles through three states:
 
-However, `organizationsService.getAllOrganizations()` selects:
+1. **None** (default) — original order from the API, neutral up/down arrow icon (`ArrowUpDown`)
+2. **Ascending** — smallest → largest, up arrow icon (`ArrowUp`)
+3. **Descending** — largest → smallest, down arrow icon (`ArrowDown`)
+4. Clicking again returns to **None** (normalized / original state)
 
-```
-id, partner_name, branch, state, contact_person, contact_phone, alternative_phone, email, address, created_at, updated_at
-```
+Only one column can be actively sorted at a time. Clicking a different column resets the others to None and starts that column at Ascending.
 
-`partner_id` is **not** in the select list, so `org.partner_id` is `undefined`. The credentials edge function is then called with an empty `partner_id`, finds no matching row, and returns 404. The Manage Partners view works because it loads organizations through a different path that includes `partner_id`.
+### Implementation details
 
-## Fix
+- Add state: `const [sortConfig, setSortConfig] = useState({ key: null, direction: null })` where `key ∈ {'received','sold','available'}` and `direction ∈ {'asc','desc',null}`.
+- Wrap the header label + icon in a `<button>` inside the existing `TableHead` for each of the three columns, preserving the current green styling and badge colors.
+- Derive `displayedPartners` by:
+  - Starting from the existing filtered/paginated source.
+  - If `sortConfig.direction` is null, use the array as-is (original order preserved).
+  - Otherwise, apply `[...partners].sort((a,b) => …)` on the numeric value for that key.
+- Apply sorting **before** pagination so sorted results span all pages correctly.
+- Icons from `lucide-react`: `ArrowUpDown`, `ArrowUp`, `ArrowDown` (add to existing imports).
 
-Add `partner_id` to the column list in `src/app/services/organizationsService.js` for all three queries (`getAllOrganizations`, `getOrganizationById`, `searchOrganizations`) so every consumer of this service has the field available.
+### Scope
 
-No UI changes needed — once `org.partner_id` is populated, the existing `handleViewCredentials` call in `PartnerProfilesContent.jsx` will resolve correctly and the modal will open.
-
-## Verification
-
-- Reload `/partners/profiles`, click **Credentials** on a partner known to have login credentials → modal opens with credentials.
-- Click **Credentials** on a partner with no credentials → still shows the existing "No credentials found" toast (expected).
+- File touched: `src/app/partners/components/PartnersContent.jsx` only.
+- No backend, no API, no other tables affected.
+- No changes to filters, pagination controls, or the Purchases from ACSL modal.
