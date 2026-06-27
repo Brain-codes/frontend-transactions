@@ -1163,22 +1163,8 @@ export default function PartnersContent() {
           <PageHeader
             icon={Building2}
             title="Track Performance"
-            right={
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 px-3 text-xs flex items-center gap-1"
-                onClick={() => {
-                  const headers = ["Partner Name", "Type", "Branch", "State", "Contact Person", "Contact Phone", "Email", "Total Stoves", "Sold", "Available"];
-                  const rows = organizationsData.map((org) => [org.partner_name, org.partner_type || "", org.branch || "", org.state || "", org.contact_person || "", org.contact_phone || "", org.email || "", org.total_stove_ids ?? "", org.sold_stove_ids ?? "", org.available_stove_ids ?? ""]);
-                  downloadTableAsCSV(headers, rows, `partners-${new Date().toISOString().slice(0, 10)}.csv`);
-                }}
-                disabled={organizationsData.length === 0}
-              >
-                <Download className="h-3.5 w-3.5 mr-1" />Download
-              </Button>
-            }
           />
+
 
           <div className="p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3" style={{ backgroundColor: "#f4f7e3" }}>
             {/* Search */}
@@ -1405,7 +1391,20 @@ export default function PartnersContent() {
               <p className="text-sm text-gray-600">
                 Showing <span className="font-medium">{startRecord}–{endRecord}</span> of <span className="font-medium">{pagination.total}</span> partners
               </p>
+              <Button
+                size="sm"
+                className="h-8 px-3 text-xs flex items-center gap-1 bg-black hover:bg-black/90 text-white shadow-none rounded-none"
+                onClick={() => {
+                  const headers = ["Partner Name", "Type", "Branch", "State", "Contact Person", "Contact Phone", "Email", "Total Stoves", "Sold", "Available"];
+                  const rows = organizationsData.map((org) => [org.partner_name, org.partner_type || "", org.branch || "", org.state || "", org.contact_person || "", org.contact_phone || "", org.email || "", org.total_stove_ids ?? "", org.sold_stove_ids ?? "", org.available_stove_ids ?? ""]);
+                  downloadTableAsCSV(headers, rows, `partners-${new Date().toISOString().slice(0, 10)}.csv`);
+                }}
+                disabled={organizationsData.length === 0}
+              >
+                <Download className="h-3.5 w-3.5 mr-1" />Download
+              </Button>
             </div>
+
             <div className="bg-white border border-gray-200 overflow-x-auto relative">
 
               {tableLoading && (
