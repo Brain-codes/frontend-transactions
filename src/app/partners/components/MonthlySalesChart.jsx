@@ -56,7 +56,7 @@ const MonthlySalesChart = ({ title = "Monthly Sales", tooltipLabel = "Sales" } =
       <div className="mb-4 flex items-center gap-3">
         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
         <span className="text-[10px] font-semibold tracking-[0.15em] text-gray-400 uppercase">
-          Monthly Sales
+          {title}
         </span>
         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
       </div>
