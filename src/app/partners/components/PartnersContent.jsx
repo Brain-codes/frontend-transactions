@@ -1463,8 +1463,8 @@ export default function PartnersContent() {
                             <div className="flex items-center justify-center gap-1">
                               {can("manage-all-partners") && (
 
-                                <Button size="sm" className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white" title="Stove Transfer History" onClick={() => setTransferHistoryOrg(org)}>
-                                  Stove Transfer History
+                                <Button size="sm" className="h-7 px-2 text-xs rounded-none bg-brand hover:bg-brand/90 text-white" title="Purchases from ACSL" onClick={() => setTransferHistoryOrg(org)}>
+                                  Purchases from ACSL
                                 </Button>
                               )}
                             </div>
