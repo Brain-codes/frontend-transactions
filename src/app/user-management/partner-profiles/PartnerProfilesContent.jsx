@@ -51,6 +51,41 @@ import EditPartnerModal from "../../partners/components/EditPartnerModal";
 import ViewCredentialModal from "../../admin/components/credentials/ViewCredentialModal";
 import adminCredentialsService from "../../services/adminCredentialsService";
 import superAdminAgentService from "../../services/superAdminAgentService";
+import adminAgentService from "../../services/adminAgentService.jsx";
+
+const ROLE_LABELS = {
+  acsl_agent: "ACSL Agent",
+  acsl_agent_manager: "ACSL Agent Manager",
+  partner_agent: "Partner Agent",
+  partner: "Partner",
+};
+const ROLE_BADGE = {
+  acsl_agent: "bg-blue-100 text-blue-700",
+  acsl_agent_manager: "bg-indigo-100 text-indigo-700",
+  partner_agent: "bg-amber-100 text-amber-700",
+  partner: "bg-emerald-100 text-emerald-700",
+};
+const formatRole = (r) => ROLE_LABELS[r] || (r ? r.replace(/_/g, " ") : "—");
+
+async function fetchAllAgentsForOrg(orgId) {
+  const [acslRes, partnerRes] = await Promise.all([
+    superAdminAgentService.getAgentsByOrganization(orgId).catch(() => null),
+    adminAgentService.getSalesAgents({ organization_id: orgId, limit: 100 }).catch(() => null),
+  ]);
+  const acslList = acslRes?.data?.agents || acslRes?.data || [];
+  const partnerList = partnerRes?.data?.agents || partnerRes?.data || [];
+  const tagged = [
+    ...(Array.isArray(acslList) ? acslList : []).map((a) => ({ ...a, role: a.role || "acsl_agent" })),
+    ...(Array.isArray(partnerList) ? partnerList : []).map((a) => ({ ...a, role: a.role || "partner_agent" })),
+  ];
+  const seen = new Set();
+  return tagged.filter((a) => {
+    const k = a.id || a.email;
+    if (!k || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
 
 const PAGE_SIZE = 10;
 
@@ -74,10 +109,9 @@ const PartnerProfilesContent = () => {
     setAgentsModalLoading(true);
     setAgentsModalList([]);
     try {
-      const res = await superAdminAgentService.getAgentsByOrganization(partner.id);
-      const list = res?.data?.agents || res?.data || [];
-      setAgentsModalList(Array.isArray(list) ? list : []);
-      setAgentCounts((prev) => ({ ...prev, [partner.id]: Array.isArray(list) ? list.length : 0 }));
+      const list = await fetchAllAgentsForOrg(partner.id);
+      setAgentsModalList(list);
+      setAgentCounts((prev) => ({ ...prev, [partner.id]: list.length }));
     } catch (err) {
       toast({ variant: "error", title: "Failed to load agents", description: err.message });
     } finally {
