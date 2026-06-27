@@ -270,6 +270,5 @@ const SalesByStateChart = () => {
   );
 };
 
-export default SalesByModelsChartWrapperRemoved_export();
-function SalesByModelsChartWrapperRemoved_export() { return SalesByStateChart; }
+export default SalesByStateChart;
 
