@@ -27,7 +27,7 @@ function bucketMonthlySales(rows) {
   return MONTHS.map((m, i) => ({ month: m, value: counts[i] }));
 }
 
-const MonthlySalesChart = () => {
+const MonthlySalesChart = ({ title = "Monthly Sales", tooltipLabel = "Sales" } = {}) => {
   const [monthly, setMonthly] = useState(MONTHS.map((m) => ({ month: m, value: 0 })));
   const [loading, setLoading] = useState(true);
 
@@ -56,7 +56,7 @@ const MonthlySalesChart = () => {
       <div className="mb-4 flex items-center gap-3">
         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
         <span className="text-[10px] font-semibold tracking-[0.15em] text-gray-400 uppercase">
-          Monthly Sales
+          {title}
         </span>
         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
       </div>
@@ -72,7 +72,7 @@ const MonthlySalesChart = () => {
           <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={{ stroke: "#e5e7eb" }} tickLine={false} />
           <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} allowDecimals={false} domain={[0, (dataMax) => Math.max(1, Math.ceil(dataMax))]} />
           <Tooltip
-            formatter={(v) => [Number(v).toLocaleString(), "Sales"]}
+            formatter={(v) => [Number(v).toLocaleString(), tooltipLabel]}
             contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
           />
           <Bar dataKey="value" fill="url(#partnerMonthlyBarFill)" barSize={42} radius={[3, 3, 0, 0]} />
@@ -89,7 +89,7 @@ const MonthlySalesChart = () => {
         </ComposedChart>
       </ResponsiveContainer>
       {loading && (
-        <p className="text-xs text-gray-400 mt-2 text-center">Loading monthly sales…</p>
+        <p className="text-xs text-gray-400 mt-2 text-center">Loading {title.toLowerCase()}…</p>
       )}
     </div>
   );
