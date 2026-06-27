@@ -38,6 +38,13 @@ import ViewSuperAdminAgentModal from "../../super-admin-agents/components/ViewSu
 import EditSuperAdminAgentModal from "../../super-admin-agents/components/EditSuperAdminAgentModal";
 import AgentViewCredentialModal from "../../admin/components/agents/AgentViewCredentialModal";
 import tokenManager from "@/utils/tokenManager";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { MapPin, Building2 } from "lucide-react";
 
 const PAGE_SIZE = 10;
 
@@ -53,6 +60,46 @@ const AgentsProfilesContent = () => {
   const [credentialAgent, setCredentialAgent] = useState(null);
   const [credentialData, setCredentialData] = useState(null);
   const [loadingCredentialId, setLoadingCredentialId] = useState(null);
+
+  const [statesModalAgent, setStatesModalAgent] = useState(null);
+  const [statesModalList, setStatesModalList] = useState([]);
+  const [statesModalLoading, setStatesModalLoading] = useState(false);
+
+  const [partnersModalAgent, setPartnersModalAgent] = useState(null);
+  const [partnersModalList, setPartnersModalList] = useState([]);
+  const [partnersModalLoading, setPartnersModalLoading] = useState(false);
+
+  const openStatesModal = async (agent) => {
+    setStatesModalAgent(agent);
+    setStatesModalList([]);
+    setStatesModalLoading(true);
+    try {
+      const res = await superAdminAgentService.getAgentStates(agent.id);
+      const list = res?.data || res?.states || res || [];
+      setStatesModalList(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast({ variant: "error", title: "Failed to load states", description: err.message });
+    } finally {
+      setStatesModalLoading(false);
+    }
+  };
+
+  const openPartnersModal = async (agent) => {
+    setPartnersModalAgent(agent);
+    setPartnersModalList([]);
+    setPartnersModalLoading(true);
+    try {
+      const res = await superAdminAgentService.getAgentOrganizations(agent.id);
+      const list = res?.data || res?.organizations || res || [];
+      setPartnersModalList(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast({ variant: "error", title: "Failed to load partners", description: err.message });
+    } finally {
+      setPartnersModalLoading(false);
+    }
+  };
+
+
 
   const loadAgents = async () => {
     setLoading(true);
@@ -269,8 +316,40 @@ const AgentsProfilesContent = () => {
                         "—"
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-gray-600 text-center">{a.assigned_states_count ?? 0}</TableCell>
-                    <TableCell className="text-sm text-gray-600 text-center">{a.total_partners_count ?? a.assigned_organizations_count ?? 0}</TableCell>
+                    <TableCell className="text-sm text-center">
+                      {(() => {
+                        const n = a.assigned_states_count ?? 0;
+                        const cls = n > 0
+                          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                          : "bg-rose-100 text-rose-700 hover:bg-rose-200";
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => openStatesModal(a)}
+                            className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-semibold transition ${cls}`}
+                          >
+                            {n}
+                          </button>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell className="text-sm text-center">
+                      {(() => {
+                        const n = a.total_partners_count ?? a.assigned_organizations_count ?? 0;
+                        const cls = n > 0
+                          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                          : "bg-rose-100 text-rose-700 hover:bg-rose-200";
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => openPartnersModal(a)}
+                            className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-semibold transition ${cls}`}
+                          >
+                            {n}
+                          </button>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell className="text-sm">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -405,6 +484,91 @@ const AgentsProfilesContent = () => {
         }}
         credential={credentialData}
       />
+
+      {/* States Assigned Modal */}
+      <Dialog open={!!statesModalAgent} onOpenChange={(o) => !o && setStatesModalAgent(null)}>
+        <DialogContent className="max-w-lg p-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4" style={{ backgroundColor: "#4a5d0f" }}>
+            <DialogTitle className="text-white text-base">
+              States Assigned — {statesModalAgent?.full_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
+            {statesModalLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-[#4a5d0f]" />
+              </div>
+            ) : statesModalList.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-6">No states assigned</p>
+            ) : (
+              <ul className="space-y-2">
+                {statesModalList.map((s, i) => {
+                  const name = typeof s === "string" ? s : (s.state || s.name || JSON.stringify(s));
+                  return (
+                    <li
+                      key={`${name}-${i}`}
+                      className="flex items-center gap-3 px-3 py-2 rounded-md border border-gray-100"
+                      style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
+                    >
+                      <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-[#eef3c4] text-[#4a5d0f]">
+                        <MapPin className="h-4 w-4" />
+                      </span>
+                      <span className="text-sm text-gray-800 font-medium">{name}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Partners Assigned Modal */}
+      <Dialog open={!!partnersModalAgent} onOpenChange={(o) => !o && setPartnersModalAgent(null)}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4" style={{ backgroundColor: "#4a5d0f" }}>
+            <DialogTitle className="text-white text-base">
+              Assigned Partners — {partnersModalAgent?.full_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[65vh] overflow-y-auto">
+            {partnersModalLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-5 w-5 animate-spin text-[#4a5d0f]" />
+              </div>
+            ) : partnersModalList.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-10">No partners assigned</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow style={{ backgroundColor: "#eef3c4" }} className="hover:bg-transparent">
+                    <TableHead className="text-[#4a5d0f] font-semibold text-xs">Partner Name</TableHead>
+                    <TableHead className="text-[#4a5d0f] font-semibold text-xs">State</TableHead>
+                    <TableHead className="text-[#4a5d0f] font-semibold text-xs">Branch</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {partnersModalList.map((p, i) => (
+                    <TableRow
+                      key={p.id || p.assignment_id || i}
+                      style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
+                    >
+                      <TableCell className="text-sm text-gray-900 font-medium">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-[#4a5d0f]" />
+                          {p.partner_name || p.name || "—"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-700">{p.state || "—"}</TableCell>
+                      <TableCell className="text-sm text-gray-700">{p.branch || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
