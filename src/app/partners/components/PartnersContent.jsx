@@ -508,7 +508,7 @@ const StoveTransferHistoryModal = ({ organization, isOpen, onClose }) => {
                         <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Transaction ID</TableHead>
                         <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Date</TableHead>
                         <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Sales Factory</TableHead>
-                        <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Sales Package</TableHead>
+                        
                         <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Sales Rep</TableHead>
                         <TableHead className="text-white font-semibold text-xs whitespace-nowrap text-center">Stoves</TableHead>
                         <TableHead className="text-white font-semibold text-xs whitespace-nowrap text-right">Stove IDs</TableHead>
