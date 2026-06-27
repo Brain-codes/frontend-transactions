@@ -1437,17 +1437,60 @@ export default function SuperAdminAgentsContent() {
     setLoading(true);
     setError(null);
     try {
-      const params: Record<string, string | number> = { page, limit: pageSize };
-      if (search.trim()) params.search = search.trim();
-      if (statusFilter !== "all") params.status = statusFilter;
-      if (selectedRoles.length > 0 && selectedRoles.length < 3) params.role = selectedRoles.join(",");
-      if (dateFrom) params.date_from = dateFrom;
-      if (dateTo) params.date_to = dateTo;
-      const result = await superAdminAgentService.getSuperAdminAgents(params);
-      setAgents(result.data || []);
-      setPagination(result.pagination || null);
+      // Display ALL users regardless of role on the Agents Performance Report.
+      // Switched from the agents-only endpoint to manage-users.
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const token = await tokenManager.getValidToken();
+      const qs = new URLSearchParams({
+        page: String(page),
+        limit: String(pageSize),
+        sortBy: "created_at",
+        sortOrder: "desc",
+      });
+      if (search.trim()) qs.append("search", search.trim());
+      if (statusFilter !== "all") qs.append("status", statusFilter);
+      if (selectedRoles.length > 0 && selectedRoles.length < 3) qs.append("role", selectedRoles.join(","));
+      if (dateFrom) qs.append("date_from", dateFrom);
+      if (dateTo) qs.append("date_to", dateTo);
+
+      const res = await fetch(`${supabaseUrl}/functions/v1/manage-users?${qs.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || json.message || "Failed to load users");
+
+      const rows = (json.data || []).map((u: any) => ({
+        id: u.id,
+        full_name: u.full_name || u.name || u.email || "—",
+        email: u.email,
+        phone: u.phone ?? null,
+        role: u.role,
+        status: u.status || "active",
+        created_at: u.created_at,
+        last_login: u.last_login ?? null,
+        updated_at: u.updated_at ?? null,
+        updated_by: u.updated_by ?? null,
+        updated_by_name: u.updated_by_name ?? null,
+        assigned_organizations_count: u.assigned_organizations_count ?? 0,
+        assigned_states_count: u.assigned_states_count ?? 0,
+      }));
+      setAgents(rows);
+
+      const p = json.pagination;
+      setPagination(
+        p
+          ? {
+              currentPage: p.currentPage ?? p.page ?? page,
+              itemsPerPage: p.itemsPerPage ?? p.limit ?? pageSize,
+              totalItems: p.totalItems ?? p.total ?? rows.length,
+              totalPages: p.totalPages ?? 1,
+              hasNextPage: p.hasNextPage ?? false,
+              hasPrevPage: p.hasPrevPage ?? false,
+            }
+          : null,
+      );
     } catch (err: any) {
-      setError(err.message || "Failed to load agents");
+      setError(err.message || "Failed to load users");
     } finally {
       setLoading(false);
     }
