@@ -2130,6 +2130,11 @@ export default function SuperAdminAgentsContent() {
                       <TableCell className="text-sm text-gray-700">
                         {agent.phone || ""}
                       </TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                          {(agent.assigned_organizations_count ?? 0).toLocaleString()}
+                        </span>
+                      </TableCell>
                       {/* Stoves split into 3 columns */}
                       <TableCell className="text-center">
                         {agent.stove_summary ? (
