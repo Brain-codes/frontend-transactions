@@ -138,17 +138,6 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
     saveSelectedYears(years);
   };
   const [exporting, setExporting] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  useEffect(() => { onSelectionChange?.(selectedIds.size); }, [selectedIds.size, onSelectionChange]);
-
-  const handleToggleSelect = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  }, []);
 
   const stateList = useMemo(() => Object.keys(lgaAndStates).sort(), []);
   const lgaList = useMemo(
