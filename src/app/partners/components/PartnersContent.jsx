@@ -1430,7 +1430,7 @@ export default function PartnersContent() {
                 <TableBody className={tableLoading ? "opacity-40" : ""}>
                   {sortedOrgs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-10">
+                      <TableCell colSpan={8} className="text-center py-10">
                         <Building2 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                         <p className="text-gray-500 font-medium">No partners found</p>
                         <p className="text-gray-400 text-sm">Try adjusting your filters</p>
@@ -1473,7 +1473,7 @@ export default function PartnersContent() {
 
                         {expandedOrgId === org.id && (
                           <TableRow key={`${org.id}-breakdown`} className="bg-blue-50/40">
-                            <TableCell colSpan={7} className="p-0">
+                            <TableCell colSpan={8} className="p-0">
                               <div className="px-4 py-3">
                                 {loadingOrgId === org.id ? (
                                   <div className="flex items-center gap-2 py-3 text-sm text-gray-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading stove reference breakdown...</div>
