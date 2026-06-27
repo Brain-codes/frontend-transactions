@@ -1400,14 +1400,6 @@ export default function PartnersContent() {
                 Icon: TrendingUp,
                 value: loadingStats ? "—" : stats.performing_partners.toLocaleString(),
                 label: "Stoves Sold to End Users",
-                sub: "with sales",
-                subBadge: (() => {
-                  if (dateFrom && dateTo) {
-                    const fmt = (d) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-                    return `${fmt(dateFrom)} – ${fmt(dateTo)}`;
-                  }
-                  return new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-                })(),
                 onClick: () => setSortMode("active"),
                 active: sortMode === "active",
               },
@@ -1416,7 +1408,6 @@ export default function PartnersContent() {
                 Icon: Package,
                 value: loadingStats ? "—" : stats.total_received.toLocaleString(),
                 label: "Stoves Purchased from ACSL",
-                sub: "Total stoves received across all partners",
                 onClick: () => setSortMode("stoves_desc"),
                 active: sortMode === "stoves_desc",
               },
@@ -1425,7 +1416,6 @@ export default function PartnersContent() {
                 Icon: Boxes,
                 value: loadingStats ? "—" : stats.total_available.toLocaleString(),
                 label: "Unsold Stoves with Partners",
-                sub: "Total stove unsold across all partners",
                 onClick: () => setSortMode("available_desc"),
                 active: sortMode === "available_desc",
               },
