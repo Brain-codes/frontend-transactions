@@ -2098,7 +2098,6 @@ export default function SuperAdminAgentsContent() {
                       In Stock <StoveSortIcon col="in_stock" />
                     </button>
                   </TableHead>
-                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
                   <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
                 </TableRow>
               </TableHeader>
