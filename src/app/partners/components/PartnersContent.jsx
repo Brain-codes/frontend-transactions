@@ -1477,7 +1477,7 @@ export default function PartnersContent() {
               </Button>
             </div>
 
-            <div className="bg-white border border-gray-200 overflow-x-auto relative">
+            <div className="bg-white border border-gray-200 overflow-x-auto relative rounded-t-lg">
 
               {tableLoading && (
                 <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">

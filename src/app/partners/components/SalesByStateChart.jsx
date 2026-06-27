@@ -121,19 +121,20 @@ const SalesByStateChart = () => {
   const monthLabel = MONTHS.find((m) => m.value === month)?.label ?? "All Months";
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-      {/* Navy header */}
-      <div className="bg-[#1e3a5f] px-5 py-3 flex flex-wrap items-center justify-between gap-3">
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      {/* Green header */}
+      <div className="bg-[#4a5d0f] px-5 py-3 flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-white text-[15px] font-semibold">Sales by State</h3>
         <div className="flex flex-wrap items-center gap-2">
           <Popover open={calOpen} onOpenChange={setCalOpen}>
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="h-9 px-3.5 inline-flex items-center gap-2 rounded-md bg-white text-gray-700 text-xs font-medium shadow-sm hover:bg-gray-50"
+                className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md text-xs text-white border hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30"
+                style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
               >
-                <CalendarIcon className="h-3.5 w-3.5 text-gray-500" />
-                <span className={dateRange.from ? "text-gray-800" : "text-gray-500"}>{dateLabel}</span>
+                <CalendarIcon className="h-3.5 w-3.5 text-white/90" />
+                <span className={dateRange.from ? "text-white" : "text-white/80"}>{dateLabel}</span>
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
@@ -152,7 +153,7 @@ const SalesByStateChart = () => {
                 >
                   Clear
                 </Button>
-                <Button size="sm" onClick={() => setCalOpen(false)} className="bg-[#1e3a5f] hover:bg-[#162d49] text-white">
+                <Button size="sm" onClick={() => setCalOpen(false)} className="bg-[#4a5d0f] hover:bg-[#3a4a0c] text-white">
                   Apply
                 </Button>
               </div>
@@ -163,10 +164,11 @@ const SalesByStateChart = () => {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="h-9 px-3.5 inline-flex items-center gap-2 rounded-md bg-white text-gray-700 text-xs font-medium shadow-sm hover:bg-gray-50"
+                className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md text-xs text-white border hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30"
+                style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
               >
                 {monthLabel}
-                <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
+                <ChevronDown className="h-3.5 w-3.5 text-white/90" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
@@ -182,10 +184,11 @@ const SalesByStateChart = () => {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="h-9 px-3.5 inline-flex items-center gap-2 rounded-md bg-white text-gray-800 text-xs font-semibold shadow-sm ring-2 ring-white hover:bg-gray-50"
+                className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md text-xs text-white border font-semibold hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30"
+                style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
               >
                 Top {topN}
-                <ChevronDown className="h-3.5 w-3.5 text-gray-600" />
+                <ChevronDown className="h-3.5 w-3.5 text-white/90" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
