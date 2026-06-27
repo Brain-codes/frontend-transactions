@@ -1504,6 +1504,81 @@ export default function SuperAdminAgentsContent() {
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
   useEffect(() => { setPage(1); }, [search, statusFilter, selectedRoles, dateFrom, dateTo]);
 
+  // Hydrate Assigned / Collected / In Stock per agent from their assigned partner orgs.
+  // Assigned = total stoves across agent's partners; Collected = sold; In Stock = available.
+  const agentIdsKey = useMemo(() => agents.map((a) => a.id).join(","), [agents]);
+  useEffect(() => {
+    if (!agents.length) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getSupabase } = await import("@/lib/supabaseClient");
+        const supabase = getSupabase();
+
+        // 1. Orgs per agent (direct + via state assignments).
+        const orgListResults = await Promise.all(
+          agents.map((a) =>
+            superAdminAgentService
+              .getAgentOrganizations(a.id)
+              .then((res: any) => ({ id: a.id, orgs: (res?.data || []) as any[] }))
+              .catch(() => ({ id: a.id, orgs: [] as any[] }))
+          )
+        );
+        if (cancelled) return;
+
+        const agentToOrgIds: Record<string, string[]> = {};
+        const allOrgIds = new Set<string>();
+        for (const r of orgListResults) {
+          const ids = r.orgs.map((o: any) => o.id).filter(Boolean);
+          agentToOrgIds[r.id] = ids;
+          ids.forEach((id) => allOrgIds.add(id));
+        }
+
+        // 2. Stove counts per org (batched).
+        const orgIds = Array.from(allOrgIds);
+        const BATCH = 200;
+        const stoveCounts: Record<string, { total: number; sold: number; available: number }> = {};
+        for (let i = 0; i < orgIds.length; i += BATCH) {
+          const slice = orgIds.slice(i, i + BATCH);
+          const { data } = await supabase
+            .from("stove_ids")
+            .select("organization_id, status")
+            .in("organization_id", slice)
+            .eq("is_archived", false);
+          (data || []).forEach((s: any) => {
+            const oid = s.organization_id;
+            if (!stoveCounts[oid]) stoveCounts[oid] = { total: 0, sold: 0, available: 0 };
+            stoveCounts[oid].total++;
+            if (s.status === "sold") stoveCounts[oid].sold++;
+            else stoveCounts[oid].available++;
+          });
+        }
+        if (cancelled) return;
+
+        // 3. Merge stove_summary into agents.
+        setAgents((prev) =>
+          prev.map((a) => {
+            const orgs = agentToOrgIds[a.id] || [];
+            let received = 0, sold = 0, available = 0;
+            for (const oid of orgs) {
+              const c = stoveCounts[oid];
+              if (!c) continue;
+              received += c.total;
+              sold += c.sold;
+              available += c.available;
+            }
+            return { ...a, stove_summary: { received, sold, available } };
+          })
+        );
+      } catch {
+        // silent: columns fall back to em-dash
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentIdsKey]);
+
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (roleDropdownRef.current && !roleDropdownRef.current.contains(e.target as Node)) {
