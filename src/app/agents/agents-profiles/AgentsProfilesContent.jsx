@@ -74,6 +74,7 @@ const AgentsProfilesContent = () => {
   const openStatesModal = async (agent) => {
     setStatesModalAgent(agent);
     setStatesModalList([]);
+    setStatesSearch("");
     setStatesModalLoading(true);
     try {
       const res = await superAdminAgentService.getAgentStates(agent.id);
