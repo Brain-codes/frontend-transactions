@@ -573,17 +573,44 @@ const StoveTransferHistoryModal = ({ organization, isOpen, onClose }) => {
             </div>
           </DialogHeader>
           <div className="overflow-y-auto flex-1 bg-[#fafcfd] p-5">
-            <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2">
-              {(expandedStoveIds?.stoveIds ?? []).map((s) => (
-                <span
-                  key={s.stove_id}
-                  className="px-2 py-1.5 text-xs rounded border text-center truncate bg-white border-[#eef3c4] text-[#4a5d0f] font-mono hover:bg-[#eef3c4]/50 transition-colors"
-                  title={[s.stove_id, s.factory && `Factory: ${s.factory}`, s.sales_reference && `Ref: ${s.sales_reference}`].filter(Boolean).join(" · ")}
-                >
-                  {s.stove_id}
-                </span>
-              ))}
-            </div>
+            {(() => {
+              const all = expandedStoveIds?.stoveIds ?? [];
+              const q = stoveSearch.trim().toLowerCase();
+              const filtered = q ? all.filter((s) => s.stove_id?.toLowerCase().includes(q)) : all;
+              return (
+                <>
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                      <Input
+                        value={stoveSearch}
+                        onChange={(e) => setStoveSearch(e.target.value)}
+                        placeholder="Search stove IDs..."
+                        className="pl-9 h-9 text-xs bg-white border-gray-200 focus-visible:ring-[#4a5d0f]"
+                      />
+                    </div>
+                    <span className="text-xs text-gray-600 whitespace-nowrap">
+                      {filtered.length} of {all.length}
+                    </span>
+                  </div>
+                  {filtered.length === 0 ? (
+                    <div className="text-center text-gray-500 text-sm py-10">No matching stove IDs.</div>
+                  ) : (
+                    <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2">
+                      {filtered.map((s) => (
+                        <span
+                          key={s.stove_id}
+                          className="px-2 py-1.5 text-xs rounded border text-center truncate bg-white border-[#eef3c4] text-[#4a5d0f] font-mono hover:bg-[#eef3c4]/50 transition-colors"
+                          title={[s.stove_id, s.factory && `Factory: ${s.factory}`, s.sales_reference && `Ref: ${s.sales_reference}`].filter(Boolean).join(" · ")}
+                        >
+                          {s.stove_id}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </DialogContent>
       </Dialog>
