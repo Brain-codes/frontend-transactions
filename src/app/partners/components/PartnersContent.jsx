@@ -1373,58 +1373,31 @@ export default function PartnersContent() {
                 onClick: () => setSortMode("available_desc"),
                 active: sortMode === "available_desc",
               },
-            ].map(({ gradient, Icon, value, label, sub, subBadge, onClick, active }) =>
-              active ? (
-                <div
-                  key={label}
-                  onClick={onClick}
-                  className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md cursor-pointer transition-all bg-gradient-to-br ${gradient}`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="min-w-0 flex-1 pr-3">
-                      <p className="text-2xl font-bold text-white tracking-tight leading-tight">{value}</p>
-                      <p className="text-xs font-semibold text-white/80 mt-1">{label}</p>
-                      <p className="text-xs text-white/60 mt-0.5">{sub}</p>
+            ].map(({ gradient, Icon, value, label, sub, subBadge }) => (
+              <div
+                key={label}
+                className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md transition-all bg-gradient-to-br ${gradient}`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0 flex-1 pr-3">
+                    <p className="text-2xl font-bold text-white tracking-tight leading-tight">{value}</p>
+                    <p className="text-xs font-semibold text-white/80 mt-1">{label}</p>
+                    <p className="text-xs text-white/60 mt-0.5">{sub}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <div className="rounded-lg p-2 bg-white/20 text-white shadow-sm w-fit">
+                      <Icon className="h-4 w-4" />
                     </div>
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                      <div className="rounded-lg p-2 bg-white/20 text-white shadow-sm w-fit">
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      {subBadge && (
-                        <span className="text-[10px] bg-white/20 text-white/90 px-1.5 py-0.5 rounded whitespace-nowrap">
-                          {subBadge}
-                        </span>
-                      )}
-                    </div>
+                    {subBadge && (
+                      <span className="text-[10px] bg-white/20 text-white/90 px-1.5 py-0.5 rounded whitespace-nowrap">
+                        {subBadge}
+                      </span>
+                    )}
                   </div>
                 </div>
-              ) : (
-                <div
-                  key={label}
-                  onClick={onClick}
-                  className="relative overflow-hidden rounded-lg border bg-white px-4 py-4 shadow-sm cursor-pointer transition-all hover:shadow-md"
-                >
-                  <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient}`} />
-                  <div className="flex items-start justify-between">
-                    <div className="min-w-0 flex-1 pr-3">
-                      <p className="text-2xl font-bold text-gray-900 tracking-tight leading-tight">{value}</p>
-                      <p className="text-xs font-semibold text-gray-500 mt-1">{label}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
-                    </div>
-                    <div className="flex flex-col items-end justify-between gap-2 shrink-0">
-                      <div className={`rounded-lg p-2 bg-gradient-to-br ${gradient} text-white shadow-sm w-fit`}>
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      {subBadge && (
-                        <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded whitespace-nowrap">
-                          {subBadge}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )
-            )}
+              </div>
+            ))}
+
           </div>
 
           <div className="space-y-0">
