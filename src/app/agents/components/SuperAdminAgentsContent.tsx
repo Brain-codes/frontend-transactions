@@ -1980,8 +1980,6 @@ export default function SuperAdminAgentsContent() {
               <TableHeader>
                 <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Full Name</TableHead>
-                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">States Assigned</TableHead>
-                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Partners Assigned</TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Stoves (Assigned / Collected / In Stock)</TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
                   <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
