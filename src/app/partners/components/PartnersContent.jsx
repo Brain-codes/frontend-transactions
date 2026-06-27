@@ -1269,15 +1269,6 @@ export default function PartnersContent() {
               </div>
             )}
 
-            {/* Assigned Agents Filter */}
-            <Select value={filters.assigned_agents} onValueChange={(v) => handleFilterChange("assigned_agents", v)}>
-              <SelectTrigger className="w-[155px] h-9 bg-white text-sm shadow-none"><SelectValue placeholder="All Agents" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Agents</SelectItem>
-                <SelectItem value="assigned">Assigned</SelectItem>
-                <SelectItem value="unassigned">Unassigned</SelectItem>
-              </SelectContent>
-            </Select>
 
             {/* Date Range Filter */}
             {(() => {
