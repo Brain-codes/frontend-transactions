@@ -115,19 +115,20 @@ const SalesByStateChart = () => {
   const monthLabel = MONTHS.find((m) => m.value === month)?.label ?? "All Months";
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
       {/* Header bar */}
-      <div className="bg-[#4a5d0f] px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 rounded-t-2xl">
+      <div className="bg-[#4a5d0f] px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 rounded-t-lg">
         <h3 className="text-white text-[15px] font-semibold tracking-wide">Sales by State</h3>
         <div className="flex flex-wrap items-center gap-2.5">
           <Popover open={calOpen} onOpenChange={setCalOpen}>
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-white text-gray-600 text-[12.5px] font-medium shadow-sm hover:bg-gray-50 transition-colors"
+                className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md text-xs text-white border hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30"
+                style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
               >
-                <CalendarIcon className="h-4 w-4 text-gray-500" />
-                <span className={dateRange.from ? "text-gray-800" : "text-gray-400"}>{dateLabel}</span>
+                <CalendarIcon className="h-3.5 w-3.5 text-white/90" />
+                <span className={dateRange.from ? "text-white" : "text-white/80"}>{dateLabel}</span>
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
@@ -157,10 +158,11 @@ const SalesByStateChart = () => {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-white text-gray-700 text-[12.5px] font-medium shadow-sm hover:bg-gray-50 transition-colors"
+                className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md text-xs text-white border hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30"
+                style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
               >
                 {monthLabel}
-                <ChevronDown className="h-4 w-4 text-gray-500" />
+                <ChevronDown className="h-3.5 w-3.5 text-white/90" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
@@ -176,10 +178,11 @@ const SalesByStateChart = () => {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-white text-gray-800 text-[12.5px] font-semibold ring-2 ring-white shadow-sm hover:bg-gray-50 transition-colors"
+                className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md text-xs text-white border hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30"
+                style={{ backgroundColor: "#6b8519", borderColor: "rgba(255,255,255,0.25)" }}
               >
                 Top {topN}
-                <ChevronDown className="h-4 w-4 text-gray-600" />
+                <ChevronDown className="h-3.5 w-3.5 text-white/90" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
