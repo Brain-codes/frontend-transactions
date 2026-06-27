@@ -2173,13 +2173,6 @@ export default function SuperAdminAgentsContent() {
                       <TableCell className="text-center">
 
                         <div className="flex items-center justify-center gap-1">
-                          <Button
-                            size="sm"
-                            className="h-7 px-2 text-xs bg-[#4a5d0f] hover:bg-[#4a5d0f]/90 text-white"
-                            onClick={() => setAssignPartnerAgent(agent)}
-                          >
-                            Assign Partner
-                          </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="sm" className="h-7 w-7 p-0">
@@ -2187,6 +2180,9 @@ export default function SuperAdminAgentsContent() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setAssignPartnerAgent(agent)}>
+                              <UserPlus className="h-4 w-4 mr-2 text-[#4a5d0f]" />Assign Partner
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => { setSelectedAgent(agent); setShowViewModal(true); }}>
                               <Eye className="h-4 w-4 mr-2" />View Details
                             </DropdownMenuItem>
