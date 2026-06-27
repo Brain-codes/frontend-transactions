@@ -1557,25 +1557,29 @@ export default function SuperAdminAgentsContent() {
           ids.forEach((id) => allOrgIds.add(id));
         }
 
-        // 2. Stove counts per org (Assigned = total stoves at partner).
+        // 2. Stove counts per org — total + sold (status-based, deduped at org level).
         const orgIds = Array.from(allOrgIds);
         const BATCH = 200;
         const stoveTotalByOrg: Record<string, number> = {};
+        const stoveSoldByOrg: Record<string, number> = {};
         for (let i = 0; i < orgIds.length; i += BATCH) {
           const slice = orgIds.slice(i, i + BATCH);
           const { data } = await supabase
             .from("stove_ids")
-            .select("organization_id")
+            .select("organization_id,status")
             .in("organization_id", slice)
             .eq("is_archived", false);
           (data || []).forEach((s: any) => {
             const oid = s.organization_id;
             stoveTotalByOrg[oid] = (stoveTotalByOrg[oid] || 0) + 1;
+            if (String(s.status || "").toLowerCase() === "sold") {
+              stoveSoldByOrg[oid] = (stoveSoldByOrg[oid] || 0) + 1;
+            }
           });
         }
         if (cancelled) return;
 
-        // 3. Collected = actual sales records created by each agent.
+        // 3. Collected (per agent) = actual sales records created by each agent.
         const soldByAgent: Record<string, number> = {};
         await Promise.all(
           agents.map(async (a) => {
@@ -1588,7 +1592,20 @@ export default function SuperAdminAgentsContent() {
         );
         if (cancelled) return;
 
-        // 4. Merge stove_summary into agents.
+        // 4. Global deduped totals — each org counted once regardless of how many agents share it.
+        let globalAssigned = 0;
+        let globalSoldOrg = 0;
+        for (const oid of orgIds) {
+          globalAssigned += stoveTotalByOrg[oid] || 0;
+          globalSoldOrg += stoveSoldByOrg[oid] || 0;
+        }
+        setStoveTotals({
+          assigned: globalAssigned,
+          sold: globalSoldOrg,
+          unsold: Math.max(0, globalAssigned - globalSoldOrg),
+        });
+
+        // 5. Merge per-agent stove_summary (row badges still reflect each agent's view).
         setAgents((prev) =>
           prev.map((a) => {
             const orgs = agentToOrgIds[a.id] || [];
