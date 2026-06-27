@@ -115,21 +115,20 @@ const SalesByStateChart = () => {
   const monthLabel = MONTHS.find((m) => m.value === month)?.label ?? "All Months";
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      {/* Header */}
-      <div className="bg-[#4a5d0f] px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-white text-sm font-semibold">Sales by State</h3>
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+      {/* Header bar */}
+      <div className="bg-[#4a5d0f] px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 rounded-t-2xl">
+        <h3 className="text-white text-[15px] font-semibold tracking-wide">Sales by State</h3>
+        <div className="flex flex-wrap items-center gap-2.5">
           <Popover open={calOpen} onOpenChange={setCalOpen}>
             <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 px-3 bg-white/95 hover:bg-white text-gray-700 border-0 text-xs gap-2"
+              <button
+                type="button"
+                className="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-white text-gray-600 text-[12.5px] font-medium shadow-sm hover:bg-gray-50 transition-colors"
               >
-                <CalendarIcon className="h-3.5 w-3.5" />
-                {dateLabel}
-              </Button>
+                <CalendarIcon className="h-4 w-4 text-gray-500" />
+                <span className={dateRange.from ? "text-gray-800" : "text-gray-400"}>{dateLabel}</span>
+              </button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
               <Calendar
@@ -156,14 +155,13 @@ const SalesByStateChart = () => {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 px-3 bg-white/95 hover:bg-white text-gray-700 border-0 text-xs gap-2"
+              <button
+                type="button"
+                className="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-white text-gray-700 text-[12.5px] font-medium shadow-sm hover:bg-gray-50 transition-colors"
               >
                 {monthLabel}
-                <ChevronDown className="h-3.5 w-3.5" />
-              </Button>
+                <ChevronDown className="h-4 w-4 text-gray-500" />
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
               {MONTHS.map((m) => (
@@ -176,14 +174,13 @@ const SalesByStateChart = () => {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 px-3 bg-white text-gray-800 border-2 border-white text-xs gap-2 font-semibold"
+              <button
+                type="button"
+                className="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-white text-gray-800 text-[12.5px] font-semibold ring-2 ring-white shadow-sm hover:bg-gray-50 transition-colors"
               >
                 Top {topN}
-                <ChevronDown className="h-3.5 w-3.5" />
-              </Button>
+                <ChevronDown className="h-4 w-4 text-gray-600" />
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {TOP_OPTIONS.map((n) => (
@@ -197,47 +194,71 @@ const SalesByStateChart = () => {
       </div>
 
       {/* Chart */}
-      <div className="p-4">
+      <div className="px-5 pt-6 pb-5 bg-white">
         {loading ? (
-          <p className="text-xs text-gray-400 text-center py-12">Loading sales by state…</p>
+          <p className="text-xs text-gray-400 text-center py-16">Loading sales by state…</p>
         ) : chartData.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-12">No data for selected filters</p>
+          <p className="text-xs text-gray-400 text-center py-16">No data for selected filters</p>
         ) : (
-          <ResponsiveContainer width="100%" height={Math.max(300, chartData.length * 36)}>
+          <ResponsiveContainer width="100%" height={Math.max(320, chartData.length * 42)}>
             <BarChart
               data={chartData}
               layout="vertical"
-              margin={{ top: 8, right: 56, left: 8, bottom: 8 }}
+              margin={{ top: 8, right: 64, left: 4, bottom: 8 }}
+              barCategoryGap="22%"
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
+              <defs>
+                {chartData.map((_, i) => {
+                  const t = chartData.length === 1 ? 0 : i / (chartData.length - 1);
+                  const lerp = (a, b) => Math.round(a + (b - a) * t);
+                  const r = lerp(74, 190);
+                  const g = lerp(93, 215);
+                  const b = lerp(15, 110);
+                  const start = `rgb(${r}, ${g}, ${b})`;
+                  const r2 = Math.min(255, r + 30);
+                  const g2 = Math.min(255, g + 25);
+                  const b2 = Math.min(255, b + 30);
+                  const end = `rgb(${r2}, ${g2}, ${b2})`;
+                  return (
+                    <linearGradient key={i} id={`sbsBar-${i}`} x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor={start} />
+                      <stop offset="100%" stopColor={end} />
+                    </linearGradient>
+                  );
+                })}
+              </defs>
+              <CartesianGrid strokeDasharray="3 4" stroke="#e5e7eb" horizontal={false} />
               <XAxis
                 type="number"
-                tick={{ fontSize: 11, fill: "#6b7280" }}
-                axisLine={{ stroke: "#e5e7eb" }}
+                tick={{ fontSize: 11, fill: "#9ca3af" }}
+                axisLine={false}
                 tickLine={false}
                 allowDecimals={false}
+                tickMargin={6}
               />
               <YAxis
                 type="category"
                 dataKey="name"
-                tick={{ fontSize: 12, fill: "#374151" }}
+                tick={{ fontSize: 13, fill: "#374151", fontWeight: 500 }}
                 axisLine={false}
                 tickLine={false}
-                width={90}
+                width={86}
               />
               <Tooltip
+                cursor={{ fill: "rgba(74, 93, 15, 0.06)" }}
                 formatter={(v) => [Number(v).toLocaleString(), "Sales"]}
-                contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
+                contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
               />
-              <Bar dataKey="value" barSize={22} radius={[0, 3, 3, 0]}>
+              <Bar dataKey="value" barSize={18} radius={[3, 6, 6, 3]}>
                 {chartData.map((_, i) => (
-                  <Cell key={i} fill={GREEN_SHADES[i % GREEN_SHADES.length]} />
+                  <Cell key={i} fill={`url(#sbsBar-${i})`} />
                 ))}
                 <LabelList
                   dataKey="value"
                   position="right"
-                  fontSize={11}
-                  fill="#374151"
+                  fontSize={12}
+                  fontWeight={600}
+                  fill="#4a5d0f"
                   formatter={(v) => Number(v).toLocaleString()}
                 />
               </Bar>
@@ -250,3 +271,4 @@ const SalesByStateChart = () => {
 };
 
 export default SalesByStateChart;
+
