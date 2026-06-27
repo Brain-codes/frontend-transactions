@@ -89,7 +89,7 @@ const MonthlySalesChart = ({ title = "Monthly Sales", tooltipLabel = "Sales" } =
         </ComposedChart>
       </ResponsiveContainer>
       {loading && (
-        <p className="text-xs text-gray-400 mt-2 text-center">Loading monthly sales…</p>
+        <p className="text-xs text-gray-400 mt-2 text-center">Loading {title.toLowerCase()}…</p>
       )}
     </div>
   );
