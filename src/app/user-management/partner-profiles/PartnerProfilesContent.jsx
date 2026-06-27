@@ -184,10 +184,8 @@ const PartnerProfilesContent = () => {
       const results = await Promise.all(
         missing.map(async (p) => {
           try {
-            const res = await superAdminAgentService.getAgentsByOrganization(p.id);
-            const list = res?.data?.agents || res?.data || [];
-            const count = Array.isArray(list) ? list.length : 0;
-            return [p.id, count];
+            const list = await fetchAllAgentsForOrg(p.id);
+            return [p.id, list.length];
           } catch {
             return [p.id, 0];
           }
@@ -291,7 +289,7 @@ const PartnerProfilesContent = () => {
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">State</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
-                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Assigned ACSL Agents</TableHead>
+                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Assigned Agents</TableHead>
                 <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -460,7 +458,7 @@ const PartnerProfilesContent = () => {
           <DialogHeader className="px-6 py-4" style={{ backgroundColor: "#4a5d0f" }}>
             <DialogTitle className="text-white flex items-center gap-2 text-base">
               <Users className="h-5 w-5" />
-              Assigned ACSL Agents
+              Assigned Agents
             </DialogTitle>
             {agentsModalPartner && (
               <p className="text-white/80 text-xs mt-1">
