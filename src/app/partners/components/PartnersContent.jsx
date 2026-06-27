@@ -1420,7 +1420,9 @@ export default function PartnersContent() {
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">State</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
-                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Stoves (Received / Sold / Available)</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Received</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Sold</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Available</TableHead>
                     
                     <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
                   </TableRow>
@@ -1442,20 +1444,20 @@ export default function PartnersContent() {
                           <TableCell className="text-sm">{org.state || "N/A"}</TableCell>
                           <TableCell className="text-sm">{org.branch || "N/A"}</TableCell>
                           <TableCell className="text-sm">{org.contact_phone || "—"}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1.5 text-sm">
-                              <button onClick={() => handleViewStoveIds(org, "all")} className="font-medium text-purple-700 hover:underline hover:text-purple-900 transition-colors" title="Total received">
-                                {org.total_stove_ids ?? 0}
-                              </button>
-                              <span className="text-gray-300">/</span>
-                              <button onClick={() => handleViewStoveIds(org, "sold")} className="font-medium text-blue-600 hover:underline hover:text-blue-800 transition-colors" title="Sold">
-                                {org.sold_stove_ids ?? 0}
-                              </button>
-                              <span className="text-gray-300">/</span>
-                              <button onClick={() => handleViewStoveIds(org, "available")} className="font-medium text-green-600 hover:underline hover:text-green-800 transition-colors" title="Available">
-                                {org.available_stove_ids ?? 0}
-                              </button>
-                            </div>
+                          <TableCell className="text-center">
+                            <button onClick={() => handleViewStoveIds(org, "all")} className="inline-flex items-center justify-center min-w-[40px] px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors" title="Total received">
+                              {org.total_stove_ids ?? 0}
+                            </button>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <button onClick={() => handleViewStoveIds(org, "sold")} className="inline-flex items-center justify-center min-w-[40px] px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors" title="Sold">
+                              {org.sold_stove_ids ?? 0}
+                            </button>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <button onClick={() => handleViewStoveIds(org, "available")} className="inline-flex items-center justify-center min-w-[40px] px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 transition-colors" title="Available">
+                              {org.available_stove_ids ?? 0}
+                            </button>
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex items-center justify-center gap-1">
