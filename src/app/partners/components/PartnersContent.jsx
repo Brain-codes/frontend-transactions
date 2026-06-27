@@ -1421,7 +1421,7 @@ export default function PartnersContent() {
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Stoves (Received / Sold / Available)</TableHead>
-                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Agents Assigned</TableHead>
+                    
                     <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1456,21 +1456,6 @@ export default function PartnersContent() {
                                 {org.available_stove_ids ?? 0}
                               </button>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            {orgAgentsData[org.id] === undefined ? (
-                              <Loader2 className="h-3 w-3 animate-spin text-gray-300" />
-                            ) : orgAgentsData[org.id].length === 0 ? (
-                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">0</span>
-                            ) : (
-                              <button
-                                onClick={() => setAgentsModalOrg(org)}
-                                className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 hover:bg-green-200 transition-colors cursor-pointer"
-                                title="Click to view assigned agents"
-                              >
-                                {orgAgentsData[org.id].length}
-                              </button>
-                            )}
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex items-center justify-center gap-1">
