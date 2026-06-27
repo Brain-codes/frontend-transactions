@@ -2010,56 +2010,6 @@ export default function SuperAdminAgentsContent() {
                       <TableCell className="text-sm font-medium text-gray-900">
                           {agent.full_name}
                       </TableCell>
-                      {/* States — name badges, wrapping */}
-                      <TableCell className="max-w-[260px]">
-                        {!agent.assigned_states ? (
-                          <span className="text-gray-400">—</span>
-                        ) : agent.assigned_states.length === 0 ? (
-                          <span className="text-gray-400">—</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1 items-center">
-                            {agent.assigned_states.slice(0, 5).map((s) => (
-                              <span
-                                key={s}
-                                className="bg-primary/10 text-primary text-[10px] font-mono px-1.5 py-0.5 rounded"
-                              >
-                                {s}
-                              </span>
-                            ))}
-                            {agent.assigned_states.length > 5 && (
-                              <button
-                                onClick={() => setStatesModalAgent(agent)}
-                                className="text-[10px] font-semibold text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
-                                title="Click to view all assigned states"
-                              >
-                                +{agent.assigned_states.length - 5} more
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </TableCell>
-                      {/* Partners */}
-                      <TableCell className="text-center">
-                        {(() => {
-                          const total = agent.total_partners_count ?? (agent.assigned_organizations_count ?? 0);
-                          if (total === 0) {
-                            return (
-                              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                                0
-                              </span>
-                            );
-                          }
-                          return (
-                            <button
-                              onClick={() => setPartnersModalAgent(agent)}
-                              className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 hover:bg-green-200 transition-colors cursor-pointer"
-                              title="Click to view assigned partners"
-                            >
-                              {total}
-                            </button>
-                          );
-                        })()}
-                      </TableCell>
                       {/* Stoves */}
                       <TableCell>
                         {agent.stove_summary ? (
