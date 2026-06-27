@@ -1435,6 +1435,8 @@ export default function SuperAdminAgentsContent() {
 
   const [sortMode, setSortMode] = useState("default");
   const [stoveSort, setStoveSort] = useState<{ key: string | null; direction: "asc" | "desc" | null }>({ key: null, direction: null });
+  // Deduped totals across unique partner organizations (avoids double-counting shared orgs).
+  const [stoveTotals, setStoveTotals] = useState<{ assigned: number; sold: number; unsold: number } | null>(null);
   const cycleStoveSort = (key: string) => {
     setStoveSort((prev) => {
       if (prev.key !== key) return { key, direction: "asc" };
@@ -1555,25 +1557,29 @@ export default function SuperAdminAgentsContent() {
           ids.forEach((id) => allOrgIds.add(id));
         }
 
-        // 2. Stove counts per org (Assigned = total stoves at partner).
+        // 2. Stove counts per org — total + sold (status-based, deduped at org level).
         const orgIds = Array.from(allOrgIds);
         const BATCH = 200;
         const stoveTotalByOrg: Record<string, number> = {};
+        const stoveSoldByOrg: Record<string, number> = {};
         for (let i = 0; i < orgIds.length; i += BATCH) {
           const slice = orgIds.slice(i, i + BATCH);
           const { data } = await supabase
             .from("stove_ids")
-            .select("organization_id")
+            .select("organization_id,status")
             .in("organization_id", slice)
             .eq("is_archived", false);
           (data || []).forEach((s: any) => {
             const oid = s.organization_id;
             stoveTotalByOrg[oid] = (stoveTotalByOrg[oid] || 0) + 1;
+            if (String(s.status || "").toLowerCase() === "sold") {
+              stoveSoldByOrg[oid] = (stoveSoldByOrg[oid] || 0) + 1;
+            }
           });
         }
         if (cancelled) return;
 
-        // 3. Collected = actual sales records created by each agent.
+        // 3. Collected (per agent) = actual sales records created by each agent.
         const soldByAgent: Record<string, number> = {};
         await Promise.all(
           agents.map(async (a) => {
@@ -1586,7 +1592,20 @@ export default function SuperAdminAgentsContent() {
         );
         if (cancelled) return;
 
-        // 4. Merge stove_summary into agents.
+        // 4. Global deduped totals — each org counted once regardless of how many agents share it.
+        let globalAssigned = 0;
+        let globalSoldOrg = 0;
+        for (const oid of orgIds) {
+          globalAssigned += stoveTotalByOrg[oid] || 0;
+          globalSoldOrg += stoveSoldByOrg[oid] || 0;
+        }
+        setStoveTotals({
+          assigned: globalAssigned,
+          sold: globalSoldOrg,
+          unsold: Math.max(0, globalAssigned - globalSoldOrg),
+        });
+
+        // 5. Merge per-agent stove_summary (row badges still reflect each agent's view).
         setAgents((prev) =>
           prev.map((a) => {
             const orgs = agentToOrgIds[a.id] || [];
@@ -1932,9 +1951,10 @@ export default function SuperAdminAgentsContent() {
           });
           const roleEntries = Object.entries(roleCounts).sort((a, b) => b[1] - a[1]);
           const totalAgents = pagination?.totalItems ?? agents.length;
-          const totalAssigned = agents.reduce((s, a) => s + (a.stove_summary?.received || 0), 0);
-          const totalSold = agents.reduce((s, a) => s + (a.stove_summary?.sold || 0), 0);
-          const totalUnsold = Math.max(0, totalAssigned - totalSold);
+          const totalAssigned = stoveTotals?.assigned ?? 0;
+          const totalSold = stoveTotals?.sold ?? 0;
+          const totalUnsold = stoveTotals?.unsold ?? 0;
+          const totalsReady = stoveTotals !== null;
 
           const cards: Array<{
             gradient: string;
@@ -1964,21 +1984,21 @@ export default function SuperAdminAgentsContent() {
             {
               gradient: "from-[#B45309] to-[#F59E0B]",
               Icon: Package,
-              value: loading ? "—" : totalAssigned.toLocaleString(),
+              value: totalsReady ? totalAssigned.toLocaleString() : "—",
               label: "Assigned for Sale / Retrieval",
-              sub: "Total stoves with agents",
+              sub: "Unique stoves across all partners",
             },
             {
               gradient: "from-[#047857] to-[#10B981]",
               Icon: TrendingUp,
-              value: loading ? "—" : totalSold.toLocaleString(),
+              value: totalsReady ? totalSold.toLocaleString() : "—",
               label: "Stoves Sold / Retrieved",
               sub: "Total completed",
             },
             {
               gradient: "from-[#7C3AED] to-[#A78BFA]",
               Icon: Boxes,
-              value: loading ? "—" : totalUnsold.toLocaleString(),
+              value: totalsReady ? totalUnsold.toLocaleString() : "—",
               label: "Unsold / Unretrieved Stoves",
               sub: "Remaining in stock",
             },

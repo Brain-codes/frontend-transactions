@@ -1,28 +1,37 @@
 ## Problem
 
-On the **Agents Performance Report**, the "Collected" column currently counts stoves whose `stove_ids.status = 'sold'` for any partner assigned to the agent. That includes stoves marked sold via CSV imports / transfer history / other agents — not just sales recorded by the user in view. That's why you see more than the 2 actual sales records.
+The "Assigned for Sale / Retrieval" KPI shows 15,295 instead of the expected 13,321 because the total is computed by summing `stove_summary.received` across every agent row:
+
+```ts
+const totalAssigned = agents.reduce((s, a) => s + (a.stove_summary?.received || 0), 0);
+const totalSold     = agents.reduce((s, a) => s + (a.stove_summary?.sold || 0), 0);
+const totalUnsold   = Math.max(0, totalAssigned - totalSold);
+```
+
+When two or more agents are linked to the **same partner organization** (very common — a manager + their agent, or co-assigned agents), that organization's stoves are counted once per agent. The per-row badges are correct for each agent, but the KPI double-counts the shared orgs.
+
+The same flaw inflates "Unsold / Unretrieved Stoves" (derived from the inflated Assigned).
+
+"Stoves Sold / Retrieved" can also double-count when a sale's `created_by` agent is linked to multiple agents in the visible list... actually `sold` is keyed off `created_by = agent.id`, so each sale belongs to exactly one agent — that total is safe. Only Assigned and Unsold need fixing.
 
 ## Fix
 
-Redefine "Collected" to mean exactly: **the number of stoves the user in view personally sold** (sales records where the sales rep / created_by is that user).
+In `src/app/agents/components/SuperAdminAgentsContent.tsx`, change the KPI aggregation to dedupe by organization rather than sum per agent.
 
-### Changes in `src/app/agents/components/SuperAdminAgentsContent.tsx`
+1. During the stove-hydration effect (around line 1543–1597), in addition to the per-agent `stove_summary`, build and store the global totals using the **unique** set of organization IDs across all agents:
+   - Collect `allOrgIds = new Set<string>()` from every agent's org list.
+   - `globalAssigned = sum of stoveTotalByOrg[oid] for oid in allOrgIds` (each org counted once).
+   - `globalSold = sum of stoveSoldByOrg[oid] for oid in allOrgIds` if available, otherwise keep the per-agent `sold` sum (since sold is by `created_by` and not double-counted).
+   - `globalUnsold = max(0, globalAssigned - <sold-at-those-orgs>)`. Use the org-based sold total so Assigned and Unsold come from the same denominator and stay consistent with the 13,321 figure (which is org-based).
+   - Store these on a new state object `stoveTotals = { assigned, sold, unsold }`.
 
-1. In the hydration `useEffect` (around lines 1507–1570), stop deriving `sold` from `stove_ids.status`.
-2. For each agent, query the sales table via the existing `get-sales-advanced` endpoint (or directly via supabase) filtered by that agent's user id as the sales rep / creator, and sum the stove count.
-3. Keep current logic for:
-   - **Assigned** = total stoves at assigned partner orgs (from `stove_ids`).
-   - **In Stock** = `Assigned − Collected` (so they always reconcile), instead of counting `status != 'sold'`.
-4. Show a small spinner / dash while counts hydrate; never show stale "sold" counts.
+2. Replace the KPI computation block (around lines 1935–1937, 1968, and the Unsold card) to read from `stoveTotals` instead of `agents.reduce(...)`. Fallback to 0 / "—" while loading.
 
-### Verification
+3. Leave per-row badges and per-row sorting untouched — they correctly reflect what each agent personally has access to (overlap is expected at the row level).
 
-- Open the report and confirm the agent who logged 2 sales shows **Collected = 2**.
-- Confirm Assigned and In Stock still add up correctly (In Stock = Assigned − Collected).
-- Spot-check a second agent against their sales list.
+4. Optional clarity: add a small subtitle under the Assigned card like `Unique stoves across all partners` so it's obvious the total is deduped (per-agent rows can still sum higher).
 
-### Technical detail
+## Technical notes
 
-I still need to confirm the exact column / filter name the sales table uses for "the user who recorded the sale" (likely `sales_rep_id`, `created_by`, or `agent_id`). I'll inspect the sales schema / edge function once in build mode and use the right field; if none exists, I'll fall back to filtering by `sales_rep_name` matching the agent's full name.
-
-No UI changes — only the data source for the three numeric columns.
+- `stoveTotalByOrg` already exists in the hydration effect; we just need a parallel `stoveSoldByOrg` (count of `sold` per org) from the same `stove_ids` query. The current code only computes `sold` per agent from the `sales` table by `created_by`; to keep Assigned/Unsold internally consistent at the org level, derive Unsold from `stove_ids.status` totals rather than from the sales-table count.
+- No schema or RLS changes required; this is a pure client-side aggregation fix.
