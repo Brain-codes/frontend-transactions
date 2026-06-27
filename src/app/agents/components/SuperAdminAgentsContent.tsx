@@ -2157,16 +2157,8 @@ export default function SuperAdminAgentsContent() {
                           <span className="text-gray-400">—</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                          agent.status === "active"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}>
-                          {agent.status === "active" ? "Active" : "Disabled"}
-                        </span>
-                      </TableCell>
                       <TableCell className="text-center">
+
                         <div className="flex items-center justify-center gap-1">
                           <Button
                             size="sm"
