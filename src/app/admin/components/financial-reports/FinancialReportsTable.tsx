@@ -30,9 +30,6 @@ interface FinancialReportsTableProps {
   onToggleSort: () => void;
   // "admin" shows Agent column, "superAdmin" shows Partner column, "agent" hides both
   viewFrom?: "admin" | "superAdmin" | "agent";
-  selectedIds?: Set<string>;
-  onToggleSelect?: (id: string) => void;
-  onToggleSelectAll?: () => void;
 }
 
 const formatCurrency = (amount: number) =>
