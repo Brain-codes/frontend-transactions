@@ -2012,22 +2012,30 @@ export default function SuperAdminAgentsContent() {
                       <TableCell className="text-sm font-medium text-gray-900">
                           {agent.full_name}
                       </TableCell>
-                      {/* Stoves */}
-                      <TableCell>
+                      {/* Stoves split into 3 columns */}
+                      <TableCell className="text-center">
                         {agent.stove_summary ? (
-                          <div className="flex items-center gap-1.5 text-xs">
-                            <span className="font-medium text-purple-700" title="Assigned">
-                              {agent.stove_summary.received.toLocaleString()}
-                            </span>
-                            <span className="text-gray-300">/</span>
-                            <span className="font-medium text-blue-600" title="Collected">
-                              {agent.stove_summary.sold.toLocaleString()}
-                            </span>
-                            <span className="text-gray-300">/</span>
-                            <span className="font-medium text-green-600" title="In Stock">
-                              {agent.stove_summary.available.toLocaleString()}
-                            </span>
-                          </div>
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                            {agent.stove_summary.received.toLocaleString()}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {agent.stove_summary ? (
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                            {agent.stove_summary.sold.toLocaleString()}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {agent.stove_summary ? (
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                            {agent.stove_summary.available.toLocaleString()}
+                          </span>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
