@@ -406,9 +406,6 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
             sortOrder={sortOrder}
             onToggleSort={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
             viewFrom={viewFrom === "acsl_agent" ? "agent" : viewFrom}
-            selectedIds={selectedIds}
-            onToggleSelect={handleToggleSelect}
-            onToggleSelectAll={handleToggleSelectAll}
           />
         </>
       )}
