@@ -60,6 +60,9 @@ import {
   Activity,
   Download,
   KeyRound,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import organizationsService from "../../services/organizationsService";
@@ -1431,6 +1434,24 @@ export default function SuperAdminAgentsContent() {
   const [statesModalAgent, setStatesModalAgent] = useState<AcslAgent | null>(null);
 
   const [sortMode, setSortMode] = useState("default");
+  const [stoveSort, setStoveSort] = useState<{ key: string | null; direction: "asc" | "desc" | null }>({ key: null, direction: null });
+  const cycleStoveSort = (key: string) => {
+    setStoveSort((prev) => {
+      if (prev.key !== key) return { key, direction: "asc" };
+      if (prev.direction === "asc") return { key, direction: "desc" };
+      if (prev.direction === "desc") return { key: null, direction: null };
+      return { key, direction: "asc" };
+    });
+  };
+  const stoveSortFieldMap: Record<string, "received" | "sold" | "available"> = {
+    assigned: "received",
+    collected: "sold",
+    in_stock: "available",
+  };
+  const StoveSortIcon = ({ col }: { col: string }) => {
+    if (stoveSort.key !== col || !stoveSort.direction) return <ArrowUpDown className="w-3.5 h-3.5 opacity-70 inline" />;
+    return stoveSort.direction === "asc" ? <ArrowUp className="w-3.5 h-3.5 inline" /> : <ArrowDown className="w-3.5 h-3.5 inline" />;
+  };
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchAgents = useCallback(async () => {
@@ -1704,6 +1725,14 @@ export default function SuperAdminAgentsContent() {
     }
     return list;
   }, [agents, sortMode, activeAgentIdsInRange, kpiStats.mostActiveState]);
+
+  const displayedAgents = useMemo(() => {
+    if (!stoveSort.key || !stoveSort.direction) return sortedAgents;
+    const field = stoveSortFieldMap[stoveSort.key];
+    if (!field) return sortedAgents;
+    const dir = stoveSort.direction === "asc" ? 1 : -1;
+    return [...sortedAgents].sort((a, b) => (((a.stove_summary?.[field] ?? 0) - (b.stove_summary?.[field] ?? 0)) * dir));
+  }, [sortedAgents, stoveSort]);
 
   const dateBadgeLabel = useMemo(() => {
     const fmt = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
