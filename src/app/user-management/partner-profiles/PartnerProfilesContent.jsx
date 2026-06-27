@@ -41,6 +41,7 @@ import PartnerDetailModal from "../../partners/components/PartnerDetailModal";
 import EditPartnerModal from "../../partners/components/EditPartnerModal";
 import ViewCredentialModal from "../../admin/components/credentials/ViewCredentialModal";
 import adminCredentialsService from "../../services/adminCredentialsService";
+import superAdminAgentService from "../../services/superAdminAgentService";
 
 const PAGE_SIZE = 10;
 
@@ -54,6 +55,8 @@ const PartnerProfilesContent = () => {
   const [editingPartner, setEditingPartner] = useState(null);
   const [viewingCredential, setViewingCredential] = useState(null);
   const [loadingCredentialOrgId, setLoadingCredentialOrgId] = useState(null);
+  const [agentCounts, setAgentCounts] = useState({}); // orgId -> count
+
 
   const loadPartners = async () => {
     setLoading(true);
