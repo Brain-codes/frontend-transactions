@@ -1439,7 +1439,7 @@ export default function SuperAdminAgentsContent() {
     try {
       // Display ALL users regardless of role on the Agents Performance Report.
       // Switched from the agents-only endpoint to manage-users.
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const { supabaseFunctionsUrl } = await import("@/lib/supabaseConfig");
       const token = await tokenManager.getValidToken();
       const qs = new URLSearchParams({
         page: String(page),
@@ -1453,9 +1453,14 @@ export default function SuperAdminAgentsContent() {
       if (dateFrom) qs.append("date_from", dateFrom);
       if (dateTo) qs.append("date_to", dateTo);
 
-      const res = await fetch(`${supabaseUrl}/functions/v1/manage-users?${qs.toString()}`, {
+      const res = await fetch(`${supabaseFunctionsUrl}/manage-users?${qs.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        const text = await res.text();
+        throw new Error(`Unexpected response (${res.status}): ${text.slice(0, 120)}`);
+      }
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || json.message || "Failed to load users");
 
