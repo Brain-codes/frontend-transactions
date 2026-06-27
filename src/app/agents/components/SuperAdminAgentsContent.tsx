@@ -2126,6 +2126,9 @@ export default function SuperAdminAgentsContent() {
                       <TableCell className="text-sm font-medium text-gray-900">
                           {agent.full_name}
                       </TableCell>
+                      <TableCell className="text-sm text-gray-700">
+                        {agent.phone || ""}
+                      </TableCell>
                       {/* Stoves split into 3 columns */}
                       <TableCell className="text-center">
                         {agent.stove_summary ? (
