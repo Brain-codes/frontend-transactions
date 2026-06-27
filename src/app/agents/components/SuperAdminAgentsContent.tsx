@@ -37,6 +37,7 @@ import {
   X,
   Loader2,
   Plus,
+  UserPlus,
   MoreVertical,
   Edit,
   Trash2,
@@ -1751,9 +1752,12 @@ export default function SuperAdminAgentsContent() {
 
   const displayedAgents = useMemo(() => {
     if (!stoveSort.key || !stoveSort.direction) return sortedAgents;
+    const dir = stoveSort.direction === "asc" ? 1 : -1;
+    if (stoveSort.key === "partners") {
+      return [...sortedAgents].sort((a, b) => (((a.assigned_organizations_count ?? 0) - (b.assigned_organizations_count ?? 0)) * dir));
+    }
     const field = stoveSortFieldMap[stoveSort.key];
     if (!field) return sortedAgents;
-    const dir = stoveSort.direction === "asc" ? 1 : -1;
     return [...sortedAgents].sort((a, b) => (((a.stove_summary?.[field] ?? 0) - (b.stove_summary?.[field] ?? 0)) * dir));
   }, [sortedAgents, stoveSort]);
 
@@ -2083,20 +2087,24 @@ export default function SuperAdminAgentsContent() {
                 <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Full Name</TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
-                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Partners Assigned</TableHead>
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
+                    <button type="button" onClick={() => cycleStoveSort("partners")} className="inline-flex items-center gap-1 hover:underline">
+                      Partners Assigned <StoveSortIcon col="partners" />
+                    </button>
+                  </TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
                     <button type="button" onClick={() => cycleStoveSort("assigned")} className="inline-flex items-center gap-1 hover:underline">
-                      Assigned <StoveSortIcon col="assigned" />
+                      Records to collect <StoveSortIcon col="assigned" />
                     </button>
                   </TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
                     <button type="button" onClick={() => cycleStoveSort("collected")} className="inline-flex items-center gap-1 hover:underline">
-                      Collected <StoveSortIcon col="collected" />
+                      Records collected <StoveSortIcon col="collected" />
                     </button>
                   </TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
                     <button type="button" onClick={() => cycleStoveSort("in_stock")} className="inline-flex items-center gap-1 hover:underline">
-                      In Stock <StoveSortIcon col="in_stock" />
+                      Records not collected <StoveSortIcon col="in_stock" />
                     </button>
                   </TableHead>
                   <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
@@ -2166,13 +2174,6 @@ export default function SuperAdminAgentsContent() {
                       <TableCell className="text-center">
 
                         <div className="flex items-center justify-center gap-1">
-                          <Button
-                            size="sm"
-                            className="h-7 px-2 text-xs bg-[#4a5d0f] hover:bg-[#4a5d0f]/90 text-white"
-                            onClick={() => setAssignPartnerAgent(agent)}
-                          >
-                            Assign Partner
-                          </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="sm" className="h-7 w-7 p-0">
@@ -2180,6 +2181,9 @@ export default function SuperAdminAgentsContent() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setAssignPartnerAgent(agent)}>
+                              <UserPlus className="h-4 w-4 mr-2 text-[#4a5d0f]" />Assign Partner
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => { setSelectedAgent(agent); setShowViewModal(true); }}>
                               <Eye className="h-4 w-4 mr-2" />View Details
                             </DropdownMenuItem>
