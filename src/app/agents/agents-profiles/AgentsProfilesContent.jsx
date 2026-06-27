@@ -558,7 +558,7 @@ const AgentsProfilesContent = () => {
               Assigned Partners — {partnersModalAgent?.full_name}
             </DialogTitle>
           </DialogHeader>
-          <div className="max-h-[65vh] overflow-y-auto">
+          <div className="max-h-[65vh] overflow-y-auto px-6 py-4">
             {partnersModalLoading ? (
               <div className="flex items-center justify-center py-10">
                 <Loader2 className="h-5 w-5 animate-spin text-[#4a5d0f]" />
@@ -566,32 +566,63 @@ const AgentsProfilesContent = () => {
             ) : partnersModalList.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-10">No partners assigned</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow style={{ backgroundColor: "#eef3c4" }} className="hover:bg-transparent">
-                    <TableHead className="text-[#4a5d0f] font-semibold text-xs">Partner Name</TableHead>
-                    <TableHead className="text-[#4a5d0f] font-semibold text-xs">State</TableHead>
-                    <TableHead className="text-[#4a5d0f] font-semibold text-xs">Branch</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {partnersModalList.map((p, i) => (
-                    <TableRow
-                      key={p.id || p.assignment_id || i}
-                      style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
-                    >
-                      <TableCell className="text-sm text-gray-900 font-medium">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-[#4a5d0f]" />
-                          {p.partner_name || p.name || "—"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-700">{p.state || "—"}</TableCell>
-                      <TableCell className="text-sm text-gray-700">{p.branch || "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <>
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search by name, state or branch..."
+                    value={partnersSearch}
+                    onChange={(e) => setPartnersSearch(e.target.value)}
+                    className="pl-9 h-9 text-sm"
+                  />
+                </div>
+                {(() => {
+                  const q = partnersSearch.trim().toLowerCase();
+                  const getBranch = (p) =>
+                    p.branch || p.branch_name || p.branch?.name || p.organization_branch || "";
+                  const getName = (p) => p.partner_name || p.name || p.organization_name || "";
+                  const getState = (p) => p.state || p.partner_state || "";
+                  const filtered = partnersModalList.filter((p) => {
+                    if (!q) return true;
+                    return (
+                      String(getName(p)).toLowerCase().includes(q) ||
+                      String(getState(p)).toLowerCase().includes(q) ||
+                      String(getBranch(p)).toLowerCase().includes(q)
+                    );
+                  });
+                  if (filtered.length === 0) {
+                    return <p className="text-sm text-gray-500 text-center py-6">No matching partners</p>;
+                  }
+                  return (
+                    <Table>
+                      <TableHeader>
+                        <TableRow style={{ backgroundColor: "#eef3c4" }} className="hover:bg-transparent">
+                          <TableHead className="text-[#4a5d0f] font-semibold text-xs">Partner Name</TableHead>
+                          <TableHead className="text-[#4a5d0f] font-semibold text-xs">State</TableHead>
+                          <TableHead className="text-[#4a5d0f] font-semibold text-xs">Branch</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filtered.map((p, i) => (
+                          <TableRow
+                            key={p.id || p.assignment_id || i}
+                            style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
+                          >
+                            <TableCell className="text-sm text-gray-900 font-medium">
+                              <div className="flex items-center gap-2">
+                                <Building2 className="h-4 w-4 text-[#4a5d0f]" />
+                                {getName(p) || "—"}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-gray-700">{getState(p) || "—"}</TableCell>
+                            <TableCell className="text-sm text-gray-700">{getBranch(p) || "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  );
+                })()}
+              </>
             )}
           </div>
         </DialogContent>
