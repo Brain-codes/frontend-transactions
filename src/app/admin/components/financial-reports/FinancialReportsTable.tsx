@@ -53,11 +53,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
   data, loading, currentPage, pageSize, totalRecords,
   onPageChange, onPageSizeChange, onViewDetails, onViewHistory, onRecordPayment,
   onApproveSale, onEditSale, onDeleteSale, sortOrder, onToggleSort, viewFrom = "admin",
-  selectedIds, onToggleSelect, onToggleSelectAll,
 }) => {
-  const pageIds = data.map((s) => s.id);
-  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds?.has(id));
-  const somePageSelected = !allPageSelected && pageIds.some((id) => selectedIds?.has(id));
   const totalPages = Math.ceil(totalRecords / pageSize);
   const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endRecord = Math.min(currentPage * pageSize, totalRecords);
