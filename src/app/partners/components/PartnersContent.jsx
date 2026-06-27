@@ -62,6 +62,8 @@ import {
 import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AddPartnerModal from "../components/AddPartnerModal";
 import MonthlySalesChart from "./MonthlySalesChart";
+import SalesByStateChart from "./SalesByStateChart";
+import SalesByModelsChart from "./SalesByModelsChart";
 import EditPartnerModal from "../components/EditPartnerModal";
 import AssignAgentModal from "../components/AssignAgentModal";
 import AdminSalesDetailModal from "../../admin/components/sales/AdminSalesDetailModal";
@@ -1449,6 +1451,12 @@ export default function PartnersContent() {
 
           {/* Monthly Sales Chart */}
           <MonthlySalesChart />
+
+          {/* Sales by State + Sales by Models row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <SalesByStateChart />
+            <SalesByModelsChart />
+          </div>
 
           <div className="space-y-0">
             <div className="flex items-center justify-between px-1 py-2">
