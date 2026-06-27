@@ -90,6 +90,7 @@ const AgentsProfilesContent = () => {
   const openPartnersModal = async (agent) => {
     setPartnersModalAgent(agent);
     setPartnersModalList([]);
+    setPartnersSearch("");
     setPartnersModalLoading(true);
     try {
       const res = await superAdminAgentService.getAgentOrganizations(agent.id);
