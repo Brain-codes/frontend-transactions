@@ -1984,14 +1984,14 @@ export default function SuperAdminAgentsContent() {
             {
               gradient: "from-[#B45309] to-[#F59E0B]",
               Icon: Package,
-              value: loading ? "—" : totalAssigned.toLocaleString(),
+              value: totalsReady ? totalAssigned.toLocaleString() : "—",
               label: "Assigned for Sale / Retrieval",
-              sub: "Total stoves with agents",
+              sub: "Unique stoves across all partners",
             },
             {
               gradient: "from-[#047857] to-[#10B981]",
               Icon: TrendingUp,
-              value: loading ? "—" : totalSold.toLocaleString(),
+              value: totalsReady ? totalSold.toLocaleString() : "—",
               label: "Stoves Sold / Retrieved",
               sub: "Total completed",
             },
