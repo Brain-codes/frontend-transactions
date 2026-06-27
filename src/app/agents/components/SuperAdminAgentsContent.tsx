@@ -1980,7 +1980,9 @@ export default function SuperAdminAgentsContent() {
               <TableHeader>
                 <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Full Name</TableHead>
-                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Stoves (Assigned / Collected / In Stock)</TableHead>
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Assigned</TableHead>
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Collected</TableHead>
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">In Stock</TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
                   <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
                 </TableRow>
@@ -1988,7 +1990,7 @@ export default function SuperAdminAgentsContent() {
               <TableBody className={loading ? "opacity-40" : ""}>
                 {!loading && sortedAgents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-12">
+                    <TableCell colSpan={6} className="text-center py-12">
                       <Users className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500 font-medium">
                         {sortMode !== "default" ? "No agents match the active filter" : "No agents found"}
@@ -2010,22 +2012,30 @@ export default function SuperAdminAgentsContent() {
                       <TableCell className="text-sm font-medium text-gray-900">
                           {agent.full_name}
                       </TableCell>
-                      {/* Stoves */}
-                      <TableCell>
+                      {/* Stoves split into 3 columns */}
+                      <TableCell className="text-center">
                         {agent.stove_summary ? (
-                          <div className="flex items-center gap-1.5 text-xs">
-                            <span className="font-medium text-purple-700" title="Assigned">
-                              {agent.stove_summary.received.toLocaleString()}
-                            </span>
-                            <span className="text-gray-300">/</span>
-                            <span className="font-medium text-blue-600" title="Collected">
-                              {agent.stove_summary.sold.toLocaleString()}
-                            </span>
-                            <span className="text-gray-300">/</span>
-                            <span className="font-medium text-green-600" title="In Stock">
-                              {agent.stove_summary.available.toLocaleString()}
-                            </span>
-                          </div>
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                            {agent.stove_summary.received.toLocaleString()}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {agent.stove_summary ? (
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                            {agent.stove_summary.sold.toLocaleString()}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {agent.stove_summary ? (
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                            {agent.stove_summary.available.toLocaleString()}
+                          </span>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
