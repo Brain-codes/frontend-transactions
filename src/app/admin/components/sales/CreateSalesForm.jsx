@@ -686,7 +686,26 @@ const CreateSalesForm = ({
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-5">
+    <div className="max-w-5xl mx-auto p-5">
+      {/* Sales Form Header */}
+      <div className="mb-6 rounded-lg overflow-hidden border border-[#4a5d0f]/20">
+        <div className="bg-gradient-to-r from-[#4a5d0f] to-[#6b8016] px-6 py-5 flex items-center gap-4">
+          <div className="h-11 w-11 rounded-lg bg-white/15 flex items-center justify-center">
+            <FileText className="h-6 w-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <h1 className="text-xl md:text-2xl font-semibold text-white leading-tight">
+              {isEditMode ? "Edit Sale" : "Record a New Sale"}
+            </h1>
+            <p className="text-sm text-white/80 mt-0.5">
+              {isEditMode
+                ? "Update the details of this sales transaction."
+                : "Fill in the details below to register a stove sale."}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
           <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
@@ -694,7 +713,10 @@ const CreateSalesForm = ({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-6 [&_input]:shadow-none [&_textarea]:shadow-none [&_[role=combobox]]:shadow-none"
+      >
 
         {/* Transaction Information */}
         <div>
