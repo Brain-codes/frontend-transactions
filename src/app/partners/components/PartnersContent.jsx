@@ -1437,7 +1437,13 @@ export default function PartnersContent() {
           </div>
 
           <div className="space-y-0">
+            <div className="flex items-center justify-between px-1 py-2">
+              <p className="text-sm text-gray-600">
+                Showing <span className="font-medium">{startRecord}–{endRecord}</span> of <span className="font-medium">{pagination.total}</span> partners
+              </p>
+            </div>
             <div className="bg-white border border-gray-200 overflow-x-auto relative">
+
               {tableLoading && (
                 <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
                   <Loader2 className="h-6 w-6 animate-spin text-brand" />
