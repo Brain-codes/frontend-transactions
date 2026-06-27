@@ -333,21 +333,23 @@ const AgentsProfilesContent = () => {
         )}
       </div>
 
-      <ViewSuperAdminAgentModal
-        agent={detailsAgent}
-        isOpen={!!detailsAgent}
-        onClose={() => setDetailsAgent(null)}
-      />
+      {detailsAgent && (
+        <ViewSuperAdminAgentModal
+          agent={detailsAgent}
+          onClose={() => setDetailsAgent(null)}
+        />
+      )}
 
-      <EditSuperAdminAgentModal
-        agent={editingAgent}
-        isOpen={!!editingAgent}
-        onClose={() => setEditingAgent(null)}
-        onSuccess={() => {
-          setEditingAgent(null);
-          loadAgents();
-        }}
-      />
+      {editingAgent && (
+        <EditSuperAdminAgentModal
+          agent={editingAgent}
+          onClose={() => setEditingAgent(null)}
+          onSuccess={() => {
+            setEditingAgent(null);
+            loadAgents();
+          }}
+        />
+      )}
 
       <AgentViewCredentialModal
         isOpen={!!credentialAgent}
