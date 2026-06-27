@@ -48,15 +48,15 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
         </Button>
       )}
 
-      {/* View Details button */}
+      {/* Details button */}
       {viewFrom !== "agent" && (
         <Button
           variant="default"
           size="sm"
-          className="h-7 text-xs bg-brand hover:bg-brand/90 text-white"
+          className="h-7 text-xs bg-black hover:bg-gray-800 text-white rounded-none"
           onClick={() => onViewDetails(sale)}
         >
-          View Details
+          Details
         </Button>
       )}
 
