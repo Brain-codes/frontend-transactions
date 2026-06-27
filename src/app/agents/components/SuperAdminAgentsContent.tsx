@@ -1588,7 +1588,7 @@ export default function SuperAdminAgentsContent() {
 
         <PageHeader
           icon={Users}
-          title="Agents Manager"
+          title="Agents Performance Report"
           right={
             <Button
               size="sm"
