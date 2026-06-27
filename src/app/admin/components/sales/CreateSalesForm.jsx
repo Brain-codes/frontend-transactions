@@ -243,6 +243,11 @@ const CreateSalesForm = ({
           // Create mode: load profile data and generate transaction ID
           const profileData = await loadProfileData();
 
+          // Ensure profile is loaded (covers stale cache / fresh login)
+          if (!profileService.getStoredProfileData()) {
+            await profileService.fetchAndStoreProfile();
+          }
+
           // Generate transaction ID
           const generateTransactionId = () => {
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -253,7 +258,16 @@ const CreateSalesForm = ({
             return result;
           };
 
-          // For super admin / ACSL agent, partner name comes from the selection step stored in sessionStorage
+          // Determine whether we have an org context yet
+          const knownOrgId =
+            profileService.getOrganizationId() ||
+            (typeof sessionStorage !== "undefined"
+              ? sessionStorage.getItem("saa_selected_org_id")
+              : null);
+          const mustPickPartner = !knownOrgId;
+          setNeedsPartnerSelection(mustPickPartner);
+
+          // Partner name fallback: SAA sessionStorage → profile
           const saaPartnerName =
             typeof sessionStorage !== "undefined"
               ? sessionStorage.getItem("saa_selected_org_name")
@@ -265,8 +279,8 @@ const CreateSalesForm = ({
             partnerName: saaPartnerName || profileData?.partnerName || "",
           }));
 
-          // Fetch available stoves for create mode (super admins wait until a partner is selected)
-          if (!isSuperAdmin) {
+          // Auto-load stoves only if we already have an org; otherwise wait for partner pick
+          if (!mustPickPartner) {
             fetchAvailableStoves();
           } else {
             setStovesLoading(false);
