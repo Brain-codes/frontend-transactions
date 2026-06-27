@@ -1400,14 +1400,6 @@ export default function PartnersContent() {
                 Icon: TrendingUp,
                 value: loadingStats ? "—" : stats.performing_partners.toLocaleString(),
                 label: "Stoves Sold to End Users",
-                sub: "with sales",
-                subBadge: (() => {
-                  if (dateFrom && dateTo) {
-                    const fmt = (d) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-                    return `${fmt(dateFrom)} – ${fmt(dateTo)}`;
-                  }
-                  return new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-                })(),
                 onClick: () => setSortMode("active"),
                 active: sortMode === "active",
               },
