@@ -96,7 +96,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
   return (
     <div className="space-y-0">
       {/* Pagination header */}
-      <div className="bg-blue-50 rounded-t-lg px-4 py-2 flex items-center justify-between">
+      <div className="bg-[#eef3c4] rounded-t-lg px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <p className="text-sm text-gray-600">
             Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
@@ -118,22 +118,22 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
           </div>
         </div>
         <p className="text-sm font-bold text-green-500">
-          Total Sales: <span className="text-brand">{totalRecords}</span>
+          Total Sales: <span className="text-[#4a5d0f]">{totalRecords}</span>
         </p>
       </div>
 
       {/* Table */}
       <div className="bg-white border-x border-gray-200 overflow-x-auto mt-5">
         <Table>
-          <TableHeader className="bg-brand">
-            <TableRow className="hover:bg-brand">
+          <TableHeader className="bg-[#4a5d0f]">
+            <TableRow className="hover:bg-[#4a5d0f]">
               {onToggleSelect && (
                 <TableHead className="py-4 w-12 text-white">
                   <Checkbox
                     ref={((el: HTMLInputElement | null) => { if (el) el.indeterminate = somePageSelected; }) as any}
                     checked={allPageSelected}
                     onCheckedChange={onToggleSelectAll}
-                    className="border-white data-[state=checked]:bg-white data-[state=checked]:text-brand"
+                    className="border-white data-[state=checked]:bg-white data-[state=checked]:text-[#4a5d0f]"
                   />
                 </TableHead>
               )}
@@ -168,7 +168,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
             {data.map((sale, idx) => (
               <TableRow
                 key={sale.id}
-                className={`${idx % 2 === 0 ? "bg-white" : "bg-brand-light"} hover:bg-gray-50 ${selectedIds?.has(sale.id) ? "ring-1 ring-inset ring-brand/40" : ""}`}
+                className={`${idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]"} hover:bg-gray-50 ${selectedIds?.has(sale.id) ? "ring-1 ring-inset ring-[#4a5d0f]/40" : ""}`}
               >
                 {onToggleSelect && (
                   <TableCell className="w-12">
@@ -247,7 +247,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
             </Button>
             {getVisiblePages().map((p) => (
               <Button key={p} variant={p === currentPage ? "default" : "outline"} size="sm"
-                className={`h-8 w-8 p-0 ${p === currentPage ? "bg-brand text-white hover:bg-brand" : ""}`}
+                className={`h-8 w-8 p-0 ${p === currentPage ? "bg-[#4a5d0f] text-white hover:bg-[#4a5d0f]" : ""}`}
                 onClick={() => onPageChange(p)}
               >
                 {p}
