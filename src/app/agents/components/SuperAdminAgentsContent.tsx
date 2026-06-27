@@ -1714,7 +1714,7 @@ export default function SuperAdminAgentsContent() {
                 }
                 setPage(1);
               }}
-              className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[145px]"
+              className="h-9 bg-white border border-gray-200 rounded-md text-xs px-2 shadow-none focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/30 w-[145px]"
               style={{ colorScheme: "light" }}
             />
           </div>
@@ -1725,7 +1725,7 @@ export default function SuperAdminAgentsContent() {
               type="date"
               value={dateFrom}
               onChange={(e) => { setDateFrom(e.target.value); setSelectedMonth(""); }}
-              className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[140px]"
+              className="h-9 bg-white border border-gray-200 rounded-md text-xs px-2 shadow-none focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/30 w-[140px]"
               style={{ colorScheme: "light" }}
             />
             <span className="text-xs text-gray-400">–</span>
@@ -1734,7 +1734,7 @@ export default function SuperAdminAgentsContent() {
               value={dateTo}
               min={dateFrom || undefined}
               onChange={(e) => { setDateTo(e.target.value); setSelectedMonth(""); }}
-              className="h-9 bg-white border border-input rounded-md text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring w-[140px]"
+              className="h-9 bg-white border border-gray-200 rounded-md text-xs px-2 shadow-none focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/30 w-[140px]"
               style={{ colorScheme: "light" }}
             />
           </div>
