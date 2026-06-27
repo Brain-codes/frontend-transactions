@@ -2051,6 +2051,9 @@ export default function SuperAdminAgentsContent() {
           </div>
         )}
 
+        {/* Monthly Records Collection Chart */}
+        <MonthlySalesChart />
+
         {/* Active filter banner */}
         {sortMode !== "default" && (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 border border-primary/20 rounded-lg text-xs text-primary">
