@@ -455,75 +455,90 @@ const StoveTransferHistoryModal = ({ organization, isOpen, onClose }) => {
     </div>
   );
 
+  const totalStoves = records.reduce((sum, r) => sum + (r.stove_count ?? (r.stove_ids?.length ?? 0)), 0);
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
-          <DialogHeader className="px-5 py-3 bg-gradient-to-r from-primary/5 to-primary/10 border-b shrink-0">
-            <div>
-              <DialogTitle className="text-base font-bold text-foreground">Stove Transfer History</DialogTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Partner: <span className="font-semibold text-primary">{organization?.partner_name}</span>
-              </p>
+        <DialogContent className="max-w-6xl w-[95vw] max-h-[92vh] p-0 gap-0 overflow-hidden flex flex-col border-0 shadow-2xl">
+          <DialogHeader className="px-6 py-4 bg-[#4a5d0f] border-b border-[#3a4a0c] shrink-0">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <DialogTitle className="text-lg font-bold text-white tracking-tight">Purchases from ACSL</DialogTitle>
+                <p className="text-xs text-[#eef3c4] mt-1">
+                  Partner: <span className="font-semibold text-white">{organization?.partner_name}</span>
+                </p>
+              </div>
+              {!loading && records.length > 0 && (
+                <div className="flex gap-2 mr-8">
+                  <div className="bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-center">
+                    <div className="text-[10px] uppercase tracking-wider text-[#eef3c4]">Transactions</div>
+                    <div className="text-sm font-bold text-white">{records.length}</div>
+                  </div>
+                  <div className="bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-center">
+                    <div className="text-[10px] uppercase tracking-wider text-[#eef3c4]">Total Stoves</div>
+                    <div className="text-sm font-bold text-white">{totalStoves}</div>
+                  </div>
+                </div>
+              )}
             </div>
           </DialogHeader>
 
-          <div className=" space-y-3 overflow-y-auto flex-1">
-            <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
-              <SectionHeader title={`Transfer Records${!loading && records.length > 0 ? ` (${records.length})` : ""}`} />
-
-              {loading ? (
-                <div className="flex items-center justify-center py-10">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                </div>
-              ) : error ? (
-                <div className="text-center py-6 space-y-2">
-                  <p className="text-red-600 text-sm">{error}</p>
-                  <Button size="sm" variant="outline" className="text-xs h-7" onClick={fetchHistory}>Retry</Button>
-                </div>
-              ) : records.length === 0 ? (
-                <div className="text-center text-muted-foreground py-6 text-sm">No transfer records found for this partner.</div>
-              ) : (
+          <div className="overflow-y-auto flex-1 bg-[#fafcfd] p-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-6 w-6 animate-spin text-[#4a5d0f]" />
+              </div>
+            ) : error ? (
+              <div className="text-center py-10 space-y-2">
+                <p className="text-red-600 text-sm">{error}</p>
+                <Button size="sm" variant="outline" className="text-xs h-7" onClick={fetchHistory}>Retry</Button>
+              </div>
+            ) : records.length === 0 ? (
+              <div className="text-center text-muted-foreground py-16 text-sm">No purchases found for this partner.</div>
+            ) : (
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-brand hover:bg-brand">
+                      <TableRow className="bg-[#4a5d0f] hover:bg-[#4a5d0f]">
                         <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Transaction ID</TableHead>
-                        <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Date Transferred</TableHead>
-                        <TableHead className="text-white font-semibold text-xs whitespace-nowrap text-center">No. of Stoves</TableHead>
-                        <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stove IDs</TableHead>
+                        <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Date</TableHead>
+                        <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Factory</TableHead>
+                        <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Sales Package</TableHead>
+                        <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Sales Rep</TableHead>
+                        <TableHead className="text-white font-semibold text-xs whitespace-nowrap text-center">Stoves</TableHead>
+                        <TableHead className="text-white font-semibold text-xs whitespace-nowrap text-right">Stove IDs</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {records.map((record, idx) => {
                         const stoveIds = record.stove_ids ?? [];
-                        const preview = stoveIds.slice(0, 8);
-                        const remaining = stoveIds.length - 8;
+                        const count = record.stove_count ?? stoveIds.length;
+                        const factory = record.sales_factory || stoveIds[0]?.factory || "—";
+                        const salesPackage = record.sales_package || record.package_name || record.application_name || "—";
+                        const salesRep = record.sales_rep || record.sales_rep_name || record.created_by_name || "—";
                         return (
-                          <TableRow key={record.id || idx} className={idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"}>
+                          <TableRow key={record.id || idx} className={idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]/40"}>
                             <TableCell className="text-xs font-mono font-medium text-gray-900">{record.transaction_id || "—"}</TableCell>
-                            <TableCell className="text-xs">{formatDate(record.transfer_date)}</TableCell>
-                            <TableCell className="text-xs text-center font-semibold text-primary">{record.stove_count ?? stoveIds.length}</TableCell>
-                            <TableCell className="text-xs max-w-xs">
-                              {stoveIds.length === 0 ? (
-                                <span className="text-gray-400">—</span>
-                              ) : (
-                                <div className="flex flex-wrap gap-1 items-center">
-                                  {preview.map((s) => (
-                                    <span key={s.stove_id} className="bg-primary/10 text-primary text-[10px] font-mono px-1.5 py-0.5 rounded">
-                                      {s.stove_id}
-                                    </span>
-                                  ))}
-                                  {remaining > 0 && (
-                                    <button
-                                      onClick={() => setExpandedStoveIds({ transactionId: record.transaction_id, stoveIds })}
-                                      className="text-[10px] font-semibold text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
-                                    >
-                                      +{remaining} more
-                                    </button>
-                                  )}
-                                </div>
-                              )}
+                            <TableCell className="text-xs whitespace-nowrap text-gray-700">{formatDate(record.transfer_date)}</TableCell>
+                            <TableCell className="text-xs text-gray-700">{factory}</TableCell>
+                            <TableCell className="text-xs text-gray-700">{salesPackage}</TableCell>
+                            <TableCell className="text-xs text-gray-700">{salesRep}</TableCell>
+                            <TableCell className="text-xs text-center">
+                              <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-full bg-[#eef3c4] text-[#4a5d0f] font-semibold">
+                                {count}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                size="sm"
+                                disabled={stoveIds.length === 0}
+                                onClick={() => setExpandedStoveIds({ transactionId: record.transaction_id, stoveIds, factory })}
+                                className="h-7 px-3 text-xs rounded-none bg-[#4a5d0f] hover:bg-[#3a4a0c] text-white"
+                              >
+                                View Stove IDs
+                              </Button>
                             </TableCell>
                           </TableRow>
                         );
@@ -531,33 +546,36 @@ const StoveTransferHistoryModal = ({ organization, isOpen, onClose }) => {
                     </TableBody>
                   </Table>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
 
       {/* All Stove IDs sub-modal */}
       <Dialog open={!!expandedStoveIds} onOpenChange={() => setExpandedStoveIds(null)}>
-        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
-          <DialogHeader className="px-5 py-3 bg-gradient-to-r from-primary/5 to-primary/10 border-b shrink-0">
+        <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col border-0 shadow-2xl">
+          <DialogHeader className="px-6 py-4 bg-[#4a5d0f] border-b border-[#3a4a0c] shrink-0">
             <div>
-              <DialogTitle className="text-base font-bold text-foreground">All Stove IDs</DialogTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Transaction: <span className="font-semibold text-primary font-mono">{expandedStoveIds?.transactionId}</span>
-                <span className="ml-2 bg-primary/10 text-primary text-[10px] font-semibold px-2 py-0.5 rounded-full">
+              <DialogTitle className="text-lg font-bold text-white tracking-tight">Stove IDs</DialogTitle>
+              <p className="text-xs text-[#eef3c4] mt-1">
+                Transaction: <span className="font-semibold text-white font-mono">{expandedStoveIds?.transactionId}</span>
+                {expandedStoveIds?.factory && expandedStoveIds.factory !== "—" && (
+                  <> · Factory: <span className="font-semibold text-white">{expandedStoveIds.factory}</span></>
+                )}
+                <span className="ml-2 bg-white/15 border border-white/20 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
                   {expandedStoveIds?.stoveIds.length} stoves
                 </span>
               </p>
             </div>
           </DialogHeader>
-          <div className="overflow-y-auto flex-1">
-            <div className="grid grid-cols-4 md:grid-cols-6 gap-1.5">
+          <div className="overflow-y-auto flex-1 bg-[#fafcfd] p-5">
+            <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2">
               {(expandedStoveIds?.stoveIds ?? []).map((s) => (
                 <span
                   key={s.stove_id}
-                  className="px-2 py-1 text-xs rounded border text-center truncate bg-muted/50 border-border/50 text-foreground font-mono"
-                  title={s.stove_id}
+                  className="px-2 py-1.5 text-xs rounded border text-center truncate bg-white border-[#eef3c4] text-[#4a5d0f] font-mono hover:bg-[#eef3c4]/50 transition-colors"
+                  title={[s.stove_id, s.factory && `Factory: ${s.factory}`, s.sales_reference && `Ref: ${s.sales_reference}`].filter(Boolean).join(" · ")}
                 >
                   {s.stove_id}
                 </span>
