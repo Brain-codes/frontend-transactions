@@ -1751,9 +1751,12 @@ export default function SuperAdminAgentsContent() {
 
   const displayedAgents = useMemo(() => {
     if (!stoveSort.key || !stoveSort.direction) return sortedAgents;
+    const dir = stoveSort.direction === "asc" ? 1 : -1;
+    if (stoveSort.key === "partners") {
+      return [...sortedAgents].sort((a, b) => (((a.assigned_organizations_count ?? 0) - (b.assigned_organizations_count ?? 0)) * dir));
+    }
     const field = stoveSortFieldMap[stoveSort.key];
     if (!field) return sortedAgents;
-    const dir = stoveSort.direction === "asc" ? 1 : -1;
     return [...sortedAgents].sort((a, b) => (((a.stove_summary?.[field] ?? 0) - (b.stove_summary?.[field] ?? 0)) * dir));
   }, [sortedAgents, stoveSort]);
 
