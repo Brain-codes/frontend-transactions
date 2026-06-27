@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
+import MonthlySalesChart from "../../partners/components/MonthlySalesChart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
