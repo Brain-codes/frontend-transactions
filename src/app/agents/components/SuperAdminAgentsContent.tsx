@@ -1739,37 +1739,22 @@ export default function SuperAdminAgentsContent() {
             />
           </div>
 
-          {(search || statusFilter !== "all" || selectedRoles.length !== 1 || selectedRoles[0] !== "acsl_agent" || dateFrom || dateTo) && (
-            <Button
-              onClick={() => { setSearch(""); setStatusFilter("all"); setSelectedRoles(["acsl_agent"]); setDateFrom(""); setDateTo(""); setSelectedMonth(""); setPage(1); }}
-              size="sm"
-              variant="outline"
-              className="h-9"
-            >
-              <X className="h-4 w-4 mr-1" />Clear
-            </Button>
-          )}
-          <div className="ml-auto flex items-center gap-3">
-            <p className="text-sm text-gray-600">
-              Showing <span className="font-medium">{startItem}–{endItem}</span> of{" "}
-              <span className="font-medium">{totalItems.toLocaleString()}</span> agents
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">per page:</span>
-              <Select value={pageSize.toString()} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
-                <SelectTrigger className="w-[65px] h-7 bg-white text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <p className="text-sm font-bold text-green-500">
-              Total: <span className="text-[#4a5d0f]">{totalItems.toLocaleString()}</span>
-            </p>
-          </div>
+          <Button
+            onClick={() => { setSearch(""); setStatusFilter("all"); setSelectedRoles(["acsl_agent"]); setDateFrom(""); setDateTo(""); setSelectedMonth(""); setPage(1); }}
+            size="sm"
+            variant="outline"
+            className="h-9 bg-white shadow-none border-gray-200"
+            disabled={!(search || statusFilter !== "all" || selectedRoles.length !== 1 || selectedRoles[0] !== "acsl_agent" || dateFrom || dateTo)}
+          >
+            <X className="h-4 w-4 mr-1" />
+            Reset Filters
+          </Button>
+
+          <p className="ml-auto text-sm text-gray-600">
+            Showing <span className="font-medium">{startItem}</span> to{" "}
+            <span className="font-medium">{endItem}</span> of{" "}
+            <span className="font-medium">{totalItems.toLocaleString()}</span> agents
+          </p>
         </div>
 
         {/* KPI Stat Cards — 6-card grid */}
