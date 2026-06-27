@@ -1452,11 +1452,11 @@ export default function PartnersContent() {
                   ) : (
                     sortedOrgs.map((org, idx) => (
                       <React.Fragment key={org.id}>
-                        <TableRow className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}>
-                          <TableCell className="text-xs font-medium text-gray-900">{org.partner_name}</TableCell>
-                          <TableCell className="text-xs">{org.state || "N/A"}</TableCell>
-                          <TableCell className="text-xs">{org.branch || "N/A"}</TableCell>
-                          <TableCell className="text-xs">{org.contact_phone || "—"}</TableCell>
+                        <TableRow className="hover:bg-[#eef3c4] text-gray-700" style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f4f7e3" }}>
+                          <TableCell className="text-sm font-medium text-gray-900">{org.partner_name}</TableCell>
+                          <TableCell className="text-sm">{org.state || "N/A"}</TableCell>
+                          <TableCell className="text-sm">{org.branch || "N/A"}</TableCell>
+                          <TableCell className="text-sm">{org.contact_phone || "—"}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1.5 text-xs">
                               <button onClick={() => handleViewStoveIds(org, "all")} className="font-medium text-purple-700 hover:underline hover:text-purple-900 transition-colors" title="Total received">
