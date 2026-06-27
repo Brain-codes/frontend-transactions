@@ -910,6 +910,20 @@ export default function PartnersContent() {
   const loadingAgentOrgIdsRef = useRef(new Set());
 
   const [sortMode, setSortMode] = useState("default");
+  const [stoveSort, setStoveSort] = useState({ key: null, direction: null });
+  const cycleStoveSort = (key) => {
+    setStoveSort((prev) => {
+      if (prev.key !== key) return { key, direction: "asc" };
+      if (prev.direction === "asc") return { key, direction: "desc" };
+      if (prev.direction === "desc") return { key: null, direction: null };
+      return { key, direction: "asc" };
+    });
+  };
+  const stoveSortKeyMap = { received: "total_stove_ids", sold: "sold_stove_ids", available: "available_stove_ids" };
+  const SortIcon = ({ col }) => {
+    if (stoveSort.key !== col || !stoveSort.direction) return <ArrowUpDown className="w-3.5 h-3.5 opacity-70" />;
+    return stoveSort.direction === "asc" ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />;
+  };
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [filters, setFilters] = useState({ search: "", state: "all", partner_type: "all", assigned_agents: "all", branch: "" });
