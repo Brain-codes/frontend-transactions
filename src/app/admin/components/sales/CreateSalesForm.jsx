@@ -74,6 +74,8 @@ const CreateSalesForm = ({
   const router = useRouter();
   const { supabase } = useAuth();
   const isSuperAdmin = SAA_ROLES.includes(userRole);
+  // True when no organization context exists yet — show partner picker regardless of role
+  const [needsPartnerSelection, setNeedsPartnerSelection] = useState(false);
   const [loading, setLoading] = useState(false);
   const [availableStoves, setAvailableStoves] = useState([]);
   const [stovesLoading, setStovesLoading] = useState(true);
@@ -155,9 +157,9 @@ const CreateSalesForm = ({
     };
   }, []);
 
-  // Debounced partner search for super admin roles (create mode only)
+  // Debounced partner search (any user without a known org can pick a partner)
   useEffect(() => {
-    if (!isSuperAdmin || isEditMode) return;
+    if (!needsPartnerSelection || isEditMode) return;
     if (!partnerSearch.trim()) {
       setPartners([]);
       return;
@@ -166,7 +168,18 @@ const CreateSalesForm = ({
     const t = setTimeout(async () => {
       setPartnersLoading(true);
       try {
-        if (userRole === "super_admin") {
+        // SAA agents (non-super_admin) see only their assigned partners.
+        // Super admins and everyone else without an org go through manage-organizations.
+        const isSaaAgent = isSuperAdmin && userRole !== "super_admin";
+        if (isSaaAgent) {
+          const result = await superAdminAgentService.getAgentOrganizations(userId);
+          const all = result.data || [];
+          const q = partnerSearch.trim().toLowerCase();
+          setPartners(all.filter((p) =>
+            (p.partner_name || "").toLowerCase().includes(q) ||
+            (p.branch || "").toLowerCase().includes(q)
+          ));
+        } else {
           const { data: { session } } = await supabase.auth.getSession();
           const params = new URLSearchParams({ limit: "50", offset: "0", search: partnerSearch.trim() });
           const res = await fetch(
@@ -175,14 +188,6 @@ const CreateSalesForm = ({
           );
           const result = await res.json();
           if (res.ok) setPartners(result.data || []);
-        } else {
-          const result = await superAdminAgentService.getAgentOrganizations(userId);
-          const all = result.data || [];
-          const q = partnerSearch.trim().toLowerCase();
-          setPartners(all.filter((p) =>
-            (p.partner_name || "").toLowerCase().includes(q) ||
-            (p.branch || "").toLowerCase().includes(q)
-          ));
         }
       } catch (err) {
         console.error("Error searching partners:", err);
@@ -192,7 +197,7 @@ const CreateSalesForm = ({
     }, 300);
 
     return () => clearTimeout(t);
-  }, [partnerSearch, isSuperAdmin, isEditMode, userRole, userId]);
+  }, [partnerSearch, needsPartnerSelection, isSuperAdmin, isEditMode, userRole, userId]);
 
   // Initialize form data on mount
   useEffect(() => {
@@ -238,6 +243,11 @@ const CreateSalesForm = ({
           // Create mode: load profile data and generate transaction ID
           const profileData = await loadProfileData();
 
+          // Ensure profile is loaded (covers stale cache / fresh login)
+          if (!profileService.getStoredProfileData()) {
+            await profileService.fetchAndStoreProfile();
+          }
+
           // Generate transaction ID
           const generateTransactionId = () => {
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -248,7 +258,16 @@ const CreateSalesForm = ({
             return result;
           };
 
-          // For super admin / ACSL agent, partner name comes from the selection step stored in sessionStorage
+          // Determine whether we have an org context yet
+          const knownOrgId =
+            profileService.getOrganizationId() ||
+            (typeof sessionStorage !== "undefined"
+              ? sessionStorage.getItem("saa_selected_org_id")
+              : null);
+          const mustPickPartner = !knownOrgId;
+          setNeedsPartnerSelection(mustPickPartner);
+
+          // Partner name fallback: SAA sessionStorage → profile
           const saaPartnerName =
             typeof sessionStorage !== "undefined"
               ? sessionStorage.getItem("saa_selected_org_name")
@@ -260,8 +279,8 @@ const CreateSalesForm = ({
             partnerName: saaPartnerName || profileData?.partnerName || "",
           }));
 
-          // Fetch available stoves for create mode (super admins wait until a partner is selected)
-          if (!isSuperAdmin) {
+          // Auto-load stoves only if we already have an org; otherwise wait for partner pick
+          if (!mustPickPartner) {
             fetchAvailableStoves();
           } else {
             setStovesLoading(false);
@@ -313,8 +332,8 @@ const CreateSalesForm = ({
           : null);
 
       if (!organizationId) {
-        // Super admins have no personal org — stoves are fetched after partner selection
-        if (!isSuperAdmin) setError("Organization ID not found. Please log in again.");
+        // No org context yet — partner picker is shown; wait for selection
+        setNeedsPartnerSelection(true);
         setStovesLoading(false);
         return;
       }
@@ -701,7 +720,7 @@ const CreateSalesForm = ({
                 className={errors.salesDate ? "border-red-500" : ""}
               />
             </FormField>
-            {isSuperAdmin && !isEditMode ? (
+            {needsPartnerSelection && !isEditMode ? (
               <div>
                 <Label htmlFor="partnerSearch">Partner *</Label>
                 <div className="relative partner-search-container">
