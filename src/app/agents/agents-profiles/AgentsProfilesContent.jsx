@@ -236,6 +236,7 @@ const AgentsProfilesContent = () => {
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Full Name</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Email</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone</TableHead>
+                <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Role</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">States Assigned</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Partners Assigned</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
@@ -245,7 +246,7 @@ const AgentsProfilesContent = () => {
             <TableBody className={loading ? "opacity-40" : ""}>
               {pageRows.length === 0 && !loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10 text-gray-500">
+                  <TableCell colSpan={8} className="text-center py-10 text-gray-500">
                     No agents found
                   </TableCell>
                 </TableRow>
