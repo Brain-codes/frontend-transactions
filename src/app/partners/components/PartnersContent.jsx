@@ -1489,9 +1489,21 @@ export default function PartnersContent() {
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">State</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
-                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Received</TableHead>
-                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Sold</TableHead>
-                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Available</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
+                      <button type="button" onClick={() => cycleStoveSort("received")} className="inline-flex items-center gap-1 mx-auto hover:opacity-90" title="Sort by Received">
+                        Received <SortIcon col="received" />
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
+                      <button type="button" onClick={() => cycleStoveSort("sold")} className="inline-flex items-center gap-1 mx-auto hover:opacity-90" title="Sort by Sold">
+                        Sold <SortIcon col="sold" />
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
+                      <button type="button" onClick={() => cycleStoveSort("available")} className="inline-flex items-center gap-1 mx-auto hover:opacity-90" title="Sort by Available">
+                        Available <SortIcon col="available" />
+                      </button>
+                    </TableHead>
                     
                     <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap"></TableHead>
                   </TableRow>
