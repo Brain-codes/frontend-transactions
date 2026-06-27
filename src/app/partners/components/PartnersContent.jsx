@@ -1424,7 +1424,7 @@ export default function PartnersContent() {
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Sold</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Available</TableHead>
                     
-                    <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
+                    <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className={tableLoading ? "opacity-40" : ""}>
