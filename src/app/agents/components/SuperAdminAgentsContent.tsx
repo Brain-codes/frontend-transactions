@@ -1410,11 +1410,11 @@ export default function SuperAdminAgentsContent() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedRoles, setSelectedRoles] = useState<string[]>(["acsl_agent"]);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
   const roleDropdownRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(100);
 
   const [agentFormMode, setAgentFormMode] = useState<"create" | "edit" | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -1449,7 +1449,7 @@ export default function SuperAdminAgentsContent() {
       });
       if (search.trim()) qs.append("search", search.trim());
       if (statusFilter !== "all") qs.append("status", statusFilter);
-      if (selectedRoles.length > 0 && selectedRoles.length < 3) qs.append("role", selectedRoles.join(","));
+      if (selectedRoles.length > 0) qs.append("role", selectedRoles.join(","));
       if (dateFrom) qs.append("date_from", dateFrom);
       if (dateTo) qs.append("date_to", dateTo);
 
