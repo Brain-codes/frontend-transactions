@@ -110,8 +110,40 @@ const AgentsProfilesContent = () => {
   const loadAgents = async () => {
     setLoading(true);
     try {
-      const res = await superAdminAgentService.getSuperAdminAgents({ page: 1, limit: 1000 });
-      setAgents(res.data || []);
+      // Unified data source: same endpoint as the Agents Performance Report,
+      // so both views show the exact same agent roster and counts.
+      const { supabaseFunctionsUrl } = await import("@/lib/supabaseConfig");
+      const token = await tokenManager.getValidToken();
+      const qs = new URLSearchParams({
+        page: "1",
+        limit: "5000",
+        sortBy: "created_at",
+        sortOrder: "desc",
+      });
+      const res = await fetch(`${supabaseFunctionsUrl}/manage-users?${qs.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        const text = await res.text();
+        throw new Error(`Unexpected response (${res.status}): ${text.slice(0, 120)}`);
+      }
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || json.message || "Failed to load users");
+
+      const rows = (json.data || []).map((u) => ({
+        id: u.id,
+        full_name: u.full_name || u.name || u.email || "—",
+        email: u.email,
+        phone: u.phone ?? null,
+        role: u.role,
+        status: u.status || "active",
+        created_at: u.created_at,
+        last_login: u.last_login ?? null,
+        assigned_organizations_count: u.assigned_organizations_count ?? 0,
+        assigned_states_count: u.assigned_states_count ?? 0,
+      }));
+      setAgents(rows);
     } catch (err) {
       toast({ variant: "error", title: "Failed to load agents", description: err.message });
     } finally {
