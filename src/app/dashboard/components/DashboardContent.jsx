@@ -784,7 +784,7 @@ const DashboardContent = ({
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
                             <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={{ stroke: "#e5e7eb" }} tickLine={false} />
-                            <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} allowDecimals={false} domain={[0, (dataMax) => Math.max(1, Math.ceil(dataMax))]} />
                             <Tooltip
                               formatter={(v) => [Number(v).toLocaleString(), "Sales"]}
                               contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
