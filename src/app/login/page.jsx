@@ -10,6 +10,25 @@ import { Label } from "@/components/ui/label";
 import { Download } from "lucide-react";
 import Link from "@/compat/Link";
 
+const getRouteForRole = (role) => {
+  switch (role) {
+    case "super_admin":
+    case "acsl_agent_manager":
+      return "/dashboard";
+    case "acsl_agent":
+    case "super_admin_agent":
+      return "/super-admin-agent";
+    case "partner":
+    case "admin":
+      return "/admin";
+    case "partner_agent":
+    case "agent":
+      return "/admin/sales";
+    default:
+      return null;
+  }
+};
+
 const LoginPage = () => {
   const [loginData, setLoginData] = useState({
     identifier: "",
@@ -17,8 +36,6 @@ const LoginPage = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [loginAttempted, setLoginAttempted] = useState(false);
-  const [sessionCleared, setSessionCleared] = useState(false);
 
   const {
     signInWithCredentials,
@@ -31,57 +48,30 @@ const LoginPage = () => {
     isSuperAdminAgent,
     isAcslAgent,
     isAcslAgentManager,
+    userRole,
     loading: authLoading,
-    signOut,
   } = useAuth();
   const router = useRouter();
 
-  // Force clear any stale auth state on mount (when user arrives at login page)
+  const getRouteFromCurrentAuth = () => {
+    const roleRoute = getRouteForRole(userRole);
+    if (roleRoute) return roleRoute;
+    if (isSuperAdmin || isAcslAgentManager) return "/dashboard";
+    if (isAcslAgent || isSuperAdminAgent) return "/super-admin-agent";
+    if (isPartner || isAdmin) return "/admin";
+    if (isPartnerAgent || isAgent) return "/admin/sales";
+    return null;
+  };
+
+  // If a valid session already exists, keep it and redirect instead of clearing it.
   useEffect(() => {
-    const clearStaleSession = async () => {
-      // Force sign out to clear any residual session
-      console.log("🔐 [Login] Force clearing any stale sessions on mount");
-      await signOut();
-      setLoginAttempted(false);
-      setSessionCleared(true); // Mark that session has been cleared
-    };
-
-    clearStaleSession();
-  }, []); // Run once on mount
-
-  // Navigate to appropriate dashboard based on role after successful login
-  // AND only after the initial session clear is complete
-  useEffect(() => {
-    // Only redirect if:
-    // 1. Session has been cleared (prevents race condition)
-    // 2. User is authenticated
-    // 3. Auth is not loading
-    // 4. User explicitly attempted to log in
-    if (sessionCleared && isAuthenticated && !authLoading && loginAttempted) {
-      console.log(
-        "🔐 [Login] Authenticated and login attempted - redirecting based on role"
-      );
-
-      // Redirect based on role
-      if (isSuperAdmin) {
-        router.push("/dashboard");
-      } else if (isAcslAgentManager) {
-        router.push("/dashboard");
-      } else if (isAcslAgent || isSuperAdminAgent) {
-        router.push("/super-admin-agent");
-      } else if (isPartner || isAdmin) {
-        router.push("/admin");
-      } else if (isPartnerAgent || isAgent) {
-        router.push("/admin/sales");
-      } else {
-        router.push("/unauthorized");
-      }
+    if (!authLoading && isAuthenticated) {
+      const route = getRouteFromCurrentAuth();
+      if (route) router.push(route);
     }
   }, [
-    sessionCleared,
     isAuthenticated,
     authLoading,
-    loginAttempted,
     isSuperAdmin,
     isAdmin,
     isPartner,
@@ -90,6 +80,7 @@ const LoginPage = () => {
     isSuperAdminAgent,
     isAcslAgent,
     isAcslAgentManager,
+    userRole,
     router,
   ]);
 
@@ -97,7 +88,6 @@ const LoginPage = () => {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setLoginAttempted(true); // Mark that user attempted to log in
 
     try {
       const { data, error: authError } = await signInWithCredentials(
@@ -108,13 +98,18 @@ const LoginPage = () => {
       if (authError) {
         setError(authError.message);
         setLoading(false);
-        setLoginAttempted(false); // Reset on error
+        return;
       }
-      // Don't navigate here - let the useEffect handle it when isAuthenticated becomes true
+
+      const role =
+        data?.role ||
+        data?.profile?.role ||
+        data?.user?.app_metadata?.role ||
+        data?.user?.user_metadata?.role;
+      router.push(getRouteForRole(role) || "/unauthorized");
     } catch (err) {
       setError("Login failed. Please try again.");
       setLoading(false);
-      setLoginAttempted(false); // Reset on error
     }
   };
 

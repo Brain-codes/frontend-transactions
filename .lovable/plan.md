@@ -1,31 +1,33 @@
-## Add sortable Received / Sold / Available columns to Track Performance
+I found the likely login failure points:
 
-Add three-state column sorting to the **Received**, **Sold**, and **Available** column headers in the Track Performance table (`src/app/partners/components/PartnersContent.jsx`).
+- The app currently logs users out automatically every time the login page opens. That can destroy a valid session and makes login fragile.
+- The login submit only uses the custom `login-with-credentials` function. If that function behaves differently outside the current workspace/preview, there is no fallback to normal email/password login.
+- The redirect after login depends on role state that may arrive after the login response, causing users to remain stuck on login or be routed incorrectly.
+- Auth storage cleanup is overly broad and can remove app auth/cache keys during sign-in/sign-out flows.
 
-### Behavior
+Plan to resolve:
 
-Each of the three headers becomes clickable with a sort indicator next to the label. Clicking cycles through three states:
+1. Stabilize the login page
+   - Remove the automatic `signOut()` on login page mount.
+   - If a user is already authenticated, redirect them safely instead of clearing their session.
+   - Keep the existing username/email login form UI unchanged.
 
-1. **None** (default) — original order from the API, neutral up/down arrow icon (`ArrowUpDown`)
-2. **Ascending** — smallest → largest, up arrow icon (`ArrowUp`)
-3. **Descending** — largest → smallest, down arrow icon (`ArrowDown`)
-4. Clicking again returns to **None** (normalized / original state)
+2. Harden the login function
+   - Keep the custom username/email `login-with-credentials` endpoint as the first attempt.
+   - Add a safe fallback to direct email/password login when the identifier is an email and the custom endpoint fails due to network/function issues.
+   - Normalize login errors so users see a clear message instead of raw technical failures.
 
-Only one column can be actively sorted at a time. Clicking a different column resets the others to None and starts that column at Ascending.
+3. Fix post-login routing
+   - Set the profile role immediately from the login response.
+   - Route users based on the freshest available role instead of waiting for delayed background state.
+   - Keep super admin routing to `/dashboard`.
 
-### Implementation details
+4. Make auth storage safer
+   - Stop clearing unrelated `auth` or `transaction` localStorage keys during routine auth state changes.
+   - Only clear the known app profile/token data and Supabase session keys during an explicit logout.
 
-- Add state: `const [sortConfig, setSortConfig] = useState({ key: null, direction: null })` where `key ∈ {'received','sold','available'}` and `direction ∈ {'asc','desc',null}`.
-- Wrap the header label + icon in a `<button>` inside the existing `TableHead` for each of the three columns, preserving the current green styling and badge colors.
-- Derive `displayedPartners` by:
-  - Starting from the existing filtered/paginated source.
-  - If `sortConfig.direction` is null, use the array as-is (original order preserved).
-  - Otherwise, apply `[...partners].sort((a,b) => …)` on the numeric value for that key.
-- Apply sorting **before** pagination so sorted results span all pages correctly.
-- Icons from `lucide-react`: `ArrowUpDown`, `ArrowUp`, `ArrowDown` (add to existing imports).
+5. Verify the fix
+   - Test the login page behavior in a clean browser session against the preview route.
+   - Confirm the login endpoint is reachable from the preview domain and that failed login shows a controlled error instead of breaking the app.
 
-### Scope
-
-- File touched: `src/app/partners/components/PartnersContent.jsx` only.
-- No backend, no API, no other tables affected.
-- No changes to filters, pagination controls, or the Purchases from ACSL modal.
+Important: I will not log out your current active workspace session during testing.
