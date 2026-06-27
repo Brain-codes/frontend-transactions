@@ -124,11 +124,11 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
 
       {/* Table */}
       <div className="bg-white border-x border-gray-200 overflow-x-auto mt-5">
-        <Table>
+        <Table className="text-xs">
           <TableHeader className="bg-[#4a5d0f]">
             <TableRow className="hover:bg-[#4a5d0f]">
               {onToggleSelect && (
-                <TableHead className="py-4 w-12 text-white">
+                <TableHead className="py-2 px-1 w-10 text-white">
                   <Checkbox
                     ref={((el: HTMLInputElement | null) => { if (el) el.indeterminate = somePageSelected; }) as any}
                     checked={allPageSelected}
@@ -137,31 +137,25 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                   />
                 </TableHead>
               )}
-              <TableHead className="text-white font-semibold py-4 whitespace-nowrap">Transaction ID</TableHead>
-              <TableHead className="text-white font-semibold py-4 whitespace-nowrap">Customer</TableHead>
-              <TableHead className="text-white font-semibold py-4 whitespace-nowrap">Phone</TableHead>
-              <TableHead className="text-white font-semibold py-4 whitespace-nowrap">Stove S/N</TableHead>
-              <TableHead className="text-white font-semibold py-4 whitespace-nowrap">State</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Transaction ID</TableHead>
               <TableHead
-                className="text-white font-semibold py-4 whitespace-nowrap cursor-pointer select-none"
+                className="text-white font-semibold py-2 px-1 whitespace-nowrap cursor-pointer select-none"
                 onClick={onToggleSort}
               >
                 <div className="flex items-center gap-1">
                   Sales Date <ArrowUpDown className="h-3 w-3" />
                 </div>
               </TableHead>
-              <TableHead className="text-white font-semibold py-4 text-center whitespace-nowrap">Payment Status</TableHead>
-              {viewFrom === "admin" && (
-                <TableHead className="text-white font-semibold py-4 whitespace-nowrap">Sales Rep</TableHead>
-              )}
-              {viewFrom === "superAdmin" && (
-                <TableHead className="text-white font-semibold py-4 whitespace-nowrap">Partner</TableHead>
-              )}
-              <TableHead className="text-white font-semibold py-4 whitespace-nowrap">Payment Model</TableHead>
-              <TableHead className="text-white font-semibold py-4 text-right whitespace-nowrap">Expected Amount</TableHead>
-              <TableHead className="text-white font-semibold py-4 text-right whitespace-nowrap">Amount Paid</TableHead>
-              <TableHead className="text-white font-semibold py-4 text-right whitespace-nowrap">Amount Owed</TableHead>
-              <TableHead className="text-white font-semibold py-4 text-center whitespace-nowrap">Action</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">End User</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Phone Number</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">State</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Stove ID</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Payment Model</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Partner</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Expected Amount</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Amount Paid</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Balance</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 text-center whitespace-nowrap">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className={loading ? "opacity-40" : ""}>
@@ -171,7 +165,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                 className={`${idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]"} hover:bg-gray-50 ${selectedIds?.has(sale.id) ? "ring-1 ring-inset ring-[#4a5d0f]/40" : ""}`}
               >
                 {onToggleSelect && (
-                  <TableCell className="w-12">
+                  <TableCell className="py-1 px-1 w-10">
                     <Checkbox
                       checked={selectedIds?.has(sale.id) ?? false}
                       onCheckedChange={() => onToggleSelect(sale.id)}
@@ -179,42 +173,30 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                     />
                   </TableCell>
                 )}
-                <TableCell className="font-medium">{sale.transaction_id || "N/A"}</TableCell>
-                <TableCell>{sale.end_user_name || "N/A"}</TableCell>
-                <TableCell>{sale.phone || "N/A"}</TableCell>
-                <TableCell>{sale.stove_serial_no || "N/A"}</TableCell>
-                <TableCell>{sale.state_backup || "N/A"}</TableCell>
-                <TableCell>{formatDate(sale.sales_date || sale.created_at)}</TableCell>
-                <TableCell className="text-center">{getStatusBadge(sale)}</TableCell>
-                {viewFrom === "admin" && (
-                  <TableCell>
-                    {sale.creator
-                      ? sale.creator.role === "agent"
-                        ? sale.creator.full_name
-                        : "Admin"
-                      : sale.agent_name || "N/A"}
-                  </TableCell>
-                )}
-                {viewFrom === "superAdmin" && (
-                  <TableCell>
-                    {sale.organizations?.partner_name || sale.partner_name || "N/A"}
-                  </TableCell>
-                )}
-                <TableCell>
+                <TableCell className="py-1 px-1 font-medium whitespace-nowrap">{sale.transaction_id || "N/A"}</TableCell>
+                <TableCell className="py-1 px-1 whitespace-nowrap">{formatDate(sale.sales_date || sale.created_at)}</TableCell>
+                <TableCell className="py-1 px-1 whitespace-nowrap">{sale.end_user_name || "N/A"}</TableCell>
+                <TableCell className="py-1 px-1 whitespace-nowrap">{sale.phone || "N/A"}</TableCell>
+                <TableCell className="py-1 px-1 whitespace-nowrap">{sale.state_backup || "N/A"}</TableCell>
+                <TableCell className="py-1 px-1 whitespace-nowrap">{sale.stove_serial_no || "N/A"}</TableCell>
+                <TableCell className="py-1 px-1 whitespace-nowrap">
                   {sale.is_installment
                     ? (sale.payment_model?.name || "Installment")
                     : "Full Payment"}
                 </TableCell>
-                <TableCell className="text-right font-bold">
+                <TableCell className="py-1 px-1 whitespace-nowrap">
+                  {sale.organizations?.name || sale.organizations?.partner_name || sale.partner_name || "N/A"}
+                </TableCell>
+                <TableCell className="py-1 px-1 text-right font-bold whitespace-nowrap">
                   {formatCurrency(sale.amount ?? 0)}
                 </TableCell>
-                <TableCell className="text-right text-green-700 font-medium">
+                <TableCell className="py-1 px-1 text-right text-green-700 font-medium whitespace-nowrap">
                   {formatCurrency(getAmountPaid(sale))}
                 </TableCell>
-                <TableCell className="text-right text-red-700 font-medium">
+                <TableCell className="py-1 px-1 text-right text-red-700 font-medium whitespace-nowrap">
                   {formatCurrency(getAmountOwed(sale))}
                 </TableCell>
-                <TableCell className="text-center">
+                <TableCell className="py-1 px-1 text-center">
                   <FinancialReportRowActions
                     sale={sale}
                     onViewDetails={onViewDetails}
