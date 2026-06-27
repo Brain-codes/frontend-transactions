@@ -368,54 +368,14 @@ const AgentsProfilesContent = () => {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <TooltipProvider delayDuration={150}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={() => setDetailsAgent(a)}
-                                aria-label="View details"
-                                className="inline-flex items-center justify-center h-8 px-3 bg-slate-700 text-white text-xs font-medium shadow-sm hover:bg-slate-800 active:scale-[0.98] transition"
-                              >
-                                Details
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent>View agent details</TooltipContent>
-                          </Tooltip>
-
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={() => handleViewCredentials(a)}
-                                disabled={loadingCredentialId === a.id}
-                                aria-label="Credentials"
-                                className="inline-flex items-center justify-center gap-1.5 h-8 px-3 bg-indigo-600 text-white text-xs font-medium shadow-sm hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-60"
-                              >
-                                {loadingCredentialId === a.id ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : null}
-                                Credentials
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent>View login credentials</TooltipContent>
-                          </Tooltip>
-
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={() => setEditingAgent(a)}
-                                aria-label="Edit agent"
-                                className="inline-flex items-center justify-center h-8 px-3 bg-orange-500 text-white text-xs font-medium shadow-sm hover:bg-orange-600 active:scale-[0.98] transition"
-                              >
-                                Edit
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent>Edit agent</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                      <div className="flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setAssignAgent(a)}
+                          className="inline-flex items-center justify-center h-8 px-3 rounded-md bg-[#4a5d0f] text-white text-xs font-medium shadow-sm hover:bg-[#3d4d0c] active:scale-[0.98] transition"
+                        >
+                          Assign a Partner
+                        </button>
                       </div>
                     </TableCell>
                   </TableRow>
