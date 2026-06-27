@@ -414,6 +414,9 @@ const StoveTransferHistoryModal = ({ organization, isOpen, onClose }) => {
   const [records, setRecords] = useState([]);
   const [error, setError] = useState(null);
   const [expandedStoveIds, setExpandedStoveIds] = useState(null); // { transactionId, stoveIds }
+  const [stoveSearch, setStoveSearch] = useState("");
+
+  useEffect(() => { if (!expandedStoveIds) setStoveSearch(""); }, [expandedStoveIds]);
 
   useEffect(() => {
     if (isOpen && organization) {
