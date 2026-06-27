@@ -720,7 +720,7 @@ const CreateSalesForm = ({
                 className={errors.salesDate ? "border-red-500" : ""}
               />
             </FormField>
-            {isSuperAdmin && !isEditMode ? (
+            {needsPartnerSelection && !isEditMode ? (
               <div>
                 <Label htmlFor="partnerSearch">Partner *</Label>
                 <div className="relative partner-search-container">
