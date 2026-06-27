@@ -1615,13 +1615,13 @@ export default function SuperAdminAgentsContent() {
             />
           </div>
           <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[150px] h-9 bg-white text-sm">
+            <SelectTrigger className="w-[150px] h-9 bg-white text-xs shadow-none border-gray-200">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="disabled">Disabled</SelectItem>
+            <SelectContent className="text-xs">
+              <SelectItem value="all" className="text-xs">All Statuses</SelectItem>
+              <SelectItem value="active" className="text-xs">Active</SelectItem>
+              <SelectItem value="disabled" className="text-xs">Disabled</SelectItem>
             </SelectContent>
           </Select>
           {/* Multi-select role filter */}
