@@ -110,16 +110,6 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
         <Table className="text-xs">
           <TableHeader className="bg-[#4a5d0f]">
             <TableRow className="hover:bg-[#4a5d0f]">
-              {onToggleSelect && (
-                <TableHead className="py-2 px-1 w-10 text-white">
-                  <Checkbox
-                    ref={((el: HTMLInputElement | null) => { if (el) el.indeterminate = somePageSelected; }) as any}
-                    checked={allPageSelected}
-                    onCheckedChange={onToggleSelectAll}
-                    className="border-white data-[state=checked]:bg-white data-[state=checked]:text-[#4a5d0f]"
-                  />
-                </TableHead>
-              )}
               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Transaction ID</TableHead>
               <TableHead
                 className="text-white font-semibold py-2 px-1 whitespace-nowrap cursor-pointer select-none"
