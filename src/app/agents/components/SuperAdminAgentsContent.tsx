@@ -63,7 +63,11 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Calendar as CalendarIcon,
 } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format, parseISO } from "date-fns";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import organizationsService from "../../services/organizationsService";
 import { useAuth } from "../../contexts/useAuth";
@@ -1417,7 +1421,7 @@ export default function SuperAdminAgentsContent() {
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
   const roleDropdownRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  const [pageSize, setPageSize] = useState(10);
 
   const [agentFormMode, setAgentFormMode] = useState<"create" | "edit" | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -1871,68 +1875,69 @@ export default function SuperAdminAgentsContent() {
               </div>
             )}
           </div>
-          {/* Month picker */}
-          <div className="flex items-center gap-1.5">
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => {
-                const m = e.target.value; // "YYYY-MM"
-                setSelectedMonth(m);
-                if (m) {
-                  const [y, mo] = m.split("-").map(Number);
-                  const first = `${y}-${String(mo).padStart(2, "0")}-01`;
-                  const last = new Date(y, mo, 0); // day 0 of next month = last day of current month
-                  const lastStr = `${y}-${String(mo).padStart(2, "0")}-${String(last.getDate()).padStart(2, "0")}`;
-                  setDateFrom(first);
-                  setDateTo(lastStr);
-                } else {
-                  setDateFrom("");
-                  setDateTo("");
-                }
-                setPage(1);
-              }}
-              className="h-9 bg-white border border-gray-200 rounded-md text-xs px-2 shadow-none focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/30 w-[145px]"
-              style={{ colorScheme: "light" }}
-            />
-          </div>
-
-          {/* Date Range Filter */}
-          <div className="flex items-center gap-1.5">
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => { setDateFrom(e.target.value); setSelectedMonth(""); }}
-              className="h-9 bg-white border border-gray-200 rounded-md text-xs px-2 shadow-none focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/30 w-[140px]"
-              style={{ colorScheme: "light" }}
-            />
-            <span className="text-xs text-gray-400">–</span>
-            <input
-              type="date"
-              value={dateTo}
-              min={dateFrom || undefined}
-              onChange={(e) => { setDateTo(e.target.value); setSelectedMonth(""); }}
-              className="h-9 bg-white border border-gray-200 rounded-md text-xs px-2 shadow-none focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/30 w-[140px]"
-              style={{ colorScheme: "light" }}
-            />
-          </div>
+          {/* Date Range Filter (dashboard-style) */}
+          {(() => {
+            const fromDate = dateFrom ? parseISO(dateFrom) : undefined;
+            const toDate = dateTo ? parseISO(dateTo) : undefined;
+            const label = fromDate && toDate
+              ? `${format(fromDate, "MMM d, yyyy")} – ${format(toDate, "MMM d, yyyy")}`
+              : fromDate
+                ? `${format(fromDate, "MMM d, yyyy")} – …`
+                : "Filter by date range";
+            return (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="h-9 px-3 flex items-center gap-1.5 rounded-md text-xs bg-white border border-gray-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/30"
+                  >
+                    <CalendarIcon className="h-3.5 w-3.5 text-gray-500" />
+                    <span className={!fromDate ? "text-gray-500" : "text-gray-800"}>{label}</span>
+                    {fromDate && (
+                      <X
+                        className="h-3.5 w-3.5 text-gray-400 hover:text-gray-700 ml-1"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDateFrom("");
+                          setDateTo("");
+                          setSelectedMonth("");
+                          setPage(1);
+                        }}
+                      />
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="range"
+                    selected={{ from: fromDate, to: toDate }}
+                    onSelect={(range: any) => {
+                      setDateFrom(range?.from ? format(range.from, "yyyy-MM-dd") : "");
+                      setDateTo(range?.to ? format(range.to, "yyyy-MM-dd") : "");
+                      setSelectedMonth("");
+                      setPage(1);
+                    }}
+                    numberOfMonths={2}
+                    disabled={{ after: new Date() }}
+                    toDate={new Date()}
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            );
+          })()}
 
           <Button
             onClick={() => { setSearch(""); setStatusFilter("all"); setSelectedRoles(["acsl_agent"]); setDateFrom(""); setDateTo(""); setSelectedMonth(""); setPage(1); }}
             size="sm"
             variant="outline"
-            className="h-9 bg-white shadow-none border-gray-200"
+            className="h-9 w-9 p-0 bg-white shadow-none border-gray-200"
+            title="Reset filters"
             disabled={!(search || statusFilter !== "all" || selectedRoles.length !== 1 || selectedRoles[0] !== "acsl_agent" || dateFrom || dateTo)}
           >
-            <X className="h-4 w-4 mr-1" />
-            Reset Filters
+            <X className="h-4 w-4" />
           </Button>
-
-          <p className="ml-auto text-sm text-gray-600">
-            Showing <span className="font-medium">{startItem}</span> to{" "}
-            <span className="font-medium">{endItem}</span> of{" "}
-            <span className="font-medium">{totalItems.toLocaleString()}</span> agents
-          </p>
         </div>
 
         {/* KPI Stat Cards — 4-card grid (Track Performance style) */}
@@ -2059,7 +2064,15 @@ export default function SuperAdminAgentsContent() {
 
         {/* Table */}
         <div className="space-y-0">
+          <div className="flex items-center justify-between px-1 pb-2">
+            <p className="text-sm text-gray-600">
+              Showing <span className="font-medium">{startItem}</span> to{" "}
+              <span className="font-medium">{endItem}</span> of{" "}
+              <span className="font-medium">{totalItems.toLocaleString()}</span> agents
+            </p>
+          </div>
           <div className="bg-white border-x border-t border-gray-200 rounded-t-lg overflow-x-auto relative">
+
             {loading && (
               <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
                 <Loader2 className="h-6 w-6 animate-spin text-[#4a5d0f]" />
@@ -2069,6 +2082,7 @@ export default function SuperAdminAgentsContent() {
               <TableHeader>
                 <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Full Name</TableHead>
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
                     <button type="button" onClick={() => cycleStoveSort("assigned")} className="inline-flex items-center gap-1 hover:underline">
                       Assigned <StoveSortIcon col="assigned" />
@@ -2084,7 +2098,6 @@ export default function SuperAdminAgentsContent() {
                       In Stock <StoveSortIcon col="in_stock" />
                     </button>
                   </TableHead>
-                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
                   <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -2112,6 +2125,9 @@ export default function SuperAdminAgentsContent() {
                     >
                       <TableCell className="text-sm font-medium text-gray-900">
                           {agent.full_name}
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-700">
+                        {agent.phone || ""}
                       </TableCell>
                       {/* Stoves split into 3 columns */}
                       <TableCell className="text-center">
@@ -2141,16 +2157,8 @@ export default function SuperAdminAgentsContent() {
                           <span className="text-gray-400">—</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                          agent.status === "active"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}>
-                          {agent.status === "active" ? "Active" : "Disabled"}
-                        </span>
-                      </TableCell>
                       <TableCell className="text-center">
+
                         <div className="flex items-center justify-center gap-1">
                           <Button
                             size="sm"
@@ -2205,38 +2213,46 @@ export default function SuperAdminAgentsContent() {
             </Table>
           </div>
 
-          {totalPages > 1 && (
-            <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
-              <p className="text-sm text-gray-600">
-                Showing {startItem} to {endItem} of {totalItems.toLocaleString()} agents
-              </p>
-              <div className="flex items-center gap-1">
-                <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(1)} disabled={page === 1}>
-                  <ChevronsLeft className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
-                  <ChevronLeft className="h-4 w-4 mr-1" />Prev
-                </Button>
-                {getPageNumbers().map((p) => (
-                  <Button
-                    key={p}
-                    variant={p === page ? "default" : "outline"}
-                    size="sm"
-                    className={`h-8 w-8 p-0 ${p === page ? "bg-[#4a5d0f] text-white hover:bg-[#4a5d0f]" : ""}`}
-                    onClick={() => setPage(p)}
-                  >
-                    {p}
-                  </Button>
-                ))}
-                <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
-                  Next<ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-                <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(totalPages)} disabled={page >= totalPages}>
-                  <ChevronsRight className="h-4 w-4" />
-                </Button>
-              </div>
+          <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <span>Rows per page:</span>
+              <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+                <SelectTrigger className="h-8 w-[72px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[10, 25, 50, 100].map((n) => (
+                    <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          )}
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(1)} disabled={page === 1}>
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+                <ChevronLeft className="h-4 w-4 mr-1" />Prev
+              </Button>
+              {getPageNumbers().map((p) => (
+                <Button
+                  key={p}
+                  variant={p === page ? "default" : "outline"}
+                  size="sm"
+                  className={`h-8 w-8 p-0 ${p === page ? "bg-[#4a5d0f] text-white hover:bg-[#4a5d0f]" : ""}`}
+                  onClick={() => setPage(p)}
+                >
+                  {p}
+                </Button>
+              ))}
+              <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+                Next<ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(totalPages)} disabled={page >= totalPages}>
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
