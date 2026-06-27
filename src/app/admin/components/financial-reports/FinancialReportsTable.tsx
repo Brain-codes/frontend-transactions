@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { AdminSales } from "@/types/adminSales";
 import FinancialReportRowActions from "./FinancialReportRowActions";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface FinancialReportsTableProps {
   data: AdminSales[];
