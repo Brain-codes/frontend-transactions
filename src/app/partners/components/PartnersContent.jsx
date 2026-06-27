@@ -1424,7 +1424,7 @@ export default function PartnersContent() {
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Sold</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Available</TableHead>
                     
-                    <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
+                    <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className={tableLoading ? "opacity-40" : ""}>
@@ -1459,8 +1459,8 @@ export default function PartnersContent() {
                               {org.available_stove_ids ?? 0}
                             </button>
                           </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-1">
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
                               {can("manage-all-partners") && (
 
                                 <Button size="sm" className="h-7 px-2 text-xs rounded-none bg-brand hover:bg-brand/90 text-white" title="Purchases from ACSL" onClick={() => setTransferHistoryOrg(org)}>
