@@ -44,7 +44,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MapPin, Building2 } from "lucide-react";
+import { MapPin, Building2, Search } from "lucide-react";
 
 const PAGE_SIZE = 10;
 
