@@ -1343,7 +1343,7 @@ export default function PartnersContent() {
                 gradient: "from-[#047857] to-[#10B981]",
                 Icon: TrendingUp,
                 value: loadingStats ? "—" : stats.performing_partners.toLocaleString(),
-                label: "Top Performing Partners",
+                label: "Stoves bought by Partners",
                 sub: "with sales",
                 subBadge: (() => {
                   if (dateFrom && dateTo) {
