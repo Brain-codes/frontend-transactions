@@ -68,6 +68,8 @@ const AgentsProfilesContent = () => {
   const [partnersModalAgent, setPartnersModalAgent] = useState(null);
   const [partnersModalList, setPartnersModalList] = useState([]);
   const [partnersModalLoading, setPartnersModalLoading] = useState(false);
+  const [statesSearch, setStatesSearch] = useState("");
+  const [partnersSearch, setPartnersSearch] = useState("");
 
   const openStatesModal = async (agent) => {
     setStatesModalAgent(agent);
