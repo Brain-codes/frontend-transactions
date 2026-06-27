@@ -98,7 +98,8 @@ const AgentsProfilesContent = () => {
       setPartnersModalLoading(false);
     }
   };
-  const [loadingCredentialId, setLoadingCredentialId] = useState(null);
+
+
 
   const loadAgents = async () => {
     setLoading(true);
