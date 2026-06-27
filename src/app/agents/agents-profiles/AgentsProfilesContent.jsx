@@ -442,6 +442,17 @@ const AgentsProfilesContent = () => {
         />
       )}
 
+      {assignAgent && (
+        <AssignOrganizationsModal
+          agent={assignAgent}
+          onClose={() => setAssignAgent(null)}
+          onSuccess={() => {
+            setAssignAgent(null);
+            loadAgents();
+          }}
+        />
+      )}
+
       <AgentViewCredentialModal
         isOpen={!!credentialAgent}
         onClose={() => {
