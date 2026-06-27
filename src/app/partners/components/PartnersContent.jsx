@@ -61,6 +61,7 @@ import {
 } from "lucide-react";
 import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AddPartnerModal from "../components/AddPartnerModal";
+import MonthlySalesChart from "./MonthlySalesChart";
 import EditPartnerModal from "../components/EditPartnerModal";
 import AssignAgentModal from "../components/AssignAgentModal";
 import AdminSalesDetailModal from "../../admin/components/sales/AdminSalesDetailModal";
