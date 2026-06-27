@@ -1916,108 +1916,97 @@ export default function SuperAdminAgentsContent() {
           </p>
         </div>
 
-        {/* KPI Stat Cards — 6-card grid */}
+        {/* KPI Stat Cards — 4-card grid (Track Performance style) */}
         {(() => {
-          const fmt = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-          // dateBadge: always shows something — for cards that always have date context
-          const dateBadge = (dateFrom || dateTo)
-            ? `${dateFrom ? fmt(dateFrom) : "…"} – ${dateTo ? fmt(dateTo) : "…"}`
-            : new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-          // explicitDateBadge: only shows when a date is explicitly set — for cards that are all-time by default
-          const explicitDateBadge = (dateFrom || dateTo) ? dateBadge : undefined;
+          const ROLE_LABELS: Record<string, string> = {
+            acsl_agent: "ACSL Agent",
+            acsl_agent_manager: "ACSL Manager",
+            super_admin: "Super Admin",
+            partner: "Partner",
+            partner_agent: "Partner Agent",
+          };
+          const roleCounts: Record<string, number> = {};
+          agents.forEach((a) => {
+            const r = a.role || "other";
+            roleCounts[r] = (roleCounts[r] || 0) + 1;
+          });
+          const roleEntries = Object.entries(roleCounts).sort((a, b) => b[1] - a[1]);
+          const totalAgents = pagination?.total ?? agents.length;
+          const totalAssigned = agents.reduce((s, a) => s + (a.stove_summary?.received || 0), 0);
+          const totalSold = agents.reduce((s, a) => s + (a.stove_summary?.sold || 0), 0);
+          const totalUnsold = Math.max(0, totalAssigned - totalSold);
 
-          const cards = [
+          const cards: Array<{
+            gradient: string;
+            Icon: any;
+            value: string;
+            label: string;
+            sub?: React.ReactNode;
+          }> = [
+            {
+              gradient: "from-[#194977] to-[#2563EB]",
+              Icon: Users,
+              value: totalAgents.toLocaleString(),
+              label: "Total Agents",
+              sub: (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {roleEntries.map(([r, c]) => (
+                    <span
+                      key={r}
+                      className="text-[10px] font-semibold bg-white/20 text-white px-1.5 py-0.5 rounded"
+                    >
+                      {ROLE_LABELS[r] || r}: {c}
+                    </span>
+                  ))}
+                </div>
+              ),
+            },
             {
               gradient: "from-[#B45309] to-[#F59E0B]",
               Icon: Package,
-              value: maxReceived > 0 ? maxReceived.toLocaleString() : "—",
-              label: "Most Stoves assigned to Agent",
-              sub: formatTopNames(topReceivedAgents) ?? "By agent · Highest first",
-              badge: undefined as string | undefined,
-              mode: "most_received",
-              isModal: false,
-            },
-            {
-              gradient: "from-[#194977] to-[#2563EB]",
-              Icon: TrendingUp,
-              value: loadingKpi ? "—" : kpiStats.totalSoldByAgents.toLocaleString(),
-              label: "Total Stoves Sold by Agents",
-              sub: "All agents combined",
-              badge: dateBadge,
-              mode: "most_sold",
-              isModal: false,
+              value: loading ? "—" : totalAssigned.toLocaleString(),
+              label: "Assigned for Sale / Retrieval",
+              sub: "Total stoves with agents",
             },
             {
               gradient: "from-[#047857] to-[#10B981]",
-              Icon: Activity,
-              value: loadingKpi ? "—" : kpiStats.totalActiveAgents.toLocaleString(),
-              label: "Total Active Agents",
-              sub: "Agents with sales",
-              badge: dateBadge,
-              mode: "active_agents",
-              isModal: false,
+              Icon: TrendingUp,
+              value: loading ? "—" : totalSold.toLocaleString(),
+              label: "Stoves Sold / Retrieved",
+              sub: "Total completed",
+            },
+            {
+              gradient: "from-[#7C3AED] to-[#A78BFA]",
+              Icon: Boxes,
+              value: loading ? "—" : totalUnsold.toLocaleString(),
+              label: "Unsold / Unretrieved Stoves",
+              sub: "Remaining in stock",
             },
           ];
 
           return (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {cards.map(({ gradient, Icon, value, label, sub, badge, mode, isModal, onModalClick }: any) => {
-                const active = !isModal && mode !== null && sortMode === mode;
-                const handleClick = onModalClick
-                  ? onModalClick
-                  : isModal
-                  ? () => setShowStockModal(true)
-                  : mode !== null
-                  ? () => setSortMode(sortMode === mode ? "default" : mode)
-                  : undefined;
-
-                return active ? (
-                  <div
-                    key={label}
-                    onClick={handleClick}
-                    className={`relative overflow-hidden rounded-lg border-transparent px-4 py-3.5 shadow-md cursor-pointer transition-all bg-gradient-to-br ${gradient} ring-2 ring-white/40`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xl font-bold text-white tracking-tight leading-tight truncate">{value}</p>
-                        <p className="text-[11px] font-semibold text-white/80 mt-0.5">{label}</p>
-                        <p className="text-[10px] text-white/60 mt-0.5 truncate">{sub}</p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1.5 shrink-0">
-                        <div className="rounded-lg p-1.5 bg-white/20 text-white shadow-sm">
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        {badge && (
-                          <span className="text-[9px] bg-white/20 text-white/90 px-1.5 py-0.5 rounded whitespace-nowrap">{badge}</span>
-                        )}
-                      </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {cards.map(({ gradient, Icon, value, label, sub }) => (
+                <div
+                  key={label}
+                  className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md transition-all bg-gradient-to-br ${gradient}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0 flex-1 pr-3">
+                      <p className="text-2xl font-bold text-white tracking-tight leading-tight">{value}</p>
+                      <p className="text-sm font-semibold text-white/90 mt-1">{label}</p>
+                      {typeof sub === "string" ? (
+                        <p className="text-xs text-white/70 mt-0.5">{sub}</p>
+                      ) : (
+                        sub
+                      )}
+                    </div>
+                    <div className="rounded-lg p-2 bg-white/20 text-white shadow-sm w-fit shrink-0">
+                      <Icon className="h-4 w-4" />
                     </div>
                   </div>
-                ) : (
-                  <div
-                    key={label}
-                    onClick={handleClick}
-                    className="relative overflow-hidden rounded-lg border bg-white px-4 py-3.5 shadow-sm cursor-pointer transition-all hover:shadow-md group"
-                  >
-                    <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient}`} />
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xl font-bold text-gray-900 tracking-tight leading-tight truncate">{value}</p>
-                        <p className="text-[11px] font-semibold text-gray-500 mt-0.5">{label}</p>
-                        <p className="text-[10px] text-gray-400 mt-0.5 truncate">{sub}</p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1.5 shrink-0">
-                        <div className={`rounded-lg p-1.5 bg-gradient-to-br ${gradient} text-white shadow-sm`}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        {badge && (
-                          <span className="text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded whitespace-nowrap">{badge}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           );
         })()}
