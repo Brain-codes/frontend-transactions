@@ -1430,14 +1430,14 @@ export default function PartnersContent() {
               )}
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-brand hover:bg-brand">
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">State</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Branch</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Phone Number</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stoves (Received / Sold / Available)</TableHead>
-                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Agents Assigned</TableHead>
-                    <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">Actions</TableHead>
+                  <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Partner</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">State</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Stoves (Received / Sold / Available)</TableHead>
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Agents Assigned</TableHead>
+                    <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className={tableLoading ? "opacity-40" : ""}>
