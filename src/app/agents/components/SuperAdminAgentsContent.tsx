@@ -1931,7 +1931,7 @@ export default function SuperAdminAgentsContent() {
             roleCounts[r] = (roleCounts[r] || 0) + 1;
           });
           const roleEntries = Object.entries(roleCounts).sort((a, b) => b[1] - a[1]);
-          const totalAgents = pagination?.total ?? agents.length;
+          const totalAgents = pagination?.totalItems ?? agents.length;
           const totalAssigned = agents.reduce((s, a) => s + (a.stove_summary?.received || 0), 0);
           const totalSold = agents.reduce((s, a) => s + (a.stove_summary?.sold || 0), 0);
           const totalUnsold = Math.max(0, totalAssigned - totalSold);
