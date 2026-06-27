@@ -97,9 +97,30 @@ const AgentsProfilesContent = () => {
     }
   };
 
+  const roles = useMemo(() => {
+    const s = new Set();
+    agents.forEach((a) => a.role && s.add(a.role));
+    return Array.from(s).sort();
+  }, [agents]);
+
+  const formatRole = (r) =>
+    (r || "")
+      .split("_")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+
+  const ROLE_BADGE = {
+    acsl_agent: "bg-blue-100 text-blue-700",
+    acsl_agent_manager: "bg-purple-100 text-purple-700",
+    super_admin: "bg-red-100 text-red-700",
+    partner: "bg-amber-100 text-amber-700",
+    partner_agent: "bg-teal-100 text-teal-700",
+  };
+
   const filtered = useMemo(() => {
     return agents.filter((a) => {
       if (filters.status && a.status !== filters.status) return false;
+      if (filters.role && a.role !== filters.role) return false;
       if (filters.search) {
         const q = filters.search.toLowerCase();
         const hay = `${a.full_name ?? ""} ${a.email ?? ""} ${a.phone ?? ""}`.toLowerCase();
@@ -115,7 +136,7 @@ const AgentsProfilesContent = () => {
   const startRecord = filtered.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const endRecord = Math.min(currentPage * PAGE_SIZE, filtered.length);
 
-  const hasActiveFilters = filters.search !== "" || filters.status !== "";
+  const hasActiveFilters = filters.search !== "" || filters.status !== "" || filters.role !== "";
 
   const handleFilterChange = (field, value) => {
     setFilters((prev) => ({ ...prev, [field]: value }));
@@ -123,7 +144,7 @@ const AgentsProfilesContent = () => {
   };
 
   const handleClearFilters = () => {
-    setFilters({ search: "", status: "" });
+    setFilters({ search: "", status: "", role: "" });
     setPage(1);
   };
 
