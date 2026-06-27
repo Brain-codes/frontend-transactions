@@ -27,7 +27,7 @@ function bucketMonthlySales(rows) {
   return MONTHS.map((m, i) => ({ month: m, value: counts[i] }));
 }
 
-const MonthlySalesChart = () => {
+const MonthlySalesChart = ({ title = "Monthly Sales", tooltipLabel = "Sales" } = {}) => {
   const [monthly, setMonthly] = useState(MONTHS.map((m) => ({ month: m, value: 0 })));
   const [loading, setLoading] = useState(true);
 
