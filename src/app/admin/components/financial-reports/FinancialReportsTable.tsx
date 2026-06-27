@@ -52,15 +52,6 @@ const getAmountPaid = (sale: AdminSales): number =>
 const getAmountOwed = (sale: AdminSales): number =>
   sale.is_installment ? sale.amount - (sale.total_paid ?? 0) : 0;
 
-const getStatusBadge = (sale: AdminSales) => {
-  const owed = getAmountOwed(sale);
-  const paid = getAmountPaid(sale);
-  if (!sale.is_installment || owed <= 0)
-    return <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">Paid</Badge>;
-  if (paid > 0 && owed > 0)
-    return <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs">Partial</Badge>;
-  return <Badge className="bg-red-100 text-red-800 border-red-200 text-xs">Unpaid</Badge>;
-};
 
 const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
   data, loading, currentPage, pageSize, totalRecords,
