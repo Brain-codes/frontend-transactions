@@ -1958,9 +1958,10 @@ export default function SuperAdminAgentsContent() {
                   sortedAgents.map((agent, idx) => (
                     <TableRow
                       key={agent.id}
-                      className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}
+                      className="hover:bg-[#eef3c4] text-gray-700"
+                      style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
                     >
-                      <TableCell className="text-xs font-medium text-gray-900">
+                      <TableCell className="text-sm font-medium text-gray-900">
                           {agent.full_name}
                       </TableCell>
                       {/* States — name badges, wrapping */}
