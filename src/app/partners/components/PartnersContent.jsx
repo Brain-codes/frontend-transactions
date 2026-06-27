@@ -1427,7 +1427,7 @@ export default function PartnersContent() {
                 <div className="flex items-start justify-between">
                   <div className="min-w-0 flex-1 pr-3">
                     <p className="text-2xl font-bold text-white tracking-tight leading-tight">{value}</p>
-                    <p className="text-xs font-semibold text-white/80 mt-1">{label}</p>
+                    <p className="text-sm font-semibold text-white/90 mt-1">{label}</p>
                     <p className="text-xs text-white/60 mt-0.5">{sub}</p>
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
