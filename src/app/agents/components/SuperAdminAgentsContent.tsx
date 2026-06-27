@@ -1922,7 +1922,7 @@ export default function SuperAdminAgentsContent() {
 
         {/* Table */}
         <div className="space-y-0">
-          <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto relative">
+          <div className="bg-white border-x border-t border-gray-200 rounded-t-lg overflow-x-auto relative">
             {loading && (
               <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
                 <Loader2 className="h-6 w-6 animate-spin text-[#4a5d0f]" />
