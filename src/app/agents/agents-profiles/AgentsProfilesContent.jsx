@@ -189,6 +189,21 @@ const AgentsProfilesContent = () => {
           </SelectContent>
         </Select>
 
+        <Select
+          value={filters.role || "all"}
+          onValueChange={(v) => handleFilterChange("role", v === "all" ? "" : v)}
+        >
+          <SelectTrigger className="w-[180px] h-9 bg-white text-xs shadow-none border-gray-200 text-gray-400 data-[placeholder]:text-gray-400">
+            <SelectValue placeholder="All Roles" />
+          </SelectTrigger>
+          <SelectContent className="text-xs">
+            <SelectItem value="all" className="text-xs">All Roles</SelectItem>
+            {roles.map((r) => (
+              <SelectItem key={r} value={r} className="text-xs">{formatRole(r)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Button
           onClick={handleClearFilters}
           size="sm"
