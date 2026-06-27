@@ -1,33 +1,26 @@
-I found the likely login failure points:
+## Goal
 
-- The app currently logs users out automatically every time the login page opens. That can destroy a valid session and makes login fragile.
-- The login submit only uses the custom `login-with-credentials` function. If that function behaves differently outside the current workspace/preview, there is no fallback to normal email/password login.
-- The redirect after login depends on role state that may arrive after the login response, causing users to remain stuck on login or be routed incorrectly.
-- Auth storage cleanup is overly broad and can remove app auth/cache keys during sign-in/sign-out flows.
+Make **Agents Profile** and **Agents Performance Report** show the exact same agent list by sourcing both from the same endpoint (`manage-users`) with the same role scope (all users regardless of role).
 
-Plan to resolve:
+Today they disagree because:
+- Performance Report → `manage-users` (all users, paginated)
+- Agents Profile → `super-admin-agents` (only ACSL agent roles)
 
-1. Stabilize the login page
-   - Remove the automatic `signOut()` on login page mount.
-   - If a user is already authenticated, redirect them safely instead of clearing their session.
-   - Keep the existing username/email login form UI unchanged.
+## Changes
 
-2. Harden the login function
-   - Keep the custom username/email `login-with-credentials` endpoint as the first attempt.
-   - Add a safe fallback to direct email/password login when the identifier is an email and the custom endpoint fails due to network/function issues.
-   - Normalize login errors so users see a clear message instead of raw technical failures.
+### 1. Agents Profile (`src/app/agents/agents-profiles/AgentsProfilesContent.jsx`)
+- Replace the `superAdminAgentService.getSuperAdminAgents()` call in `loadAgents` with a fetch to `${supabaseFunctionsUrl}/manage-users?limit=5000&sortBy=created_at&sortOrder=desc` (same source as the Performance Report).
+- Map the response so existing fields (`id`, `full_name`, `email`, `role`, `assigned_organizations_count`, `assigned_states_count`, `created_at`, `status`) keep working.
+- Keep all existing UI: role filter, badges, States Assigned / Partners Assigned modals, "Assign a Partner" button, search.
+- Add the same response-safety guard used on the Performance Report (check content-type before `res.json()`) so an HTML error page never breaks the view.
 
-3. Fix post-login routing
-   - Set the profile role immediately from the login response.
-   - Route users based on the freshest available role instead of waiting for delayed background state.
-   - Keep super admin routing to `/dashboard`.
+### 2. Agents Performance Report (`src/app/agents/components/SuperAdminAgentsContent.tsx`)
+- No data-source change (already on `manage-users`). Just confirm it uses `supabaseFunctionsUrl` from `@/lib/supabaseConfig` (done in the last fix).
 
-4. Make auth storage safer
-   - Stop clearing unrelated `auth` or `transaction` localStorage keys during routine auth state changes.
-   - Only clear the known app profile/token data and Supabase session keys during an explicit logout.
+### 3. No other changes
+- Both menu links stay in the sidebar.
+- No edits to edge functions, routing, or permissions.
 
-5. Verify the fix
-   - Test the login page behavior in a clean browser session against the preview route.
-   - Confirm the login endpoint is reachable from the preview domain and that failed login shows a controlled error instead of breaking the app.
+## Result
 
-Important: I will not log out your current active workspace session during testing.
+Both views read from the same endpoint with the same scope, so the agent counts and roster will match. Each page keeps its own layout and features (KPIs/pagination on Performance Report; role-grouped profile cards/modals on Agents Profile).
