@@ -2083,6 +2083,7 @@ export default function SuperAdminAgentsContent() {
                 <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Full Name</TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Partners Assigned</TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
                     <button type="button" onClick={() => cycleStoveSort("assigned")} className="inline-flex items-center gap-1 hover:underline">
                       Assigned <StoveSortIcon col="assigned" />
@@ -2104,7 +2105,7 @@ export default function SuperAdminAgentsContent() {
               <TableBody className={loading ? "opacity-40" : ""}>
                 {!loading && sortedAgents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12">
+                    <TableCell colSpan={7} className="text-center py-12">
                       <Users className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500 font-medium">
                         {sortMode !== "default" ? "No agents match the active filter" : "No agents found"}
@@ -2128,6 +2129,11 @@ export default function SuperAdminAgentsContent() {
                       </TableCell>
                       <TableCell className="text-sm text-gray-700">
                         {agent.phone || ""}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                          {(agent.assigned_organizations_count ?? 0).toLocaleString()}
+                        </span>
                       </TableCell>
                       {/* Stoves split into 3 columns */}
                       <TableCell className="text-center">
