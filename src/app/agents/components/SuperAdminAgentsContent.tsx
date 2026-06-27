@@ -1875,68 +1875,69 @@ export default function SuperAdminAgentsContent() {
               </div>
             )}
           </div>
-          {/* Month picker */}
-          <div className="flex items-center gap-1.5">
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => {
-                const m = e.target.value; // "YYYY-MM"
-                setSelectedMonth(m);
-                if (m) {
-                  const [y, mo] = m.split("-").map(Number);
-                  const first = `${y}-${String(mo).padStart(2, "0")}-01`;
-                  const last = new Date(y, mo, 0); // day 0 of next month = last day of current month
-                  const lastStr = `${y}-${String(mo).padStart(2, "0")}-${String(last.getDate()).padStart(2, "0")}`;
-                  setDateFrom(first);
-                  setDateTo(lastStr);
-                } else {
-                  setDateFrom("");
-                  setDateTo("");
-                }
-                setPage(1);
-              }}
-              className="h-9 bg-white border border-gray-200 rounded-md text-xs px-2 shadow-none focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/30 w-[145px]"
-              style={{ colorScheme: "light" }}
-            />
-          </div>
-
-          {/* Date Range Filter */}
-          <div className="flex items-center gap-1.5">
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => { setDateFrom(e.target.value); setSelectedMonth(""); }}
-              className="h-9 bg-white border border-gray-200 rounded-md text-xs px-2 shadow-none focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/30 w-[140px]"
-              style={{ colorScheme: "light" }}
-            />
-            <span className="text-xs text-gray-400">–</span>
-            <input
-              type="date"
-              value={dateTo}
-              min={dateFrom || undefined}
-              onChange={(e) => { setDateTo(e.target.value); setSelectedMonth(""); }}
-              className="h-9 bg-white border border-gray-200 rounded-md text-xs px-2 shadow-none focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/30 w-[140px]"
-              style={{ colorScheme: "light" }}
-            />
-          </div>
+          {/* Date Range Filter (dashboard-style) */}
+          {(() => {
+            const fromDate = dateFrom ? parseISO(dateFrom) : undefined;
+            const toDate = dateTo ? parseISO(dateTo) : undefined;
+            const label = fromDate && toDate
+              ? `${format(fromDate, "MMM d, yyyy")} – ${format(toDate, "MMM d, yyyy")}`
+              : fromDate
+                ? `${format(fromDate, "MMM d, yyyy")} – …`
+                : "Filter by date range";
+            return (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="h-9 px-3 flex items-center gap-1.5 rounded-md text-xs bg-white border border-gray-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/30"
+                  >
+                    <CalendarIcon className="h-3.5 w-3.5 text-gray-500" />
+                    <span className={!fromDate ? "text-gray-500" : "text-gray-800"}>{label}</span>
+                    {fromDate && (
+                      <X
+                        className="h-3.5 w-3.5 text-gray-400 hover:text-gray-700 ml-1"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDateFrom("");
+                          setDateTo("");
+                          setSelectedMonth("");
+                          setPage(1);
+                        }}
+                      />
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="range"
+                    selected={{ from: fromDate, to: toDate }}
+                    onSelect={(range: any) => {
+                      setDateFrom(range?.from ? format(range.from, "yyyy-MM-dd") : "");
+                      setDateTo(range?.to ? format(range.to, "yyyy-MM-dd") : "");
+                      setSelectedMonth("");
+                      setPage(1);
+                    }}
+                    numberOfMonths={2}
+                    disabled={{ after: new Date() }}
+                    toDate={new Date()}
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            );
+          })()}
 
           <Button
             onClick={() => { setSearch(""); setStatusFilter("all"); setSelectedRoles(["acsl_agent"]); setDateFrom(""); setDateTo(""); setSelectedMonth(""); setPage(1); }}
             size="sm"
             variant="outline"
-            className="h-9 bg-white shadow-none border-gray-200"
+            className="h-9 w-9 p-0 bg-white shadow-none border-gray-200"
+            title="Reset filters"
             disabled={!(search || statusFilter !== "all" || selectedRoles.length !== 1 || selectedRoles[0] !== "acsl_agent" || dateFrom || dateTo)}
           >
-            <X className="h-4 w-4 mr-1" />
-            Reset Filters
+            <X className="h-4 w-4" />
           </Button>
-
-          <p className="ml-auto text-sm text-gray-600">
-            Showing <span className="font-medium">{startItem}</span> to{" "}
-            <span className="font-medium">{endItem}</span> of{" "}
-            <span className="font-medium">{totalItems.toLocaleString()}</span> agents
-          </p>
         </div>
 
         {/* KPI Stat Cards — 4-card grid (Track Performance style) */}
