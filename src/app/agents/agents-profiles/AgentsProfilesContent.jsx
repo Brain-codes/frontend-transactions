@@ -228,19 +228,6 @@ const AgentsProfilesContent = () => {
           />
         </div>
 
-        <Select
-          value={filters.status || "all"}
-          onValueChange={(v) => handleFilterChange("status", v === "all" ? "" : v)}
-        >
-          <SelectTrigger className="w-[170px] h-9 bg-white text-xs shadow-none border-gray-200 text-gray-400 data-[placeholder]:text-gray-400">
-            <SelectValue placeholder="All Statuses" />
-          </SelectTrigger>
-          <SelectContent className="text-xs">
-            <SelectItem value="all" className="text-xs">All Statuses</SelectItem>
-            <SelectItem value="active" className="text-xs">Active</SelectItem>
-            <SelectItem value="disabled" className="text-xs">Disabled</SelectItem>
-          </SelectContent>
-        </Select>
 
         <Select
           value={filters.role || "all"}
@@ -290,7 +277,7 @@ const AgentsProfilesContent = () => {
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Role</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">States Assigned</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Partners Assigned</TableHead>
-                <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
+                
                 <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -355,17 +342,6 @@ const AgentsProfilesContent = () => {
                           </button>
                         );
                       })()}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          a.status === "active"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {a.status || "—"}
-                      </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end">
