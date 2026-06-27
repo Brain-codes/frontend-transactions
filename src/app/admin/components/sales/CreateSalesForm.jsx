@@ -332,8 +332,8 @@ const CreateSalesForm = ({
           : null);
 
       if (!organizationId) {
-        // Super admins have no personal org — stoves are fetched after partner selection
-        if (!isSuperAdmin) setError("Organization ID not found. Please log in again.");
+        // No org context yet — partner picker is shown; wait for selection
+        setNeedsPartnerSelection(true);
         setStovesLoading(false);
         return;
       }
