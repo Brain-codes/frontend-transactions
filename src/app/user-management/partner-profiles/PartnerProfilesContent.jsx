@@ -492,7 +492,12 @@ const PartnerProfilesContent = () => {
                         {(a.full_name || a.email || "?").trim().charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 truncate">{a.full_name || "—"}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium text-gray-900 truncate">{a.full_name || "—"}</p>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${ROLE_BADGE[a.role] || "bg-gray-100 text-gray-700"}`}>
+                            {formatRole(a.role)}
+                          </span>
+                        </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-0.5 text-xs text-gray-600">
                           <span className="inline-flex items-center gap-1 truncate">
                             <Mail className="h-3 w-3 text-gray-400" />
