@@ -1980,8 +1980,6 @@ export default function SuperAdminAgentsContent() {
               <TableHeader>
                 <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Full Name</TableHead>
-                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">States Assigned</TableHead>
-                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Partners Assigned</TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Stoves (Assigned / Collected / In Stock)</TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
                   <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
@@ -1990,7 +1988,7 @@ export default function SuperAdminAgentsContent() {
               <TableBody className={loading ? "opacity-40" : ""}>
                 {!loading && sortedAgents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12">
+                    <TableCell colSpan={4} className="text-center py-12">
                       <Users className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500 font-medium">
                         {sortMode !== "default" ? "No agents match the active filter" : "No agents found"}
@@ -2011,56 +2009,6 @@ export default function SuperAdminAgentsContent() {
                     >
                       <TableCell className="text-sm font-medium text-gray-900">
                           {agent.full_name}
-                      </TableCell>
-                      {/* States — name badges, wrapping */}
-                      <TableCell className="max-w-[260px]">
-                        {!agent.assigned_states ? (
-                          <span className="text-gray-400">—</span>
-                        ) : agent.assigned_states.length === 0 ? (
-                          <span className="text-gray-400">—</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1 items-center">
-                            {agent.assigned_states.slice(0, 5).map((s) => (
-                              <span
-                                key={s}
-                                className="bg-primary/10 text-primary text-[10px] font-mono px-1.5 py-0.5 rounded"
-                              >
-                                {s}
-                              </span>
-                            ))}
-                            {agent.assigned_states.length > 5 && (
-                              <button
-                                onClick={() => setStatesModalAgent(agent)}
-                                className="text-[10px] font-semibold text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
-                                title="Click to view all assigned states"
-                              >
-                                +{agent.assigned_states.length - 5} more
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </TableCell>
-                      {/* Partners */}
-                      <TableCell className="text-center">
-                        {(() => {
-                          const total = agent.total_partners_count ?? (agent.assigned_organizations_count ?? 0);
-                          if (total === 0) {
-                            return (
-                              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                                0
-                              </span>
-                            );
-                          }
-                          return (
-                            <button
-                              onClick={() => setPartnersModalAgent(agent)}
-                              className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 hover:bg-green-200 transition-colors cursor-pointer"
-                              title="Click to view assigned partners"
-                            >
-                              {total}
-                            </button>
-                          );
-                        })()}
                       </TableCell>
                       {/* Stoves */}
                       <TableCell>
