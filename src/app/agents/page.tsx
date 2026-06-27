@@ -29,30 +29,10 @@ function AgentsRouter() {
 
   if (availableTabs.length === 0) return null;
 
-  // Single-tab roles: render directly, no tab chrome.
-  if (availableTabs.length === 1) {
-    return availableTabs[0].key === "acsl" ? <SuperAdminAgentsContent /> : <PartnerAgentsContent />;
-  }
-
-  return (
-    <Tabs value={active} onValueChange={(v) => setActive(v as TabKey)} className="w-full">
-      <TabsList className="mb-4">
-        {availableTabs.map((t) => (
-          <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>
-        ))}
-      </TabsList>
-      {canAcsl && (
-        <TabsContent value="acsl" className="mt-0">
-          <SuperAdminAgentsContent />
-        </TabsContent>
-      )}
-      {canPartner && (
-        <TabsContent value="partner" className="mt-0">
-          <PartnerAgentsContent />
-        </TabsContent>
-      )}
-    </Tabs>
-  );
+  // Tabs hidden per product decision: default to ACSL Agents when available,
+  // otherwise fall back to Partner Agents.
+  if (canAcsl) return <SuperAdminAgentsContent />;
+  return <PartnerAgentsContent />;
 }
 
 export default function AgentsPage() {
