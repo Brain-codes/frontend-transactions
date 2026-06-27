@@ -41,6 +41,7 @@ import PartnerDetailModal from "../../partners/components/PartnerDetailModal";
 import EditPartnerModal from "../../partners/components/EditPartnerModal";
 import ViewCredentialModal from "../../admin/components/credentials/ViewCredentialModal";
 import adminCredentialsService from "../../services/adminCredentialsService";
+import superAdminAgentService from "../../services/superAdminAgentService";
 
 const PAGE_SIZE = 10;
 
@@ -54,6 +55,8 @@ const PartnerProfilesContent = () => {
   const [editingPartner, setEditingPartner] = useState(null);
   const [viewingCredential, setViewingCredential] = useState(null);
   const [loadingCredentialOrgId, setLoadingCredentialOrgId] = useState(null);
+  const [agentCounts, setAgentCounts] = useState({}); // orgId -> count
+
 
   const loadPartners = async () => {
     setLoading(true);
@@ -110,7 +113,36 @@ const PartnerProfilesContent = () => {
   const startRecord = filtered.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const endRecord = Math.min(currentPage * PAGE_SIZE, filtered.length);
 
+  // Fetch agent counts for currently visible partners (lazy, cached)
+  useEffect(() => {
+    const missing = pageRows.filter((p) => agentCounts[p.id] === undefined);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const results = await Promise.all(
+        missing.map(async (p) => {
+          try {
+            const res = await superAdminAgentService.getAgentsByOrganization(p.id);
+            const list = res?.data?.agents || res?.data || [];
+            const count = Array.isArray(list) ? list.length : 0;
+            return [p.id, count];
+          } catch {
+            return [p.id, 0];
+          }
+        })
+      );
+      if (cancelled) return;
+      setAgentCounts((prev) => {
+        const next = { ...prev };
+        results.forEach(([id, c]) => { next[id] = c; });
+        return next;
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [pageRows, agentCounts]);
+
   const hasActiveFilters = filters.search !== "" || filters.state !== "";
+
 
   const handleFilterChange = (field, value) => {
     setFilters((prev) => ({ ...prev, [field]: value }));
@@ -197,13 +229,14 @@ const PartnerProfilesContent = () => {
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">State</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
+                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Assigned ACSL Agents</TableHead>
                 <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className={loading ? "opacity-40" : ""}>
               {pageRows.length === 0 && !loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-10 text-gray-500">
                     No partners found
                   </TableCell>
                 </TableRow>
@@ -219,6 +252,21 @@ const PartnerProfilesContent = () => {
                     <TableCell className="text-sm text-gray-600">{p.state || "—"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{p.branch || "—"}</TableCell>
                     <TableCell className="text-sm text-gray-600">{p.contact_phone || "—"}</TableCell>
+                    <TableCell className="text-center">
+                      {agentCounts[p.id] === undefined ? (
+                        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-full text-xs font-medium bg-gray-100 text-gray-400">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        </span>
+                      ) : agentCounts[p.id] > 0 ? (
+                        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                          {agentCounts[p.id]}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-full text-xs font-semibold bg-rose-100 text-rose-700 border border-rose-200">
+                          0
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <TooltipProvider delayDuration={150}>
