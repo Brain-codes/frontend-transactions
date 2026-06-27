@@ -38,6 +38,13 @@ import ViewSuperAdminAgentModal from "../../super-admin-agents/components/ViewSu
 import EditSuperAdminAgentModal from "../../super-admin-agents/components/EditSuperAdminAgentModal";
 import AgentViewCredentialModal from "../../admin/components/agents/AgentViewCredentialModal";
 import tokenManager from "@/utils/tokenManager";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { MapPin, Building2 } from "lucide-react";
 
 const PAGE_SIZE = 10;
 
