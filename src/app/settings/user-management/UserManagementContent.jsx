@@ -571,7 +571,9 @@ const UserManagementPage = () => {
     setFormErrors({});
     setShowCreateModal(true);
 
-    // Load supporting data based on role
+    // Load supporting data based on role. Start the slower lookups immediately,
+    // but hydrate saved states/partners first so the edit form does not sit
+    // blank below the User Group field while manager metadata is still loading.
     const role = user.role;
     const needsOrgs =
       needsPartnerAssignment(role) ||
@@ -579,15 +581,16 @@ const UserManagementPage = () => {
       needsAcslAgentCascade(role);
 
     try {
-      if (needsOrgs) await ensureOrganizationsLoaded();
-      const managersSnapshot = needsAcslAgentCascade(role)
-        ? (acslManagers.length > 0 ? acslManagers : await loadAcslManagers())
-        : acslManagers;
+      const orgsLoadPromise = needsOrgs ? ensureOrganizationsLoaded() : Promise.resolve(allOrgs);
+      const managersLoadPromise = needsAcslAgentCascade(role)
+        ? (acslManagers.length > 0 ? Promise.resolve(acslManagers) : loadAcslManagers())
+        : Promise.resolve(acslManagers);
 
       // Hydrate states & partners from existing assignments
-      const [statesRes, orgsRes] = await Promise.allSettled([
+      const [statesRes, orgsRes, assignmentRowsRes] = await Promise.allSettled([
         superAdminAgentService.getAgentStates(user.id),
         superAdminAgentService.getAgentOrganizations(user.id),
+        needsAcslAgentCascade(role) ? fetchDirectAgentAssignmentRows(user.id) : Promise.resolve([]),
       ]);
       const statesList = statesRes.status === "fulfilled"
         ? (statesRes.value?.data || statesRes.value?.states || statesRes.value || [])
@@ -596,25 +599,25 @@ const UserManagementPage = () => {
         ? (orgsRes.value?.data || orgsRes.value?.organizations || orgsRes.value || [])
         : [];
       const stateNames = normalizeStateNames(statesList);
-      let assignmentRows = [];
-      if (needsAcslAgentCascade(role)) {
-        assignmentRows = (await fetchDirectAgentAssignmentRows(user.id)) || [];
-      }
+      const assignmentRows = assignmentRowsRes.status === "fulfilled" && Array.isArray(assignmentRowsRes.value)
+        ? assignmentRowsRes.value
+        : [];
       const directOrgIds = normalizeOrgIds(assignmentRows);
       const orgIds = directOrgIds.length > 0 ? directOrgIds : normalizeOrgIds(orgsList);
 
       setSelectedStates(new Set(stateNames));
+      setSelectedPartnerIds(new Set(orgIds));
+
+      await orgsLoadPromise;
 
       // For acsl_agent: retain the original manager selection as tightly as
       // possible. Prefer the assignment creator when available, otherwise use
       // the single best manager that covers the agent's saved partners.
       if (needsAcslAgentCascade(role)) {
+        const managersSnapshot = await managersLoadPromise;
         const managerIds = inferManagerIdsForAgent(orgIds, stateNames, managersSnapshot, assignmentRows);
         setSelectedManagerIds(new Set(managerIds));
       }
-
-      // Always set partners last so reconcile effects (now bypassed) don't overwrite
-      setSelectedPartnerIds(new Set(orgIds));
     } finally {
       setEditAssignmentsLoading(false);
       // Release the guard after React has flushed the above state updates
