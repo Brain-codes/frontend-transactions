@@ -6,7 +6,8 @@ export type AppRole =
   | "partner"
   | "admin"
   | "partner_agent"
-  | "agent";
+  | "agent"
+  | "agent_user";
 
 export type RouteKey =
   | "dashboard"
