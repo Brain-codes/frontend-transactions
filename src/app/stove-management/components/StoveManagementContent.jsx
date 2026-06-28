@@ -423,40 +423,9 @@ export default function StoveManagementContent() {
           title="Stove ID Management"
         />
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg"><Package className="h-5 w-5 text-blue-700" /></div>
-              <div>
-                <p className="text-sm text-blue-600 font-medium">Total Stove IDs</p>
-                {loadingStats ? <Loader2 className="h-5 w-5 animate-spin text-blue-400 mt-1" /> : <p className="text-xl font-bold text-blue-900">{stats.total.toLocaleString()}</p>}
-                {!isAcslAgent && <p className="text-xs text-blue-500">Received</p>}
-              </div>
-            </div>
-          </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 rounded-lg"><CheckCircle className="h-5 w-5 text-amber-700" /></div>
-              <div>
-                <p className="text-sm text-amber-600 font-medium">Sold</p>
-                {loadingStats ? <Loader2 className="h-5 w-5 animate-spin text-amber-400 mt-1" /> : <p className="text-xl font-bold text-amber-900">{stats.sold.toLocaleString()}</p>}
-              </div>
-            </div>
-          </div>
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg"><Package className="h-5 w-5 text-green-700" /></div>
-              <div>
-                <p className="text-sm text-green-600 font-medium">Available</p>
-                {loadingStats ? <Loader2 className="h-5 w-5 animate-spin text-green-400 mt-1" /> : <p className="text-xl font-bold text-green-900">{stats.available.toLocaleString()}</p>}
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Filter Bar */}
-        <div className="bg-blue-50 p-3 rounded-lg border border-gray-200">
+        <div className="bg-[#f4f7e3] p-3 rounded-lg border border-gray-200">
           <div className="flex flex-wrap items-center gap-3">
 
             {/* Super admin: org search dropdown */}
@@ -594,13 +563,13 @@ export default function StoveManagementContent() {
 
         {/* Table */}
         <div className="space-y-0">
-          <div className="bg-blue-50 rounded-t-lg px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
+          <div className="bg-[#f4f7e3] rounded-t-lg px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3 flex-wrap">
               {/* Per page */}
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Per page:</span>
+                <span className="text-sm text-gray-500 font-medium whitespace-nowrap">Per page:</span>
                 <Select value={pagination.page_size.toString()} onValueChange={handlePageSizeChange}>
-                  <SelectTrigger className="w-[60px] h-7 bg-white text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-[60px] h-7 bg-white text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="10">10</SelectItem>
                     <SelectItem value="25">25</SelectItem>
@@ -615,9 +584,9 @@ export default function StoveManagementContent() {
                 <>
                   <div className="w-px h-5 bg-gray-300" />
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Group by:</span>
+                    <span className="text-sm text-gray-500 font-medium whitespace-nowrap">Group by:</span>
                     <Select value={groupBy} onValueChange={setGroupBy}>
-                      <SelectTrigger className="h-7 bg-white text-xs w-[145px]"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-7 bg-white text-sm w-[145px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
                         <SelectItem value="sales_reference">Sales Reference</SelectItem>
@@ -627,9 +596,9 @@ export default function StoveManagementContent() {
                   </div>
                   <div className="w-px h-5 bg-gray-300" />
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Sort by:</span>
+                    <span className="text-sm text-gray-500 font-medium whitespace-nowrap">Sort by:</span>
                     <Select value={sortBy} onValueChange={handleSortByChange}>
-                      <SelectTrigger className="h-7 bg-white text-xs w-[140px]"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-7 bg-white text-sm w-[140px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="status">Status (Sold)</SelectItem>
                         <SelectItem value="stove_id">Stove ID</SelectItem>
@@ -638,7 +607,7 @@ export default function StoveManagementContent() {
                         <SelectItem value="sales_reference">Sales Reference</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Button size="sm" variant="outline" className="h-7 px-2 bg-white text-xs flex items-center gap-1" onClick={toggleSortDir}>
+                    <Button size="sm" variant="outline" className="h-7 px-2 bg-white text-sm flex items-center gap-1" onClick={toggleSortDir}>
                       {sortDir === "asc" ? <><ArrowUp className="h-3 w-3" /><span>Asc</span></> : <><ArrowDown className="h-3 w-3" /><span>Desc</span></>}
                     </Button>
                   </div>
@@ -647,11 +616,11 @@ export default function StoveManagementContent() {
             </div>
 
             <div className="flex items-center gap-2">
-              <p className="text-xs font-semibold text-gray-600">Total: <span className="text-brand">{pagination.total_count}</span></p>
+              <p className="text-sm font-semibold text-gray-600">Total: <span className="text-[#4a5d0f]">{pagination.total_count}</span></p>
               {/* Super admin / partner: CSV download */}
               {!isAcslAgent && (
                 <Button
-                  size="sm" variant="outline" className="h-7 px-2 text-xs flex items-center gap-1"
+                  size="sm" variant="outline" className="h-7 px-2 text-sm flex items-center gap-1"
                   onClick={() => {
                     const headers = isSuperAdmin
                       ? ["Stove ID", "Sales Reference", "Status", "Partner Name", "Branch", "State", "Date Sold", "Sold To"]
@@ -676,29 +645,29 @@ export default function StoveManagementContent() {
           <div className="bg-white border-x border-gray-200 overflow-x-auto relative">
             {loading && (
               <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
-                <Loader2 className="h-6 w-6 animate-spin text-brand" />
+                <Loader2 className="h-6 w-6 animate-spin text-[#4a5d0f]" />
               </div>
             )}
             <Table>
               <TableHeader>
-                <TableRow className="bg-brand hover:bg-brand">
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stove ID</TableHead>
+                <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Stove ID</TableHead>
                   {/* Sales Reference: super admin / partner */}
-                  {!isAcslAgent && <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Sales Reference</TableHead>}
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Status</TableHead>
+                  {!isAcslAgent && <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Sales Reference</TableHead>}
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
                   {/* Partner/Branch/State columns: super admin sees all orgs */}
                   {isSuperAdmin && (
                     <>
-                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner Name</TableHead>
-                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Branch</TableHead>
-                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">State</TableHead>
+                      <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Partner Name</TableHead>
+                      <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
+                      <TableHead className="text-white font-semibold text-sm whitespace-nowrap">State</TableHead>
                     </>
                   )}
                   {/* ACSL agent: partner column (they have multiple assigned partners) */}
-                  {isAcslAgent && <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner</TableHead>}
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Date Sold</TableHead>
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Sold To</TableHead>
-                  <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">Action</TableHead>
+                  {isAcslAgent && <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Partner</TableHead>}
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Date Sold</TableHead>
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Sold To</TableHead>
+                  <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className={loading ? "opacity-40" : ""}>
@@ -715,8 +684,8 @@ export default function StoveManagementContent() {
                       if (item.type === "group-header") {
                         rowIndex = 0;
                         return (
-                          <TableRow key={`gh-${i}`} className="bg-brand/10 border-y border-brand/20">
-                            <TableCell colSpan={colSpan} className="py-1.5 px-4 text-xs font-semibold text-brand">
+                          <TableRow key={`gh-${i}`} className="bg-[#4a5d0f]/10 border-y border-[#4a5d0f]/20">
+                            <TableCell colSpan={colSpan} className="py-1.5 px-4 text-sm font-semibold text-[#4a5d0f]">
                               {groupBy === "sales_reference" ? "Sales Ref: " : "Organization: "}{item.label}
                               <span className="ml-2 text-gray-500 font-normal">({item.count} stove{item.count !== 1 ? "s" : ""})</span>
                             </TableCell>
@@ -726,28 +695,28 @@ export default function StoveManagementContent() {
                       const stove = item.stove;
                       const idx = rowIndex++;
                       return (
-                        <TableRow key={stove.id || stove.stove_id} className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50`}>
-                          <TableCell className="font-mono font-medium text-gray-900 text-xs">{stove.stove_id}</TableCell>
-                          {!isAcslAgent && <TableCell className="text-xs">{stove.sales_reference || "—"}</TableCell>}
+                        <TableRow key={stove.id || stove.stove_id} className={`${idx % 2 === 0 ? "bg-white" : "bg-[#f4f7e3]"} hover:bg-[#eef3c4]`}>
+                          <TableCell className="font-mono font-medium text-gray-900 text-sm">{stove.stove_id}</TableCell>
+                          {!isAcslAgent && <TableCell className="text-sm">{stove.sales_reference || "—"}</TableCell>}
                           <TableCell>
                             <Badge className={stove.status === "sold"
-                              ? "bg-blue-100 text-blue-800 border-blue-200 text-xs"
-                              : "bg-green-100 text-green-800 border-green-200 text-xs"}>
+                              ? "bg-blue-100 text-blue-800 border-blue-200 text-sm"
+                              : "bg-green-100 text-green-800 border-green-200 text-sm"}>
                               {stove.status ? stove.status.charAt(0).toUpperCase() + stove.status.slice(1) : "—"}
                             </Badge>
                           </TableCell>
                           {isSuperAdmin && (
                             <>
-                              <TableCell className="text-xs text-gray-600">{stove.organization_name || "N/A"}</TableCell>
-                              <TableCell className="text-xs text-gray-600">{stove.branch || "N/A"}</TableCell>
-                              <TableCell className="text-xs text-gray-600">{stove.location || "N/A"}</TableCell>
+                              <TableCell className="text-sm text-gray-600">{stove.organization_name || "N/A"}</TableCell>
+                              <TableCell className="text-sm text-gray-600">{stove.branch || "N/A"}</TableCell>
+                              <TableCell className="text-sm text-gray-600">{stove.location || "N/A"}</TableCell>
                             </>
                           )}
-                          {isAcslAgent && <TableCell className="text-xs text-gray-600">{stove.organization_name || "—"}</TableCell>}
-                          <TableCell className="text-xs text-gray-600">
+                          {isAcslAgent && <TableCell className="text-sm text-gray-600">{stove.organization_name || "—"}</TableCell>}
+                          <TableCell className="text-sm text-gray-600">
                             {stove.status === "sold" ? formatDate(stove.sale_date || stove.date_sold) : "—"}
                           </TableCell>
-                          <TableCell className="text-xs text-gray-600">{stove.sold_to || "—"}</TableCell>
+                          <TableCell className="text-sm text-gray-600">{stove.sold_to || "—"}</TableCell>
                           <TableCell className="text-center">
                             <div className="flex items-center justify-center gap-2">
                               {stove.status === "sold" && !isAcslAgent && (
@@ -755,7 +724,7 @@ export default function StoveManagementContent() {
                                   size="sm"
                                   onClick={() => handleViewStove(stove)}
                                   disabled={loadingStoveId === stove.id}
-                                  className="bg-brand hover:bg-brand/90 text-white h-7 px-3 text-xs"
+                                  className="bg-[#4a5d0f] hover:bg-[#4a5d0f]/90 text-white h-7 px-3 text-sm"
                                 >
                                   {loadingStoveId === stove.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                                   Details
@@ -767,13 +736,13 @@ export default function StoveManagementContent() {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => { setStoveToArchive(stove); setShowArchiveModal(true); }}
-                                  className="h-7 px-3 text-xs border-red-200 text-red-600 hover:bg-red-50"
+                                  className="h-7 px-3 text-sm border-red-200 text-red-600 hover:bg-red-50"
                                 >
                                   Archive
                                 </Button>
                               )}
                               {stove.is_archived && (
-                                <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-xs">Archived</Badge>
+                                <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-sm">Archived</Badge>
                               )}
                             </div>
                           </TableCell>
@@ -796,7 +765,7 @@ export default function StoveManagementContent() {
                 <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handlePageChange(pagination.page - 1)} disabled={pagination.page === 1}><ChevronLeft className="h-4 w-4 mr-1" />Prev</Button>
                 {getVisiblePages().map((p) => (
                   <Button key={p} variant={p === pagination.page ? "default" : "outline"} size="sm"
-                    className={`h-8 w-8 p-0 ${p === pagination.page ? "bg-brand text-white hover:bg-brand" : ""}`}
+                    className={`h-8 w-8 p-0 ${p === pagination.page ? "bg-[#4a5d0f] text-white hover:bg-[#4a5d0f]" : ""}`}
                     onClick={() => handlePageChange(p)}>{p}</Button>
                 ))}
                 <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handlePageChange(pagination.page + 1)} disabled={pagination.page === pagination.total_pages}>Next<ChevronRight className="h-4 w-4 ml-1" /></Button>
