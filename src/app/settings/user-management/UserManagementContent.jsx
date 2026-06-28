@@ -312,6 +312,24 @@ const UserManagementPage = () => {
   const startRecord = users.length > 0 ? (pagination.page - 1) * pagination.page_size + 1 : 0;
   const endRecord = Math.min(pagination.page * pagination.page_size, pagination.total_count);
 
+  const generateTemporaryPassword = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+    const required = ["A", "a", "7", "!"];
+    const randomValues = new Uint32Array(10);
+    crypto.getRandomValues(randomValues);
+    const rest = Array.from(randomValues, (n) => chars[n % chars.length]);
+    return [...required, ...rest].sort(() => Math.random() - 0.5).join("");
+  };
+
+  const extractCreatedUserId = (result) =>
+    result?.user?.id ||
+    result?.data?.id ||
+    result?.data?.user?.id ||
+    result?.data?.agent?.id ||
+    result?.agent?.id ||
+    result?.id ||
+    null;
+
   // ── Form helpers ───────────────────────────────────────────────────────────
 
   const resetForm = () => {
