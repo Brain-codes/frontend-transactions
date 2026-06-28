@@ -95,6 +95,69 @@ async function fetchDirectPartnerList(supabase, agentId) {
     .filter(Boolean);
 }
 
+async function fetchDirectPartnerAssignmentRows(supabase, agentId) {
+  const col = await resolveAgentColumn(supabase);
+  if (!col) return null;
+  const { data, error } = await supabase
+    .from(ASSIGNMENT_TABLE)
+    .select("organization_id, assigned_by, organizations(id, partner_name, state, branch)")
+    .eq(col, agentId);
+  if (error) return null;
+  return Array.isArray(data) ? data : [];
+}
+
+function inferSupervisorsForAgent(agentOrgIds, managerInfo, assignmentRows = []) {
+  if (agentOrgIds.size === 0 || managerInfo.length === 0) return [];
+
+  const assignedByManagers = new Set(
+    assignmentRows
+      .map((row) => row?.assigned_by)
+      .filter((id) => managerInfo.some((m) => m.id === id))
+  );
+  if (assignedByManagers.size > 0) {
+    return managerInfo
+      .filter((m) => assignedByManagers.has(m.id))
+      .map((m) => m.name);
+  }
+
+  const candidates = managerInfo
+    .map((m) => {
+      let overlap = 0;
+      for (const id of agentOrgIds) if (m.orgIds.has(id)) overlap += 1;
+      return {
+        ...m,
+        overlap,
+        coversAll: overlap === agentOrgIds.size,
+        extraPartners: Math.max(0, m.orgIds.size - agentOrgIds.size),
+      };
+    })
+    .filter((m) => m.overlap > 0);
+
+  const fullCover = candidates
+    .filter((m) => m.coversAll)
+    .sort((a, b) => a.extraPartners - b.extraPartners || a.name.localeCompare(b.name));
+  if (fullCover.length > 0) return [fullCover[0].name];
+
+  // If no single manager covers every selected partner, return the smallest
+  // manager set that explains the agent's partner list.
+  const remaining = new Set(agentOrgIds);
+  const selected = [];
+  const pool = [...candidates];
+  while (remaining.size > 0 && pool.length > 0) {
+    pool.sort((a, b) => {
+      const aNew = Array.from(remaining).filter((id) => a.orgIds.has(id)).length;
+      const bNew = Array.from(remaining).filter((id) => b.orgIds.has(id)).length;
+      return bNew - aNew || a.extraPartners - b.extraPartners || a.name.localeCompare(b.name);
+    });
+    const best = pool.shift();
+    const covered = Array.from(remaining).filter((id) => best.orgIds.has(id));
+    if (covered.length === 0) break;
+    selected.push(best.name);
+    covered.forEach((id) => remaining.delete(id));
+  }
+  return selected;
+}
+
 const AgentsProfilesContent = () => {
   const { toast, toasts, removeToast } = useToast();
   const supabaseRef = useRef(null);
@@ -284,8 +347,9 @@ const AgentsProfilesContent = () => {
   };
 
   // Load ACSL Agent Managers with their assigned organizations so we can derive
-  // each ACSL Agent's supervisor(s) by partner overlap. There is no explicit
-  // agent→manager link in the schema, so overlap is the source of truth.
+  // each ACSL Agent's supervisor(s). Prefer direct assignment authors when they
+  // are managers; otherwise pick the smallest manager set that explains the
+  // agent's exact direct partner assignments.
   const hydrateSupervisors = async (agentsList) => {
     try {
       const managers = agentsList.filter((a) => a.role === "acsl_agent_manager");
@@ -313,20 +377,11 @@ const AgentsProfilesContent = () => {
         const batch = acslAgents.slice(i, i + BATCH);
         const results = await Promise.allSettled(
           batch.map(async (a) => {
-            const orgs = await fetchDirectPartnerList(supabaseRef.current, a.id);
-            const agentOrgIds = Array.isArray(orgs)
-              ? new Set(orgs.map((o) => o?.id).filter(Boolean))
+            const assignmentRows = await fetchDirectPartnerAssignmentRows(supabaseRef.current, a.id);
+            const agentOrgIds = Array.isArray(assignmentRows)
+              ? new Set(assignmentRows.map((row) => row?.organization_id || row?.organizations?.id).filter(Boolean))
               : new Set();
-            const supervisors = managerInfo
-              .filter((m) => {
-                if (agentOrgIds.size === 0) return false;
-                if (m.orgIds.size === 0) return false;
-                // Manager qualifies only if their assigned partners cover
-                // EVERY partner assigned to this agent (superset).
-                for (const id of agentOrgIds) if (!m.orgIds.has(id)) return false;
-                return true;
-              })
-              .map((m) => m.name);
+            const supervisors = inferSupervisorsForAgent(agentOrgIds, managerInfo, assignmentRows || []);
             return { id: a.id, supervisors };
           })
         );
