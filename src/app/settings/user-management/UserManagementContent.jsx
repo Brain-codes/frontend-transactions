@@ -1013,8 +1013,7 @@ const UserManagementPage = () => {
                     {hasStates && (
                       <div className="space-y-3 border border-gray-200 rounded-lg p-4 bg-white">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
-                          <Label className="text-sm font-semibold text-[#4a5d0f] flex items-center gap-1.5">
-                            <Building2 className="h-4 w-4 text-[#4a5d0f]" />
+                          <Label className="text-sm font-semibold text-[#4a5d0f]">
                             Assign Partners
                             <span className="text-xs text-gray-500 font-normal">
                               ({selectedPartnerIds.size} selected · {partnersInStates.length} available)
@@ -1113,8 +1112,7 @@ const UserManagementPage = () => {
               {/* Partner Assignment — shown for ACSL Agent and Partner Agent */}
               {needsPartnerAssignment(userForm.role) && (
                 <div className="space-y-2 border border-[#eef3c4] rounded-md p-3 bg-[#f9fbed]">
-                  <Label className="text-sm font-semibold text-[#4a5d0f] flex items-center gap-1.5">
-                    <Building2 className="h-4 w-4 text-[#4a5d0f]" />
+                  <Label className="text-sm font-semibold text-[#4a5d0f]">
                     Assign Partners <span className="text-gray-400 font-normal text-xs">(optional)</span>
                   </Label>
 
