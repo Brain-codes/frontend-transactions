@@ -307,15 +307,19 @@ const UserManagementPage = () => {
     setShowPassword(false);
     setPartnerSearch("");
     setSelectedPartnerIds(new Set());
+    setSelectedStates(new Set());
   };
 
   const needsPartnerAssignment = (role) => role === "acsl_agent" || role === "partner_agent";
+  const needsStateAndPartnerAssignment = (role) => role === "acsl_agent_manager";
 
   const handleRoleChange = async (role) => {
     setUserForm((prev) => ({ ...prev, role }));
     setSelectedPartnerIds(new Set());
+    setSelectedStates(new Set());
     setPartnerSearch("");
-    if (needsPartnerAssignment(role) && allOrgs.length === 0) {
+    const shouldLoad = needsPartnerAssignment(role) || needsStateAndPartnerAssignment(role);
+    if (shouldLoad && allOrgs.length === 0) {
       setOrgsLoading(true);
       try {
         const result = await organizationsService.getAllOrganizations();
@@ -327,6 +331,19 @@ const UserManagementPage = () => {
       }
     }
   };
+
+  // Auto-check all partners in selected states when states change (Agent Manager flow)
+  useEffect(() => {
+    if (userForm.role !== "acsl_agent_manager") return;
+    const ids = new Set(
+      allOrgs
+        .filter((o) => o.state && selectedStates.has(o.state))
+        .map((o) => o.id)
+    );
+    setSelectedPartnerIds(ids);
+  }, [selectedStates, allOrgs, userForm.role]);
+
+
 
   const validateForm = () => {
     const errors = {};
