@@ -192,6 +192,7 @@ const UserManagementPage = () => {
   const [allOrgs, setAllOrgs] = useState([]);
   const [orgsLoading, setOrgsLoading] = useState(false);
   const [partnerSearch, setPartnerSearch] = useState("");
+  const [stateSearch, setStateSearch] = useState("");
   const [selectedPartnerIds, setSelectedPartnerIds] = useState(new Set());
   const [selectedStates, setSelectedStates] = useState(new Set());
 
