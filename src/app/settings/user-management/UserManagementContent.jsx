@@ -878,7 +878,7 @@ const UserManagementPage = () => {
                   <Label htmlFor="role" className="text-sm font-medium text-gray-700">User Group <span className="text-red-500">*</span></Label>
                   <Select value={userForm.role} onValueChange={handleRoleChange}>
                     <SelectTrigger id="role" className="shadow-none border-gray-300">
-                      <SelectValue />
+                      <SelectValue placeholder="Select user group" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="super_admin">Super Admin</SelectItem>
@@ -888,6 +888,7 @@ const UserManagementPage = () => {
                       <SelectItem value="partner_agent">Partner Agent</SelectItem>
                     </SelectContent>
                   </Select>
+                  {formErrors.role && <p className="text-xs text-red-600">{formErrors.role}</p>}
                 </div>
               </div>
 
