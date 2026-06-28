@@ -181,7 +181,7 @@ const UserManagementPage = () => {
     full_name: "",
     email: "",
     phone: "",
-    role: "",
+    role: undefined,
     password: "",
     auto_generate_password: true,
   });
