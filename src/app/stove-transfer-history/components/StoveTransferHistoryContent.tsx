@@ -297,14 +297,13 @@ export default function StoveTransferHistoryContent() {
           <PageHeader title="Stove Transfer History" icon={ArrowLeftRight} />
 
           {/* Filter bar */}
-          <div className="bg-blue-50 p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
+          <div className="bg-[#FAFCFD] p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
             <div className="w-1/4 min-w-[180px] relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search partner, state, transaction ID…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-white h-9 text-sm"
+                className="bg-white h-9 text-xs"
               />
             </div>
 
@@ -313,7 +312,7 @@ export default function StoveTransferHistoryContent() {
               value={datePreset}
               onValueChange={(v) => applyPreset(v as Parameters<typeof applyPreset>[0])}
             >
-              <SelectTrigger className="w-[140px] h-9 bg-white text-sm">
+              <SelectTrigger className="w-[140px] h-9 bg-white text-xs">
                 <SelectValue placeholder="Date range" />
               </SelectTrigger>
               <SelectContent>
@@ -335,7 +334,7 @@ export default function StoveTransferHistoryContent() {
                     type="date"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
-                    className="bg-white h-9 text-sm w-[140px]"
+                    className="bg-white h-9 text-xs w-[140px]"
                   />
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -344,7 +343,7 @@ export default function StoveTransferHistoryContent() {
                     type="date"
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
-                    className="bg-white h-9 text-sm w-[140px]"
+                    className="bg-white h-9 text-xs w-[140px]"
                   />
                 </div>
               </>
@@ -355,15 +354,15 @@ export default function StoveTransferHistoryContent() {
                 onClick={clearFilters}
                 size="sm"
                 variant="outline"
-                className="h-9"
+                className="h-9 text-xs"
               >
                 <X className="h-4 w-4 mr-1" />
-                Clear
+                Reset Filters
               </Button>
             )}
 
             <div className="flex items-center gap-3 ml-auto">
-              <p className="text-sm text-gray-600">
+              <p className="text-xs text-gray-600">
                 Showing{" "}
                 <span className="font-medium">
                   {startRecord}–{endRecord}
@@ -371,12 +370,12 @@ export default function StoveTransferHistoryContent() {
                 of <span className="font-medium">{totalCount}</span> records
               </p>
               <div className="flex items-center gap-1.5">
-                <span className="text-sm text-gray-500">per page:</span>
+                <span className="text-xs text-gray-500">per page:</span>
                 <Select
                   value={pageSize.toString()}
                   onValueChange={(v) => setPageSize(parseInt(v))}
                 >
-                  <SelectTrigger className="w-[65px] h-7 bg-white text-sm">
+                  <SelectTrigger className="w-[65px] h-7 bg-white text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -388,11 +387,12 @@ export default function StoveTransferHistoryContent() {
                   </SelectContent>
                 </Select>
               </div>
-              <p className="text-sm font-bold text-green-500">
-                Total: <span className="text-brand">{totalCount}</span>
+              <p className="text-xs font-bold text-[#4a5d0f]">
+                Total: <span>{totalCount}</span>
               </p>
             </div>
           </div>
+
 
           {/* Table */}
           <div className="space-y-0">
@@ -413,7 +413,7 @@ export default function StoveTransferHistoryContent() {
               ) : (
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-brand hover:bg-brand">
+                    <TableRow className="bg-[#4a5d0f] hover:bg-[#4a5d0f]">
                       <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                         <button
                           className="flex items-center gap-1 hover:opacity-80"
@@ -445,9 +445,6 @@ export default function StoveTransferHistoryContent() {
                       <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">
                         Stoves
                       </TableHead>
-                      {/* <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
-                        Source
-                      </TableHead> */}
                       <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                         Sales Date
                       </TableHead>
@@ -461,15 +458,15 @@ export default function StoveTransferHistoryContent() {
                       <TableRow>
                         <TableCell colSpan={10} className="text-center py-10">
                           <ArrowLeftRight className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                          <p className="text-gray-500 font-medium">No transfer records found</p>
-                          <p className="text-gray-400 text-sm">Try adjusting your search</p>
+                          <p className="text-gray-500 font-medium text-sm">No transfer records found</p>
+                          <p className="text-gray-400 text-xs">Try adjusting your search</p>
                         </TableCell>
                       </TableRow>
                     ) : (
                       records.map((record, idx) => (
                         <TableRow
                           key={record.id}
-                          className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50 text-gray-700`}
+                          className={`${idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]/40"} hover:bg-[#eef3c4] text-gray-700`}
                         >
                           <TableCell className="text-xs whitespace-nowrap">
                             {formatDate(record.transfer_date)}
@@ -484,15 +481,10 @@ export default function StoveTransferHistoryContent() {
                           <TableCell className="text-xs">{record.branch || "—"}</TableCell>
                           <TableCell className="text-xs">{record.sales_factory || "—"}</TableCell>
                           <TableCell className="text-center">
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                            <span className="inline-flex items-center justify-center min-w-[2rem] text-xs font-semibold px-2 py-0.5 rounded-full bg-[#eef3c4] text-[#4a5d0f]">
                               {record.stove_count}
                             </span>
                           </TableCell>
-                          {/* <TableCell>
-                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                              {sourceLabel(record.source)}
-                            </span>
-                          </TableCell> */}
                           <TableCell className="text-xs whitespace-nowrap">
                             {record.sales_date
                               ? new Date(record.sales_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
@@ -501,7 +493,7 @@ export default function StoveTransferHistoryContent() {
                           <TableCell className="text-center">
                             <Button
                               size="sm"
-                              className="h-7 px-2 text-xs bg-brand hover:bg-brand/90 text-white gap-1"
+                              className="h-7 px-3 text-xs rounded-none bg-[#4a5d0f] hover:bg-[#3a4a0c] text-white gap-1"
                               onClick={() => openModal(record)}
                             >
                               <Eye className="h-3.5 w-3.5" />
@@ -514,11 +506,12 @@ export default function StoveTransferHistoryContent() {
                   </TableBody>
                 </Table>
               )}
+
             </div>
 
             {/* Pagination */}
             <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
-                <p className="text-sm text-gray-600">
+                <p className="text-xs text-gray-600">
                   Showing {startRecord} to {endRecord} of {totalCount} records
                 </p>
                 <div className="flex items-center gap-1">
@@ -534,7 +527,7 @@ export default function StoveTransferHistoryContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 px-2"
+                    className="h-8 px-2 text-xs"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
                   >
@@ -546,7 +539,7 @@ export default function StoveTransferHistoryContent() {
                       key={p}
                       variant={p === page ? "default" : "outline"}
                       size="sm"
-                      className={`h-8 w-8 p-0 ${p === page ? "bg-brand text-white hover:bg-brand" : ""}`}
+                      className={`h-8 w-8 p-0 text-xs ${p === page ? "bg-black text-white hover:bg-black" : ""}`}
                       onClick={() => setPage(p)}
                     >
                       {p}
@@ -555,13 +548,14 @@ export default function StoveTransferHistoryContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 px-2"
+                    className="h-8 px-2 text-xs"
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
                   >
                     Next
                     <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
+
                   <Button
                     variant="outline"
                     size="sm"
