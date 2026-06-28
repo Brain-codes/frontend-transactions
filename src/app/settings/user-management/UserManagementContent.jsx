@@ -792,42 +792,27 @@ const UserManagementPage = () => {
         },
       );
       const result = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(result.error || "Failed to update user");
-
       if (role === "partner_agent") {
         // Clear ACSL-style assignments so this user no longer appears under prior managers/states.
         try { await superAdminAgentService.setAgentStates(selectedUser.id, []); } catch { /* non-fatal */ }
         try { await superAdminAgentService.setAgentOrganizations(selectedUser.id, []); } catch { /* non-fatal */ }
+      } else {
+        // Persist assignment updates (overwrites prior assignments). If the user
+        // group changes to one without these assignments, clear stale links so
+        // old manager/partner relationships do not leak into profile views later.
+        const shouldHaveStates = role === "acsl_agent_manager" || role === "acsl_agent";
+        const shouldHavePartners = role === "acsl_agent_manager" || role === "acsl_agent" || role === "partner";
+        try {
+          await superAdminAgentService.setAgentStates(selectedUser.id, shouldHaveStates ? Array.from(selectedStates) : []);
+        } catch { /* non-fatal */ }
+        try {
+          await superAdminAgentService.setAgentOrganizations(selectedUser.id, shouldHavePartners ? Array.from(selectedPartnerIds) : []);
+          if (role === "acsl_agent") {
+            await persistAgentSupervisorMarker(selectedUser.id, Array.from(selectedPartnerIds), Array.from(selectedManagerIds));
+          }
+        } catch { /* non-fatal */ }
       }
 
-
-      // Ensure the changed User Group is reflected immediately in the app even
-      // if the edge function only updates the auth user metadata.
-      try {
-        await supabase
-          .from("profiles")
-          .update({
-            full_name: userForm.full_name.trim(),
-            phone: userForm.phone.trim() || null,
-            role: userForm.role,
-          })
-          .eq("id", selectedUser.id);
-      } catch { /* non-fatal */ }
-
-      // Persist assignment updates (overwrites prior assignments). If the user
-      // group changes to one without these assignments, clear stale links so
-      // old manager/partner relationships do not leak into profile views later.
-      const shouldHaveStates = role === "acsl_agent_manager" || role === "acsl_agent";
-      const shouldHavePartners = role === "acsl_agent_manager" || role === "acsl_agent" || role === "partner";
-      try {
-        await superAdminAgentService.setAgentStates(selectedUser.id, shouldHaveStates ? Array.from(selectedStates) : []);
-      } catch { /* non-fatal */ }
-      try {
-        await superAdminAgentService.setAgentOrganizations(selectedUser.id, shouldHavePartners ? Array.from(selectedPartnerIds) : []);
-        if (role === "acsl_agent") {
-          await persistAgentSupervisorMarker(selectedUser.id, Array.from(selectedPartnerIds), Array.from(selectedManagerIds));
-        }
-      } catch { /* non-fatal */ }
 
       toast({ variant: "success", title: "User updated successfully" });
       setShowCreateModal(false);
