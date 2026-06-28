@@ -719,6 +719,19 @@ const UserManagementPage = () => {
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to update user");
 
+      // Ensure the changed User Group is reflected immediately in the app even
+      // if the edge function only updates the auth user metadata.
+      try {
+        await supabase
+          .from("profiles")
+          .update({
+            full_name: userForm.full_name.trim(),
+            phone: userForm.phone.trim() || null,
+            role: userForm.role,
+          })
+          .eq("id", selectedUser.id);
+      } catch { /* non-fatal */ }
+
       // Persist assignment updates (overwrites prior assignments). If the user
       // group changes to one without these assignments, clear stale links so
       // old manager/partner relationships do not leak into profile views later.
