@@ -495,6 +495,7 @@ const UserManagementPage = () => {
       <DashboardLayout currentRoute="settings" title="User Management">
         <div className="p-6 space-y-5">
 
+          {!showCreateModal && (<>
           <PageHeader
             icon={Users}
             title="User Management"
@@ -805,15 +806,31 @@ const UserManagementPage = () => {
               </div>
             )}
           </div>
-        </div>
+          </>)}
 
-        {/* ── Create User Modal ──────────────────────────────────────────────── */}
-        <Dialog open={showCreateModal} onOpenChange={(open) => { if (!open) { setShowCreateModal(false); resetForm(); } }}>
-          <DialogContent className="sm:max-w-2xl shadow-none">
-            <DialogHeader className="border-b pb-3 mb-1">
-              <DialogTitle className="text-lg font-semibold text-[#4a5d0f]">Create New User</DialogTitle>
-              <DialogDescription className="text-sm text-gray-500">Add a new user to the system</DialogDescription>
-            </DialogHeader>
+          {showCreateModal && (
+            <div className="space-y-5">
+              <PageHeader
+                icon={UserPlus}
+                title="Create New User"
+                right={
+                  <Button
+                    variant="outline"
+                    className="text-sm h-10 px-4 flex items-center gap-1.5 shadow-none border-gray-300"
+                    onClick={() => { setShowCreateModal(false); resetForm(); }}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Back to User Management
+                  </Button>
+                }
+              />
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <div className="border-b pb-3 mb-4">
+                  <h2 className="text-lg font-semibold text-[#4a5d0f]">Create New User</h2>
+                  <p className="text-sm text-gray-500">Add a new user to the system</p>
+                </div>
+
+
 
             <form onSubmit={handleCreateUser} className="space-y-4 pt-2">
               <div className="grid grid-cols-2 gap-4">
@@ -1165,8 +1182,10 @@ const UserManagementPage = () => {
                 </Button>
               </div>
             </form>
-          </DialogContent>
-        </Dialog>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* ── Edit User Modal ────────────────────────────────────────────────── */}
         <Dialog open={showEditModal} onOpenChange={(open) => { if (!open) { setShowEditModal(false); setSelectedUser(null); resetForm(); } }}>
