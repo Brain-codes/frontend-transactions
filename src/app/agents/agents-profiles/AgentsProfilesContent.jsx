@@ -529,11 +529,7 @@ const AgentsProfilesContent = () => {
                     <TableCell className="text-sm font-medium text-gray-900">
                       <span className="align-baseline">{a.full_name || "N/A"}</span>
                       {a.role && (
-                        <sup
-                          className={`ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold leading-none ${
-                            ROLE_BADGE[a.role] || "bg-gray-100 text-gray-700"
-                          }`}
-                        >
+                        <sup className="ml-1 text-[9px] font-medium text-gray-500">
                           {formatRole(a.role)}
                         </sup>
                       )}
