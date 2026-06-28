@@ -1,5 +1,7 @@
 
 import tokenManager from "@/utils/tokenManager";
+import { supabaseUrl } from "@/lib/supabaseConfig";
+
 
 export interface StoveEntry {
   stove_id: string;
@@ -48,10 +50,11 @@ export interface TransferHistoryFilters {
 
 class TransferHistoryService {
   private getApiBase(): string {
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    if (!url) throw new Error("NEXT_PUBLIC_SUPABASE_URL is not configured");
+    const url = supabaseUrl;
+    if (!url) throw new Error("Supabase URL is not configured");
     return `${url}/functions/v1/get-transfer-history`;
   }
+
 
   private async getHeaders(): Promise<HeadersInit> {
     const token = await tokenManager.getValidToken();
