@@ -1,61 +1,26 @@
-## Goal
+# Fix: Failed to create Partner Agent
 
-When a super admin (or partner) creates a **Partner Agent** from User Management, the user is created successfully and linked to **exactly one Partner** — no validation errors, no orphaned users.
+## Root cause
 
-## Root cause of the current 400
+Network log shows the request goes to `undefined/functions/v1/manage-agents` → 404 (the HTML returned is the SPA fallback). The service reads `import.meta.env.VITE_SUPABASE_URL`, which is not defined in this environment. The rest of the app uses `supabaseFunctionsUrl` from `src/lib/supabaseConfig.ts`, which has hardcoded fallbacks and works.
 
-The shared `manage-users` edge function only accepts `acsl_agent`, `acsl_agent_manager`, and `super_admin` roles, so submitting `partner_agent` fails:
+A secondary issue: `manage-agents` creates the auth user but typically tags `profiles.role` as `agent` (its native role), not `partner_agent`. After creation we must explicitly set both `role = 'partner_agent'` and `organization_id = <selected partner>` so the new user appears correctly in the Agents Profiles view and is bound 1:1 to the partner.
 
-> `validation: Role must be 'acsl_agent', 'acsl_agent_manager', or 'super_admin'`
+## Changes
 
-Partner Agents are created through a different backend (`manage-agents`), which scopes the new user to a partner organization. The form needs to route Partner Agent submissions to that endpoint and pass the chosen `organization_id`.
+1. `src/app/services/adminAgentService.jsx`
+   - Replace `const API_BASE_URL = import.meta.env.VITE_SUPABASE_URL;` and `API_FUNCTIONS_URL` derivation with `import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";` and use that everywhere `${API_FUNCTIONS_URL}` is referenced. This restores a valid URL and matches the rest of the codebase.
 
-## Changes (all in `src/app/settings/user-management/UserManagementContent.jsx`)
+2. `src/app/settings/user-management/UserManagementContent.jsx` — `handleCreateUser`, partner_agent branch
+   - After `adminAgentService.createAgent(...)` succeeds, update the new profile row in a single statement that sets BOTH `role: "partner_agent"` AND `organization_id: partnerId` (instead of only `organization_id`). Keep it best-effort with proper error surfacing if it fails (currently swallowed in `try{}catch{}` — convert to surface real errors via toast so future failures aren't silent).
+   - Validate `partnerId` exists before the call (already enforced by `validateForm`, but add a defensive guard).
 
-### 1. Partner selection UI for Partner Agent
-- Reuse the existing single-select partner list (radio-style, no checkboxes) that already exists for `role === "partner"`.
-- Extend the "single selection" branch to also cover `role === "partner_agent"`.
-- Show a clear helper line: "Select the Partner this agent belongs to." Required field.
-- Update the selection counter wording for `partner_agent` ("1 partner selected").
+3. `src/app/settings/user-management/UserManagementContent.jsx` — `handleUpdateUser`, partner_agent branch
+   - No URL change needed (uses `supabase` client directly). Confirm it already sets `role` and `organization_id`. Leave as-is.
 
-### 2. Form validation
-- In `validateForm()`, when `role === "partner_agent"`, require `selectedPartnerIds.size === 1`. Block submit with an inline toast if missing.
+## Verification
 
-### 3. Create flow — route Partner Agent to `manage-agents`
-In `handleCreateUser`, branch on role:
-- `partner_agent` → POST `${supabaseFunctionsUrl}/manage-agents` with:
-  ```
-  { full_name, email, phone, password | auto_generate_password, organization_id: <selected partner id> }
-  ```
-  Use the single id from `selectedPartnerIds`. Skip the `setAgentStates` / `setAgentOrganizations` follow-ups (the agent is owned by the org directly on the profile row).
-- Every other role → existing `manage-users` flow, unchanged.
-
-Surface generated password the same way as today.
-
-### 4. Edit flow — keep the link to one partner
-In `openEditView` for a `partner_agent`, hydrate `selectedPartnerIds` from the user's `profile.organization_id` (single value) so the form pre-fills the current partner.
-
-In `handleUpdateUser`, when role is `partner_agent`:
-- PUT to `manage-agents/{id}` (or `manage-users/{id}` if it tolerates this role — to be confirmed at implementation; fall back to `manage-agents/{id}`) with `full_name`, `phone`, and `organization_id` from the single selected partner.
-- Also update `profiles.organization_id` directly as the existing fallback pattern does for `role`, so the change is visible immediately.
-- Do **not** write to `super_admin_agent_organizations` for partner agents (that table is for ACSL agents).
-
-### 5. Cleanup of stale assignment writes
-Remove `partner_agent` from the `shouldHavePartners` write path in `handleUpdateUser` (line 741) so editing a Partner Agent does not insert rows into `super_admin_agent_organizations`.
-
-### 6. Role-change safety
-If a user is edited from another role to `partner_agent`, require a partner selection before submit and only call the `manage-agents` update. If edited away from `partner_agent`, clear `organization_id` via the profile fallback so they are no longer tied to that partner.
-
-## Acceptance checks
-
-- Creating a Partner Agent with one selected partner returns success and the user appears in User Management with the Partner Agent badge and the correct partner.
-- Submitting without a partner selected is blocked with a clear message.
-- Editing a Partner Agent shows their current partner pre-selected; changing it persists and is reflected on next load.
-- No 400 "Role must be …" error during create or update.
-- ACSL agent / ACSL manager / Partner / Super Admin creation paths are unchanged.
-
-## Out of scope
-
-- Server-side changes to `manage-users` or `manage-agents` edge functions.
-- Allowing more than one partner per Partner Agent.
-- Changes to the Agents Profile view.
+- Create a new Partner Agent from the form → toast shows success; user appears in Users list with role "Partner Agent" and the chosen partner.
+- Open the new user in Edit → form re-hydrates with the same single partner selected.
+- Agents Profiles view lists the new user under the correct partner.
+- No more `undefined/functions/v1/...` requests in the network panel.
