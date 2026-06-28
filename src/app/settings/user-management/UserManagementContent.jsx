@@ -351,6 +351,7 @@ const UserManagementPage = () => {
     if (!userForm.full_name.trim()) errors.full_name = "Full name is required";
     if (!userForm.email.trim()) errors.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email)) errors.email = "Invalid email format";
+    if (!userForm.role) errors.role = "User Group is required";
     if (!userForm.auto_generate_password && !userForm.password) errors.password = "Password is required";
     else if (!userForm.auto_generate_password && userForm.password.length < 8) errors.password = "Password must be at least 8 characters";
     setFormErrors(errors);
