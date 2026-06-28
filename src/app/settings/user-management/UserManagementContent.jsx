@@ -657,9 +657,8 @@ const UserManagementPage = () => {
     setActionLoading("create");
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const isPartnerAgent = userForm.role === "partner_agent";
-      const isAgentUser = userForm.role === "agent_user";
-      const needsOrgBinding = isPartnerAgent || isAgentUser;
+      const targetRole = getStoredAgentRole(userForm.role);
+      const needsOrgBinding = isOrganizationBoundAgentRole(userForm.role);
       const partnerId = needsOrgBinding ? (Array.from(selectedPartnerIds)[0] || null) : null;
       if (needsOrgBinding && !partnerId) throw new Error("A partner must be selected for this agent");
 
@@ -689,7 +688,6 @@ const UserManagementPage = () => {
       let generatedPassword;
 
       if (needsOrgBinding) {
-        const targetRole = isAgentUser ? "agent_user" : "partner_agent";
         // First try sending the role + organization_id directly.
         let attempt = await postUser(targetRole, { organization_id: partnerId });
 
@@ -725,7 +723,7 @@ const UserManagementPage = () => {
             },
           );
           const putResult = await putRes.json().catch(() => ({}));
-          if (!putRes.ok) throw new Error(putResult?.error || `Created user but failed to assign ${targetRole === "agent_user" ? "Agent" : "Partner Agent"} role`);
+          if (!putRes.ok) throw new Error(putResult?.error || `Created user but failed to assign ${targetRole === "agent" ? "Agent" : "Partner Agent"} role`);
         } else {
           result = attempt.result;
           newUserId = result.user?.id || result.data?.id || result.data?.user?.id || result.id || null;
