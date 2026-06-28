@@ -655,8 +655,10 @@ const UserManagementPage = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const isPartnerAgent = userForm.role === "partner_agent";
-      const partnerId = isPartnerAgent ? (Array.from(selectedPartnerIds)[0] || null) : null;
-      if (isPartnerAgent && !partnerId) throw new Error("A partner must be selected for a Partner Agent");
+      const isAgentUser = userForm.role === "agent_user";
+      const needsOrgBinding = isPartnerAgent || isAgentUser;
+      const partnerId = needsOrgBinding ? (Array.from(selectedPartnerIds)[0] || null) : null;
+      if (needsOrgBinding && !partnerId) throw new Error("A partner must be selected for this agent");
 
       const basePayload = {
         full_name: userForm.full_name.trim(),
@@ -683,9 +685,10 @@ const UserManagementPage = () => {
       let newUserId;
       let generatedPassword;
 
-      if (isPartnerAgent) {
-        // First try sending partner_agent + organization_id directly.
-        let attempt = await postUser("partner_agent", { organization_id: partnerId });
+      if (needsOrgBinding) {
+        const targetRole = isAgentUser ? "agent_user" : "partner_agent";
+        // First try sending the role + organization_id directly.
+        let attempt = await postUser(targetRole, { organization_id: partnerId });
 
         // If the edge function rejects the role, create as acsl_agent then promote via PUT.
         if (!attempt.ok) {
@@ -713,13 +716,13 @@ const UserManagementPage = () => {
               body: JSON.stringify({
                 full_name: userForm.full_name.trim(),
                 phone: userForm.phone.trim() || null,
-                role: "partner_agent",
+                role: targetRole,
                 organization_id: partnerId,
               }),
             },
           );
           const putResult = await putRes.json().catch(() => ({}));
-          if (!putRes.ok) throw new Error(putResult?.error || "Created user but failed to assign Partner Agent role");
+          if (!putRes.ok) throw new Error(putResult?.error || `Created user but failed to assign ${targetRole === "agent_user" ? "Agent" : "Partner Agent"} role`);
         } else {
           result = attempt.result;
           newUserId = result.user?.id || result.data?.id || result.data?.user?.id || result.id || null;
