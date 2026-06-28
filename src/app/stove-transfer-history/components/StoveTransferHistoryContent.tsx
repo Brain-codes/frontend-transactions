@@ -460,7 +460,7 @@ export default function StoveTransferHistoryContent() {
                   <TableBody className={loading ? "opacity-40" : ""}>
                     {records.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-10">
+                        <TableCell colSpan={8} className="text-center py-10">
                           <ArrowLeftRight className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                           <p className="text-gray-500 font-medium text-sm">No transfer records found</p>
                           <p className="text-gray-400 text-xs">Try adjusting your search</p>
