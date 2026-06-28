@@ -1,72 +1,32 @@
-## Goal
-In the **Create New User** form, hide the "Assign Partners" section by default. When **ACSL Agent Manager** is selected as the User Group, show a streamlined two-step assignment: pick states (with "All states" shortcut), then pick partners in those states (auto-checked, with search + select-all/clear-all). Keep existing partner-only picker for ACSL Agent / Partner Agent unchanged.
+## Problem
+On `/agents/profiles`, a newly created **ACSL Agent Manager** shows **0** in both **States Assigned** and **Partners Assigned** columns, even though clicking the badges opens modals that correctly list the assigned states and partners.
 
-## Scope
-Single file: `src/app/settings/user-management/UserManagementContent.jsx`. No backend changes — uses existing `superAdminAgentService.setAgentStates()` and `setAgentOrganizations()` already wired in.
+Root cause: the table reads `assigned_states_count` and `assigned_organizations_count` from the `manage-users` edge function response. That endpoint does not return accurate counts for `acsl_agent_manager` users (it currently returns 0 for them). The modals work because they call separate, working endpoints (`getAgentStates`, `getAgentOrganizations`) that read the actual assignment tables.
 
-## UX design
+## Fix (frontend-only, no backend changes)
 
-```text
-User Group: [ACSL Agent Manager ▼]
+Single file: `src/app/agents/agents-profiles/AgentsProfilesContent.jsx`.
 
-┌─ Assign to States ────────────────────────────────────┐
-│  [ ✓ All States ]   3 of 37 selected                  │
-│  ┌──────────────────────────────────────────────────┐ │
-│  │ [Abia] [✓ Lagos] [Kano] [✓ FCT] [Ogun] [✓ Rivers]│ │ ← pill toggles, wraps
-│  │ [Oyo] [Kaduna] [Enugu] ...                       │ │
-│  └──────────────────────────────────────────────────┘ │
-└───────────────────────────────────────────────────────┘
+After `loadAgents()` finishes, hydrate the counts for every agent whose role is `acsl_agent` or `acsl_agent_manager` by calling the same two endpoints the modals already use:
 
-┌─ Assign Partners in Selected States ─ 12 selected ────┐
-│  🔍 [Search by name or branch...]   [Select all] [Clear] │
-│  ┌──────────────────────────────────────────────────┐ │
-│  │ ☑ Acme Stoves — Ikeja Branch          · Lagos    │ │
-│  │ ☑ Bright Energy — Wuse Branch          · FCT      │ │
-│  │ ☐ CleanCook Ltd — Lekki Branch         · Lagos    │ │
-│  │ ... (scrollable, ~260px max-height)              │ │
-│  └──────────────────────────────────────────────────┘ │
-└───────────────────────────────────────────────────────┘
-```
+- `superAdminAgentService.getAgentStates(agent.id)` → length sets `assigned_states_count`
+- `superAdminAgentService.getAgentOrganizations(agent.id)` → length sets `assigned_organizations_count`
 
-Compact, full-width (uses `md:col-span-2` of the existing form grid). All partners in the chosen states start **checked**; user can uncheck individually, clear all, or re-select all. Search filters the visible list.
+### Implementation details
 
-## Implementation
+1. Extract a small helper `hydrateAgentCounts(agentsList)`:
+   - Filter to agents with role in `["acsl_agent", "acsl_agent_manager"]`.
+   - Run all calls in parallel with `Promise.allSettled`, batched (e.g. 8 at a time) to avoid hammering the endpoint when the list is large.
+   - For each settled pair, update that row's counts via a functional `setAgents` so the UI refreshes incrementally as results come in.
+   - Failures per agent are swallowed silently (the existing 0 stays).
 
-### State (new)
-- `selectedStates: Set<string>` — chosen states.
-- Keep existing `allOrgs`, `partnerSearch`, `selectedPartnerIds`.
-- Derived `partnersInSelectedStates`: `allOrgs.filter(o => selectedStates.has(o.state))`.
-- Derived `visiblePartners`: above filtered by `partnerSearch` (name or branch, case-insensitive).
+2. Call `hydrateAgentCounts(rows)` at the end of `loadAgents()`, after `setAgents(rows)`.
 
-### Role gating
-- New helper `needsStateAndPartnerAssignment(role) => role === "acsl_agent_manager"`.
-- Existing `needsPartnerAssignment` stays for `acsl_agent` / `partner_agent`.
-- In `handleRoleChange`: when role becomes `acsl_agent_manager`, also load `allOrgs` (reuse existing lazy-load) and reset `selectedStates` + `selectedPartnerIds`.
+3. After `AssignOrganizationsModal` reports success (existing `onSuccess` reload), counts will refresh through the same path — no extra wiring needed.
 
-### States list
-- Hard-coded constant `NIGERIAN_STATES` (36 states + FCT) at top of file. Each rendered as a clickable pill (selected = green `#4a5d0f` bg, unselected = light border).
-- "All States" pill toggles the whole set. Counter shows `N of 37 selected`.
-
-### Auto-check partners on state change
-- `useEffect` watching `selectedStates` + `allOrgs`: when states change, recompute `partnersInSelectedStates` and set `selectedPartnerIds` to **all** of their IDs (default-checked). Removing a state drops its partners from the selection.
-
-### Partner section controls
-- Search input (small, no shadow, matches existing form aesthetic).
-- "Select all" / "Clear" small text buttons act on currently-visible (post-search) partners.
-- Each row: checkbox · partner name (bold) · branch (muted) · state badge (muted right-aligned).
-- Empty state: "Select one or more states to see partners."
-
-### Submission (`handleCreateUser`)
-- After user is created, if role is `acsl_agent_manager`:
-  - Call `superAdminAgentService.setAgentStates(newUserId, Array.from(selectedStates))`.
-  - Call `superAdminAgentService.setAgentOrganizations(newUserId, Array.from(selectedPartnerIds))`.
-- Both wrapped in try/catch — non-fatal (user already created), toast a soft warning if either fails.
-
-### Cleanup
-- `resetForm`: also clear `selectedStates`.
-- Existing Assign Partners block for `acsl_agent` / `partner_agent` left unchanged.
+4. No change to badge click handlers, modal contents, or any other column.
 
 ## Out of scope
-- Edit User modal (request is about Create New User).
-- Backend / Edge function changes.
-- Other roles' assignment flow.
+- Backend / edge function changes (`manage-users` count logic).
+- Other roles (`partner`, `partner_agent`, `super_admin`) — they don't use state/partner assignments in this view.
+- The Agents Performance Report view.

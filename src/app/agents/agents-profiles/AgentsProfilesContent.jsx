@@ -144,10 +144,48 @@ const AgentsProfilesContent = () => {
         assigned_states_count: u.assigned_states_count ?? 0,
       }));
       setAgents(rows);
+      hydrateAgentCounts(rows);
     } catch (err) {
       toast({ variant: "error", title: "Failed to load agents", description: err.message });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Hydrate States/Partners counts client-side using the same endpoints the
+  // badge modals use, so newly assigned users (esp. acsl_agent_manager) reflect
+  // accurate counts immediately instead of relying on the manage-users payload.
+  const hydrateAgentCounts = async (agentsList) => {
+    const targets = agentsList.filter(
+      (a) => a.role === "acsl_agent" || a.role === "acsl_agent_manager"
+    );
+    const BATCH = 8;
+    for (let i = 0; i < targets.length; i += BATCH) {
+      const batch = targets.slice(i, i + BATCH);
+      await Promise.allSettled(
+        batch.map(async (a) => {
+          const [statesRes, orgsRes] = await Promise.allSettled([
+            superAdminAgentService.getAgentStates(a.id),
+            superAdminAgentService.getAgentOrganizations(a.id),
+          ]);
+          const updates = {};
+          if (statesRes.status === "fulfilled") {
+            const r = statesRes.value;
+            const list = r?.data || r?.states || r || [];
+            if (Array.isArray(list)) updates.assigned_states_count = list.length;
+          }
+          if (orgsRes.status === "fulfilled") {
+            const r = orgsRes.value;
+            const list = r?.data || r?.organizations || r || [];
+            if (Array.isArray(list)) updates.assigned_organizations_count = list.length;
+          }
+          if (Object.keys(updates).length > 0) {
+            setAgents((prev) =>
+              prev.map((x) => (x.id === a.id ? { ...x, ...updates } : x))
+            );
+          }
+        })
+      );
     }
   };
 
