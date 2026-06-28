@@ -927,11 +927,10 @@ const UserManagementPage = () => {
                 return (
                   <>
                     {/* States block */}
-                    <div className="space-y-3 border border-gray-200 rounded-lg p-4 bg-white">
+                    <div className="space-y-3">
                       <div className="flex items-center justify-between gap-3 flex-wrap">
                         <Label className="text-sm font-semibold text-[#4a5d0f] flex items-center gap-1.5">
-                          <Building2 className="h-4 w-4 text-[#4a5d0f]" />
-                          Assign to States
+                          Assign User to State
                           <span className="text-xs text-gray-500 font-normal">
                             ({selectedStates.size} of {NIGERIAN_STATES.length} selected)
                           </span>
