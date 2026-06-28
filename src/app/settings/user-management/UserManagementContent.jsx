@@ -341,6 +341,83 @@ const UserManagementPage = () => {
     return result;
   };
 
+  const readUserProfile = async (userId) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, role, organization_id")
+      .eq("id", userId)
+      .maybeSingle();
+    return data || null;
+  };
+
+  const profileMatches = (profile, body) => {
+    if (!profile) return false;
+    const expectedRole = getStoredAgentRole(body.role);
+    const roleOk = !expectedRole || profile.role === expectedRole;
+    const orgOk = body.organization_id === undefined || profile.organization_id === body.organization_id;
+    return roleOk && orgOk;
+  };
+
+  const enforceFinalUserProfile = async (userId, body, accessToken) => {
+    let lastError = null;
+
+    // 1) Preferred path: server-side edge function bypasses RLS.
+    try {
+      await updateUserViaManageUsers(userId, body, accessToken);
+    } catch (err) {
+      lastError = err;
+    }
+
+    let profile = await readUserProfile(userId);
+    if (profileMatches(profile, body)) return profile;
+
+    // 2) Fallback path: try direct profile update for projects whose RLS allows
+    // super admin profile maintenance. This fixes accepted-but-defaulted roles.
+    try {
+      const updateBody = {
+        full_name: body.full_name,
+        phone: body.phone,
+        role: getStoredAgentRole(body.role),
+      };
+      if (body.organization_id !== undefined) updateBody.organization_id = body.organization_id;
+      await supabase.from("profiles").update(updateBody).eq("id", userId);
+    } catch (err) {
+      lastError = err;
+    }
+
+    profile = await readUserProfile(userId);
+    if (profileMatches(profile, body)) return profile;
+
+    // 3) Agent-specific legacy endpoint fallback.
+    if (getStoredAgentRole(body.role) === "agent") {
+      try {
+        const res = await fetch(`${supabaseFunctionsUrl}/manage-agents/${userId}`, {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            full_name: body.full_name,
+            phone: body.phone,
+            role: "agent",
+            organization_id: body.organization_id,
+          }),
+        });
+        if (!res.ok) {
+          const result = await res.json().catch(() => ({}));
+          throw new Error(result?.error || result?.message || "Failed to update Agent role");
+        }
+      } catch (err) {
+        lastError = err;
+      }
+      profile = await readUserProfile(userId);
+      if (profileMatches(profile, body)) return profile;
+    }
+
+    throw new Error(
+      lastError?.message ||
+      `User was created, but the final ${getRoleLabel(body.role)} role could not be saved. Please check backend role restrictions.`
+    );
+  };
+
   const createAgentViaManageAgents = async (partnerId, accessToken) => {
     const password = userForm.auto_generate_password ? generateTemporaryPassword() : userForm.password;
     const res = await fetch(`${supabaseFunctionsUrl}/manage-agents`, {
@@ -360,7 +437,7 @@ const UserManagementPage = () => {
     }
     const newUserId = extractCreatedUserId(result);
     if (!newUserId) throw new Error("Agent created but ID could not be resolved");
-    await updateUserViaManageUsers(newUserId, {
+    await enforceFinalUserProfile(newUserId, {
       full_name: userForm.full_name.trim(),
       phone: userForm.phone.trim() || null,
       role: "agent",
