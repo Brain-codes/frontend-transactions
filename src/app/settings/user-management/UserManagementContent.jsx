@@ -1137,8 +1137,8 @@ const UserManagementPage = () => {
                 {/* User Group */}
                 <div className="space-y-1.5">
                   <Label htmlFor="role" className="text-sm font-medium text-gray-700">User Group <span className="text-red-500">*</span></Label>
-                  <Select value={userForm.role} onValueChange={handleRoleChange} disabled={formMode === "edit"}>
-                    <SelectTrigger id="role" className={`shadow-none border-gray-300 ${formMode === "edit" ? "bg-gray-50 text-gray-500" : ""}`}>
+                  <Select value={userForm.role} onValueChange={handleRoleChange}>
+                    <SelectTrigger id="role" className="shadow-none border-gray-300">
                       <SelectValue placeholder="Select user group" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1150,9 +1150,16 @@ const UserManagementPage = () => {
                     </SelectContent>
                   </Select>
                   {formErrors.role && <p className="text-xs text-red-600">{formErrors.role}</p>}
-                  {formMode === "edit" && <p className="text-xs text-gray-400">Role cannot be changed here</p>}
+                  {formMode === "edit" && <p className="text-xs text-gray-400">Changing the user group updates the assignment fields below.</p>}
                 </div>
               </div>
+
+              {formMode === "edit" && editAssignmentsLoading && (
+                <div className="flex items-center gap-2 rounded-md border border-[#eef3c4] bg-[#f9fbed] px-3 py-2 text-sm text-[#4a5d0f]">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading saved states, managers, and partners...
+                </div>
+              )}
 
               {/* ACSL Agent Manager — assign States, then Partners in those states */}
               {needsStateAndPartnerAssignment(userForm.role) && (() => {
