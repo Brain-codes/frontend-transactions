@@ -913,7 +913,7 @@ const UserManagementPage = () => {
                                     <DropdownMenuSeparator />
                                   </>
                                 )}
-                                <DropdownMenuItem onClick={() => openEditModal(u)}>
+                                <DropdownMenuItem onClick={() => openEditView(u)}>
                                   <Edit className="h-4 w-4 mr-2" />
                                   Edit
                                 </DropdownMenuItem>
