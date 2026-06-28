@@ -328,7 +328,7 @@ const UserManagementPage = () => {
   // - partner_agent: flat partner-only picker (legacy)
   // - acsl_agent: cascade — States → Managers in those states → Partners of those managers
   // - acsl_agent_manager: States → Partners in those states (auto-checked)
-  const needsPartnerAssignment = (role) => role === "partner_agent";
+  const needsPartnerAssignment = (role) => role === "partner_agent" || role === "partner";
   const needsAcslAgentCascade = (role) => role === "acsl_agent";
   const needsStateAndPartnerAssignment = (role) => role === "acsl_agent_manager";
 
@@ -738,7 +738,7 @@ const UserManagementPage = () => {
       // old manager/partner relationships do not leak into profile views later.
       const role = userForm.role;
       const shouldHaveStates = role === "acsl_agent_manager" || role === "acsl_agent";
-      const shouldHavePartners = role === "acsl_agent_manager" || role === "acsl_agent" || role === "partner_agent";
+      const shouldHavePartners = role === "acsl_agent_manager" || role === "acsl_agent" || role === "partner_agent" || role === "partner";
       try {
         await superAdminAgentService.setAgentStates(selectedUser.id, shouldHaveStates ? Array.from(selectedStates) : []);
       } catch { /* non-fatal */ }
@@ -1704,7 +1704,7 @@ const UserManagementPage = () => {
                 );
               })()}
 
-              {/* Partner Assignment — shown for Partner Agent only */}
+              {/* Partner Assignment — shown for Partner and Partner Agent */}
               {needsPartnerAssignment(userForm.role) && (
                 <div className="space-y-2 border border-[#eef3c4] rounded-md p-3 bg-[#f9fbed]">
                   <Label className="text-sm font-semibold text-[#4a5d0f]">
@@ -1735,24 +1735,32 @@ const UserManagementPage = () => {
                         )
                         .map((org) => {
                           const checked = selectedPartnerIds.has(org.id);
+                          const isPartnerRole = userForm.role === "partner";
                           return (
                             <label
                               key={org.id}
                               className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-xs transition-colors ${checked ? "bg-[#eef3c4] text-[#4a5d0f]" : "hover:bg-white text-gray-700"}`}
+                              onClick={() => {
+                                if (isPartnerRole) {
+                                  setSelectedPartnerIds(new Set([org.id]));
+                                }
+                              }}
                             >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => {
-                                  setSelectedPartnerIds((prev) => {
-                                    const next = new Set(prev);
-                                    if (next.has(org.id)) next.delete(org.id);
-                                    else next.add(org.id);
-                                    return next;
-                                  });
-                                }}
-                                className="rounded accent-[#4a5d0f]"
-                              />
+                              {!isPartnerRole && (
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => {
+                                    setSelectedPartnerIds((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(org.id)) next.delete(org.id);
+                                      else next.add(org.id);
+                                      return next;
+                                    });
+                                  }}
+                                  className="rounded accent-[#4a5d0f]"
+                                />
+                              )}
                               <span className="flex-1 truncate font-medium">{org.partner_name}</span>
                               {org.state && <span className="text-gray-400 shrink-0">{org.state}</span>}
                             </label>
@@ -1766,7 +1774,7 @@ const UserManagementPage = () => {
 
                   {selectedPartnerIds.size > 0 && (
                     <p className="text-xs text-[#4a5d0f] font-medium">
-                      {selectedPartnerIds.size} partner{selectedPartnerIds.size > 1 ? "s" : ""} selected
+                      {userForm.role === "partner" ? "1 partner selected" : `${selectedPartnerIds.size} partner${selectedPartnerIds.size > 1 ? "s" : ""} selected`}
                     </p>
                   )}
                 </div>
