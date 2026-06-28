@@ -426,7 +426,7 @@ export default function StoveTransferHistoryContent() {
                           className="flex items-center gap-1 hover:opacity-80"
                           onClick={() => setSortOrder((s) => s === "desc" ? "asc" : "desc")}
                         >
-                          Transfer Date
+                          Transaction ID
                           {sortOrder === "desc" ? (
                             <ArrowDown className="h-3.5 w-3.5" />
                           ) : (
@@ -435,10 +435,13 @@ export default function StoveTransferHistoryContent() {
                         </button>
                       </TableHead>
                       <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
-                        Transaction ID
+                        Sales Date
                       </TableHead>
                       <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                         Partner Name
+                      </TableHead>
+                      <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">
+                        Stoves
                       </TableHead>
                       <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                         State
@@ -448,12 +451,6 @@ export default function StoveTransferHistoryContent() {
                       </TableHead>
                       <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                         Sales Factory
-                      </TableHead>
-                      <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">
-                        Stoves
-                      </TableHead>
-                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
-                        Sales Date
                       </TableHead>
                       <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">
                         Action
