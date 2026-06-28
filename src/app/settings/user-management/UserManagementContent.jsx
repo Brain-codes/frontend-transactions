@@ -175,6 +175,7 @@ const UserManagementPage = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedUserForOrgs, setSelectedUserForOrgs] = useState(null);
   const [actionLoading, setActionLoading] = useState(null); // stores userId or 'create'/'delete' etc.
+  const [editAssignmentsLoading, setEditAssignmentsLoading] = useState(false);
   const hydratingRef = useRef(false);
 
   // Form state
@@ -318,6 +319,7 @@ const UserManagementPage = () => {
     setSelectedStates(new Set());
     setSelectedManagerIds(new Set());
     setManagerSearch("");
+    setEditAssignmentsLoading(false);
     setFormMode("create");
     setSelectedUser(null);
   };
@@ -329,6 +331,120 @@ const UserManagementPage = () => {
   const needsPartnerAssignment = (role) => role === "partner_agent";
   const needsAcslAgentCascade = (role) => role === "acsl_agent";
   const needsStateAndPartnerAssignment = (role) => role === "acsl_agent_manager";
+
+  const normalizeStateNames = (list) => Array.isArray(list)
+    ? list.map((s) => (typeof s === "string" ? s : s?.state)).filter(Boolean)
+    : [];
+
+  const normalizeOrgIds = (list) => Array.isArray(list)
+    ? list.map((o) => o?.id || o?.organization_id).filter(Boolean)
+    : [];
+
+  const fetchDirectAgentAssignmentRows = async (agentId) => {
+    const columns = ["agent_id", "super_admin_agent_id", "user_id"];
+    for (const column of columns) {
+      const { data, error } = await supabase
+        .from("super_admin_agent_organizations")
+        .select("organization_id, assigned_by")
+        .eq(column, agentId);
+      if (!error) return Array.isArray(data) ? data : [];
+    }
+    return null;
+  };
+
+  const persistAgentSupervisorMarker = async (agentId, partnerIds, managerIds) => {
+    if (!agentId || partnerIds.length === 0 || managerIds.length === 0) return;
+    try {
+      const selectedManagers = acslManagers.filter((m) => managerIds.includes(m.id));
+      const grouped = new Map();
+
+      partnerIds.forEach((partnerId) => {
+        const manager = selectedManagers.find((m) => m.orgIds.has(partnerId)) || selectedManagers[0];
+        if (!manager) return;
+        if (!grouped.has(manager.id)) grouped.set(manager.id, []);
+        grouped.get(manager.id).push(partnerId);
+      });
+
+      await Promise.all(
+        Array.from(grouped.entries()).map(([managerId, ids]) =>
+          (async () => {
+            const columns = ["agent_id", "super_admin_agent_id", "user_id"];
+            for (const column of columns) {
+              const { error } = await supabase
+                .from("super_admin_agent_organizations")
+                .update({ assigned_by: managerId })
+                .eq(column, agentId)
+                .in("organization_id", ids);
+              if (!error) return;
+            }
+          })()
+        )
+      );
+    } catch {
+      // Non-fatal. Some deployments keep assigned_by write-protected; the UI
+      // still falls back to exact partner-coverage inference.
+    }
+  };
+
+  const inferManagerIdsForAgent = (orgIds, stateNames, managers, assignmentRows = []) => {
+    const orgIdSet = new Set(orgIds);
+    const stateSet = new Set(stateNames);
+    if (orgIdSet.size === 0 || managers.length === 0) return [];
+
+    const assignedByIds = new Set(
+      assignmentRows
+        .map((row) => row?.assigned_by)
+        .filter((id) => managers.some((m) => m.id === id))
+    );
+    if (assignedByIds.size > 0) return Array.from(assignedByIds);
+
+    const coversAllAgentPartners = (manager) => {
+      if (manager.orgIds.size === 0) return false;
+      for (const id of orgIdSet) if (!manager.orgIds.has(id)) return false;
+      return true;
+    };
+
+    const candidates = managers
+      .filter((manager) => {
+        if (!coversAllAgentPartners(manager)) return false;
+        if (stateSet.size === 0) return true;
+        return Array.from(stateSet).some((state) => manager.states.has(state));
+      })
+      .map((manager) => ({
+        ...manager,
+        extraPartners: Math.max(0, manager.orgIds.size - orgIdSet.size),
+        stateOverlap: Array.from(stateSet).filter((state) => manager.states.has(state)).length,
+      }))
+      .sort((a, b) => a.extraPartners - b.extraPartners || b.stateOverlap - a.stateOverlap || a.full_name.localeCompare(b.full_name));
+
+    if (candidates.length > 0) return [candidates[0].id];
+
+    const overlapping = managers
+      .filter((manager) => Array.from(orgIdSet).some((id) => manager.orgIds.has(id)))
+      .map((manager) => ({
+        ...manager,
+        overlap: Array.from(orgIdSet).filter((id) => manager.orgIds.has(id)).length,
+        extraPartners: Math.max(0, manager.orgIds.size - orgIdSet.size),
+      }))
+      .sort((a, b) => b.overlap - a.overlap || a.extraPartners - b.extraPartners || a.full_name.localeCompare(b.full_name));
+
+    return overlapping.length > 0 ? [overlapping[0].id] : [];
+  };
+
+  const ensureOrganizationsLoaded = async () => {
+    if (allOrgs.length > 0) return allOrgs;
+    setOrgsLoading(true);
+    try {
+      const result = await organizationsService.getAllOrganizations();
+      const orgs = result.data || [];
+      setAllOrgs(orgs);
+      return orgs;
+    } catch {
+      return [];
+    } finally {
+      setOrgsLoading(false);
+    }
+  };
 
   // Load all ACSL Agent Managers + their assigned states & orgs (for cascade)
   const loadAcslManagers = async () => {
@@ -370,8 +486,10 @@ const UserManagementPage = () => {
         })
       );
       setAcslManagers(enriched);
+      return enriched;
     } catch {
       setAcslManagers([]);
+      return [];
     } finally {
       setManagersLoading(false);
     }
@@ -388,19 +506,11 @@ const UserManagementPage = () => {
       needsPartnerAssignment(role) ||
       needsStateAndPartnerAssignment(role) ||
       needsAcslAgentCascade(role);
-    if (shouldLoadOrgs && allOrgs.length === 0) {
-      setOrgsLoading(true);
-      try {
-        const result = await organizationsService.getAllOrganizations();
-        setAllOrgs(result.data || []);
-      } catch {
-        // silently fail — user can still proceed without partner assignment
-      } finally {
-        setOrgsLoading(false);
-      }
+    if (shouldLoadOrgs) {
+      await ensureOrganizationsLoaded();
     }
     if (needsAcslAgentCascade(role) && acslManagers.length === 0) {
-      loadAcslManagers();
+      await loadAcslManagers();
     }
   };
 
@@ -432,8 +542,10 @@ const UserManagementPage = () => {
         .filter((o) => allowedOrgIds.has(o.id) && (selectedStates.size === 0 || (o.state && selectedStates.has(o.state))))
         .map((o) => o.id)
     );
-    // Auto-check newly-available, keep prior selections that are still valid
-    setSelectedPartnerIds(inStateOrgIds);
+    // Keep saved/manual selections that are still valid. Do not auto-add every
+    // partner under the selected manager(s), otherwise editing an ACSL Agent
+    // expands their assignment beyond the partners explicitly selected.
+    setSelectedPartnerIds((prev) => new Set(Array.from(prev).filter((id) => inStateOrgIds.has(id))));
   }, [selectedManagerIds, selectedStates, acslManagers, allOrgs, userForm.role]);
 
 
@@ -454,6 +566,7 @@ const UserManagementPage = () => {
     // Reset everything first
     resetForm();
     hydratingRef.current = true;
+    setEditAssignmentsLoading(true);
     setSelectedUser(user);
     setFormMode("edit");
     setUserForm({
@@ -467,7 +580,9 @@ const UserManagementPage = () => {
     setFormErrors({});
     setShowCreateModal(true);
 
-    // Load supporting data based on role
+    // Load supporting data based on role. Start the slower lookups immediately,
+    // but hydrate saved states/partners first so the edit form does not sit
+    // blank below the User Group field while manager metadata is still loading.
     const role = user.role;
     const needsOrgs =
       needsPartnerAssignment(role) ||
@@ -475,22 +590,16 @@ const UserManagementPage = () => {
       needsAcslAgentCascade(role);
 
     try {
-      if (needsOrgs && allOrgs.length === 0) {
-        setOrgsLoading(true);
-        try {
-          const result = await organizationsService.getAllOrganizations();
-          setAllOrgs(result.data || []);
-        } catch { /* non-fatal */ }
-        finally { setOrgsLoading(false); }
-      }
-      if (needsAcslAgentCascade(role) && acslManagers.length === 0) {
-        await loadAcslManagers();
-      }
+      const orgsLoadPromise = needsOrgs ? ensureOrganizationsLoaded() : Promise.resolve(allOrgs);
+      const managersLoadPromise = needsAcslAgentCascade(role)
+        ? (acslManagers.length > 0 ? Promise.resolve(acslManagers) : loadAcslManagers())
+        : Promise.resolve(acslManagers);
 
       // Hydrate states & partners from existing assignments
-      const [statesRes, orgsRes] = await Promise.allSettled([
+      const [statesRes, orgsRes, assignmentRowsRes] = await Promise.allSettled([
         superAdminAgentService.getAgentStates(user.id),
         superAdminAgentService.getAgentOrganizations(user.id),
+        needsAcslAgentCascade(role) ? fetchDirectAgentAssignmentRows(user.id) : Promise.resolve([]),
       ]);
       const statesList = statesRes.status === "fulfilled"
         ? (statesRes.value?.data || statesRes.value?.states || statesRes.value || [])
@@ -498,31 +607,29 @@ const UserManagementPage = () => {
       const orgsList = orgsRes.status === "fulfilled"
         ? (orgsRes.value?.data || orgsRes.value?.organizations || orgsRes.value || [])
         : [];
-      const stateNames = Array.isArray(statesList)
-        ? statesList.map((s) => (typeof s === "string" ? s : s?.state)).filter(Boolean)
+      const stateNames = normalizeStateNames(statesList);
+      const assignmentRows = assignmentRowsRes.status === "fulfilled" && Array.isArray(assignmentRowsRes.value)
+        ? assignmentRowsRes.value
         : [];
-      const orgIds = Array.isArray(orgsList)
-        ? orgsList.map((o) => o?.id || o?.organization_id).filter(Boolean)
-        : [];
+      const directOrgIds = normalizeOrgIds(assignmentRows);
+      const orgIds = directOrgIds.length > 0 ? directOrgIds : normalizeOrgIds(orgsList);
 
       setSelectedStates(new Set(stateNames));
-
-      // For acsl_agent: derive supervising managers from overlap of partner IDs
-      if (needsAcslAgentCascade(role)) {
-        const orgIdSet = new Set(orgIds);
-        // Use the latest managers list (loadAcslManagers updates state above).
-        // Read from a fresh snapshot via setAcslManagers callback hack.
-        let managersSnapshot = [];
-        setAcslManagers((curr) => { managersSnapshot = curr; return curr; });
-        const managerIds = managersSnapshot
-          .filter((m) => Array.from(m.orgIds).some((id) => orgIdSet.has(id)))
-          .map((m) => m.id);
-        setSelectedManagerIds(new Set(managerIds));
-      }
-
-      // Always set partners last so reconcile effects (now bypassed) don't overwrite
       setSelectedPartnerIds(new Set(orgIds));
+
+      // For acsl_agent: retain the original manager selection as tightly as
+      // possible. Prefer the assignment creator when available, otherwise use
+      // the single best manager that covers the agent's saved partners.
+      if (needsAcslAgentCascade(role)) {
+        const managersSnapshot = await managersLoadPromise;
+        const managerIds = inferManagerIdsForAgent(orgIds, stateNames, managersSnapshot, assignmentRows);
+        setSelectedManagerIds(new Set(managerIds));
+        await orgsLoadPromise;
+      } else {
+        await orgsLoadPromise;
+      }
     } finally {
+      setEditAssignmentsLoading(false);
       // Release the guard after React has flushed the above state updates
       setTimeout(() => { hydratingRef.current = false; }, 50);
     }
@@ -567,6 +674,9 @@ const UserManagementPage = () => {
       if (newUserId && selectedPartnerIds.size > 0) {
         try {
           await superAdminAgentService.setAgentOrganizations(newUserId, Array.from(selectedPartnerIds));
+          if (userForm.role === "acsl_agent") {
+            await persistAgentSupervisorMarker(newUserId, Array.from(selectedPartnerIds), Array.from(selectedManagerIds));
+          }
         } catch {
           // non-fatal — user was created, org assignment failed
         }
@@ -590,34 +700,54 @@ const UserManagementPage = () => {
 
   const handleUpdateUser = async (e) => {
     e.preventDefault();
-    if (!userForm.full_name.trim()) { setFormErrors({ full_name: "Full name is required" }); return; }
+    if (!validateForm()) return;
     if (!selectedUser) return;
     setActionLoading("create"); // reuse 'create' key so submit button spinner works in shared form
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
         `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
-        { method: "PUT", headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" }, body: JSON.stringify({ full_name: userForm.full_name.trim(), phone: userForm.phone.trim() || null }) },
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            full_name: userForm.full_name.trim(),
+            phone: userForm.phone.trim() || null,
+            role: userForm.role,
+          }),
+        },
       );
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to update user");
 
-      // Persist assignment updates (overwrites prior assignments)
+      // Ensure the changed User Group is reflected immediately in the app even
+      // if the edge function only updates the auth user metadata.
+      try {
+        await supabase
+          .from("profiles")
+          .update({
+            full_name: userForm.full_name.trim(),
+            phone: userForm.phone.trim() || null,
+            role: userForm.role,
+          })
+          .eq("id", selectedUser.id);
+      } catch { /* non-fatal */ }
+
+      // Persist assignment updates (overwrites prior assignments). If the user
+      // group changes to one without these assignments, clear stale links so
+      // old manager/partner relationships do not leak into profile views later.
       const role = userForm.role;
-      if (role === "acsl_agent_manager" || role === "acsl_agent") {
-        try {
-          await superAdminAgentService.setAgentStates(selectedUser.id, Array.from(selectedStates));
-        } catch { /* non-fatal */ }
-      }
-      if (
-        role === "acsl_agent_manager" ||
-        role === "acsl_agent" ||
-        role === "partner_agent"
-      ) {
-        try {
-          await superAdminAgentService.setAgentOrganizations(selectedUser.id, Array.from(selectedPartnerIds));
-        } catch { /* non-fatal */ }
-      }
+      const shouldHaveStates = role === "acsl_agent_manager" || role === "acsl_agent";
+      const shouldHavePartners = role === "acsl_agent_manager" || role === "acsl_agent" || role === "partner_agent";
+      try {
+        await superAdminAgentService.setAgentStates(selectedUser.id, shouldHaveStates ? Array.from(selectedStates) : []);
+      } catch { /* non-fatal */ }
+      try {
+        await superAdminAgentService.setAgentOrganizations(selectedUser.id, shouldHavePartners ? Array.from(selectedPartnerIds) : []);
+        if (role === "acsl_agent") {
+          await persistAgentSupervisorMarker(selectedUser.id, Array.from(selectedPartnerIds), Array.from(selectedManagerIds));
+        }
+      } catch { /* non-fatal */ }
 
       toast({ variant: "success", title: "User updated successfully" });
       setShowCreateModal(false);
@@ -1063,8 +1193,8 @@ const UserManagementPage = () => {
                 {/* User Group */}
                 <div className="space-y-1.5">
                   <Label htmlFor="role" className="text-sm font-medium text-gray-700">User Group <span className="text-red-500">*</span></Label>
-                  <Select value={userForm.role} onValueChange={handleRoleChange} disabled={formMode === "edit"}>
-                    <SelectTrigger id="role" className={`shadow-none border-gray-300 ${formMode === "edit" ? "bg-gray-50 text-gray-500" : ""}`}>
+                  <Select value={userForm.role} onValueChange={handleRoleChange}>
+                    <SelectTrigger id="role" className="shadow-none border-gray-300">
                       <SelectValue placeholder="Select user group" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1076,9 +1206,16 @@ const UserManagementPage = () => {
                     </SelectContent>
                   </Select>
                   {formErrors.role && <p className="text-xs text-red-600">{formErrors.role}</p>}
-                  {formMode === "edit" && <p className="text-xs text-gray-400">Role cannot be changed here</p>}
+                  {formMode === "edit" && <p className="text-xs text-gray-400">Changing the user group updates the assignment fields below.</p>}
                 </div>
               </div>
+
+              {formMode === "edit" && editAssignmentsLoading && (
+                <div className="flex items-center gap-2 rounded-md border border-[#eef3c4] bg-[#f9fbed] px-3 py-2 text-sm text-[#4a5d0f]">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading saved states, managers, and partners...
+                </div>
+              )}
 
               {/* ACSL Agent Manager — assign States, then Partners in those states */}
               {needsStateAndPartnerAssignment(userForm.role) && (() => {
