@@ -315,18 +315,77 @@ const UserManagementPage = () => {
     setPartnerSearch("");
     setSelectedPartnerIds(new Set());
     setSelectedStates(new Set());
+    setSelectedManagerIds(new Set());
+    setManagerSearch("");
   };
 
-  const needsPartnerAssignment = (role) => role === "acsl_agent" || role === "partner_agent";
+  // Role classifiers
+  // - partner_agent: flat partner-only picker (legacy)
+  // - acsl_agent: cascade — States → Managers in those states → Partners of those managers
+  // - acsl_agent_manager: States → Partners in those states (auto-checked)
+  const needsPartnerAssignment = (role) => role === "partner_agent";
+  const needsAcslAgentCascade = (role) => role === "acsl_agent";
   const needsStateAndPartnerAssignment = (role) => role === "acsl_agent_manager";
+
+  // Load all ACSL Agent Managers + their assigned states & orgs (for cascade)
+  const loadAcslManagers = async () => {
+    setManagersLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const qs = new URLSearchParams({ page: "1", limit: "500", role: "acsl_agent_manager" });
+      const res = await fetch(`${supabaseFunctionsUrl}/manage-users?${qs}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to load managers");
+      const base = (json.data || []).filter((u) => u.role === "acsl_agent_manager");
+      const enriched = await Promise.all(
+        base.map(async (u) => {
+          const [statesRes, orgsRes] = await Promise.allSettled([
+            superAdminAgentService.getAgentStates(u.id),
+            superAdminAgentService.getAgentOrganizations(u.id),
+          ]);
+          const statesList = statesRes.status === "fulfilled"
+            ? (statesRes.value?.data || statesRes.value?.states || statesRes.value || [])
+            : [];
+          const orgsList = orgsRes.status === "fulfilled"
+            ? (orgsRes.value?.data || orgsRes.value?.organizations || orgsRes.value || [])
+            : [];
+          const stateNames = Array.isArray(statesList)
+            ? statesList.map((s) => (typeof s === "string" ? s : s?.state)).filter(Boolean)
+            : [];
+          const orgIds = Array.isArray(orgsList)
+            ? orgsList.map((o) => o?.id || o?.organization_id).filter(Boolean)
+            : [];
+          return {
+            id: u.id,
+            full_name: u.full_name || u.email,
+            email: u.email,
+            states: new Set(stateNames),
+            orgIds: new Set(orgIds),
+          };
+        })
+      );
+      setAcslManagers(enriched);
+    } catch {
+      setAcslManagers([]);
+    } finally {
+      setManagersLoading(false);
+    }
+  };
 
   const handleRoleChange = async (role) => {
     setUserForm((prev) => ({ ...prev, role }));
     setSelectedPartnerIds(new Set());
     setSelectedStates(new Set());
+    setSelectedManagerIds(new Set());
     setPartnerSearch("");
-    const shouldLoad = needsPartnerAssignment(role) || needsStateAndPartnerAssignment(role);
-    if (shouldLoad && allOrgs.length === 0) {
+    setManagerSearch("");
+    const shouldLoadOrgs =
+      needsPartnerAssignment(role) ||
+      needsStateAndPartnerAssignment(role) ||
+      needsAcslAgentCascade(role);
+    if (shouldLoadOrgs && allOrgs.length === 0) {
       setOrgsLoading(true);
       try {
         const result = await organizationsService.getAllOrganizations();
@@ -336,6 +395,9 @@ const UserManagementPage = () => {
       } finally {
         setOrgsLoading(false);
       }
+    }
+    if (needsAcslAgentCascade(role) && acslManagers.length === 0) {
+      loadAcslManagers();
     }
   };
 
@@ -349,6 +411,25 @@ const UserManagementPage = () => {
     );
     setSelectedPartnerIds(ids);
   }, [selectedStates, allOrgs, userForm.role]);
+
+  // When ACSL Agent cascade selections change, reconcile selected partners to
+  // the union of partners belonging to the currently-selected managers AND in
+  // the currently-selected states. Removing a manager/state drops their partners.
+  useEffect(() => {
+    if (userForm.role !== "acsl_agent") return;
+    const allowedOrgIds = new Set();
+    acslManagers
+      .filter((m) => selectedManagerIds.has(m.id))
+      .forEach((m) => m.orgIds.forEach((id) => allowedOrgIds.add(id)));
+    // Limit to partners that are also in selected states (if any)
+    const inStateOrgIds = new Set(
+      allOrgs
+        .filter((o) => allowedOrgIds.has(o.id) && (selectedStates.size === 0 || (o.state && selectedStates.has(o.state))))
+        .map((o) => o.id)
+    );
+    // Auto-check newly-available, keep prior selections that are still valid
+    setSelectedPartnerIds(inStateOrgIds);
+  }, [selectedManagerIds, selectedStates, acslManagers, allOrgs, userForm.role]);
 
 
 
