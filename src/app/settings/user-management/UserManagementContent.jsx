@@ -940,6 +940,7 @@ const UserManagementPage = () => {
                 <SelectItem value="acsl_agent" className="text-xs">ACSL Agent</SelectItem>
                 <SelectItem value="partner" className="text-xs">Partner Admin</SelectItem>
                 <SelectItem value="partner_agent" className="text-xs">Partner Agent</SelectItem>
+                <SelectItem value="agent_user" className="text-xs">Agent</SelectItem>
               </SelectContent>
             </Select>
 
