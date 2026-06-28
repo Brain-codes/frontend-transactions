@@ -596,17 +596,6 @@ const AgentsProfilesContent = () => {
                         );
                       })()}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end">
-                        <button
-                          type="button"
-                          onClick={() => setAssignAgent(a)}
-                          className="inline-flex items-center justify-center h-8 px-3 rounded-md bg-[#4a5d0f] text-white text-xs font-medium shadow-sm hover:bg-[#3d4d0c] active:scale-[0.98] transition"
-                        >
-                          Assign a Partner
-                        </button>
-                      </div>
-                    </TableCell>
                   </TableRow>
                 ))
               )}
