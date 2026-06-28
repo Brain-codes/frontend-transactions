@@ -388,6 +388,13 @@ const UserManagementPage = () => {
       if (!res.ok) throw new Error(result.error || "Failed to create user");
 
       const newUserId = result.user?.id || result.data?.id;
+      if (newUserId && userForm.role === "acsl_agent_manager" && selectedStates.size > 0) {
+        try {
+          await superAdminAgentService.setAgentStates(newUserId, Array.from(selectedStates));
+        } catch {
+          // non-fatal — user was created, state assignment failed
+        }
+      }
       if (newUserId && selectedPartnerIds.size > 0) {
         try {
           await superAdminAgentService.setAgentOrganizations(newUserId, Array.from(selectedPartnerIds));
@@ -395,6 +402,7 @@ const UserManagementPage = () => {
           // non-fatal — user was created, org assignment failed
         }
       }
+
 
       toast({
         variant: "success",
