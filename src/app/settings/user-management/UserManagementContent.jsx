@@ -169,12 +169,13 @@ const UserManagementPage = () => {
 
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [formMode, setFormMode] = useState("create"); // "create" | "edit"
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAssignOrgsModal, setShowAssignOrgsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedUserForOrgs, setSelectedUserForOrgs] = useState(null);
   const [actionLoading, setActionLoading] = useState(null); // stores userId or 'create'/'delete' etc.
+  const hydratingRef = useRef(false);
 
   // Form state
   const [userForm, setUserForm] = useState({
