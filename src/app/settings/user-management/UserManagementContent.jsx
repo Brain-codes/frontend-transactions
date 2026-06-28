@@ -614,7 +614,13 @@ const UserManagementPage = () => {
         ? assignmentRowsRes.value
         : [];
       const directOrgIds = normalizeOrgIds(assignmentRows);
-      const orgIds = directOrgIds.length > 0 ? directOrgIds : normalizeOrgIds(orgsList);
+      let orgIds = directOrgIds.length > 0 ? directOrgIds : normalizeOrgIds(orgsList);
+
+      // Partner Agents are bound to a single partner via profile.organization_id;
+      // fall back to that value when no relational rows exist.
+      if (role === "partner_agent" && orgIds.length === 0 && user.organization_id) {
+        orgIds = [user.organization_id];
+      }
 
       setSelectedStates(new Set(stateNames));
       setSelectedPartnerIds(new Set(orgIds));
