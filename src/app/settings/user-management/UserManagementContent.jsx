@@ -193,6 +193,8 @@ const UserManagementPage = () => {
   const [orgsLoading, setOrgsLoading] = useState(false);
   const [partnerSearch, setPartnerSearch] = useState("");
   const [selectedPartnerIds, setSelectedPartnerIds] = useState(new Set());
+  const [selectedStates, setSelectedStates] = useState(new Set());
+
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
