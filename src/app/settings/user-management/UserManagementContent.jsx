@@ -617,8 +617,6 @@ const UserManagementPage = () => {
       setSelectedStates(new Set(stateNames));
       setSelectedPartnerIds(new Set(orgIds));
 
-      await orgsLoadPromise;
-
       // For acsl_agent: retain the original manager selection as tightly as
       // possible. Prefer the assignment creator when available, otherwise use
       // the single best manager that covers the agent's saved partners.
@@ -626,6 +624,9 @@ const UserManagementPage = () => {
         const managersSnapshot = await managersLoadPromise;
         const managerIds = inferManagerIdsForAgent(orgIds, stateNames, managersSnapshot, assignmentRows);
         setSelectedManagerIds(new Set(managerIds));
+        await orgsLoadPromise;
+      } else {
+        await orgsLoadPromise;
       }
     } finally {
       setEditAssignmentsLoading(false);
