@@ -826,10 +826,7 @@ const UserManagementPage = () => {
                 }
               />
               <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <div className="border-b pb-3 mb-4">
-                  <h2 className="text-lg font-semibold text-[#4a5d0f]">Create New User</h2>
-                  <p className="text-sm text-gray-500">Add a new user to the system</p>
-                </div>
+
 
 
 
