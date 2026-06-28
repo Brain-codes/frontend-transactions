@@ -778,8 +778,9 @@ const UserManagementPage = () => {
     try {
       const role = userForm.role;
 
-      const partnerId = role === "partner_agent" ? (Array.from(selectedPartnerIds)[0] || null) : null;
-      if (role === "partner_agent" && !partnerId) throw new Error("A partner must be selected for a Partner Agent");
+      const isOrgBound = role === "partner_agent" || role === "agent_user";
+      const partnerId = isOrgBound ? (Array.from(selectedPartnerIds)[0] || null) : null;
+      if (isOrgBound && !partnerId) throw new Error("A partner must be selected for this agent");
 
       const { data: { session } } = await supabase.auth.getSession();
       const putBody = {
@@ -787,7 +788,7 @@ const UserManagementPage = () => {
         phone: userForm.phone.trim() || null,
         role,
       };
-      if (role === "partner_agent") putBody.organization_id = partnerId;
+      if (isOrgBound) putBody.organization_id = partnerId;
 
       const res = await fetch(
         `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
@@ -800,7 +801,7 @@ const UserManagementPage = () => {
       const result = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(result?.error || "Failed to update user");
 
-      if (role === "partner_agent") {
+      if (isOrgBound) {
         // Clear ACSL-style assignments so this user no longer appears under prior managers/states.
         try { await superAdminAgentService.setAgentStates(selectedUser.id, []); } catch { /* non-fatal */ }
         try { await superAdminAgentService.setAgentOrganizations(selectedUser.id, []); } catch { /* non-fatal */ }
