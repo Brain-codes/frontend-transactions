@@ -509,15 +509,13 @@ const AgentsProfilesContent = () => {
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Agent Name</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Supervisor(s)</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">States Assigned</TableHead>
-                <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Partners Assigned</TableHead>
-
-                <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
+                <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center rounded-tr-lg">Partners Assigned</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className={loading ? "opacity-40" : ""}>
               {pageRows.length === 0 && !loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-10 text-gray-500">
                     No agents found
                   </TableCell>
                 </TableRow>
@@ -597,17 +595,6 @@ const AgentsProfilesContent = () => {
                           </button>
                         );
                       })()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end">
-                        <button
-                          type="button"
-                          onClick={() => setAssignAgent(a)}
-                          className="inline-flex items-center justify-center h-8 px-3 rounded-md bg-[#4a5d0f] text-white text-xs font-medium shadow-sm hover:bg-[#3d4d0c] active:scale-[0.98] transition"
-                        >
-                          Assign a Partner
-                        </button>
-                      </div>
                     </TableCell>
                   </TableRow>
                 ))
