@@ -1695,57 +1695,8 @@ const UserManagementPage = () => {
           )}
         </div>
 
-        {/* ── Edit User Modal ────────────────────────────────────────────────── */}
-        <Dialog open={showEditModal} onOpenChange={(open) => { if (!open) { setShowEditModal(false); setSelectedUser(null); resetForm(); } }}>
-          <DialogContent className="sm:max-w-2xl shadow-none">
-            <DialogHeader className="border-b pb-3 mb-1">
-              <DialogTitle className="text-lg font-semibold text-[#4a5d0f]">Edit User</DialogTitle>
-              <DialogDescription className="text-sm text-gray-500">Update user information (email cannot be changed)</DialogDescription>
-            </DialogHeader>
+        {/* Edit User uses the inline Create/Edit view above */}
 
-            <form onSubmit={handleEditUser} className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit_full_name" className="text-sm font-medium text-gray-700">Full Name <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="edit_full_name"
-                    placeholder="Enter full name"
-                    value={userForm.full_name}
-                    onChange={(e) => setUserForm((prev) => ({ ...prev, full_name: e.target.value }))}
-                    className={`shadow-none ${formErrors.full_name ? "border-red-500" : "border-gray-300"}`}
-                  />
-                  {formErrors.full_name && <p className="text-xs text-red-600">{formErrors.full_name}</p>}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit_email" className="text-sm font-medium text-gray-700">Email</Label>
-                  <Input id="edit_email" type="email" value={userForm.email} disabled className="bg-gray-50 cursor-not-allowed shadow-none border-gray-200 text-gray-500" />
-                  <p className="text-xs text-gray-400">Email cannot be changed</p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit_phone" className="text-sm font-medium text-gray-700">Phone <span className="text-gray-400 text-xs font-normal">(optional)</span></Label>
-                  <Input
-                    id="edit_phone"
-                    placeholder="Enter phone number"
-                    value={userForm.phone}
-                    onChange={(e) => setUserForm((prev) => ({ ...prev, phone: e.target.value }))}
-                    className="shadow-none border-gray-300"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => { setShowEditModal(false); setSelectedUser(null); resetForm(); }} disabled={actionLoading === "edit"} className="shadow-none border-gray-300">
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={actionLoading === "edit"} className="bg-[#4a5d0f] hover:bg-[#3d4f0c] text-white shadow-none">
-                  {actionLoading === "edit" ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Updating...</> : <><Edit className="h-4 w-4 mr-2" />Update User</>}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
 
         {/* ── Delete Confirmation Modal ──────────────────────────────────────── */}
         <Dialog open={showDeleteModal} onOpenChange={(open) => { if (!open) { setShowDeleteModal(false); setSelectedUser(null); } }}>
