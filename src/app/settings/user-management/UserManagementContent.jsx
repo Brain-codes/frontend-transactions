@@ -862,7 +862,7 @@ const UserManagementPage = () => {
 
                 {/* Phone */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="phone" className="text-sm font-medium text-gray-700">Phone <span className="text-gray-400 text-xs font-normal">(optional)</span></Label>
+                  <Label htmlFor="phone" className="text-sm font-medium text-gray-700">Phone</Label>
                   <Input
                     id="phone"
                     placeholder="Enter phone number"
