@@ -97,6 +97,9 @@ async function fetchDirectPartnerList(supabase, agentId) {
 
 const AgentsProfilesContent = () => {
   const { toast, toasts, removeToast } = useToast();
+  const supabaseRef = useRef(null);
+  if (!supabaseRef.current) supabaseRef.current = createClientComponentClient();
+  const isMountedRef = useRef(true);
   const [loading, setLoading] = useState(false);
   const [agents, setAgents] = useState([]);
   const [filters, setFilters] = useState({ search: "", status: "", role: "" });
@@ -118,6 +121,13 @@ const AgentsProfilesContent = () => {
   const [partnersModalLoading, setPartnersModalLoading] = useState(false);
   const [statesSearch, setStatesSearch] = useState("");
   const [partnersSearch, setPartnersSearch] = useState("");
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const openStatesModal = async (agent) => {
     setStatesModalAgent(agent);
@@ -141,8 +151,16 @@ const AgentsProfilesContent = () => {
     setPartnersSearch("");
     setPartnersModalLoading(true);
     try {
-      const res = await superAdminAgentService.getAgentOrganizations(agent.id);
-      const list = res?.data || res?.organizations || res || [];
+      // ACSL Agents: the source of truth is the direct assignment table — not
+      // the "by-state" endpoint which would list every partner in their states.
+      let list = null;
+      if (agent.role === "acsl_agent") {
+        list = await fetchDirectPartnerList(supabaseRef.current, agent.id);
+      }
+      if (!list) {
+        const res = await superAdminAgentService.getAgentOrganizations(agent.id);
+        list = res?.data || res?.organizations || res || [];
+      }
       setPartnersModalList(Array.isArray(list) ? list : []);
     } catch (err) {
       toast({ variant: "error", title: "Failed to load partners", description: err.message });
@@ -198,21 +216,33 @@ const AgentsProfilesContent = () => {
     }
   };
 
-  // Hydrate States/Partners counts client-side using the same endpoints the
-  // badge modals use, so newly assigned users (esp. acsl_agent_manager) reflect
-  // accurate counts immediately instead of relying on the manage-users payload.
+  // Hydrate States/Partners counts client-side. For ACSL Agents the partner
+  // count comes from the direct assignment table (so explicitly-assigned
+  // partners are the source of truth, not the by-state derived list). For
+  // ACSL Agent Managers the existing by-state endpoint stays authoritative.
+  // Updates are batched into a single setAgents call per batch to avoid the
+  // re-render storm that made the page appear to reload.
   const hydrateAgentCounts = async (agentsList) => {
     const targets = agentsList.filter(
       (a) => a.role === "acsl_agent" || a.role === "acsl_agent_manager"
     );
     const BATCH = 8;
     for (let i = 0; i < targets.length; i += BATCH) {
+      if (!isMountedRef.current) return;
       const batch = targets.slice(i, i + BATCH);
-      await Promise.allSettled(
+      const results = await Promise.allSettled(
         batch.map(async (a) => {
+          const orgsPromise =
+            a.role === "acsl_agent"
+              ? fetchDirectPartnerCount(supabaseRef.current, a.id).then((n) =>
+                  n === null
+                    ? superAdminAgentService.getAgentOrganizations(a.id)
+                    : { __count: n }
+                )
+              : superAdminAgentService.getAgentOrganizations(a.id);
           const [statesRes, orgsRes] = await Promise.allSettled([
             superAdminAgentService.getAgentStates(a.id),
-            superAdminAgentService.getAgentOrganizations(a.id),
+            orgsPromise,
           ]);
           const updates = {};
           if (statesRes.status === "fulfilled") {
@@ -222,16 +252,34 @@ const AgentsProfilesContent = () => {
           }
           if (orgsRes.status === "fulfilled") {
             const r = orgsRes.value;
-            const list = r?.data || r?.organizations || r || [];
-            if (Array.isArray(list)) updates.assigned_organizations_count = list.length;
+            if (r && typeof r.__count === "number") {
+              updates.assigned_organizations_count = r.__count;
+            } else {
+              const list = r?.data || r?.organizations || r || [];
+              if (Array.isArray(list)) updates.assigned_organizations_count = list.length;
+            }
           }
-          if (Object.keys(updates).length > 0) {
-            setAgents((prev) =>
-              prev.map((x) => (x.id === a.id ? { ...x, ...updates } : x))
-            );
-          }
+          return { id: a.id, updates };
         })
       );
+      if (!isMountedRef.current) return;
+      const updatesById = new Map();
+      results.forEach((res) => {
+        if (
+          res.status === "fulfilled" &&
+          res.value &&
+          Object.keys(res.value.updates).length > 0
+        ) {
+          updatesById.set(res.value.id, res.value.updates);
+        }
+      });
+      if (updatesById.size > 0) {
+        setAgents((prev) =>
+          prev.map((x) =>
+            updatesById.has(x.id) ? { ...x, ...updatesById.get(x.id) } : x
+          )
+        );
+      }
     }
   };
 
