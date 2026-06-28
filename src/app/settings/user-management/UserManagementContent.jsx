@@ -743,6 +743,35 @@ const UserManagementPage = () => {
     if (!selectedUser) return;
     setActionLoading("create"); // reuse 'create' key so submit button spinner works in shared form
     try {
+      const role = userForm.role;
+
+      // Partner Agent: shared manage-users edge function rejects this role.
+      // Update the profile directly and bind to the single chosen partner.
+      if (role === "partner_agent") {
+        const partnerId = Array.from(selectedPartnerIds)[0] || null;
+        const { error: profErr } = await supabase
+          .from("profiles")
+          .update({
+            full_name: userForm.full_name.trim(),
+            phone: userForm.phone.trim() || null,
+            role: "partner_agent",
+            organization_id: partnerId,
+          })
+          .eq("id", selectedUser.id);
+        if (profErr) throw new Error(profErr.message || "Failed to update partner agent");
+
+        // Clear any leftover ACSL-style assignments so this user no longer
+        // appears under prior managers or state assignments.
+        try { await superAdminAgentService.setAgentStates(selectedUser.id, []); } catch { /* non-fatal */ }
+        try { await superAdminAgentService.setAgentOrganizations(selectedUser.id, []); } catch { /* non-fatal */ }
+
+        toast({ variant: "success", title: "User updated successfully" });
+        setShowCreateModal(false);
+        resetForm();
+        fetchUsers(pagination.page, pagination.page_size);
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
         `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
@@ -775,9 +804,8 @@ const UserManagementPage = () => {
       // Persist assignment updates (overwrites prior assignments). If the user
       // group changes to one without these assignments, clear stale links so
       // old manager/partner relationships do not leak into profile views later.
-      const role = userForm.role;
       const shouldHaveStates = role === "acsl_agent_manager" || role === "acsl_agent";
-      const shouldHavePartners = role === "acsl_agent_manager" || role === "acsl_agent" || role === "partner_agent" || role === "partner";
+      const shouldHavePartners = role === "acsl_agent_manager" || role === "acsl_agent" || role === "partner";
       try {
         await superAdminAgentService.setAgentStates(selectedUser.id, shouldHaveStates ? Array.from(selectedStates) : []);
       } catch { /* non-fatal */ }
