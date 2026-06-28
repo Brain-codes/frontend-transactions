@@ -650,7 +650,12 @@ const UserManagementPage = () => {
       if (userForm.role === "partner_agent") {
         const partnerId = Array.from(selectedPartnerIds)[0];
         const password = userForm.auto_generate_password
-          ? generateRandomPassword()
+          ? (() => {
+              const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
+              let p = "";
+              for (let i = 0; i < 12; i++) p += chars[Math.floor(Math.random() * chars.length)];
+              return p;
+            })()
           : userForm.password;
         const createRes = await adminAgentService.createAgent(
           userForm.full_name.trim(),
