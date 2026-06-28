@@ -1546,7 +1546,7 @@ export default function PartnersContent() {
                             <div className="flex items-center justify-end gap-1">
                               {can("manage-all-partners") && (
 
-                                <Button size="sm" className="h-7 px-2 text-xs rounded-none bg-brand hover:bg-brand/90 text-white" title="Purchases from ACSL" onClick={() => setTransferHistoryOrg(org)}>
+                                <Button size="sm" className="h-7 px-2 text-xs rounded-none bg-black hover:bg-black/90 text-white" title="Purchases from ACSL" onClick={() => setTransferHistoryOrg(org)}>
                                   Purchases from ACSL
                                 </Button>
                               )}
@@ -1650,7 +1650,7 @@ export default function PartnersContent() {
                   <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => handlePageChange(1)} disabled={pagination.page === 1}><ChevronsLeft className="h-4 w-4" /></Button>
                   <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handlePageChange(pagination.page - 1)} disabled={pagination.page === 1}><ChevronLeft className="h-4 w-4 mr-1" />Prev</Button>
                   {getVisiblePages().map((p) => (
-                    <Button key={p} variant={p === pagination.page ? "default" : "outline"} size="sm" className={`h-8 w-8 p-0 ${p === pagination.page ? "bg-brand text-white hover:bg-brand" : ""}`} onClick={() => handlePageChange(p)}>{p}</Button>
+                    <Button key={p} variant={p === pagination.page ? "default" : "outline"} size="sm" className={`h-8 w-8 p-0 ${p === pagination.page ? "bg-black text-white hover:bg-black" : ""}`} onClick={() => handlePageChange(p)}>{p}</Button>
                   ))}
                   <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handlePageChange(pagination.page + 1)} disabled={pagination.page >= pagination.totalPages}>Next<ChevronRight className="h-4 w-4 ml-1" /></Button>
                   <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => handlePageChange(pagination.totalPages)} disabled={pagination.page >= pagination.totalPages}><ChevronsRight className="h-4 w-4" /></Button>
