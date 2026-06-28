@@ -671,11 +671,13 @@ const UserManagementPage = () => {
         );
         if (!createRes.success) throw new Error(createRes.error || "Failed to create partner agent");
         const newId = createRes.data?.id || createRes.data?.user?.id;
-        if (newId && partnerId) {
-          try {
-            await supabase.from("profiles").update({ organization_id: partnerId }).eq("id", newId);
-          } catch { /* non-fatal */ }
-        }
+        if (!newId) throw new Error("Partner agent was created but no user id was returned");
+        if (!partnerId) throw new Error("A partner must be selected for a Partner Agent");
+        const { error: bindErr } = await supabase
+          .from("profiles")
+          .update({ role: "partner_agent", organization_id: partnerId })
+          .eq("id", newId);
+        if (bindErr) throw new Error(bindErr.message || "Failed to bind partner agent to partner");
         toast({
           variant: "success",
           title: "Partner Agent created successfully",
