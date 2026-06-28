@@ -75,6 +75,7 @@ import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AssignOrganizationsModal from "../../super-admin-agents/components/AssignOrganizationsModal";
 import organizationsService from "../../services/organizationsService";
 import superAdminAgentService from "../../services/superAdminAgentService";
+import adminAgentService from "../../services/adminAgentService";
 
 // Nigerian states (36 + FCT)
 const NIGERIAN_STATES = [
@@ -556,6 +557,7 @@ const UserManagementPage = () => {
     if (!userForm.email.trim()) errors.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email)) errors.email = "Invalid email format";
     if (!userForm.role) errors.role = "User Group is required";
+    if (userForm.role === "partner_agent" && selectedPartnerIds.size !== 1) errors.partner = "Select exactly one Partner for this agent";
     if (!userForm.auto_generate_password && !userForm.password) errors.password = "Password is required";
     else if (!userForm.auto_generate_password && userForm.password.length < 8) errors.password = "Password must be at least 8 characters";
     setFormErrors(errors);
@@ -612,7 +614,13 @@ const UserManagementPage = () => {
         ? assignmentRowsRes.value
         : [];
       const directOrgIds = normalizeOrgIds(assignmentRows);
-      const orgIds = directOrgIds.length > 0 ? directOrgIds : normalizeOrgIds(orgsList);
+      let orgIds = directOrgIds.length > 0 ? directOrgIds : normalizeOrgIds(orgsList);
+
+      // Partner Agents are bound to a single partner via profile.organization_id;
+      // fall back to that value when no relational rows exist.
+      if (role === "partner_agent" && orgIds.length === 0 && user.organization_id) {
+        orgIds = [user.organization_id];
+      }
 
       setSelectedStates(new Set(stateNames));
       setSelectedPartnerIds(new Set(orgIds));
@@ -642,6 +650,43 @@ const UserManagementPage = () => {
     if (!validateForm()) return;
     setActionLoading("create");
     try {
+      // Partner Agent: shared manage-users edge function does not accept this
+      // role. Use the partner-agent endpoint (manage-agents) and then bind the
+      // new agent to the chosen partner's organization.
+      if (userForm.role === "partner_agent") {
+        const partnerId = Array.from(selectedPartnerIds)[0];
+        const password = userForm.auto_generate_password
+          ? (() => {
+              const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
+              let p = "";
+              for (let i = 0; i < 12; i++) p += chars[Math.floor(Math.random() * chars.length)];
+              return p;
+            })()
+          : userForm.password;
+        const createRes = await adminAgentService.createAgent(
+          userForm.full_name.trim(),
+          userForm.email.trim(),
+          password,
+          userForm.phone.trim() || null,
+        );
+        if (!createRes.success) throw new Error(createRes.error || "Failed to create partner agent");
+        const newId = createRes.data?.id || createRes.data?.user?.id;
+        if (newId && partnerId) {
+          try {
+            await supabase.from("profiles").update({ organization_id: partnerId }).eq("id", newId);
+          } catch { /* non-fatal */ }
+        }
+        toast({
+          variant: "success",
+          title: "Partner Agent created successfully",
+          description: userForm.auto_generate_password ? `Password: ${password}` : "User can now log in",
+        });
+        setShowCreateModal(false);
+        resetForm();
+        fetchUsers(1, pagination.page_size);
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       const payload = {
         full_name: userForm.full_name.trim(),
@@ -704,6 +749,35 @@ const UserManagementPage = () => {
     if (!selectedUser) return;
     setActionLoading("create"); // reuse 'create' key so submit button spinner works in shared form
     try {
+      const role = userForm.role;
+
+      // Partner Agent: shared manage-users edge function rejects this role.
+      // Update the profile directly and bind to the single chosen partner.
+      if (role === "partner_agent") {
+        const partnerId = Array.from(selectedPartnerIds)[0] || null;
+        const { error: profErr } = await supabase
+          .from("profiles")
+          .update({
+            full_name: userForm.full_name.trim(),
+            phone: userForm.phone.trim() || null,
+            role: "partner_agent",
+            organization_id: partnerId,
+          })
+          .eq("id", selectedUser.id);
+        if (profErr) throw new Error(profErr.message || "Failed to update partner agent");
+
+        // Clear any leftover ACSL-style assignments so this user no longer
+        // appears under prior managers or state assignments.
+        try { await superAdminAgentService.setAgentStates(selectedUser.id, []); } catch { /* non-fatal */ }
+        try { await superAdminAgentService.setAgentOrganizations(selectedUser.id, []); } catch { /* non-fatal */ }
+
+        toast({ variant: "success", title: "User updated successfully" });
+        setShowCreateModal(false);
+        resetForm();
+        fetchUsers(pagination.page, pagination.page_size);
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
         `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
@@ -736,9 +810,8 @@ const UserManagementPage = () => {
       // Persist assignment updates (overwrites prior assignments). If the user
       // group changes to one without these assignments, clear stale links so
       // old manager/partner relationships do not leak into profile views later.
-      const role = userForm.role;
       const shouldHaveStates = role === "acsl_agent_manager" || role === "acsl_agent";
-      const shouldHavePartners = role === "acsl_agent_manager" || role === "acsl_agent" || role === "partner_agent" || role === "partner";
+      const shouldHavePartners = role === "acsl_agent_manager" || role === "acsl_agent" || role === "partner";
       try {
         await superAdminAgentService.setAgentStates(selectedUser.id, shouldHaveStates ? Array.from(selectedStates) : []);
       } catch { /* non-fatal */ }
@@ -1735,18 +1808,18 @@ const UserManagementPage = () => {
                         )
                         .map((org) => {
                           const checked = selectedPartnerIds.has(org.id);
-                          const isPartnerRole = userForm.role === "partner";
+                          const isSingleSelect = userForm.role === "partner" || userForm.role === "partner_agent";
                           return (
                             <label
                               key={org.id}
                               className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-xs transition-colors ${checked ? "bg-[#eef3c4] text-[#4a5d0f]" : "hover:bg-white text-gray-700"}`}
                               onClick={() => {
-                                if (isPartnerRole) {
+                                if (isSingleSelect) {
                                   setSelectedPartnerIds(new Set([org.id]));
                                 }
                               }}
                             >
-                              {!isPartnerRole && (
+                              {!isSingleSelect && (
                                 <input
                                   type="checkbox"
                                   checked={checked}
@@ -1774,7 +1847,7 @@ const UserManagementPage = () => {
 
                   {selectedPartnerIds.size > 0 && (
                     <p className="text-xs text-[#4a5d0f] font-medium">
-                      {userForm.role === "partner" ? "1 partner selected" : `${selectedPartnerIds.size} partner${selectedPartnerIds.size > 1 ? "s" : ""} selected`}
+                      {(userForm.role === "partner" || userForm.role === "partner_agent") ? "1 partner selected" : `${selectedPartnerIds.size} partner${selectedPartnerIds.size > 1 ? "s" : ""} selected`}
                     </p>
                   )}
                 </div>
