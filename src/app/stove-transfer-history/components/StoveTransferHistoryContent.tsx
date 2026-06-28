@@ -488,9 +488,9 @@ export default function StoveTransferHistoryContent() {
                               {record.stove_count}
                             </span>
                           </TableCell>
-                          <TableCell className="text-xs">{record.state || "—"}</TableCell>
-                          <TableCell className="text-xs">{record.branch || "—"}</TableCell>
-                          <TableCell className="text-xs">{record.sales_factory || "—"}</TableCell>
+                          <TableCell className="text-sm">{record.state || "—"}</TableCell>
+                          <TableCell className="text-sm">{record.branch || "—"}</TableCell>
+                          <TableCell className="text-sm">{record.sales_factory || "—"}</TableCell>
                           <TableCell className="text-center">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
