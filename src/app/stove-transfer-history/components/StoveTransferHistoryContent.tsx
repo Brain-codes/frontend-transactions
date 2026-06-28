@@ -289,7 +289,7 @@ export default function StoveTransferHistoryContent() {
 
   if (loading && records.length === 0) {
     return (
-      <DashboardLayout currentRoute="stove-transfer-history" title="Stove Transfer History">
+      <DashboardLayout currentRoute="stove-transfer-history" title="Purchases from ACSL">
         <div className="flex items-center justify-center h-64">
           <Loader2 className="animate-spin h-8 w-8 text-brand" />
         </div>
@@ -299,9 +299,9 @@ export default function StoveTransferHistoryContent() {
 
   return (
     <>
-      <DashboardLayout currentRoute="stove-transfer-history" title="Stove Transfer History">
+      <DashboardLayout currentRoute="stove-transfer-history" title="Purchases from ACSL">
         <div className="p-6 space-y-5">
-          <PageHeader title="Stove Transfer History" icon={ArrowLeftRight} />
+          <PageHeader title="Purchases from ACSL" icon={ArrowLeftRight} />
 
           {/* Filter bar */}
           <div className="bg-[#FAFCFD] p-3 rounded-lg border border-gray-200 flex flex-wrap items-center gap-3">
@@ -369,7 +369,7 @@ export default function StoveTransferHistoryContent() {
             )}
 
             <div className="flex items-center gap-3 ml-auto">
-              <p className="text-xs text-gray-600">
+              <p className="text-sm text-gray-600">
                 Showing{" "}
                 <span className="font-medium">
                   {startRecord}–{endRecord}
@@ -421,7 +421,7 @@ export default function StoveTransferHistoryContent() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-[#4a5d0f] hover:bg-[#4a5d0f]">
-                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
+                      <TableHead className="text-white font-semibold text-sm whitespace-nowrap">
                         <button
                           className="flex items-center gap-1 hover:opacity-80"
                           onClick={() => setSortOrder((s) => s === "desc" ? "asc" : "desc")}
@@ -434,25 +434,25 @@ export default function StoveTransferHistoryContent() {
                           )}
                         </button>
                       </TableHead>
-                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
+                      <TableHead className="text-white font-semibold text-sm whitespace-nowrap">
                         Sales Date
                       </TableHead>
-                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
+                      <TableHead className="text-white font-semibold text-sm whitespace-nowrap">
                         Partner Name
                       </TableHead>
-                      <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">
+                      <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">
                         Stoves
                       </TableHead>
-                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
+                      <TableHead className="text-white font-semibold text-sm whitespace-nowrap">
                         State
                       </TableHead>
-                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
+                      <TableHead className="text-white font-semibold text-sm whitespace-nowrap">
                         Branch
                       </TableHead>
-                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
+                      <TableHead className="text-white font-semibold text-sm whitespace-nowrap">
                         Sales Factory
                       </TableHead>
-                      <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">
+                      <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">
                         Action
                       </TableHead>
                     </TableRow>
@@ -472,19 +472,19 @@ export default function StoveTransferHistoryContent() {
                           key={record.id}
                           className={`${idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]/40"} hover:bg-[#eef3c4] text-gray-700`}
                         >
-                          <TableCell className="font-mono text-xs text-gray-600">
+                          <TableCell className="font-mono text-sm text-gray-600">
                             {record.transaction_id}
                           </TableCell>
-                          <TableCell className="text-xs whitespace-nowrap">
+                          <TableCell className="text-sm whitespace-nowrap">
                             {record.sales_date
                               ? new Date(record.sales_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
                               : "—"}
                           </TableCell>
-                          <TableCell className="text-xs font-medium text-gray-900">
+                          <TableCell className="text-sm font-medium text-gray-900">
                             {record.partner_name}
                           </TableCell>
                           <TableCell className="text-center">
-                            <span className="inline-flex items-center justify-center min-w-[2rem] text-xs font-semibold px-2 py-0.5 rounded-full bg-[#eef3c4] text-[#4a5d0f]">
+                            <span className="inline-flex items-center justify-center min-w-[2rem] text-sm font-semibold px-2 py-0.5 rounded-full bg-[#eef3c4] text-[#4a5d0f]">
                               {record.stove_count}
                             </span>
                           </TableCell>
@@ -526,7 +526,7 @@ export default function StoveTransferHistoryContent() {
 
             {/* Pagination */}
             <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
-                <p className="text-xs text-gray-600">
+                <p className="text-sm text-gray-600">
                   Showing {startRecord} to {endRecord} of {totalCount} records
                 </p>
                 <div className="flex items-center gap-1">
@@ -542,7 +542,7 @@ export default function StoveTransferHistoryContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 px-2 text-xs"
+                    className="h-8 px-2 text-sm"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
                   >
@@ -554,7 +554,7 @@ export default function StoveTransferHistoryContent() {
                       key={p}
                       variant={p === page ? "default" : "outline"}
                       size="sm"
-                      className={`h-8 w-8 p-0 text-xs ${p === page ? "bg-black text-white hover:bg-black" : ""}`}
+                      className={`h-8 w-8 p-0 text-sm ${p === page ? "bg-black text-white hover:bg-black" : ""}`}
                       onClick={() => setPage(p)}
                     >
                       {p}
@@ -563,7 +563,7 @@ export default function StoveTransferHistoryContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 px-2 text-xs"
+                    className="h-8 px-2 text-sm"
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
                   >
