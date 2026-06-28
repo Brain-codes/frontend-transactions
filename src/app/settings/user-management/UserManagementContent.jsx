@@ -421,6 +421,7 @@ const UserManagementPage = () => {
   // the currently-selected states. Removing a manager/state drops their partners.
   useEffect(() => {
     if (userForm.role !== "acsl_agent") return;
+    if (hydratingRef.current) return;
     const allowedOrgIds = new Set();
     acslManagers
       .filter((m) => selectedManagerIds.has(m.id))
