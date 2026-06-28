@@ -588,10 +588,11 @@ const UserManagementPage = () => {
     }
   };
 
-  const handleEditUser = async (e) => {
+  const handleUpdateUser = async (e) => {
     e.preventDefault();
     if (!userForm.full_name.trim()) { setFormErrors({ full_name: "Full name is required" }); return; }
-    setActionLoading("edit");
+    if (!selectedUser) return;
+    setActionLoading("create"); // reuse 'create' key so submit button spinner works in shared form
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
@@ -601,9 +602,25 @@ const UserManagementPage = () => {
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to update user");
 
+      // Persist assignment updates (overwrites prior assignments)
+      const role = userForm.role;
+      if (role === "acsl_agent_manager" || role === "acsl_agent") {
+        try {
+          await superAdminAgentService.setAgentStates(selectedUser.id, Array.from(selectedStates));
+        } catch { /* non-fatal */ }
+      }
+      if (
+        role === "acsl_agent_manager" ||
+        role === "acsl_agent" ||
+        role === "partner_agent"
+      ) {
+        try {
+          await superAdminAgentService.setAgentOrganizations(selectedUser.id, Array.from(selectedPartnerIds));
+        } catch { /* non-fatal */ }
+      }
+
       toast({ variant: "success", title: "User updated successfully" });
-      setShowEditModal(false);
-      setSelectedUser(null);
+      setShowCreateModal(false);
       resetForm();
       fetchUsers(pagination.page, pagination.page_size);
     } catch (err) {
@@ -612,6 +629,7 @@ const UserManagementPage = () => {
       setActionLoading(null);
     }
   };
+
 
   const handleToggleUserStatus = async (userId, currentStatus) => {
     setActionLoading(userId);
