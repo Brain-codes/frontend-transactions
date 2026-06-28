@@ -1,55 +1,31 @@
-## Goal
+## Plan
 
-Replace the small "Edit User" dialog with a full inline **Edit User view** that reuses the Create User form, so an ACSL Agent (and every other role) can be updated end-to-end — basic info, role, assigned states, supervising managers, and assigned partners.
+1. **Make the Edit User form load reliably and faster**
+   - Add a small “Loading user assignments…” state when opening Edit User.
+   - Load organizations, managers, assigned states, and assigned partners in one controlled flow before showing dependent sections.
+   - Avoid the current timing issue where the form appears after User Group but the assignment sections lag or get overwritten.
 
-## Changes (single file: `src/app/settings/user-management/UserManagementContent.jsx`)
+2. **Allow User Group updates in Edit User**
+   - Enable the User Group dropdown in edit mode.
+   - Include the selected `role` in the update payload sent to `manage-users/:id`.
+   - When the role changes, clear/rebuild only the assignment fields that no longer apply to the new role.
 
-### 1. Mode-aware inline form
+3. **Retain Assigned Manager / Partner selections when editing ACSL Agents**
+   - Fix the edit hydration logic so it uses the freshly-loaded manager list instead of reading stale React state.
+   - For ACSL Agents, derive selected managers only from managers that actually cover the agent’s assigned partners.
+   - Keep the exact checked partner IDs from the user’s saved direct assignments instead of auto-expanding to every partner under a manager/state.
 
-- Add `formMode` state: `"create" | "edit"` (plus existing `showCreateModal` reused as "show inline form").
-- `openEditModal(user)` becomes `openEditView(user)`:
-  - Set `formMode = "edit"`, `selectedUser = user`.
-  - Prefill `userForm` with name/email/phone/role.
-  - **Hydrate assignments** from `superAdminAgentService`:
-    - `getAgentStates(user.id)` → `selectedStates`
-    - `getAgentOrganizations(user.id)` → `selectedPartnerIds`
-    - For `acsl_agent`: derive `selectedManagerIds` by matching the user's assigned partner IDs against `acslManagers[].orgIds` (mark a manager as selected when any of their partners are in the user's set).
-  - Open the inline view (`setShowCreateModal(true)`).
-- The kebab "Edit" action in the table calls `openEditView(u)` for **every role** (not just ACSL Agent), so the request "all records for the user can be updated" is satisfied.
+4. **Persist manager relationship explicitly in the UI model where possible**
+   - During save, continue saving states and selected partners.
+   - If an ACSL Agent is assigned to one manager, keep the partner list constrained to that selected manager so the saved result reflects that single supervisor.
+   - Prevent unchecked partners from being re-added by the auto-reconcile effect.
 
-### 2. Reused inline view (lines ~904–1593)
+5. **Fix Agents Profile showing too many supervisors**
+   - Change supervisor derivation from “any manager whose partners are a superset of the agent’s partners” to a stricter match based on the actual selected manager relationship inferred from edit/create rules.
+   - If only one selected manager fully explains the assigned partners, show only that manager.
+   - Do not list every manager who happens to cover the same partners.
 
-- Header switches: title `"Create New User"` ↔ `"Edit User"`, icon `UserPlus` ↔ `SquarePen`.
-- Email field becomes **disabled** in edit mode (email cannot change).
-- Password block hidden in edit mode (use existing reset-password action instead).
-- Role select: disabled in edit mode to avoid orphaning assignment data (simpler + safer); a short note explains role changes aren't supported here.
-- Submit button: `"Create User"` ↔ `"Update User"`; calls `handleCreateUser` or new `handleUpdateUser`.
-- Back button label switches to `"Back to User Management"` in both modes; clears `selectedUser` and resets form.
-
-### 3. New `handleUpdateUser`
-
-- `PUT /manage-users/:id` with `{ full_name, phone }` (existing endpoint behavior).
-- After success, re-apply assignment side-effects identical to create:
-  - If role is `acsl_agent` or `acsl_agent_manager`: `setAgentStates(id, [...selectedStates])`.
-  - Always (when relevant role): `setAgentOrganizations(id, [...selectedPartnerIds])` — this overwrites prior assignments so unchecking a partner removes it.
-- Toast success, return to list, refresh current page.
-
-### 4. Remove the old Edit dialog (lines 1596–1645)
-
-- Delete the `Dialog`-based edit modal and its `showEditModal` state. The kebab "Edit" no longer opens a dialog — it routes to the inline edit view.
-
-### 5. Reset-form coverage
-
-- `resetForm()` already clears assignment state; also clear `selectedUser` and reset `formMode` to `"create"` on Back / after submit.
-
-## Out of scope
-
-- No change to the `manage-users` Edge Function. Email and role remain immutable from the UI (matches current backend contract).
-- No change to the table, filters, pagination, or other views.
-
-## Acceptance
-
-- Clicking "Edit" on any user opens the inline form pre-filled with their details.
-- For an ACSL Agent: assigned States, supervising ACSL Managers, and Partner checkboxes all show the user's current assignments.
-- Saving updates name/phone and overwrites state + partner assignments; unchecking a partner removes it; counts on Agents Profile reflect the change immediately.
-- Creating a new user continues to work exactly as before.
+6. **Validate the user flow**
+   - Check that clicking Edit opens the full inline form with saved states, manager(s), and partners already selected.
+   - Check that changing User Group saves.
+   - Check that the ACSL Agent user shows only the originally assigned supervisor on Agents Profile.
