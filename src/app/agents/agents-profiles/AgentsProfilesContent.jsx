@@ -648,11 +648,26 @@ const AgentsProfilesContent = () => {
         {/* Pagination footer */}
         {filtered.length > 0 && (
           <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-white">
-            <p className="text-sm text-gray-600">
-              Showing <span className="font-medium">{startRecord}</span> to{" "}
-              <span className="font-medium">{endRecord}</span> of{" "}
-              <span className="font-medium">{filtered.length}</span> agents
-            </p>
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-gray-600">
+                Showing <span className="font-medium">{startRecord}</span> to{" "}
+                <span className="font-medium">{endRecord}</span> of{" "}
+                <span className="font-medium">{filtered.length}</span> agents
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Rows per page</span>
+                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+                  <SelectTrigger className="h-8 w-[80px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[10, 25, 50, 100].map((n) => (
+                      <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             {totalPages > 1 && (
               <div className="flex items-center gap-1">
                 <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(1)} disabled={currentPage === 1}>
@@ -666,7 +681,7 @@ const AgentsProfilesContent = () => {
                     key={p}
                     variant={p === currentPage ? "default" : "outline"}
                     size="sm"
-                    className={`h-8 w-8 p-0 ${p === currentPage ? "bg-brand text-white hover:bg-brand" : ""}`}
+                    className={`h-8 w-8 p-0 ${p === currentPage ? "bg-black text-white hover:bg-black border-black" : ""}`}
                     onClick={() => setPage(p)}
                   >
                     {p}
