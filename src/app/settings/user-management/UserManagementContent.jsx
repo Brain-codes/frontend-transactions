@@ -750,13 +750,38 @@ const UserManagementPage = () => {
 
         // If the edge function rejects the role, create as acsl_agent then promote via PUT.
         if (!attempt.ok) {
-          attempt = await postUser("acsl_agent");
-          if (!attempt.ok) throw new Error(attempt.result?.error || "Failed to create user");
+          if (targetRole === "agent") {
+            try {
+              const agentCreate = await createAgentViaManageAgents(partnerId, session.access_token);
+              newUserId = agentCreate.newUserId;
+              generatedPassword = agentCreate.generatedPassword;
+            } catch {
+              // Continue to the universal fallback below; manage-agents can be
+              // restricted by organization, but manage-users PUT can promote.
+            }
+          }
 
+          if (!newUserId) {
+          attempt = await postUser("acsl_agent");
+          if (!attempt.ok) {
+            const emailAlreadyExists = String(attempt.result?.error || attempt.result?.message || "")
+              .toLowerCase()
+              .includes("email") && String(attempt.result?.error || attempt.result?.message || "").toLowerCase().includes("use");
+            if (!emailAlreadyExists) throw new Error(attempt.result?.error || attempt.result?.message || "Failed to create user");
+
+            const { data: existing } = await supabase
+              .from("profiles")
+              .select("id")
+              .eq("email", userForm.email.trim().toLowerCase())
+              .maybeSingle();
+            newUserId = existing?.id || null;
+          }
+
+          if (attempt.ok) {
           newUserId =
-            attempt.result.user?.id || attempt.result.data?.id ||
-            attempt.result.data?.user?.id || attempt.result.id || null;
+            extractCreatedUserId(attempt.result);
           generatedPassword = attempt.result.generated_password;
+          }
 
           if (!newUserId) {
             const { data: lookup } = await supabase
@@ -765,32 +790,31 @@ const UserManagementPage = () => {
             newUserId = lookup?.id || null;
           }
           if (!newUserId) throw new Error("User created but ID could not be resolved");
+          }
 
-          const putRes = await fetch(
-            `${supabaseFunctionsUrl}/manage-users/${newUserId}`,
-            {
-              method: "PUT",
-              headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-              body: JSON.stringify({
-                full_name: userForm.full_name.trim(),
-                phone: userForm.phone.trim() || null,
-                role: targetRole,
-                organization_id: partnerId,
-              }),
-            },
-          );
-          const putResult = await putRes.json().catch(() => ({}));
-          if (!putRes.ok) throw new Error(putResult?.error || `Created user but failed to assign ${targetRole === "agent" ? "Agent" : "Partner Agent"} role`);
+          await updateUserViaManageUsers(newUserId, {
+            full_name: userForm.full_name.trim(),
+            phone: userForm.phone.trim() || null,
+            role: targetRole,
+            organization_id: partnerId,
+          }, session.access_token);
         } else {
           result = attempt.result;
-          newUserId = result.user?.id || result.data?.id || result.data?.user?.id || result.id || null;
+          newUserId = extractCreatedUserId(result);
           generatedPassword = result.generated_password;
+        }
+
+        if (newUserId) {
+          // Keep organization-bound agents clean: they should only be linked by
+          // profiles.organization_id, not ACSL manager/state assignment tables.
+          try { await superAdminAgentService.setAgentStates(newUserId, []); } catch { /* non-fatal */ }
+          try { await superAdminAgentService.setAgentOrganizations(newUserId, []); } catch { /* non-fatal */ }
         }
       } else {
         const attempt = await postUser(userForm.role);
         if (!attempt.ok) throw new Error(attempt.result?.error || "Failed to create user");
         result = attempt.result;
-        newUserId = result.user?.id || result.data?.id || result.data?.user?.id || result.id || null;
+        newUserId = extractCreatedUserId(result);
         generatedPassword = result.generated_password;
 
         if (
