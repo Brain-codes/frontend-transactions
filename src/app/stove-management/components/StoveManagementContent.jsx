@@ -563,13 +563,13 @@ export default function StoveManagementContent() {
 
         {/* Table */}
         <div className="space-y-0">
-          <div className="bg-blue-50 rounded-t-lg px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
+          <div className="bg-[#f4f7e3] rounded-t-lg px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3 flex-wrap">
               {/* Per page */}
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Per page:</span>
+                <span className="text-sm text-gray-500 font-medium whitespace-nowrap">Per page:</span>
                 <Select value={pagination.page_size.toString()} onValueChange={handlePageSizeChange}>
-                  <SelectTrigger className="w-[60px] h-7 bg-white text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-[60px] h-7 bg-white text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="10">10</SelectItem>
                     <SelectItem value="25">25</SelectItem>
@@ -584,9 +584,9 @@ export default function StoveManagementContent() {
                 <>
                   <div className="w-px h-5 bg-gray-300" />
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Group by:</span>
+                    <span className="text-sm text-gray-500 font-medium whitespace-nowrap">Group by:</span>
                     <Select value={groupBy} onValueChange={setGroupBy}>
-                      <SelectTrigger className="h-7 bg-white text-xs w-[145px]"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-7 bg-white text-sm w-[145px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
                         <SelectItem value="sales_reference">Sales Reference</SelectItem>
@@ -596,9 +596,9 @@ export default function StoveManagementContent() {
                   </div>
                   <div className="w-px h-5 bg-gray-300" />
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Sort by:</span>
+                    <span className="text-sm text-gray-500 font-medium whitespace-nowrap">Sort by:</span>
                     <Select value={sortBy} onValueChange={handleSortByChange}>
-                      <SelectTrigger className="h-7 bg-white text-xs w-[140px]"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-7 bg-white text-sm w-[140px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="status">Status (Sold)</SelectItem>
                         <SelectItem value="stove_id">Stove ID</SelectItem>
@@ -607,7 +607,7 @@ export default function StoveManagementContent() {
                         <SelectItem value="sales_reference">Sales Reference</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Button size="sm" variant="outline" className="h-7 px-2 bg-white text-xs flex items-center gap-1" onClick={toggleSortDir}>
+                    <Button size="sm" variant="outline" className="h-7 px-2 bg-white text-sm flex items-center gap-1" onClick={toggleSortDir}>
                       {sortDir === "asc" ? <><ArrowUp className="h-3 w-3" /><span>Asc</span></> : <><ArrowDown className="h-3 w-3" /><span>Desc</span></>}
                     </Button>
                   </div>
@@ -616,11 +616,11 @@ export default function StoveManagementContent() {
             </div>
 
             <div className="flex items-center gap-2">
-              <p className="text-xs font-semibold text-gray-600">Total: <span className="text-brand">{pagination.total_count}</span></p>
+              <p className="text-sm font-semibold text-gray-600">Total: <span className="text-[#4a5d0f]">{pagination.total_count}</span></p>
               {/* Super admin / partner: CSV download */}
               {!isAcslAgent && (
                 <Button
-                  size="sm" variant="outline" className="h-7 px-2 text-xs flex items-center gap-1"
+                  size="sm" variant="outline" className="h-7 px-2 text-sm flex items-center gap-1"
                   onClick={() => {
                     const headers = isSuperAdmin
                       ? ["Stove ID", "Sales Reference", "Status", "Partner Name", "Branch", "State", "Date Sold", "Sold To"]
