@@ -1011,16 +1011,16 @@ const UserManagementPage = () => {
 
         {/* ── Delete Confirmation Modal ──────────────────────────────────────── */}
         <Dialog open={showDeleteModal} onOpenChange={(open) => { if (!open) { setShowDeleteModal(false); setSelectedUser(null); } }}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-red-600">Delete User</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="sm:max-w-md shadow-none">
+            <DialogHeader className="border-b pb-3 mb-1">
+              <DialogTitle className="text-lg font-semibold text-red-600">Delete User</DialogTitle>
+              <DialogDescription className="text-sm text-gray-500">
                 This action cannot be undone. The user and all their data will be permanently removed.
               </DialogDescription>
             </DialogHeader>
 
             {selectedUser && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-1.5 text-sm text-gray-700">
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 space-y-1.5 text-sm text-gray-700">
                 <p><strong>Name:</strong> {selectedUser.full_name}</p>
                 <p><strong>Email:</strong> {selectedUser.email}</p>
                 <p><strong>Role:</strong> {getRoleLabel(selectedUser.role)}</p>
@@ -1028,10 +1028,10 @@ const UserManagementPage = () => {
             )}
 
             <div className="flex justify-end gap-3 pt-2">
-              <Button variant="outline" onClick={() => { setShowDeleteModal(false); setSelectedUser(null); }} disabled={actionLoading === "delete"}>
+              <Button variant="outline" onClick={() => { setShowDeleteModal(false); setSelectedUser(null); }} disabled={actionLoading === "delete"} className="shadow-none border-gray-300">
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={handleDeleteUser} disabled={actionLoading === "delete"}>
+              <Button variant="destructive" onClick={handleDeleteUser} disabled={actionLoading === "delete"} className="shadow-none">
                 {actionLoading === "delete" ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Deleting...</> : <><Trash2 className="h-4 w-4 mr-2" />Delete User</>}
               </Button>
             </div>
