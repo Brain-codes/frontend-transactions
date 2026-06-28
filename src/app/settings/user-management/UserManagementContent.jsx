@@ -175,6 +175,7 @@ const UserManagementPage = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedUserForOrgs, setSelectedUserForOrgs] = useState(null);
   const [actionLoading, setActionLoading] = useState(null); // stores userId or 'create'/'delete' etc.
+  const [editAssignmentsLoading, setEditAssignmentsLoading] = useState(false);
   const hydratingRef = useRef(false);
 
   // Form state
@@ -318,6 +319,7 @@ const UserManagementPage = () => {
     setSelectedStates(new Set());
     setSelectedManagerIds(new Set());
     setManagerSearch("");
+    setEditAssignmentsLoading(false);
     setFormMode("create");
     setSelectedUser(null);
   };
@@ -329,6 +331,83 @@ const UserManagementPage = () => {
   const needsPartnerAssignment = (role) => role === "partner_agent";
   const needsAcslAgentCascade = (role) => role === "acsl_agent";
   const needsStateAndPartnerAssignment = (role) => role === "acsl_agent_manager";
+
+  const normalizeStateNames = (list) => Array.isArray(list)
+    ? list.map((s) => (typeof s === "string" ? s : s?.state)).filter(Boolean)
+    : [];
+
+  const normalizeOrgIds = (list) => Array.isArray(list)
+    ? list.map((o) => o?.id || o?.organization_id).filter(Boolean)
+    : [];
+
+  const fetchDirectAgentAssignmentRows = async (agentId) => {
+    const { data, error } = await supabase
+      .from("super_admin_agent_organizations")
+      .select("organization_id, assigned_by")
+      .eq("agent_id", agentId);
+    if (error) return null;
+    return Array.isArray(data) ? data : [];
+  };
+
+  const inferManagerIdsForAgent = (orgIds, stateNames, managers, assignmentRows = []) => {
+    const orgIdSet = new Set(orgIds);
+    const stateSet = new Set(stateNames);
+    if (orgIdSet.size === 0 || managers.length === 0) return [];
+
+    const assignedByIds = new Set(
+      assignmentRows
+        .map((row) => row?.assigned_by)
+        .filter((id) => managers.some((m) => m.id === id))
+    );
+    if (assignedByIds.size > 0) return Array.from(assignedByIds);
+
+    const coversAllAgentPartners = (manager) => {
+      if (manager.orgIds.size === 0) return false;
+      for (const id of orgIdSet) if (!manager.orgIds.has(id)) return false;
+      return true;
+    };
+
+    const candidates = managers
+      .filter((manager) => {
+        if (!coversAllAgentPartners(manager)) return false;
+        if (stateSet.size === 0) return true;
+        return Array.from(stateSet).some((state) => manager.states.has(state));
+      })
+      .map((manager) => ({
+        ...manager,
+        extraPartners: Math.max(0, manager.orgIds.size - orgIdSet.size),
+        stateOverlap: Array.from(stateSet).filter((state) => manager.states.has(state)).length,
+      }))
+      .sort((a, b) => a.extraPartners - b.extraPartners || b.stateOverlap - a.stateOverlap || a.full_name.localeCompare(b.full_name));
+
+    if (candidates.length > 0) return [candidates[0].id];
+
+    const overlapping = managers
+      .filter((manager) => Array.from(orgIdSet).some((id) => manager.orgIds.has(id)))
+      .map((manager) => ({
+        ...manager,
+        overlap: Array.from(orgIdSet).filter((id) => manager.orgIds.has(id)).length,
+        extraPartners: Math.max(0, manager.orgIds.size - orgIdSet.size),
+      }))
+      .sort((a, b) => b.overlap - a.overlap || a.extraPartners - b.extraPartners || a.full_name.localeCompare(b.full_name));
+
+    return overlapping.length > 0 ? [overlapping[0].id] : [];
+  };
+
+  const ensureOrganizationsLoaded = async () => {
+    if (allOrgs.length > 0) return allOrgs;
+    setOrgsLoading(true);
+    try {
+      const result = await organizationsService.getAllOrganizations();
+      const orgs = result.data || [];
+      setAllOrgs(orgs);
+      return orgs;
+    } catch {
+      return [];
+    } finally {
+      setOrgsLoading(false);
+    }
+  };
 
   // Load all ACSL Agent Managers + their assigned states & orgs (for cascade)
   const loadAcslManagers = async () => {
@@ -370,8 +449,10 @@ const UserManagementPage = () => {
         })
       );
       setAcslManagers(enriched);
+      return enriched;
     } catch {
       setAcslManagers([]);
+      return [];
     } finally {
       setManagersLoading(false);
     }
@@ -388,19 +469,11 @@ const UserManagementPage = () => {
       needsPartnerAssignment(role) ||
       needsStateAndPartnerAssignment(role) ||
       needsAcslAgentCascade(role);
-    if (shouldLoadOrgs && allOrgs.length === 0) {
-      setOrgsLoading(true);
-      try {
-        const result = await organizationsService.getAllOrganizations();
-        setAllOrgs(result.data || []);
-      } catch {
-        // silently fail — user can still proceed without partner assignment
-      } finally {
-        setOrgsLoading(false);
-      }
+    if (shouldLoadOrgs) {
+      await ensureOrganizationsLoaded();
     }
     if (needsAcslAgentCascade(role) && acslManagers.length === 0) {
-      loadAcslManagers();
+      await loadAcslManagers();
     }
   };
 
@@ -432,8 +505,10 @@ const UserManagementPage = () => {
         .filter((o) => allowedOrgIds.has(o.id) && (selectedStates.size === 0 || (o.state && selectedStates.has(o.state))))
         .map((o) => o.id)
     );
-    // Auto-check newly-available, keep prior selections that are still valid
-    setSelectedPartnerIds(inStateOrgIds);
+    // Keep saved/manual selections that are still valid. Do not auto-add every
+    // partner under the selected manager(s), otherwise editing an ACSL Agent
+    // expands their assignment beyond the partners explicitly selected.
+    setSelectedPartnerIds((prev) => new Set(Array.from(prev).filter((id) => inStateOrgIds.has(id))));
   }, [selectedManagerIds, selectedStates, acslManagers, allOrgs, userForm.role]);
 
 
