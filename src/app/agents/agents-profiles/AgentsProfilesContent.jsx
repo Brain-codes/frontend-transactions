@@ -509,9 +509,7 @@ const AgentsProfilesContent = () => {
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Agent Name</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Supervisor(s)</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">States Assigned</TableHead>
-                <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Partners Assigned</TableHead>
-
-                <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
+                <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center rounded-tr-lg">Partners Assigned</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className={loading ? "opacity-40" : ""}>
