@@ -771,57 +771,58 @@ const UserManagementPage = () => {
 
         {/* ── Create User Modal ──────────────────────────────────────────────── */}
         <Dialog open={showCreateModal} onOpenChange={(open) => { if (!open) { setShowCreateModal(false); resetForm(); } }}>
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New User</DialogTitle>
-              <DialogDescription>Add a new user to the system</DialogDescription>
+          <DialogContent className="sm:max-w-2xl shadow-none">
+            <DialogHeader className="border-b pb-3 mb-1">
+              <DialogTitle className="text-lg font-semibold text-[#4a5d0f]">Create New User</DialogTitle>
+              <DialogDescription className="text-sm text-gray-500">Add a new user to the system</DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleCreateUser} className="space-y-4 pt-2">
               <div className="grid grid-cols-2 gap-4">
                 {/* Full Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="full_name">Full Name <span className="text-red-500">*</span></Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="full_name" className="text-sm font-medium text-gray-700">Full Name <span className="text-red-500">*</span></Label>
                   <Input
                     id="full_name"
                     placeholder="Enter full name"
                     value={userForm.full_name}
                     onChange={(e) => setUserForm((prev) => ({ ...prev, full_name: e.target.value }))}
-                    className={formErrors.full_name ? "border-red-500" : ""}
+                    className={`shadow-none ${formErrors.full_name ? "border-red-500" : "border-gray-300"}`}
                   />
                   {formErrors.full_name && <p className="text-xs text-red-600">{formErrors.full_name}</p>}
                 </div>
 
                 {/* Email */}
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email <span className="text-red-500">*</span></Label>
                   <Input
                     id="email"
                     type="email"
                     placeholder="Enter email address"
                     value={userForm.email}
                     onChange={(e) => setUserForm((prev) => ({ ...prev, email: e.target.value }))}
-                    className={formErrors.email ? "border-red-500" : ""}
+                    className={`shadow-none ${formErrors.email ? "border-red-500" : "border-gray-300"}`}
                   />
                   {formErrors.email && <p className="text-xs text-red-600">{formErrors.email}</p>}
                 </div>
 
                 {/* Phone */}
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone <span className="text-gray-400 text-xs font-normal">(optional)</span></Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="phone" className="text-sm font-medium text-gray-700">Phone <span className="text-gray-400 text-xs font-normal">(optional)</span></Label>
                   <Input
                     id="phone"
                     placeholder="Enter phone number"
                     value={userForm.phone}
                     onChange={(e) => setUserForm((prev) => ({ ...prev, phone: e.target.value }))}
+                    className="shadow-none border-gray-300"
                   />
                 </div>
 
-                {/* Role */}
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role <span className="text-red-500">*</span></Label>
+                {/* User Group */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="role" className="text-sm font-medium text-gray-700">User Group <span className="text-red-500">*</span></Label>
                   <Select value={userForm.role} onValueChange={handleRoleChange}>
-                    <SelectTrigger id="role">
+                    <SelectTrigger id="role" className="shadow-none border-gray-300">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -837,9 +838,9 @@ const UserManagementPage = () => {
 
               {/* Partner Assignment — shown for ACSL Agent and Partner Agent */}
               {needsPartnerAssignment(userForm.role) && (
-                <div className="space-y-2 border border-blue-100 rounded-lg p-3 bg-blue-50/40">
-                  <Label className="text-sm font-medium flex items-center gap-1.5">
-                    <Building2 className="h-4 w-4 text-brand" />
+                <div className="space-y-2 border border-[#eef3c4] rounded-md p-3 bg-[#f9fbed]">
+                  <Label className="text-sm font-semibold text-[#4a5d0f] flex items-center gap-1.5">
+                    <Building2 className="h-4 w-4 text-[#4a5d0f]" />
                     Assign Partners <span className="text-gray-400 font-normal text-xs">(optional)</span>
                   </Label>
 
@@ -849,7 +850,7 @@ const UserManagementPage = () => {
                       placeholder="Search partners..."
                       value={partnerSearch}
                       onChange={(e) => setPartnerSearch(e.target.value)}
-                      className="pl-8 h-8 text-sm bg-white"
+                      className="pl-8 h-8 text-sm bg-white shadow-none border-gray-300"
                     />
                   </div>
 
@@ -870,7 +871,7 @@ const UserManagementPage = () => {
                           return (
                             <label
                               key={org.id}
-                              className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-xs transition-colors ${checked ? "bg-blue-100 text-blue-800" : "hover:bg-white text-gray-700"}`}
+                              className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-xs transition-colors ${checked ? "bg-[#eef3c4] text-[#4a5d0f]" : "hover:bg-white text-gray-700"}`}
                             >
                               <input
                                 type="checkbox"
@@ -883,7 +884,7 @@ const UserManagementPage = () => {
                                     return next;
                                   });
                                 }}
-                                className="rounded"
+                                className="rounded accent-[#4a5d0f]"
                               />
                               <span className="flex-1 truncate font-medium">{org.partner_name}</span>
                               {org.state && <span className="text-gray-400 shrink-0">{org.state}</span>}
@@ -897,7 +898,7 @@ const UserManagementPage = () => {
                   )}
 
                   {selectedPartnerIds.size > 0 && (
-                    <p className="text-xs text-blue-600 font-medium">
+                    <p className="text-xs text-[#4a5d0f] font-medium">
                       {selectedPartnerIds.size} partner{selectedPartnerIds.size > 1 ? "s" : ""} selected
                     </p>
                   )}
@@ -905,21 +906,21 @@ const UserManagementPage = () => {
               )}
 
               {/* Password Options */}
-              <div className="space-y-3 border border-gray-100 rounded-lg p-3 bg-gray-50">
+              <div className="space-y-3 border border-gray-200 rounded-md p-3 bg-[#fafcfc]">
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
                     id="auto_generate"
                     checked={userForm.auto_generate_password}
                     onChange={(e) => setUserForm((prev) => ({ ...prev, auto_generate_password: e.target.checked }))}
-                    className="rounded"
+                    className="rounded accent-[#4a5d0f]"
                   />
-                  <Label htmlFor="auto_generate" className="cursor-pointer text-sm">Auto-generate password</Label>
+                  <Label htmlFor="auto_generate" className="cursor-pointer text-sm font-medium text-gray-700">Auto-generate password</Label>
                 </div>
 
                 {!userForm.auto_generate_password && (
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password <span className="text-red-500">*</span></Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password <span className="text-red-500">*</span></Label>
                     <div className="relative">
                       <Input
                         id="password"
@@ -927,16 +928,16 @@ const UserManagementPage = () => {
                         placeholder="Min 8 characters"
                         value={userForm.password}
                         onChange={(e) => setUserForm((prev) => ({ ...prev, password: e.target.value }))}
-                        className={formErrors.password ? "border-red-500" : ""}
+                        className={`shadow-none pr-9 ${formErrors.password ? "border-red-500" : "border-gray-300"}`}
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                        className="absolute right-0.5 top-1/2 -translate-y-1/2 h-7 w-7 p-0 hover:bg-transparent"
                         onClick={() => setShowPassword(!showPassword)}
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showPassword ? <EyeOff className="h-4 w-4 text-gray-500" /> : <Eye className="h-4 w-4 text-gray-500" />}
                       </Button>
                     </div>
                     {formErrors.password && <p className="text-xs text-red-600">{formErrors.password}</p>}
@@ -945,10 +946,10 @@ const UserManagementPage = () => {
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => { setShowCreateModal(false); resetForm(); }} disabled={actionLoading === "create"}>
+                <Button type="button" variant="outline" onClick={() => { setShowCreateModal(false); resetForm(); }} disabled={actionLoading === "create"} className="shadow-none border-gray-300">
                   Cancel
                 </Button>
-                <Button type="submit" disabled={actionLoading === "create"} className="bg-brand hover:bg-brand/90 text-white">
+                <Button type="submit" disabled={actionLoading === "create"} className="bg-[#4a5d0f] hover:bg-[#3d4f0c] text-white shadow-none">
                   {actionLoading === "create" ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</> : <><UserPlus className="h-4 w-4 mr-2" />Create User</>}
                 </Button>
               </div>
@@ -958,48 +959,49 @@ const UserManagementPage = () => {
 
         {/* ── Edit User Modal ────────────────────────────────────────────────── */}
         <Dialog open={showEditModal} onOpenChange={(open) => { if (!open) { setShowEditModal(false); setSelectedUser(null); resetForm(); } }}>
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Edit User</DialogTitle>
-              <DialogDescription>Update user information (email cannot be changed)</DialogDescription>
+          <DialogContent className="sm:max-w-2xl shadow-none">
+            <DialogHeader className="border-b pb-3 mb-1">
+              <DialogTitle className="text-lg font-semibold text-[#4a5d0f]">Edit User</DialogTitle>
+              <DialogDescription className="text-sm text-gray-500">Update user information (email cannot be changed)</DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleEditUser} className="space-y-4 pt-2">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit_full_name">Full Name <span className="text-red-500">*</span></Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit_full_name" className="text-sm font-medium text-gray-700">Full Name <span className="text-red-500">*</span></Label>
                   <Input
                     id="edit_full_name"
                     placeholder="Enter full name"
                     value={userForm.full_name}
                     onChange={(e) => setUserForm((prev) => ({ ...prev, full_name: e.target.value }))}
-                    className={formErrors.full_name ? "border-red-500" : ""}
+                    className={`shadow-none ${formErrors.full_name ? "border-red-500" : "border-gray-300"}`}
                   />
                   {formErrors.full_name && <p className="text-xs text-red-600">{formErrors.full_name}</p>}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="edit_email">Email</Label>
-                  <Input id="edit_email" type="email" value={userForm.email} disabled className="bg-gray-100 cursor-not-allowed" />
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit_email" className="text-sm font-medium text-gray-700">Email</Label>
+                  <Input id="edit_email" type="email" value={userForm.email} disabled className="bg-gray-50 cursor-not-allowed shadow-none border-gray-200 text-gray-500" />
                   <p className="text-xs text-gray-400">Email cannot be changed</p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="edit_phone">Phone <span className="text-gray-400 text-xs font-normal">(optional)</span></Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit_phone" className="text-sm font-medium text-gray-700">Phone <span className="text-gray-400 text-xs font-normal">(optional)</span></Label>
                   <Input
                     id="edit_phone"
                     placeholder="Enter phone number"
                     value={userForm.phone}
                     onChange={(e) => setUserForm((prev) => ({ ...prev, phone: e.target.value }))}
+                    className="shadow-none border-gray-300"
                   />
                 </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => { setShowEditModal(false); setSelectedUser(null); resetForm(); }} disabled={actionLoading === "edit"}>
+                <Button type="button" variant="outline" onClick={() => { setShowEditModal(false); setSelectedUser(null); resetForm(); }} disabled={actionLoading === "edit"} className="shadow-none border-gray-300">
                   Cancel
                 </Button>
-                <Button type="submit" disabled={actionLoading === "edit"} className="bg-brand hover:bg-brand/90 text-white">
+                <Button type="submit" disabled={actionLoading === "edit"} className="bg-[#4a5d0f] hover:bg-[#3d4f0c] text-white shadow-none">
                   {actionLoading === "edit" ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Updating...</> : <><Edit className="h-4 w-4 mr-2" />Update User</>}
                 </Button>
               </div>
@@ -1009,16 +1011,16 @@ const UserManagementPage = () => {
 
         {/* ── Delete Confirmation Modal ──────────────────────────────────────── */}
         <Dialog open={showDeleteModal} onOpenChange={(open) => { if (!open) { setShowDeleteModal(false); setSelectedUser(null); } }}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-red-600">Delete User</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="sm:max-w-md shadow-none">
+            <DialogHeader className="border-b pb-3 mb-1">
+              <DialogTitle className="text-lg font-semibold text-red-600">Delete User</DialogTitle>
+              <DialogDescription className="text-sm text-gray-500">
                 This action cannot be undone. The user and all their data will be permanently removed.
               </DialogDescription>
             </DialogHeader>
 
             {selectedUser && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-1.5 text-sm text-gray-700">
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 space-y-1.5 text-sm text-gray-700">
                 <p><strong>Name:</strong> {selectedUser.full_name}</p>
                 <p><strong>Email:</strong> {selectedUser.email}</p>
                 <p><strong>Role:</strong> {getRoleLabel(selectedUser.role)}</p>
@@ -1026,10 +1028,10 @@ const UserManagementPage = () => {
             )}
 
             <div className="flex justify-end gap-3 pt-2">
-              <Button variant="outline" onClick={() => { setShowDeleteModal(false); setSelectedUser(null); }} disabled={actionLoading === "delete"}>
+              <Button variant="outline" onClick={() => { setShowDeleteModal(false); setSelectedUser(null); }} disabled={actionLoading === "delete"} className="shadow-none border-gray-300">
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={handleDeleteUser} disabled={actionLoading === "delete"}>
+              <Button variant="destructive" onClick={handleDeleteUser} disabled={actionLoading === "delete"} className="shadow-none">
                 {actionLoading === "delete" ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Deleting...</> : <><Trash2 className="h-4 w-4 mr-2" />Delete User</>}
               </Button>
             </div>
