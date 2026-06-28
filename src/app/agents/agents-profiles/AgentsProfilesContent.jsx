@@ -320,8 +320,11 @@ const AgentsProfilesContent = () => {
             const supervisors = managerInfo
               .filter((m) => {
                 if (agentOrgIds.size === 0) return false;
-                for (const id of agentOrgIds) if (m.orgIds.has(id)) return true;
-                return false;
+                if (m.orgIds.size === 0) return false;
+                // Manager qualifies only if their assigned partners cover
+                // EVERY partner assigned to this agent (superset).
+                for (const id of agentOrgIds) if (!m.orgIds.has(id)) return false;
+                return true;
               })
               .map((m) => m.name);
             return { id: a.id, supervisors };
@@ -529,7 +532,14 @@ const AgentsProfilesContent = () => {
                     <TableCell className="text-sm font-medium text-gray-900">
                       <span className="align-baseline">{a.full_name || "N/A"}</span>
                       {a.role && (
-                        <sup className="ml-1 text-[9px] font-medium text-gray-500">
+                        <sup className={`ml-1 text-[9px] font-medium ${
+                          a.role === "super_admin" ? "text-red-600" :
+                          a.role === "acsl_agent_manager" ? "text-purple-600" :
+                          a.role === "acsl_agent" ? "text-green-700" :
+                          a.role === "partner" ? "text-blue-600" :
+                          a.role === "partner_agent" ? "text-amber-600" :
+                          "text-gray-500"
+                        }`}>
                           {formatRole(a.role)}
                         </sup>
                       )}
