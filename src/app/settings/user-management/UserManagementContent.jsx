@@ -303,7 +303,7 @@ const UserManagementPage = () => {
   // ── Form helpers ───────────────────────────────────────────────────────────
 
   const resetForm = () => {
-    setUserForm({ full_name: "", email: "", phone: "", role: "", password: "", auto_generate_password: true });
+    setUserForm({ full_name: "", email: "", phone: "", role: undefined, password: "", auto_generate_password: true });
     setFormErrors({});
     setShowPassword(false);
     setPartnerSearch("");
