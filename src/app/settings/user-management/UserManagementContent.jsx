@@ -1,6 +1,6 @@
 
 import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
@@ -169,12 +169,13 @@ const UserManagementPage = () => {
 
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [formMode, setFormMode] = useState("create"); // "create" | "edit"
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAssignOrgsModal, setShowAssignOrgsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedUserForOrgs, setSelectedUserForOrgs] = useState(null);
   const [actionLoading, setActionLoading] = useState(null); // stores userId or 'create'/'delete' etc.
+  const hydratingRef = useRef(false);
 
   // Form state
   const [userForm, setUserForm] = useState({
@@ -317,6 +318,8 @@ const UserManagementPage = () => {
     setSelectedStates(new Set());
     setSelectedManagerIds(new Set());
     setManagerSearch("");
+    setFormMode("create");
+    setSelectedUser(null);
   };
 
   // Role classifiers
@@ -404,6 +407,7 @@ const UserManagementPage = () => {
   // Auto-check all partners in selected states when states change (Agent Manager flow)
   useEffect(() => {
     if (userForm.role !== "acsl_agent_manager") return;
+    if (hydratingRef.current) return;
     const ids = new Set(
       allOrgs
         .filter((o) => o.state && selectedStates.has(o.state))
@@ -417,6 +421,7 @@ const UserManagementPage = () => {
   // the currently-selected states. Removing a manager/state drops their partners.
   useEffect(() => {
     if (userForm.role !== "acsl_agent") return;
+    if (hydratingRef.current) return;
     const allowedOrgIds = new Set();
     acslManagers
       .filter((m) => selectedManagerIds.has(m.id))
@@ -445,11 +450,82 @@ const UserManagementPage = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const openEditModal = (user) => {
+  const openEditView = async (user) => {
+    // Reset everything first
+    resetForm();
+    hydratingRef.current = true;
     setSelectedUser(user);
-    setUserForm({ full_name: user.full_name || "", email: user.email || "", phone: user.phone || "", role: user.role || undefined, password: "", auto_generate_password: true });
+    setFormMode("edit");
+    setUserForm({
+      full_name: user.full_name || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      role: user.role || undefined,
+      password: "",
+      auto_generate_password: true,
+    });
     setFormErrors({});
-    setShowEditModal(true);
+    setShowCreateModal(true);
+
+    // Load supporting data based on role
+    const role = user.role;
+    const needsOrgs =
+      needsPartnerAssignment(role) ||
+      needsStateAndPartnerAssignment(role) ||
+      needsAcslAgentCascade(role);
+
+    try {
+      if (needsOrgs && allOrgs.length === 0) {
+        setOrgsLoading(true);
+        try {
+          const result = await organizationsService.getAllOrganizations();
+          setAllOrgs(result.data || []);
+        } catch { /* non-fatal */ }
+        finally { setOrgsLoading(false); }
+      }
+      if (needsAcslAgentCascade(role) && acslManagers.length === 0) {
+        await loadAcslManagers();
+      }
+
+      // Hydrate states & partners from existing assignments
+      const [statesRes, orgsRes] = await Promise.allSettled([
+        superAdminAgentService.getAgentStates(user.id),
+        superAdminAgentService.getAgentOrganizations(user.id),
+      ]);
+      const statesList = statesRes.status === "fulfilled"
+        ? (statesRes.value?.data || statesRes.value?.states || statesRes.value || [])
+        : [];
+      const orgsList = orgsRes.status === "fulfilled"
+        ? (orgsRes.value?.data || orgsRes.value?.organizations || orgsRes.value || [])
+        : [];
+      const stateNames = Array.isArray(statesList)
+        ? statesList.map((s) => (typeof s === "string" ? s : s?.state)).filter(Boolean)
+        : [];
+      const orgIds = Array.isArray(orgsList)
+        ? orgsList.map((o) => o?.id || o?.organization_id).filter(Boolean)
+        : [];
+
+      setSelectedStates(new Set(stateNames));
+
+      // For acsl_agent: derive supervising managers from overlap of partner IDs
+      if (needsAcslAgentCascade(role)) {
+        const orgIdSet = new Set(orgIds);
+        // Use the latest managers list (loadAcslManagers updates state above).
+        // Read from a fresh snapshot via setAcslManagers callback hack.
+        let managersSnapshot = [];
+        setAcslManagers((curr) => { managersSnapshot = curr; return curr; });
+        const managerIds = managersSnapshot
+          .filter((m) => Array.from(m.orgIds).some((id) => orgIdSet.has(id)))
+          .map((m) => m.id);
+        setSelectedManagerIds(new Set(managerIds));
+      }
+
+      // Always set partners last so reconcile effects (now bypassed) don't overwrite
+      setSelectedPartnerIds(new Set(orgIds));
+    } finally {
+      // Release the guard after React has flushed the above state updates
+      setTimeout(() => { hydratingRef.current = false; }, 50);
+    }
   };
 
   // ── CRUD handlers ──────────────────────────────────────────────────────────
@@ -512,10 +588,11 @@ const UserManagementPage = () => {
     }
   };
 
-  const handleEditUser = async (e) => {
+  const handleUpdateUser = async (e) => {
     e.preventDefault();
     if (!userForm.full_name.trim()) { setFormErrors({ full_name: "Full name is required" }); return; }
-    setActionLoading("edit");
+    if (!selectedUser) return;
+    setActionLoading("create"); // reuse 'create' key so submit button spinner works in shared form
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
@@ -525,9 +602,25 @@ const UserManagementPage = () => {
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to update user");
 
+      // Persist assignment updates (overwrites prior assignments)
+      const role = userForm.role;
+      if (role === "acsl_agent_manager" || role === "acsl_agent") {
+        try {
+          await superAdminAgentService.setAgentStates(selectedUser.id, Array.from(selectedStates));
+        } catch { /* non-fatal */ }
+      }
+      if (
+        role === "acsl_agent_manager" ||
+        role === "acsl_agent" ||
+        role === "partner_agent"
+      ) {
+        try {
+          await superAdminAgentService.setAgentOrganizations(selectedUser.id, Array.from(selectedPartnerIds));
+        } catch { /* non-fatal */ }
+      }
+
       toast({ variant: "success", title: "User updated successfully" });
-      setShowEditModal(false);
-      setSelectedUser(null);
+      setShowCreateModal(false);
       resetForm();
       fetchUsers(pagination.page, pagination.page_size);
     } catch (err) {
@@ -536,6 +629,7 @@ const UserManagementPage = () => {
       setActionLoading(null);
     }
   };
+
 
   const handleToggleUserStatus = async (userId, currentStatus) => {
     setActionLoading(userId);
@@ -731,7 +825,7 @@ const UserManagementPage = () => {
                                 <TooltipTrigger asChild>
                                   <button
                                     type="button"
-                                    onClick={() => openEditModal(u)}
+                                    onClick={() => openEditView(u)}
                                     disabled={!!actionLoading}
                                     aria-label="Edit user"
                                     className="h-8 w-8 inline-flex items-center justify-center rounded-md text-gray-800 hover:bg-gray-50 disabled:opacity-50"
@@ -819,7 +913,7 @@ const UserManagementPage = () => {
                                     <DropdownMenuSeparator />
                                   </>
                                 )}
-                                <DropdownMenuItem onClick={() => openEditModal(u)}>
+                                <DropdownMenuItem onClick={() => openEditView(u)}>
                                   <Edit className="h-4 w-4 mr-2" />
                                   Edit
                                 </DropdownMenuItem>
@@ -904,8 +998,8 @@ const UserManagementPage = () => {
           {showCreateModal && (
             <div className="space-y-5">
               <PageHeader
-                icon={UserPlus}
-                title="Create New User"
+                icon={formMode === "edit" ? SquarePen : UserPlus}
+                title={formMode === "edit" ? "Edit User" : "Create New User"}
                 right={
                   <Button
                     variant="outline"
@@ -922,7 +1016,7 @@ const UserManagementPage = () => {
 
 
 
-            <form onSubmit={handleCreateUser} className="space-y-4 pt-2">
+            <form onSubmit={formMode === "edit" ? handleUpdateUser : handleCreateUser} className="space-y-4 pt-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
                 {/* Full Name */}
@@ -947,9 +1041,11 @@ const UserManagementPage = () => {
                     placeholder="Enter email address"
                     value={userForm.email}
                     onChange={(e) => setUserForm((prev) => ({ ...prev, email: e.target.value }))}
-                    className={`shadow-none ${formErrors.email ? "border-red-500" : "border-gray-300"}`}
+                    disabled={formMode === "edit"}
+                    className={`shadow-none ${formErrors.email ? "border-red-500" : "border-gray-300"} ${formMode === "edit" ? "bg-gray-50 cursor-not-allowed text-gray-500" : ""}`}
                   />
                   {formErrors.email && <p className="text-xs text-red-600">{formErrors.email}</p>}
+                  {formMode === "edit" && <p className="text-xs text-gray-400">Email cannot be changed</p>}
                 </div>
 
                 {/* Phone */}
@@ -967,8 +1063,8 @@ const UserManagementPage = () => {
                 {/* User Group */}
                 <div className="space-y-1.5">
                   <Label htmlFor="role" className="text-sm font-medium text-gray-700">User Group <span className="text-red-500">*</span></Label>
-                  <Select value={userForm.role} onValueChange={handleRoleChange}>
-                    <SelectTrigger id="role" className="shadow-none border-gray-300">
+                  <Select value={userForm.role} onValueChange={handleRoleChange} disabled={formMode === "edit"}>
+                    <SelectTrigger id="role" className={`shadow-none border-gray-300 ${formMode === "edit" ? "bg-gray-50 text-gray-500" : ""}`}>
                       <SelectValue placeholder="Select user group" />
                     </SelectTrigger>
                     <SelectContent>
@@ -980,6 +1076,7 @@ const UserManagementPage = () => {
                     </SelectContent>
                   </Select>
                   {formErrors.role && <p className="text-xs text-red-600">{formErrors.role}</p>}
+                  {formMode === "edit" && <p className="text-xs text-gray-400">Role cannot be changed here</p>}
                 </div>
               </div>
 
@@ -1538,7 +1635,8 @@ const UserManagementPage = () => {
                 </div>
               )}
 
-              {/* Password Options */}
+              {/* Password Options — create only */}
+              {formMode === "create" && (
               <div className="space-y-3 border border-gray-200 rounded-md p-3 bg-[#fafcfc]">
                 <div className="flex items-center gap-2">
                   <input
@@ -1577,13 +1675,18 @@ const UserManagementPage = () => {
                   </div>
                 )}
               </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => { setShowCreateModal(false); resetForm(); }} disabled={actionLoading === "create"} className="shadow-none border-gray-300">
                   Cancel
                 </Button>
                 <Button type="submit" disabled={actionLoading === "create"} className="bg-[#4a5d0f] hover:bg-[#3d4f0c] text-white shadow-none">
-                  {actionLoading === "create" ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</> : <><UserPlus className="h-4 w-4 mr-2" />Create User</>}
+                  {actionLoading === "create"
+                    ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{formMode === "edit" ? "Saving..." : "Creating..."}</>
+                    : formMode === "edit"
+                      ? <><SquarePen className="h-4 w-4 mr-2" />Save Changes</>
+                      : <><UserPlus className="h-4 w-4 mr-2" />Create User</>}
                 </Button>
               </div>
             </form>
@@ -1592,57 +1695,8 @@ const UserManagementPage = () => {
           )}
         </div>
 
-        {/* ── Edit User Modal ────────────────────────────────────────────────── */}
-        <Dialog open={showEditModal} onOpenChange={(open) => { if (!open) { setShowEditModal(false); setSelectedUser(null); resetForm(); } }}>
-          <DialogContent className="sm:max-w-2xl shadow-none">
-            <DialogHeader className="border-b pb-3 mb-1">
-              <DialogTitle className="text-lg font-semibold text-[#4a5d0f]">Edit User</DialogTitle>
-              <DialogDescription className="text-sm text-gray-500">Update user information (email cannot be changed)</DialogDescription>
-            </DialogHeader>
+        {/* Edit User uses the inline Create/Edit view above */}
 
-            <form onSubmit={handleEditUser} className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit_full_name" className="text-sm font-medium text-gray-700">Full Name <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="edit_full_name"
-                    placeholder="Enter full name"
-                    value={userForm.full_name}
-                    onChange={(e) => setUserForm((prev) => ({ ...prev, full_name: e.target.value }))}
-                    className={`shadow-none ${formErrors.full_name ? "border-red-500" : "border-gray-300"}`}
-                  />
-                  {formErrors.full_name && <p className="text-xs text-red-600">{formErrors.full_name}</p>}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit_email" className="text-sm font-medium text-gray-700">Email</Label>
-                  <Input id="edit_email" type="email" value={userForm.email} disabled className="bg-gray-50 cursor-not-allowed shadow-none border-gray-200 text-gray-500" />
-                  <p className="text-xs text-gray-400">Email cannot be changed</p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit_phone" className="text-sm font-medium text-gray-700">Phone <span className="text-gray-400 text-xs font-normal">(optional)</span></Label>
-                  <Input
-                    id="edit_phone"
-                    placeholder="Enter phone number"
-                    value={userForm.phone}
-                    onChange={(e) => setUserForm((prev) => ({ ...prev, phone: e.target.value }))}
-                    className="shadow-none border-gray-300"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => { setShowEditModal(false); setSelectedUser(null); resetForm(); }} disabled={actionLoading === "edit"} className="shadow-none border-gray-300">
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={actionLoading === "edit"} className="bg-[#4a5d0f] hover:bg-[#3d4f0c] text-white shadow-none">
-                  {actionLoading === "edit" ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Updating...</> : <><Edit className="h-4 w-4 mr-2" />Update User</>}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
 
         {/* ── Delete Confirmation Modal ──────────────────────────────────────── */}
         <Dialog open={showDeleteModal} onOpenChange={(open) => { if (!open) { setShowDeleteModal(false); setSelectedUser(null); } }}>

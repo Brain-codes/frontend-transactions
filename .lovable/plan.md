@@ -1,39 +1,55 @@
-## Changes (frontend only, `src/app/agents/agents-profiles/AgentsProfilesContent.jsx`)
+## Goal
 
-### 1. Color-coded role superscript
+Replace the small "Edit User" dialog with a full inline **Edit User view** that reuses the Create User form, so an ACSL Agent (and every other role) can be updated end-to-end — basic info, role, assigned states, supervising managers, and assigned partners.
 
-Right now the role under each Agent Name is plain gray. Map each role to a distinct text color and apply it as `className` on the superscript span:
+## Changes (single file: `src/app/settings/user-management/UserManagementContent.jsx`)
 
-- `super_admin` → red (`text-red-600`)
-- `acsl_agent_manager` → purple (`text-purple-600`)
-- `acsl_agent` → green (`text-green-700`)
-- `partner` → blue (`text-blue-600`)
-- `partner_agent` → amber (`text-amber-600`)
-- fallback → gray
+### 1. Mode-aware inline form
 
-Still small (`text-[9px]`), still no badge background — only the font color changes.
+- Add `formMode` state: `"create" | "edit"` (plus existing `showCreateModal` reused as "show inline form").
+- `openEditModal(user)` becomes `openEditView(user)`:
+  - Set `formMode = "edit"`, `selectedUser = user`.
+  - Prefill `userForm` with name/email/phone/role.
+  - **Hydrate assignments** from `superAdminAgentService`:
+    - `getAgentStates(user.id)` → `selectedStates`
+    - `getAgentOrganizations(user.id)` → `selectedPartnerIds`
+    - For `acsl_agent`: derive `selectedManagerIds` by matching the user's assigned partner IDs against `acslManagers[].orgIds` (mark a manager as selected when any of their partners are in the user's set).
+  - Open the inline view (`setShowCreateModal(true)`).
+- The kebab "Edit" action in the table calls `openEditView(u)` for **every role** (not just ACSL Agent), so the request "all records for the user can be updated" is satisfied.
 
-### 2. Fix wrong supervisors on the Agents Profile view
+### 2. Reused inline view (lines ~904–1593)
 
-**Root cause.** The Create New User cascade does let you pick specific managers, but only the *partners* and *states* are persisted (`setAgentOrganizations`, `setAgentStates` in `UserManagementContent.jsx` lines 486–497). There is no agent→manager link in the schema. The Supervisor column in `AgentsProfilesContent.jsx` (`hydrateSupervisors`, lines 289–342) then derives supervisors by **any partner overlap** — so every manager who happens to also manage one of the agent's partners is listed, even if they were never selected when the agent was created. That is why your ACSL Agent shows several supervisors instead of the one you picked.
+- Header switches: title `"Create New User"` ↔ `"Edit User"`, icon `UserPlus` ↔ `SquarePen`.
+- Email field becomes **disabled** in edit mode (email cannot change).
+- Password block hidden in edit mode (use existing reset-password action instead).
+- Role select: disabled in edit mode to avoid orphaning assignment data (simpler + safer); a short note explains role changes aren't supported here.
+- Submit button: `"Create User"` ↔ `"Update User"`; calls `handleCreateUser` or new `handleUpdateUser`.
+- Back button label switches to `"Back to User Management"` in both modes; clears `selectedUser` and resets form.
 
-**Fix (no schema change).** Tighten the derivation so a manager is listed as a supervisor only when that manager's assigned partners are a **superset** of the agent's assigned partners — i.e. the manager covers *every* partner the agent has. With the cascade flow ("pick state → pick manager → pick partners from that manager"), the agent's partners are guaranteed to all belong to the chosen manager, so the chosen manager will match. Other managers will only match if they coincidentally also cover all the same partners (genuine shared supervision), which is the correct semantic without a schema change.
+### 3. New `handleUpdateUser`
 
-Concretely in `hydrateSupervisors`:
+- `PUT /manage-users/:id` with `{ full_name, phone }` (existing endpoint behavior).
+- After success, re-apply assignment side-effects identical to create:
+  - If role is `acsl_agent` or `acsl_agent_manager`: `setAgentStates(id, [...selectedStates])`.
+  - Always (when relevant role): `setAgentOrganizations(id, [...selectedPartnerIds])` — this overwrites prior assignments so unchecking a partner removes it.
+- Toast success, return to list, refresh current page.
 
-- Keep loading each manager's org-id set as today.
-- For each ACSL agent, compute `agentOrgIds`. If empty → no supervisors.
-- Replace the "any id in common" check with: include manager `m` iff `agentOrgIds.every(id => m.orgIds.has(id))`.
-- Everything else (batched updates, mount guard, modal) stays the same.
+### 4. Remove the old Edit dialog (lines 1596–1645)
 
-### 3. Out of scope
+- Delete the `Dialog`-based edit modal and its `showEditModal` state. The kebab "Edit" no longer opens a dialog — it routes to the inline edit view.
 
-- No schema changes, no edge-function changes, no changes to the Create New User flow.
-- No changes to the Partners Assigned column or modal.
-- Other roles (`acsl_agent_manager`, `partner`, etc.) keep their existing Supervisor cell ("—").
+### 5. Reset-form coverage
 
-## Verification
+- `resetForm()` already clears assignment state; also clear `selectedUser` and reset `formMode` to `"create"` on Back / after submit.
 
-On `/agents/profiles`:
-- Each Agent Name shows the role beneath it in the role's color.
-- The "ACSL Agent" user you created lists only the single ACSL Manager you assigned in the cascade. Other managers no longer appear unless they also cover that exact partner set.
+## Out of scope
+
+- No change to the `manage-users` Edge Function. Email and role remain immutable from the UI (matches current backend contract).
+- No change to the table, filters, pagination, or other views.
+
+## Acceptance
+
+- Clicking "Edit" on any user opens the inline form pre-filled with their details.
+- For an ACSL Agent: assigned States, supervising ACSL Managers, and Partner checkboxes all show the user's current assignments.
+- Saving updates name/phone and overwrites state + partner assignments; unchecking a partner removes it; counts on Agents Profile reflect the change immediately.
+- Creating a new user continues to work exactly as before.
