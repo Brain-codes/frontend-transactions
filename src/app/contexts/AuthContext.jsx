@@ -140,57 +140,41 @@ export const AuthProvider = ({ children }) => {
   };
 
   const isAuthenticated = !!user;
+  // Prefer the profiles table role once loaded. Auth metadata can be stale after
+  // admin-created users are promoted from a fallback role (for example ACSL
+  // Agent -> Agent), so the database profile is the source of truth.
+  const userRole =
+    storedProfileRole || user?.app_metadata?.role || user?.user_metadata?.role || null;
+
   const isSuperAdmin =
-    user?.app_metadata?.role === "super_admin" ||
-    user?.user_metadata?.role === "super_admin" ||
-    storedProfileRole === "super_admin";
+    userRole === "super_admin";
   // ACSL Agent (formerly super_admin_agent) — accept both old and new role values for backward compat
   const isAcslAgent =
-    user?.app_metadata?.role === "acsl_agent" ||
-    user?.app_metadata?.role === "super_admin_agent" ||
-    user?.user_metadata?.role === "acsl_agent" ||
-    user?.user_metadata?.role === "super_admin_agent" ||
-    storedProfileRole === "acsl_agent" ||
-    storedProfileRole === "super_admin_agent";
+    userRole === "acsl_agent" ||
+    userRole === "super_admin_agent";
   const isSuperAdminAgent = isAcslAgent; // backward compat alias
 
   // ACSL Agent Manager — real ACSL staff who supervise and create acsl_agents
   const isAcslAgentManager =
-    user?.app_metadata?.role === "acsl_agent_manager" ||
-    user?.user_metadata?.role === "acsl_agent_manager" ||
-    storedProfileRole === "acsl_agent_manager";
+    userRole === "acsl_agent_manager";
 
   // Partner (formerly admin) — accept both old and new role values for backward compat
   const isPartner =
-    user?.app_metadata?.role === "partner" ||
-    user?.app_metadata?.role === "admin" ||
-    user?.user_metadata?.role === "partner" ||
-    user?.user_metadata?.role === "admin" ||
-    storedProfileRole === "partner" ||
-    storedProfileRole === "admin";
+    userRole === "partner" ||
+    userRole === "admin";
   const isAdmin = isPartner; // backward compat alias
 
   // Partner Agent — partner-owned sales users.
   const isPartnerAgent =
-    user?.app_metadata?.role === "partner_agent" ||
-    user?.user_metadata?.role === "partner_agent" ||
-    storedProfileRole === "partner_agent";
+    userRole === "partner_agent";
 
   // Agent — standalone partner-linked sales users.
   const isAgent =
-    user?.app_metadata?.role === "agent" ||
-    user?.app_metadata?.role === "agent_user" ||
-    user?.user_metadata?.role === "agent" ||
-    user?.user_metadata?.role === "agent_user" ||
-    storedProfileRole === "agent" ||
-    storedProfileRole === "agent_user";
+    userRole === "agent" ||
+    userRole === "agent_user";
 
   // Helper function to check if user has admin level access (partner, partner_agent, super_admin, or acsl_agent)
   const hasAdminAccess = isSuperAdmin || isAcslAgent || isAcslAgentManager || isPartner || isPartnerAgent || isAgent;
-
-  // Get user role
-  const userRole =
-    user?.app_metadata?.role || user?.user_metadata?.role || storedProfileRole || null;
 
   // TODO: TEMPORARY - Remove this atmosfair.com email check when implementing proper role-based navigation
   // Helper function to check if user email contains atmosfair.com
