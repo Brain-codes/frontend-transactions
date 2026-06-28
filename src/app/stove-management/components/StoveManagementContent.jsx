@@ -416,11 +416,11 @@ export default function StoveManagementContent() {
   const colSpan = isSuperAdmin ? 9 : isAcslAgent ? 6 : 7;
 
   return (
-    <DashboardLayout currentRoute="stove-management" title="Stove ID Management">
+    <DashboardLayout currentRoute="stove-management" title="Track Stoves">
       <div className="p-6 space-y-5">
         <PageHeader
           icon={Package}
-          title="Stove ID Management"
+          title="Track Stoves"
         />
 
 
