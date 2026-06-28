@@ -1737,18 +1737,18 @@ const UserManagementPage = () => {
                         )
                         .map((org) => {
                           const checked = selectedPartnerIds.has(org.id);
-                          const isPartnerRole = userForm.role === "partner";
+                          const isSingleSelect = userForm.role === "partner" || userForm.role === "partner_agent";
                           return (
                             <label
                               key={org.id}
                               className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-xs transition-colors ${checked ? "bg-[#eef3c4] text-[#4a5d0f]" : "hover:bg-white text-gray-700"}`}
                               onClick={() => {
-                                if (isPartnerRole) {
+                                if (isSingleSelect) {
                                   setSelectedPartnerIds(new Set([org.id]));
                                 }
                               }}
                             >
-                              {!isPartnerRole && (
+                              {!isSingleSelect && (
                                 <input
                                   type="checkbox"
                                   checked={checked}
@@ -1776,7 +1776,7 @@ const UserManagementPage = () => {
 
                   {selectedPartnerIds.size > 0 && (
                     <p className="text-xs text-[#4a5d0f] font-medium">
-                      {userForm.role === "partner" ? "1 partner selected" : `${selectedPartnerIds.size} partner${selectedPartnerIds.size > 1 ? "s" : ""} selected`}
+                      {(userForm.role === "partner" || userForm.role === "partner_agent") ? "1 partner selected" : `${selectedPartnerIds.size} partner${selectedPartnerIds.size > 1 ? "s" : ""} selected`}
                     </p>
                   )}
                 </div>
