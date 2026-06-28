@@ -771,57 +771,58 @@ const UserManagementPage = () => {
 
         {/* ── Create User Modal ──────────────────────────────────────────────── */}
         <Dialog open={showCreateModal} onOpenChange={(open) => { if (!open) { setShowCreateModal(false); resetForm(); } }}>
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New User</DialogTitle>
-              <DialogDescription>Add a new user to the system</DialogDescription>
+          <DialogContent className="sm:max-w-2xl shadow-none">
+            <DialogHeader className="border-b pb-3 mb-1">
+              <DialogTitle className="text-lg font-semibold text-[#4a5d0f]">Create New User</DialogTitle>
+              <DialogDescription className="text-sm text-gray-500">Add a new user to the system</DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleCreateUser} className="space-y-4 pt-2">
               <div className="grid grid-cols-2 gap-4">
                 {/* Full Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="full_name">Full Name <span className="text-red-500">*</span></Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="full_name" className="text-sm font-medium text-gray-700">Full Name <span className="text-red-500">*</span></Label>
                   <Input
                     id="full_name"
                     placeholder="Enter full name"
                     value={userForm.full_name}
                     onChange={(e) => setUserForm((prev) => ({ ...prev, full_name: e.target.value }))}
-                    className={formErrors.full_name ? "border-red-500" : ""}
+                    className={`shadow-none ${formErrors.full_name ? "border-red-500" : "border-gray-300"}`}
                   />
                   {formErrors.full_name && <p className="text-xs text-red-600">{formErrors.full_name}</p>}
                 </div>
 
                 {/* Email */}
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email <span className="text-red-500">*</span></Label>
                   <Input
                     id="email"
                     type="email"
                     placeholder="Enter email address"
                     value={userForm.email}
                     onChange={(e) => setUserForm((prev) => ({ ...prev, email: e.target.value }))}
-                    className={formErrors.email ? "border-red-500" : ""}
+                    className={`shadow-none ${formErrors.email ? "border-red-500" : "border-gray-300"}`}
                   />
                   {formErrors.email && <p className="text-xs text-red-600">{formErrors.email}</p>}
                 </div>
 
                 {/* Phone */}
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone <span className="text-gray-400 text-xs font-normal">(optional)</span></Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="phone" className="text-sm font-medium text-gray-700">Phone <span className="text-gray-400 text-xs font-normal">(optional)</span></Label>
                   <Input
                     id="phone"
                     placeholder="Enter phone number"
                     value={userForm.phone}
                     onChange={(e) => setUserForm((prev) => ({ ...prev, phone: e.target.value }))}
+                    className="shadow-none border-gray-300"
                   />
                 </div>
 
-                {/* Role */}
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role <span className="text-red-500">*</span></Label>
+                {/* User Group */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="role" className="text-sm font-medium text-gray-700">User Group <span className="text-red-500">*</span></Label>
                   <Select value={userForm.role} onValueChange={handleRoleChange}>
-                    <SelectTrigger id="role">
+                    <SelectTrigger id="role" className="shadow-none border-gray-300">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
