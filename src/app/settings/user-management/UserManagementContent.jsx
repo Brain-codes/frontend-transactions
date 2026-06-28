@@ -829,13 +829,7 @@ const UserManagementPage = () => {
                   <h2 className="text-lg font-semibold text-[#4a5d0f]">Create New User</h2>
                   <p className="text-sm text-gray-500">Add a new user to the system</p>
                 </div>
-              </div>
-            </div>
-          )}
-        </div>
 
-        {/* Create User form is rendered inline above when showCreateModal is true */}
-        {false && (<>
 
 
             <form onSubmit={handleCreateUser} className="space-y-4 pt-2">
@@ -1188,7 +1182,10 @@ const UserManagementPage = () => {
                 </Button>
               </div>
             </form>
-        </>)}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* ── Edit User Modal ────────────────────────────────────────────────── */}
         <Dialog open={showEditModal} onOpenChange={(open) => { if (!open) { setShowEditModal(false); setSelectedUser(null); resetForm(); } }}>
