@@ -318,6 +318,8 @@ const UserManagementPage = () => {
     setSelectedStates(new Set());
     setSelectedManagerIds(new Set());
     setManagerSearch("");
+    setFormMode("create");
+    setSelectedUser(null);
   };
 
   // Role classifiers
