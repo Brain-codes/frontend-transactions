@@ -792,6 +792,8 @@ const UserManagementPage = () => {
         },
       );
       const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result?.error || "Failed to update user");
+
       if (role === "partner_agent") {
         // Clear ACSL-style assignments so this user no longer appears under prior managers/states.
         try { await superAdminAgentService.setAgentStates(selectedUser.id, []); } catch { /* non-fatal */ }
