@@ -330,6 +330,45 @@ const UserManagementPage = () => {
     result?.id ||
     null;
 
+  const updateUserViaManageUsers = async (userId, body, accessToken) => {
+    const res = await fetch(`${supabaseFunctionsUrl}/manage-users/${userId}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(result?.error || result?.message || "Failed to update user");
+    return result;
+  };
+
+  const createAgentViaManageAgents = async (partnerId, accessToken) => {
+    const password = userForm.auto_generate_password ? generateTemporaryPassword() : userForm.password;
+    const res = await fetch(`${supabaseFunctionsUrl}/manage-agents`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        full_name: userForm.full_name.trim(),
+        email: userForm.email.trim().toLowerCase(),
+        phone: userForm.phone.trim() || null,
+        password,
+        role: "agent",
+      }),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || result?.success === false) {
+      throw new Error(result?.error || result?.message || "Failed to create Agent user");
+    }
+    const newUserId = extractCreatedUserId(result);
+    if (!newUserId) throw new Error("Agent created but ID could not be resolved");
+    await updateUserViaManageUsers(newUserId, {
+      full_name: userForm.full_name.trim(),
+      phone: userForm.phone.trim() || null,
+      role: "agent",
+      organization_id: partnerId,
+    }, accessToken);
+    return { result, newUserId, generatedPassword: userForm.auto_generate_password ? password : null };
+  };
+
   // ── Form helpers ───────────────────────────────────────────────────────────
 
   const resetForm = () => {
