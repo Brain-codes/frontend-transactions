@@ -349,6 +349,20 @@ const UserManagementPage = () => {
     return Array.isArray(data) ? data : [];
   };
 
+  const persistAgentSupervisorMarker = async (agentId, partnerIds, managerIds) => {
+    if (!agentId || partnerIds.length === 0 || managerIds.length !== 1) return;
+    try {
+      await supabase
+        .from("super_admin_agent_organizations")
+        .update({ assigned_by: managerIds[0] })
+        .eq("agent_id", agentId)
+        .in("organization_id", partnerIds);
+    } catch {
+      // Non-fatal. Some deployments keep assigned_by write-protected; the UI
+      // still falls back to exact partner-coverage inference.
+    }
+  };
+
   const inferManagerIdsForAgent = (orgIds, stateNames, managers, assignmentRows = []) => {
     const orgIdSet = new Set(orgIds);
     const stateSet = new Set(stateNames);
@@ -633,6 +647,9 @@ const UserManagementPage = () => {
       if (newUserId && selectedPartnerIds.size > 0) {
         try {
           await superAdminAgentService.setAgentOrganizations(newUserId, Array.from(selectedPartnerIds));
+          if (userForm.role === "acsl_agent") {
+            await persistAgentSupervisorMarker(newUserId, Array.from(selectedPartnerIds), Array.from(selectedManagerIds));
+          }
         } catch {
           // non-fatal — user was created, org assignment failed
         }
@@ -687,6 +704,9 @@ const UserManagementPage = () => {
       } catch { /* non-fatal */ }
       try {
         await superAdminAgentService.setAgentOrganizations(selectedUser.id, shouldHavePartners ? Array.from(selectedPartnerIds) : []);
+        if (role === "acsl_agent") {
+          await persistAgentSupervisorMarker(selectedUser.id, Array.from(selectedPartnerIds), Array.from(selectedManagerIds));
+        }
       } catch { /* non-fatal */ }
 
       toast({ variant: "success", title: "User updated successfully" });
