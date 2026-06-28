@@ -74,7 +74,6 @@ const allNavItems = [
   },
 
   { name: "Stove Management", icon: Tag, route: "stove-management", href: "/stove-management" },
-  { name: "Stove Manager", icon: Package, route: "stove-manager", href: "/stove-manager" },
   {
     name: "Settings",
     icon: Settings,
