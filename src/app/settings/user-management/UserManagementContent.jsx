@@ -1041,9 +1041,11 @@ const UserManagementPage = () => {
                     placeholder="Enter email address"
                     value={userForm.email}
                     onChange={(e) => setUserForm((prev) => ({ ...prev, email: e.target.value }))}
-                    className={`shadow-none ${formErrors.email ? "border-red-500" : "border-gray-300"}`}
+                    disabled={formMode === "edit"}
+                    className={`shadow-none ${formErrors.email ? "border-red-500" : "border-gray-300"} ${formMode === "edit" ? "bg-gray-50 cursor-not-allowed text-gray-500" : ""}`}
                   />
                   {formErrors.email && <p className="text-xs text-red-600">{formErrors.email}</p>}
+                  {formMode === "edit" && <p className="text-xs text-gray-400">Email cannot be changed</p>}
                 </div>
 
                 {/* Phone */}
