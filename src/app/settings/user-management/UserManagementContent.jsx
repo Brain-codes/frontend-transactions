@@ -76,6 +76,17 @@ import AssignOrganizationsModal from "../../super-admin-agents/components/Assign
 import organizationsService from "../../services/organizationsService";
 import superAdminAgentService from "../../services/superAdminAgentService";
 
+// Nigerian states (36 + FCT)
+const NIGERIAN_STATES = [
+  "Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno",
+  "Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT","Gombe","Imo",
+  "Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa",
+  "Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba",
+  "Yobe","Zamfara",
+];
+
+
+
 // Relative time formatter (same pattern as SalesAgentTable)
 const formatRelativeTime = (dateString) => {
   if (!dateString) return "Never";
@@ -182,6 +193,8 @@ const UserManagementPage = () => {
   const [orgsLoading, setOrgsLoading] = useState(false);
   const [partnerSearch, setPartnerSearch] = useState("");
   const [selectedPartnerIds, setSelectedPartnerIds] = useState(new Set());
+  const [selectedStates, setSelectedStates] = useState(new Set());
+
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -294,15 +307,19 @@ const UserManagementPage = () => {
     setShowPassword(false);
     setPartnerSearch("");
     setSelectedPartnerIds(new Set());
+    setSelectedStates(new Set());
   };
 
   const needsPartnerAssignment = (role) => role === "acsl_agent" || role === "partner_agent";
+  const needsStateAndPartnerAssignment = (role) => role === "acsl_agent_manager";
 
   const handleRoleChange = async (role) => {
     setUserForm((prev) => ({ ...prev, role }));
     setSelectedPartnerIds(new Set());
+    setSelectedStates(new Set());
     setPartnerSearch("");
-    if (needsPartnerAssignment(role) && allOrgs.length === 0) {
+    const shouldLoad = needsPartnerAssignment(role) || needsStateAndPartnerAssignment(role);
+    if (shouldLoad && allOrgs.length === 0) {
       setOrgsLoading(true);
       try {
         const result = await organizationsService.getAllOrganizations();
@@ -314,6 +331,19 @@ const UserManagementPage = () => {
       }
     }
   };
+
+  // Auto-check all partners in selected states when states change (Agent Manager flow)
+  useEffect(() => {
+    if (userForm.role !== "acsl_agent_manager") return;
+    const ids = new Set(
+      allOrgs
+        .filter((o) => o.state && selectedStates.has(o.state))
+        .map((o) => o.id)
+    );
+    setSelectedPartnerIds(ids);
+  }, [selectedStates, allOrgs, userForm.role]);
+
+
 
   const validateForm = () => {
     const errors = {};
@@ -358,6 +388,13 @@ const UserManagementPage = () => {
       if (!res.ok) throw new Error(result.error || "Failed to create user");
 
       const newUserId = result.user?.id || result.data?.id;
+      if (newUserId && userForm.role === "acsl_agent_manager" && selectedStates.size > 0) {
+        try {
+          await superAdminAgentService.setAgentStates(newUserId, Array.from(selectedStates));
+        } catch {
+          // non-fatal — user was created, state assignment failed
+        }
+      }
       if (newUserId && selectedPartnerIds.size > 0) {
         try {
           await superAdminAgentService.setAgentOrganizations(newUserId, Array.from(selectedPartnerIds));
@@ -365,6 +402,7 @@ const UserManagementPage = () => {
           // non-fatal — user was created, org assignment failed
         }
       }
+
 
       toast({
         variant: "success",
@@ -835,6 +873,179 @@ const UserManagementPage = () => {
                   </Select>
                 </div>
               </div>
+
+              {/* ACSL Agent Manager — assign States, then Partners in those states */}
+              {needsStateAndPartnerAssignment(userForm.role) && (() => {
+                const partnersInStates = allOrgs.filter((o) => o.state && selectedStates.has(o.state));
+                const q = partnerSearch.trim().toLowerCase();
+                const visiblePartners = q
+                  ? partnersInStates.filter((o) =>
+                      (o.partner_name || "").toLowerCase().includes(q) ||
+                      (o.branch || "").toLowerCase().includes(q)
+                    )
+                  : partnersInStates;
+                const allStatesSelected = selectedStates.size === NIGERIAN_STATES.length;
+                const toggleState = (s) => setSelectedStates((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(s)) next.delete(s); else next.add(s);
+                  return next;
+                });
+                const toggleAllStates = () => setSelectedStates(allStatesSelected ? new Set() : new Set(NIGERIAN_STATES));
+                const selectAllVisible = () => setSelectedPartnerIds((prev) => {
+                  const next = new Set(prev);
+                  visiblePartners.forEach((p) => next.add(p.id));
+                  return next;
+                });
+                const clearAllVisible = () => setSelectedPartnerIds((prev) => {
+                  const next = new Set(prev);
+                  visiblePartners.forEach((p) => next.delete(p.id));
+                  return next;
+                });
+                return (
+                  <>
+                    {/* States block */}
+                    <div className="space-y-2 border border-[#eef3c4] rounded-md p-3 bg-[#f9fbed]">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <Label className="text-sm font-semibold text-[#4a5d0f] flex items-center gap-1.5">
+                          <Building2 className="h-4 w-4 text-[#4a5d0f]" />
+                          Assign to States
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[#4a5d0f] font-medium">
+                            {selectedStates.size} of {NIGERIAN_STATES.length} selected
+                          </span>
+                          <button
+                            type="button"
+                            onClick={toggleAllStates}
+                            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                              allStatesSelected
+                                ? "bg-[#4a5d0f] text-white border-[#4a5d0f]"
+                                : "bg-white text-[#4a5d0f] border-[#4a5d0f] hover:bg-[#eef3c4]"
+                            }`}
+                          >
+                            {allStatesSelected ? "✓ All States" : "Select All States"}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-1">
+                        {NIGERIAN_STATES.map((s) => {
+                          const on = selectedStates.has(s);
+                          return (
+                            <button
+                              type="button"
+                              key={s}
+                              onClick={() => toggleState(s)}
+                              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                                on
+                                  ? "bg-[#4a5d0f] text-white border-[#4a5d0f]"
+                                  : "bg-white text-gray-700 border-gray-300 hover:border-[#4a5d0f] hover:text-[#4a5d0f]"
+                              }`}
+                            >
+                              {on ? "✓ " : ""}{s}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Partners in selected states */}
+                    <div className="space-y-2 border border-[#eef3c4] rounded-md p-3 bg-[#f9fbed]">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <Label className="text-sm font-semibold text-[#4a5d0f] flex items-center gap-1.5">
+                          <Building2 className="h-4 w-4 text-[#4a5d0f]" />
+                          Assign Partners
+                          <span className="text-xs text-[#4a5d0f] font-normal">
+                            ({selectedPartnerIds.size} selected · {partnersInStates.length} available)
+                          </span>
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={selectAllVisible}
+                            disabled={visiblePartners.length === 0}
+                            className="text-xs px-2 py-1 rounded text-[#4a5d0f] hover:bg-[#eef3c4] disabled:opacity-40"
+                          >
+                            Select all
+                          </button>
+                          <button
+                            type="button"
+                            onClick={clearAllVisible}
+                            disabled={visiblePartners.length === 0}
+                            className="text-xs px-2 py-1 rounded text-gray-600 hover:bg-white disabled:opacity-40"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                        <Input
+                          placeholder="Search by name or branch..."
+                          value={partnerSearch}
+                          onChange={(e) => setPartnerSearch(e.target.value)}
+                          className="pl-8 h-8 text-sm bg-white shadow-none border-gray-300"
+                        />
+                      </div>
+
+                      {orgsLoading ? (
+                        <div className="flex items-center gap-2 text-xs text-gray-500 py-2">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />Loading partners...
+                        </div>
+                      ) : selectedStates.size === 0 ? (
+                        <p className="text-xs text-gray-500 py-3 text-center">
+                          Select one or more states above to see partners.
+                        </p>
+                      ) : visiblePartners.length === 0 ? (
+                        <p className="text-xs text-gray-400 py-3 text-center">
+                          {partnersInStates.length === 0
+                            ? "No partners in selected states."
+                            : "No partners match your search."}
+                        </p>
+                      ) : (
+                        <div className="max-h-64 overflow-y-auto pr-1 bg-white rounded border border-gray-200 divide-y divide-gray-100">
+                          {visiblePartners.map((org) => {
+                            const checked = selectedPartnerIds.has(org.id);
+                            return (
+                              <label
+                                key={org.id}
+                                className={`flex items-center gap-2 px-2.5 py-2 cursor-pointer text-xs transition-colors ${
+                                  checked ? "bg-[#f9fbed] text-[#4a5d0f]" : "hover:bg-gray-50 text-gray-700"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => {
+                                    setSelectedPartnerIds((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(org.id)) next.delete(org.id);
+                                      else next.add(org.id);
+                                      return next;
+                                    });
+                                  }}
+                                  className="rounded accent-[#4a5d0f]"
+                                />
+                                <span className="flex-1 truncate font-medium">{org.partner_name}</span>
+                                {org.branch && (
+                                  <span className="text-gray-500 shrink-0 truncate max-w-[140px]">{org.branch}</span>
+                                )}
+                                {org.state && (
+                                  <span className="text-[10px] shrink-0 px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                                    {org.state}
+                                  </span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+
+
 
               {/* Partner Assignment — shown for ACSL Agent and Partner Agent */}
               {needsPartnerAssignment(userForm.role) && (
