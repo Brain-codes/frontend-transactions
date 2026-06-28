@@ -73,7 +73,7 @@ const allNavItems = [
     ],
   },
 
-  { name: "Stove Management", icon: Tag, route: "stove-management", href: "/stove-management" },
+  { name: "Track Stoves", icon: Tag, route: "stove-management", href: "/stove-management" },
   {
     name: "Settings",
     icon: Settings,
