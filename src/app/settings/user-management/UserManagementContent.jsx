@@ -1200,7 +1200,277 @@ const UserManagementPage = () => {
 
 
 
-              {/* Partner Assignment — shown for ACSL Agent and Partner Agent */}
+              {/* ACSL Agent — Cascade: States → Managers in those states → Partners of those managers */}
+              {needsAcslAgentCascade(userForm.role) && (() => {
+                const allStatesSelected = selectedStates.size === NIGERIAN_STATES.length;
+                const toggleState = (s) => setSelectedStates((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(s)) next.delete(s); else next.add(s);
+                  return next;
+                });
+                const toggleAllStates = () =>
+                  setSelectedStates(allStatesSelected ? new Set() : new Set(NIGERIAN_STATES));
+                const sq = stateSearch.trim().toLowerCase();
+                const filteredStates = sq ? NIGERIAN_STATES.filter((s) => s.toLowerCase().includes(sq)) : [];
+                const hasStates = selectedStates.size > 0;
+
+                // Managers whose assigned states overlap with the selected states
+                const managersInStates = acslManagers.filter((m) =>
+                  Array.from(m.states).some((s) => selectedStates.has(s))
+                );
+                const mq = managerSearch.trim().toLowerCase();
+                const visibleManagers = mq
+                  ? managersInStates.filter(
+                      (m) =>
+                        (m.full_name || "").toLowerCase().includes(mq) ||
+                        (m.email || "").toLowerCase().includes(mq)
+                    )
+                  : managersInStates;
+                const toggleManager = (id) =>
+                  setSelectedManagerIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(id)) next.delete(id); else next.add(id);
+                    return next;
+                  });
+                const selectAllManagers = () =>
+                  setSelectedManagerIds((prev) => {
+                    const next = new Set(prev);
+                    visibleManagers.forEach((m) => next.add(m.id));
+                    return next;
+                  });
+                const clearAllManagers = () => setSelectedManagerIds(new Set());
+
+                // Partners belonging to selected managers AND in selected states
+                const allowedOrgIds = new Set();
+                acslManagers
+                  .filter((m) => selectedManagerIds.has(m.id))
+                  .forEach((m) => m.orgIds.forEach((id) => allowedOrgIds.add(id)));
+                const partnersOfManagers = allOrgs.filter(
+                  (o) => allowedOrgIds.has(o.id) && (selectedStates.size === 0 || (o.state && selectedStates.has(o.state)))
+                );
+                const pq = partnerSearch.trim().toLowerCase();
+                const visiblePartners = pq
+                  ? partnersOfManagers.filter(
+                      (o) =>
+                        (o.partner_name || "").toLowerCase().includes(pq) ||
+                        (o.branch || "").toLowerCase().includes(pq)
+                    )
+                  : partnersOfManagers;
+                const togglePartner = (id) =>
+                  setSelectedPartnerIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(id)) next.delete(id); else next.add(id);
+                    return next;
+                  });
+                const selectAllPartners = () =>
+                  setSelectedPartnerIds((prev) => {
+                    const next = new Set(prev);
+                    visiblePartners.forEach((p) => next.add(p.id));
+                    return next;
+                  });
+                const clearAllPartners = () =>
+                  setSelectedPartnerIds((prev) => {
+                    const next = new Set(prev);
+                    visiblePartners.forEach((p) => next.delete(p.id));
+                    return next;
+                  });
+
+                return (
+                  <>
+                    {/* Step 1 — States */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <Label className="text-sm font-semibold text-[#4a5d0f]">
+                          Assign User to State
+                          <span className="text-xs text-gray-500 font-normal ml-1">
+                            ({selectedStates.size} of {NIGERIAN_STATES.length} selected)
+                          </span>
+                        </Label>
+                        <label className="flex items-center gap-1.5 text-xs text-[#4a5d0f] font-medium cursor-pointer select-none">
+                          <input type="checkbox" checked={allStatesSelected} onChange={toggleAllStates} className="rounded accent-[#4a5d0f]" />
+                          Select all states
+                        </label>
+                      </div>
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                        <Input
+                          placeholder="Search states to add..."
+                          value={stateSearch}
+                          onChange={(e) => setStateSearch(e.target.value)}
+                          className="pl-8 h-9 text-sm shadow-none border-gray-300"
+                        />
+                      </div>
+                      {sq && filteredStates.length > 0 && (
+                        <div className="bg-gray-50 border border-gray-200 rounded p-2 max-h-40 overflow-y-auto">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
+                            {filteredStates.map((s) => {
+                              const on = selectedStates.has(s);
+                              return (
+                                <label key={s} className="flex items-center gap-1.5 text-xs px-2 py-1 rounded hover:bg-white cursor-pointer">
+                                  <input type="checkbox" checked={on} onChange={() => toggleState(s)} className="rounded accent-[#4a5d0f]" />
+                                  <span className={on ? "text-[#4a5d0f] font-medium" : "text-gray-700"}>{s}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      {hasStates && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {Array.from(selectedStates).sort().map((s) => (
+                            <span key={s} className="inline-flex items-center gap-1 text-xs pl-2.5 pr-1 py-1 rounded-full bg-[#4a5d0f] text-white">
+                              {s}
+                              <button type="button" onClick={() => toggleState(s)} className="hover:bg-white/20 rounded-full p-0.5" aria-label={`Remove ${s}`}>
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {!hasStates && !sq && (
+                        <p className="text-xs text-gray-400">Search above and tick the states to assign, or pick "Select all states".</p>
+                      )}
+                    </div>
+
+                    {/* Step 2 — Managers in selected states */}
+                    {hasStates && (
+                      <div className="space-y-3 border border-gray-200 rounded-lg p-4 bg-white">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <Label className="text-sm font-semibold text-[#4a5d0f]">
+                            Assign ACSL Agent Manager(s)
+                            <span className="text-xs text-gray-500 font-normal ml-1">
+                              ({selectedManagerIds.size} selected · {managersInStates.length} available)
+                            </span>
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={selectAllManagers} disabled={visibleManagers.length === 0}
+                              className="text-xs px-2.5 py-1 rounded border border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4] disabled:opacity-40">
+                              Select all
+                            </button>
+                            <button type="button" onClick={clearAllManagers} disabled={selectedManagerIds.size === 0}
+                              className="text-xs px-2.5 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40">
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                          <Input
+                            placeholder="Search managers by name or email..."
+                            value={managerSearch}
+                            onChange={(e) => setManagerSearch(e.target.value)}
+                            className="pl-8 h-9 text-sm shadow-none border-gray-300"
+                          />
+                        </div>
+                        {managersLoading ? (
+                          <div className="flex items-center gap-2 text-xs text-gray-500 py-2">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />Loading managers...
+                          </div>
+                        ) : visibleManagers.length === 0 ? (
+                          <p className="text-xs text-gray-400 py-3 text-center">
+                            {managersInStates.length === 0
+                              ? "No ACSL Agent Managers cover the selected states."
+                              : "No managers match your search."}
+                          </p>
+                        ) : (
+                          <div className="max-h-60 overflow-y-auto rounded border border-gray-200 bg-gray-50 p-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                              {visibleManagers.map((m) => {
+                                const checked = selectedManagerIds.has(m.id);
+                                const sharedStates = Array.from(m.states).filter((s) => selectedStates.has(s));
+                                return (
+                                  <label key={m.id}
+                                    className={`flex items-center gap-2 px-2.5 py-2 rounded cursor-pointer text-xs transition-colors border ${
+                                      checked ? "bg-[#f9fbed] border-[#4a5d0f] text-[#4a5d0f]" : "bg-white border-gray-200 hover:border-[#4a5d0f] text-gray-700"
+                                    }`}>
+                                    <input type="checkbox" checked={checked} onChange={() => toggleManager(m.id)} className="rounded accent-[#4a5d0f] shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="truncate font-medium">{m.full_name}</div>
+                                      <div className="text-[10px] text-gray-500 truncate">
+                                        {sharedStates.length} state{sharedStates.length === 1 ? "" : "s"} · {m.orgIds.size} partner{m.orgIds.size === 1 ? "" : "s"}
+                                      </div>
+                                    </div>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Step 3 — Partners of selected managers */}
+                    {hasStates && selectedManagerIds.size > 0 && (
+                      <div className="space-y-3 border border-gray-200 rounded-lg p-4 bg-white">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <Label className="text-sm font-semibold text-[#4a5d0f]">
+                            Assign Partners
+                            <span className="text-xs text-gray-500 font-normal ml-1">
+                              ({selectedPartnerIds.size} selected · {partnersOfManagers.length} available)
+                            </span>
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={selectAllPartners} disabled={visiblePartners.length === 0}
+                              className="text-xs px-2.5 py-1 rounded border border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4] disabled:opacity-40">
+                              Select all
+                            </button>
+                            <button type="button" onClick={clearAllPartners} disabled={visiblePartners.length === 0}
+                              className="text-xs px-2.5 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40">
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                          <Input
+                            placeholder="Search partners by name or branch..."
+                            value={partnerSearch}
+                            onChange={(e) => setPartnerSearch(e.target.value)}
+                            className="pl-8 h-9 text-sm shadow-none border-gray-300"
+                          />
+                        </div>
+                        {orgsLoading ? (
+                          <div className="flex items-center gap-2 text-xs text-gray-500 py-2">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />Loading partners...
+                          </div>
+                        ) : visiblePartners.length === 0 ? (
+                          <p className="text-xs text-gray-400 py-3 text-center">
+                            {partnersOfManagers.length === 0
+                              ? "Selected managers have no partners in the chosen states."
+                              : "No partners match your search."}
+                          </p>
+                        ) : (
+                          <div className="max-h-72 overflow-y-auto rounded border border-gray-200 bg-gray-50 p-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                              {visiblePartners.map((org) => {
+                                const checked = selectedPartnerIds.has(org.id);
+                                return (
+                                  <label key={org.id}
+                                    className={`flex items-center gap-2 px-2.5 py-2 rounded cursor-pointer text-xs transition-colors border ${
+                                      checked ? "bg-[#f9fbed] border-[#4a5d0f] text-[#4a5d0f]" : "bg-white border-gray-200 hover:border-[#4a5d0f] text-gray-700"
+                                    }`}>
+                                    <input type="checkbox" checked={checked} onChange={() => togglePartner(org.id)} className="rounded accent-[#4a5d0f] shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="truncate font-medium">{org.partner_name}</div>
+                                      <div className="flex items-center gap-1.5 text-[10px] text-gray-500 truncate">
+                                        {org.branch && <span className="truncate">{org.branch}</span>}
+                                        {org.branch && org.state && <span>·</span>}
+                                        {org.state && <span>{org.state}</span>}
+                                      </div>
+                                    </div>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* Partner Assignment — shown for Partner Agent only */}
               {needsPartnerAssignment(userForm.role) && (
                 <div className="space-y-2 border border-[#eef3c4] rounded-md p-3 bg-[#f9fbed]">
                   <Label className="text-sm font-semibold text-[#4a5d0f]">
