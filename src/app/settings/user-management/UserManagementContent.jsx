@@ -676,22 +676,18 @@ const UserManagementPage = () => {
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to update user");
 
-      // Persist assignment updates (overwrites prior assignments)
+      // Persist assignment updates (overwrites prior assignments). If the user
+      // group changes to one without these assignments, clear stale links so
+      // old manager/partner relationships do not leak into profile views later.
       const role = userForm.role;
-      if (role === "acsl_agent_manager" || role === "acsl_agent") {
-        try {
-          await superAdminAgentService.setAgentStates(selectedUser.id, Array.from(selectedStates));
-        } catch { /* non-fatal */ }
-      }
-      if (
-        role === "acsl_agent_manager" ||
-        role === "acsl_agent" ||
-        role === "partner_agent"
-      ) {
-        try {
-          await superAdminAgentService.setAgentOrganizations(selectedUser.id, Array.from(selectedPartnerIds));
-        } catch { /* non-fatal */ }
-      }
+      const shouldHaveStates = role === "acsl_agent_manager" || role === "acsl_agent";
+      const shouldHavePartners = role === "acsl_agent_manager" || role === "acsl_agent" || role === "partner_agent";
+      try {
+        await superAdminAgentService.setAgentStates(selectedUser.id, shouldHaveStates ? Array.from(selectedStates) : []);
+      } catch { /* non-fatal */ }
+      try {
+        await superAdminAgentService.setAgentOrganizations(selectedUser.id, shouldHavePartners ? Array.from(selectedPartnerIds) : []);
+      } catch { /* non-fatal */ }
 
       toast({ variant: "success", title: "User updated successfully" });
       setShowCreateModal(false);
