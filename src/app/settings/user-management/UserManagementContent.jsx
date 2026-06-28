@@ -181,7 +181,7 @@ const UserManagementPage = () => {
     full_name: "",
     email: "",
     phone: "",
-    role: "acsl_agent",
+    role: "",
     password: "",
     auto_generate_password: true,
   });
@@ -303,7 +303,7 @@ const UserManagementPage = () => {
   // ── Form helpers ───────────────────────────────────────────────────────────
 
   const resetForm = () => {
-    setUserForm({ full_name: "", email: "", phone: "", role: "acsl_agent", password: "", auto_generate_password: true });
+    setUserForm({ full_name: "", email: "", phone: "", role: "", password: "", auto_generate_password: true });
     setFormErrors({});
     setShowPassword(false);
     setPartnerSearch("");
@@ -351,6 +351,7 @@ const UserManagementPage = () => {
     if (!userForm.full_name.trim()) errors.full_name = "Full name is required";
     if (!userForm.email.trim()) errors.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email)) errors.email = "Invalid email format";
+    if (!userForm.role) errors.role = "User Group is required";
     if (!userForm.auto_generate_password && !userForm.password) errors.password = "Password is required";
     else if (!userForm.auto_generate_password && userForm.password.length < 8) errors.password = "Password must be at least 8 characters";
     setFormErrors(errors);
@@ -877,7 +878,7 @@ const UserManagementPage = () => {
                   <Label htmlFor="role" className="text-sm font-medium text-gray-700">User Group <span className="text-red-500">*</span></Label>
                   <Select value={userForm.role} onValueChange={handleRoleChange}>
                     <SelectTrigger id="role" className="shadow-none border-gray-300">
-                      <SelectValue />
+                      <SelectValue placeholder="Select user group" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="super_admin">Super Admin</SelectItem>
@@ -887,6 +888,7 @@ const UserManagementPage = () => {
                       <SelectItem value="partner_agent">Partner Agent</SelectItem>
                     </SelectContent>
                   </Select>
+                  {formErrors.role && <p className="text-xs text-red-600">{formErrors.role}</p>}
                 </div>
               </div>
 
