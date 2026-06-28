@@ -529,7 +529,14 @@ const AgentsProfilesContent = () => {
                     <TableCell className="text-sm font-medium text-gray-900">
                       <span className="align-baseline">{a.full_name || "N/A"}</span>
                       {a.role && (
-                        <sup className="ml-1 text-[9px] font-medium text-gray-500">
+                        <sup className={`ml-1 text-[9px] font-medium ${
+                          a.role === "super_admin" ? "text-red-600" :
+                          a.role === "acsl_agent_manager" ? "text-purple-600" :
+                          a.role === "acsl_agent" ? "text-green-700" :
+                          a.role === "partner" ? "text-blue-600" :
+                          a.role === "partner_agent" ? "text-amber-600" :
+                          "text-gray-500"
+                        }`}>
                           {formatRole(a.role)}
                         </sup>
                       )}
