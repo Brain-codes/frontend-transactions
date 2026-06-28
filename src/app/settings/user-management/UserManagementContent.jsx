@@ -75,7 +75,7 @@ import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AssignOrganizationsModal from "../../super-admin-agents/components/AssignOrganizationsModal";
 import organizationsService from "../../services/organizationsService";
 import superAdminAgentService from "../../services/superAdminAgentService";
-import adminAgentService from "../../services/adminAgentService";
+
 
 // Nigerian states (36 + FCT)
 const NIGERIAN_STATES = [
@@ -650,51 +650,17 @@ const UserManagementPage = () => {
     if (!validateForm()) return;
     setActionLoading("create");
     try {
-      // Partner Agent: shared manage-users edge function does not accept this
-      // role. Use the partner-agent endpoint (manage-agents) and then bind the
-      // new agent to the chosen partner's organization.
-      if (userForm.role === "partner_agent") {
-        const partnerId = Array.from(selectedPartnerIds)[0];
-        const password = userForm.auto_generate_password
-          ? (() => {
-              const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
-              let p = "";
-              for (let i = 0; i < 12; i++) p += chars[Math.floor(Math.random() * chars.length)];
-              return p;
-            })()
-          : userForm.password;
-        const createRes = await adminAgentService.createAgent(
-          userForm.full_name.trim(),
-          userForm.email.trim(),
-          password,
-          userForm.phone.trim() || null,
-        );
-        if (!createRes.success) throw new Error(createRes.error || "Failed to create partner agent");
-        const newId = createRes.data?.id || createRes.data?.user?.id;
-        if (!newId) throw new Error("Partner agent was created but no user id was returned");
-        if (!partnerId) throw new Error("A partner must be selected for a Partner Agent");
-        const { error: bindErr } = await supabase
-          .from("profiles")
-          .update({ role: "partner_agent", organization_id: partnerId })
-          .eq("id", newId);
-        if (bindErr) throw new Error(bindErr.message || "Failed to bind partner agent to partner");
-        toast({
-          variant: "success",
-          title: "Partner Agent created successfully",
-          description: userForm.auto_generate_password ? `Password: ${password}` : "User can now log in",
-        });
-        setShowCreateModal(false);
-        resetForm();
-        fetchUsers(1, pagination.page_size);
-        return;
-      }
-
       const { data: { session } } = await supabase.auth.getSession();
+      const isPartnerAgent = userForm.role === "partner_agent";
+
+      // Create through the shared manage-users endpoint. For partner_agent
+      // (which the edge function does not accept), create as acsl_agent then
+      // patch the profile to set role=partner_agent and bind to the partner.
       const payload = {
         full_name: userForm.full_name.trim(),
         email: userForm.email.trim(),
         phone: userForm.phone.trim() || null,
-        role: userForm.role,
+        role: isPartnerAgent ? "acsl_agent" : userForm.role,
         auto_generate_password: userForm.auto_generate_password,
       };
       if (!userForm.auto_generate_password) payload.password = userForm.password;
@@ -707,27 +673,41 @@ const UserManagementPage = () => {
       if (!res.ok) throw new Error(result.error || "Failed to create user");
 
       const newUserId = result.user?.id || result.data?.id;
-      if (
-        newUserId &&
-        (userForm.role === "acsl_agent_manager" || userForm.role === "acsl_agent") &&
-        selectedStates.size > 0
-      ) {
-        try {
-          await superAdminAgentService.setAgentStates(newUserId, Array.from(selectedStates));
-        } catch {
-          // non-fatal — user was created, state assignment failed
+
+      if (isPartnerAgent) {
+        const partnerId = Array.from(selectedPartnerIds)[0];
+        if (!partnerId) throw new Error("A partner must be selected for a Partner Agent");
+        if (newUserId) {
+          const { error: bindErr } = await supabase
+            .from("profiles")
+            .update({ role: "partner_agent", organization_id: partnerId })
+            .eq("id", newUserId);
+          if (bindErr) throw new Error(bindErr.message || "Failed to bind partner agent to partner");
         }
-      }
-      if (newUserId && selectedPartnerIds.size > 0) {
-        try {
-          await superAdminAgentService.setAgentOrganizations(newUserId, Array.from(selectedPartnerIds));
-          if (userForm.role === "acsl_agent") {
-            await persistAgentSupervisorMarker(newUserId, Array.from(selectedPartnerIds), Array.from(selectedManagerIds));
+      } else {
+        if (
+          newUserId &&
+          (userForm.role === "acsl_agent_manager" || userForm.role === "acsl_agent") &&
+          selectedStates.size > 0
+        ) {
+          try {
+            await superAdminAgentService.setAgentStates(newUserId, Array.from(selectedStates));
+          } catch {
+            // non-fatal — user was created, state assignment failed
           }
-        } catch {
-          // non-fatal — user was created, org assignment failed
+        }
+        if (newUserId && selectedPartnerIds.size > 0) {
+          try {
+            await superAdminAgentService.setAgentOrganizations(newUserId, Array.from(selectedPartnerIds));
+            if (userForm.role === "acsl_agent") {
+              await persistAgentSupervisorMarker(newUserId, Array.from(selectedPartnerIds), Array.from(selectedManagerIds));
+            }
+          } catch {
+            // non-fatal — user was created, org assignment failed
+          }
         }
       }
+
 
 
       toast({
