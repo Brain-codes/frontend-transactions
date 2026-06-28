@@ -423,37 +423,6 @@ export default function StoveManagementContent() {
           title="Stove ID Management"
         />
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg"><Package className="h-5 w-5 text-blue-700" /></div>
-              <div>
-                <p className="text-sm text-blue-600 font-medium">Total Stove IDs</p>
-                {loadingStats ? <Loader2 className="h-5 w-5 animate-spin text-blue-400 mt-1" /> : <p className="text-xl font-bold text-blue-900">{stats.total.toLocaleString()}</p>}
-                {!isAcslAgent && <p className="text-xs text-blue-500">Received</p>}
-              </div>
-            </div>
-          </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 rounded-lg"><CheckCircle className="h-5 w-5 text-amber-700" /></div>
-              <div>
-                <p className="text-sm text-amber-600 font-medium">Sold</p>
-                {loadingStats ? <Loader2 className="h-5 w-5 animate-spin text-amber-400 mt-1" /> : <p className="text-xl font-bold text-amber-900">{stats.sold.toLocaleString()}</p>}
-              </div>
-            </div>
-          </div>
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg"><Package className="h-5 w-5 text-green-700" /></div>
-              <div>
-                <p className="text-sm text-green-600 font-medium">Available</p>
-                {loadingStats ? <Loader2 className="h-5 w-5 animate-spin text-green-400 mt-1" /> : <p className="text-xl font-bold text-green-900">{stats.available.toLocaleString()}</p>}
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Filter Bar */}
         <div className="bg-blue-50 p-3 rounded-lg border border-gray-200">
