@@ -124,8 +124,8 @@ const getRoleLabel = (role) => {
   if (role === "acsl_agent" || role === "super_admin_agent") return "ACSL Agent";
   if (role === "acsl_agent_manager") return "ACSL Agent Manager";
   if (role === "partner" || role === "admin") return "Partner";
-  if (role === "partner_agent" || role === "agent") return "Partner Agent";
-  if (role === "agent_user") return "Agent";
+  if (role === "partner_agent") return "Partner Agent";
+  if (role === "agent" || role === "agent_user") return "Agent";
   return role;
 };
 
@@ -142,8 +142,8 @@ const getRoleBadgeClasses = (role) => {
     case "admin":
       return "bg-amber-100 text-amber-800 border border-amber-200";
     case "partner_agent":
-    case "agent":
       return "bg-emerald-100 text-emerald-800 border border-emerald-200";
+    case "agent":
     case "agent_user":
       return "bg-teal-100 text-teal-800 border border-teal-200";
     default:
@@ -312,6 +312,140 @@ const UserManagementPage = () => {
   const startRecord = users.length > 0 ? (pagination.page - 1) * pagination.page_size + 1 : 0;
   const endRecord = Math.min(pagination.page * pagination.page_size, pagination.total_count);
 
+  const generateTemporaryPassword = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+    const required = ["A", "a", "7", "!"];
+    const randomValues = new Uint32Array(10);
+    crypto.getRandomValues(randomValues);
+    const rest = Array.from(randomValues, (n) => chars[n % chars.length]);
+    return [...required, ...rest].sort(() => Math.random() - 0.5).join("");
+  };
+
+  const extractCreatedUserId = (result) =>
+    result?.user?.id ||
+    result?.data?.id ||
+    result?.data?.user?.id ||
+    result?.data?.agent?.id ||
+    result?.agent?.id ||
+    result?.id ||
+    null;
+
+  const updateUserViaManageUsers = async (userId, body, accessToken) => {
+    const res = await fetch(`${supabaseFunctionsUrl}/manage-users/${userId}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(result?.error || result?.message || "Failed to update user");
+    return result;
+  };
+
+  const readUserProfile = async (userId) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, role, organization_id")
+      .eq("id", userId)
+      .maybeSingle();
+    return data || null;
+  };
+
+  const profileMatches = (profile, body) => {
+    if (!profile) return false;
+    const expectedRole = getStoredAgentRole(body.role);
+    const roleOk = !expectedRole || profile.role === expectedRole;
+    const orgOk = body.organization_id === undefined || profile.organization_id === body.organization_id;
+    return roleOk && orgOk;
+  };
+
+  const enforceFinalUserProfile = async (userId, body, accessToken) => {
+    let lastError = null;
+
+    // 1) Preferred path: server-side edge function bypasses RLS.
+    try {
+      await updateUserViaManageUsers(userId, body, accessToken);
+    } catch (err) {
+      lastError = err;
+    }
+
+    let profile = await readUserProfile(userId);
+    if (profileMatches(profile, body)) return profile;
+
+    // 2) Fallback path: try direct profile update for projects whose RLS allows
+    // super admin profile maintenance. This fixes accepted-but-defaulted roles.
+    try {
+      const updateBody = {
+        full_name: body.full_name,
+        phone: body.phone,
+        role: getStoredAgentRole(body.role),
+      };
+      if (body.organization_id !== undefined) updateBody.organization_id = body.organization_id;
+      await supabase.from("profiles").update(updateBody).eq("id", userId);
+    } catch (err) {
+      lastError = err;
+    }
+
+    profile = await readUserProfile(userId);
+    if (profileMatches(profile, body)) return profile;
+
+    // 3) Agent-specific legacy endpoint fallback.
+    if (getStoredAgentRole(body.role) === "agent") {
+      try {
+        const res = await fetch(`${supabaseFunctionsUrl}/manage-agents/${userId}`, {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            full_name: body.full_name,
+            phone: body.phone,
+            role: "agent",
+            organization_id: body.organization_id,
+          }),
+        });
+        if (!res.ok) {
+          const result = await res.json().catch(() => ({}));
+          throw new Error(result?.error || result?.message || "Failed to update Agent role");
+        }
+      } catch (err) {
+        lastError = err;
+      }
+      profile = await readUserProfile(userId);
+      if (profileMatches(profile, body)) return profile;
+    }
+
+    throw new Error(
+      lastError?.message ||
+      `User was created, but the final ${getRoleLabel(body.role)} role could not be saved. Please check backend role restrictions.`
+    );
+  };
+
+  const createAgentViaManageAgents = async (partnerId, accessToken) => {
+    const password = userForm.auto_generate_password ? generateTemporaryPassword() : userForm.password;
+    const res = await fetch(`${supabaseFunctionsUrl}/manage-agents`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        full_name: userForm.full_name.trim(),
+        email: userForm.email.trim().toLowerCase(),
+        phone: userForm.phone.trim() || null,
+        password,
+        role: "agent",
+      }),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || result?.success === false) {
+      throw new Error(result?.error || result?.message || "Failed to create Agent user");
+    }
+    const newUserId = extractCreatedUserId(result);
+    if (!newUserId) throw new Error("Agent created but ID could not be resolved");
+    await enforceFinalUserProfile(newUserId, {
+      full_name: userForm.full_name.trim(),
+      phone: userForm.phone.trim() || null,
+      role: "agent",
+      organization_id: partnerId,
+    }, accessToken);
+    return { result, newUserId, generatedPassword: userForm.auto_generate_password ? password : null };
+  };
+
   // ── Form helpers ───────────────────────────────────────────────────────────
 
   const resetForm = () => {
@@ -332,9 +466,12 @@ const UserManagementPage = () => {
   // - partner_agent: flat partner-only picker (legacy)
   // - acsl_agent: cascade — States → Managers in those states → Partners of those managers
   // - acsl_agent_manager: States → Partners in those states (auto-checked)
-  const needsPartnerAssignment = (role) => role === "partner_agent" || role === "partner" || role === "agent_user";
+  const isStandaloneAgentRole = (role) => role === "agent" || role === "agent_user";
+  const isOrganizationBoundAgentRole = (role) => role === "partner_agent" || isStandaloneAgentRole(role);
+  const needsPartnerAssignment = (role) => role === "partner_agent" || role === "partner" || isStandaloneAgentRole(role);
   const needsAcslAgentCascade = (role) => role === "acsl_agent";
   const needsStateAndPartnerAssignment = (role) => role === "acsl_agent_manager";
+  const getStoredAgentRole = (role) => (role === "agent_user" ? "agent" : role);
 
   const normalizeStateNames = (list) => Array.isArray(list)
     ? list.map((s) => (typeof s === "string" ? s : s?.state)).filter(Boolean)
@@ -560,7 +697,7 @@ const UserManagementPage = () => {
     if (!userForm.email.trim()) errors.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email)) errors.email = "Invalid email format";
     if (!userForm.role) errors.role = "User Group is required";
-    if ((userForm.role === "partner_agent" || userForm.role === "agent_user") && selectedPartnerIds.size !== 1) errors.partner = "Select exactly one Partner for this agent";
+    if (isOrganizationBoundAgentRole(userForm.role) && selectedPartnerIds.size !== 1) errors.partner = "Select exactly one Partner for this agent";
     if (!userForm.auto_generate_password && !userForm.password) errors.password = "Password is required";
     else if (!userForm.auto_generate_password && userForm.password.length < 8) errors.password = "Password must be at least 8 characters";
     setFormErrors(errors);
@@ -621,7 +758,7 @@ const UserManagementPage = () => {
 
       // Partner Agents are bound to a single partner via profile.organization_id;
       // fall back to that value when no relational rows exist.
-      if ((role === "partner_agent" || role === "agent_user") && orgIds.length === 0 && user.organization_id) {
+      if (isOrganizationBoundAgentRole(role) && orgIds.length === 0 && user.organization_id) {
         orgIds = [user.organization_id];
       }
 
@@ -654,9 +791,8 @@ const UserManagementPage = () => {
     setActionLoading("create");
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const isPartnerAgent = userForm.role === "partner_agent";
-      const isAgentUser = userForm.role === "agent_user";
-      const needsOrgBinding = isPartnerAgent || isAgentUser;
+      const targetRole = getStoredAgentRole(userForm.role);
+      const needsOrgBinding = isOrganizationBoundAgentRole(userForm.role);
       const partnerId = needsOrgBinding ? (Array.from(selectedPartnerIds)[0] || null) : null;
       if (needsOrgBinding && !partnerId) throw new Error("A partner must be selected for this agent");
 
@@ -686,19 +822,43 @@ const UserManagementPage = () => {
       let generatedPassword;
 
       if (needsOrgBinding) {
-        const targetRole = isAgentUser ? "agent_user" : "partner_agent";
         // First try sending the role + organization_id directly.
         let attempt = await postUser(targetRole, { organization_id: partnerId });
 
         // If the edge function rejects the role, create as acsl_agent then promote via PUT.
         if (!attempt.ok) {
-          attempt = await postUser("acsl_agent");
-          if (!attempt.ok) throw new Error(attempt.result?.error || "Failed to create user");
+          if (targetRole === "agent") {
+            try {
+              const agentCreate = await createAgentViaManageAgents(partnerId, session.access_token);
+              newUserId = agentCreate.newUserId;
+              generatedPassword = agentCreate.generatedPassword;
+            } catch {
+              // Continue to the universal fallback below; manage-agents can be
+              // restricted by organization, but manage-users PUT can promote.
+            }
+          }
 
+          if (!newUserId) {
+          attempt = await postUser("acsl_agent");
+          if (!attempt.ok) {
+            const emailAlreadyExists = String(attempt.result?.error || attempt.result?.message || "")
+              .toLowerCase()
+              .includes("email") && String(attempt.result?.error || attempt.result?.message || "").toLowerCase().includes("use");
+            if (!emailAlreadyExists) throw new Error(attempt.result?.error || attempt.result?.message || "Failed to create user");
+
+            const { data: existing } = await supabase
+              .from("profiles")
+              .select("id")
+              .eq("email", userForm.email.trim().toLowerCase())
+              .maybeSingle();
+            newUserId = existing?.id || null;
+          }
+
+          if (attempt.ok) {
           newUserId =
-            attempt.result.user?.id || attempt.result.data?.id ||
-            attempt.result.data?.user?.id || attempt.result.id || null;
+            extractCreatedUserId(attempt.result);
           generatedPassword = attempt.result.generated_password;
+          }
 
           if (!newUserId) {
             const { data: lookup } = await supabase
@@ -707,32 +867,40 @@ const UserManagementPage = () => {
             newUserId = lookup?.id || null;
           }
           if (!newUserId) throw new Error("User created but ID could not be resolved");
+          }
 
-          const putRes = await fetch(
-            `${supabaseFunctionsUrl}/manage-users/${newUserId}`,
-            {
-              method: "PUT",
-              headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-              body: JSON.stringify({
-                full_name: userForm.full_name.trim(),
-                phone: userForm.phone.trim() || null,
-                role: targetRole,
-                organization_id: partnerId,
-              }),
-            },
-          );
-          const putResult = await putRes.json().catch(() => ({}));
-          if (!putRes.ok) throw new Error(putResult?.error || `Created user but failed to assign ${targetRole === "agent_user" ? "Agent" : "Partner Agent"} role`);
+          await updateUserViaManageUsers(newUserId, {
+            full_name: userForm.full_name.trim(),
+            phone: userForm.phone.trim() || null,
+            role: targetRole,
+            organization_id: partnerId,
+          }, session.access_token);
         } else {
           result = attempt.result;
-          newUserId = result.user?.id || result.data?.id || result.data?.user?.id || result.id || null;
+          newUserId = extractCreatedUserId(result);
           generatedPassword = result.generated_password;
+        }
+
+        if (newUserId) {
+          // Enforce the final role after every creation path. Some server paths
+          // accept the request but still create with the default ACSL Agent role.
+          await updateUserViaManageUsers(newUserId, {
+            full_name: userForm.full_name.trim(),
+            phone: userForm.phone.trim() || null,
+            role: targetRole,
+            organization_id: partnerId,
+          }, session.access_token);
+
+          // Keep organization-bound agents clean: they should only be linked by
+          // profiles.organization_id, not ACSL manager/state assignment tables.
+          try { await superAdminAgentService.setAgentStates(newUserId, []); } catch { /* non-fatal */ }
+          try { await superAdminAgentService.setAgentOrganizations(newUserId, []); } catch { /* non-fatal */ }
         }
       } else {
         const attempt = await postUser(userForm.role);
         if (!attempt.ok) throw new Error(attempt.result?.error || "Failed to create user");
         result = attempt.result;
-        newUserId = result.user?.id || result.data?.id || result.data?.user?.id || result.id || null;
+        newUserId = extractCreatedUserId(result);
         generatedPassword = result.generated_password;
 
         if (
@@ -776,9 +944,9 @@ const UserManagementPage = () => {
     if (!selectedUser) return;
     setActionLoading("create"); // reuse 'create' key so submit button spinner works in shared form
     try {
-      const role = userForm.role;
+      const role = getStoredAgentRole(userForm.role);
 
-      const isOrgBound = role === "partner_agent" || role === "agent_user";
+      const isOrgBound = isOrganizationBoundAgentRole(role);
       const partnerId = isOrgBound ? (Array.from(selectedPartnerIds)[0] || null) : null;
       if (isOrgBound && !partnerId) throw new Error("A partner must be selected for this agent");
 
@@ -940,7 +1108,7 @@ const UserManagementPage = () => {
                 <SelectItem value="acsl_agent" className="text-xs">ACSL Agent</SelectItem>
                 <SelectItem value="partner" className="text-xs">Partner Admin</SelectItem>
                 <SelectItem value="partner_agent" className="text-xs">Partner Agent</SelectItem>
-                <SelectItem value="agent_user" className="text-xs">Agent</SelectItem>
+                <SelectItem value="agent" className="text-xs">Agent</SelectItem>
               </SelectContent>
             </Select>
 
@@ -1278,7 +1446,7 @@ const UserManagementPage = () => {
                       <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
                       <SelectItem value="partner">Partner</SelectItem>
                       <SelectItem value="partner_agent">Partner Agent</SelectItem>
-                      <SelectItem value="agent_user">Agent</SelectItem>
+                      <SelectItem value="agent">Agent</SelectItem>
                     </SelectContent>
                   </Select>
                   {formErrors.role && <p className="text-xs text-red-600">{formErrors.role}</p>}
@@ -1811,7 +1979,7 @@ const UserManagementPage = () => {
                         )
                         .map((org) => {
                           const checked = selectedPartnerIds.has(org.id);
-                          const isSingleSelect = userForm.role === "partner" || userForm.role === "partner_agent" || userForm.role === "agent_user";
+                          const isSingleSelect = userForm.role === "partner" || isOrganizationBoundAgentRole(userForm.role);
                           return (
                             <label
                               key={org.id}
@@ -1850,7 +2018,7 @@ const UserManagementPage = () => {
 
                   {selectedPartnerIds.size > 0 && (
                     <p className="text-xs text-[#4a5d0f] font-medium">
-                      {(userForm.role === "partner" || userForm.role === "partner_agent" || userForm.role === "agent_user") ? "1 partner selected" : `${selectedPartnerIds.size} partner${selectedPartnerIds.size > 1 ? "s" : ""} selected`}
+                      {(userForm.role === "partner" || isOrganizationBoundAgentRole(userForm.role)) ? "1 partner selected" : `${selectedPartnerIds.size} partner${selectedPartnerIds.size > 1 ? "s" : ""} selected`}
                     </p>
                   )}
                 </div>

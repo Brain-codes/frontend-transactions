@@ -435,11 +435,16 @@ const AgentsProfilesContent = () => {
     return Array.from(s).sort();
   }, [agents]);
 
-  const formatRole = (r) =>
-    (r || "")
+  const formatRole = (r) => {
+    if (r === "agent" || r === "agent_user") return "Agent";
+    if (r === "partner_agent") return "Partner Agent";
+    if (r === "acsl_agent") return "ACSL Agent";
+    if (r === "acsl_agent_manager") return "ACSL Agent Manager";
+    return (r || "")
       .split("_")
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(" ");
+  };
 
   const ROLE_BADGE = {
     acsl_agent: "bg-blue-100 text-blue-700",
@@ -447,6 +452,8 @@ const AgentsProfilesContent = () => {
     super_admin: "bg-red-100 text-red-700",
     partner: "bg-amber-100 text-amber-700",
     partner_agent: "bg-teal-100 text-teal-700",
+    agent: "bg-cyan-100 text-cyan-700",
+    agent_user: "bg-cyan-100 text-cyan-700",
   };
 
   const filtered = useMemo(() => {
@@ -582,6 +589,7 @@ const AgentsProfilesContent = () => {
                           a.role === "acsl_agent" ? "text-green-700" :
                           a.role === "partner" ? "text-blue-600" :
                           a.role === "partner_agent" ? "text-amber-600" :
+                          a.role === "agent" || a.role === "agent_user" ? "text-cyan-700" :
                           "text-gray-500"
                         }`}>
                           {formatRole(a.role)}

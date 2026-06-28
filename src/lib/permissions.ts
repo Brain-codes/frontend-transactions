@@ -70,7 +70,7 @@ interface RolePermissions {
 export const ROLE_ALIASES: Record<string, AppRole> = {
   super_admin_agent: "acsl_agent",
   admin: "partner",
-  agent: "partner_agent",
+  agent_user: "agent",
 };
 
 const ALL_ROUTES: RouteKey[] = [
@@ -182,7 +182,7 @@ export const PERMISSIONS: Record<string, RolePermissions> = {
     routes: ["dashboard", "sales", "sales-create", "stove-manager", "profile", "sales-monitoring-app"],
     features: ["create-sale"],
   },
-  agent_user: {
+  agent: {
     routes: ["dashboard", "sales", "sales-create", "stove-manager", "profile", "sales-monitoring-app"],
     features: ["create-sale"],
   },
