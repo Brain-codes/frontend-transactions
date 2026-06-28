@@ -772,7 +772,6 @@ const UserManagementPage = () => {
     try {
       const role = userForm.role;
 
-      const role = userForm.role;
       const partnerId = role === "partner_agent" ? (Array.from(selectedPartnerIds)[0] || null) : null;
       if (role === "partner_agent" && !partnerId) throw new Error("A partner must be selected for a Partner Agent");
 
