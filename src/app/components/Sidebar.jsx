@@ -67,14 +67,14 @@ const allNavItems = [
     children: [
       { name: "Sell Stove", route: "sales-create", href: "/sales/create" },
       { name: "Sales Records", route: "sales", href: "/sales" },
+      { name: "Purchases from ACSL", route: "stove-transfer-history", href: "/stove-transfer-history" },
       { name: "Agreement Images", route: "agreement-images", href: "/agreement-images" },
       { name: "Map", route: "map", href: "/map" },
     ],
   },
-  
+
   { name: "Stove Management", icon: Tag, route: "stove-management", href: "/stove-management" },
   { name: "Stove Manager", icon: Package, route: "stove-manager", href: "/stove-manager" },
-  { name: "Transfer History", icon: ArrowLeftRight, route: "stove-transfer-history", href: "/stove-transfer-history" },
   {
     name: "Settings",
     icon: Settings,
