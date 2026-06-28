@@ -1,22 +1,12 @@
-## Goal
-Make Partner Agent creation work seamlessly from the Create New User form — same path as every other user group — and associate the new user with the selected Partner. Remove the failing `manage-agents` edge function call (which rejects with "Insufficient permissions to create agents") from this flow.
+## Problem
+After creating "Partner Agent 1", the user list shows role **ACSL Agent** instead of **Partner Agent**. Cause: the current code creates the auth user via `manage-users` with `role: "acsl_agent"` and then tries to PATCH `profiles` to `role: "partner_agent"`, but the patch is silently a no-op — either because the `manage-users` POST response shape doesn't expose the new user id at `result.user?.id` / `result.data?.id` (so `newUserId` is undefined and the update is skipped), or because client-side RLS blocks updating another user's `profiles` row.
 
-## Root cause
-`handleCreateUser` has a special-case branch for `partner_agent` that calls `adminAgentService.createAgent()` → `POST /functions/v1/manage-agents`. That edge function enforces its own role check and returns `500 Insufficient permissions to create agents` for the super admin. Every other role goes through `POST /functions/v1/manage-users`, which works.
+## Fix
+Edit `src/app/settings/user-management/UserManagementContent.jsx`, partner-agent branch of `handleCreateUser`:
 
-## Fix (frontend-only, no edge function changes)
-In `src/app/settings/user-management/UserManagementContent.jsx`:
+1. **Robustly extract the new user id** from the `manage-users` response, checking every plausible location (`result.user?.id`, `result.data?.id`, `result.data?.user?.id`, `result.id`). If still missing, fall back to looking it up by email via `supabase.from("profiles").select("id").eq("email", ...).single()`.
+2. **Throw a clear error** if the id still cannot be determined, instead of silently skipping the role/partner binding.
+3. **Verify the profile patch actually applied** by reading the row back after the update (`.select("role, organization_id").single()`); if `role !== "partner_agent"` after the update, surface a toast error explaining the role couldn't be converted (likely an RLS issue on `profiles`) so the user knows to address it instead of seeing a misleading success.
+4. After a successful create + bind, refresh the user list so the row shows the correct role immediately.
 
-1. **Remove the `partner_agent` special branch** in `handleCreateUser` that calls `adminAgentService.createAgent`.
-2. **Use the same `manage-users` POST path** all other roles use. Send the payload with `role: "acsl_agent"` as the create-time role (known-accepted by the edge function) — this gives us a fresh auth user + profile row.
-3. **Immediately patch the profile** of the new user via `supabase.from("profiles").update({ role: "partner_agent", organization_id: <selectedPartnerId> }).eq("id", newUserId)`. This converts the role and binds them to exactly one partner — matching "just create the user and associate with a partner".
-4. Skip the `setAgentStates` / `setAgentOrganizations` / supervisor-marker calls for `partner_agent` (not relevant; association is the single `organization_id`).
-5. Keep all existing UI validation: exactly one partner selected, single-select partner list for the `partner_agent` role.
-6. Leave `handleUpdateUser`'s existing direct-profile update for `partner_agent` as-is — it already works and matches this pattern.
-
-Drop the now-unused `adminAgentService` import if no other code in the file references it after the edit.
-
-## Result
-- Super admin (and anyone who can create other users) can create Partner Agents from the same form, same way, with no edge-function permission errors.
-- New Partner Agent is created, role is set to `partner_agent`, and `organization_id` is bound to the chosen partner.
-- No backend / edge function / RLS changes required.
+No backend / edge function / RLS changes in this step — first make the failure visible and the success reliable. If step 3 reveals RLS is blocking the patch, the follow-up will be a tiny SQL migration adding a `super_admin can update profiles.role/organization_id` policy.

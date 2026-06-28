@@ -672,17 +672,43 @@ const UserManagementPage = () => {
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to create user");
 
-      const newUserId = result.user?.id || result.data?.id;
+      let newUserId =
+        result.user?.id ||
+        result.data?.id ||
+        result.data?.user?.id ||
+        result.id ||
+        null;
 
       if (isPartnerAgent) {
         const partnerId = Array.from(selectedPartnerIds)[0];
         if (!partnerId) throw new Error("A partner must be selected for a Partner Agent");
-        if (newUserId) {
-          const { error: bindErr } = await supabase
+
+        // Fallback: look up the freshly created user by email if id wasn't returned
+        if (!newUserId) {
+          const { data: lookup } = await supabase
             .from("profiles")
-            .update({ role: "partner_agent", organization_id: partnerId })
-            .eq("id", newUserId);
-          if (bindErr) throw new Error(bindErr.message || "Failed to bind partner agent to partner");
+            .select("id")
+            .eq("email", userForm.email.trim().toLowerCase())
+            .maybeSingle();
+          newUserId = lookup?.id || null;
+        }
+        if (!newUserId) throw new Error("User was created but its ID could not be determined — cannot bind to partner.");
+
+        const { error: bindErr } = await supabase
+          .from("profiles")
+          .update({ role: "partner_agent", organization_id: partnerId })
+          .eq("id", newUserId);
+        if (bindErr) throw new Error(bindErr.message || "Failed to bind partner agent to partner");
+
+        // Verify the patch actually applied (RLS may silently filter the update)
+        const { data: verify, error: verifyErr } = await supabase
+          .from("profiles")
+          .select("role, organization_id")
+          .eq("id", newUserId)
+          .maybeSingle();
+        if (verifyErr) throw new Error(verifyErr.message || "Failed to verify partner agent role");
+        if (!verify || verify.role !== "partner_agent" || verify.organization_id !== partnerId) {
+          throw new Error("Profile update did not persist (likely an RLS policy on profiles prevents updating role/organization_id). User was created but role remains as initially set.");
         }
       } else {
         if (
@@ -707,6 +733,7 @@ const UserManagementPage = () => {
           }
         }
       }
+
 
 
 
