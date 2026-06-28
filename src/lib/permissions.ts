@@ -182,6 +182,10 @@ export const PERMISSIONS: Record<string, RolePermissions> = {
     routes: ["dashboard", "sales", "sales-create", "stove-manager", "profile", "sales-monitoring-app"],
     features: ["create-sale"],
   },
+  agent_user: {
+    routes: ["dashboard", "sales", "sales-create", "stove-manager", "profile", "sales-monitoring-app"],
+    features: ["create-sale"],
+  },
 };
 
 export function resolveRole(role: string | null | undefined): string | null {
