@@ -529,6 +529,7 @@ const UserManagementPage = () => {
     // Reset everything first
     resetForm();
     hydratingRef.current = true;
+    setEditAssignmentsLoading(true);
     setSelectedUser(user);
     setFormMode("edit");
     setUserForm({
@@ -550,17 +551,10 @@ const UserManagementPage = () => {
       needsAcslAgentCascade(role);
 
     try {
-      if (needsOrgs && allOrgs.length === 0) {
-        setOrgsLoading(true);
-        try {
-          const result = await organizationsService.getAllOrganizations();
-          setAllOrgs(result.data || []);
-        } catch { /* non-fatal */ }
-        finally { setOrgsLoading(false); }
-      }
-      if (needsAcslAgentCascade(role) && acslManagers.length === 0) {
-        await loadAcslManagers();
-      }
+      if (needsOrgs) await ensureOrganizationsLoaded();
+      const managersSnapshot = needsAcslAgentCascade(role)
+        ? (acslManagers.length > 0 ? acslManagers : await loadAcslManagers())
+        : acslManagers;
 
       // Hydrate states & partners from existing assignments
       const [statesRes, orgsRes] = await Promise.allSettled([
@@ -573,31 +567,28 @@ const UserManagementPage = () => {
       const orgsList = orgsRes.status === "fulfilled"
         ? (orgsRes.value?.data || orgsRes.value?.organizations || orgsRes.value || [])
         : [];
-      const stateNames = Array.isArray(statesList)
-        ? statesList.map((s) => (typeof s === "string" ? s : s?.state)).filter(Boolean)
-        : [];
-      const orgIds = Array.isArray(orgsList)
-        ? orgsList.map((o) => o?.id || o?.organization_id).filter(Boolean)
-        : [];
+      const stateNames = normalizeStateNames(statesList);
+      let assignmentRows = [];
+      if (needsAcslAgentCascade(role)) {
+        assignmentRows = (await fetchDirectAgentAssignmentRows(user.id)) || [];
+      }
+      const directOrgIds = normalizeOrgIds(assignmentRows);
+      const orgIds = directOrgIds.length > 0 ? directOrgIds : normalizeOrgIds(orgsList);
 
       setSelectedStates(new Set(stateNames));
 
-      // For acsl_agent: derive supervising managers from overlap of partner IDs
+      // For acsl_agent: retain the original manager selection as tightly as
+      // possible. Prefer the assignment creator when available, otherwise use
+      // the single best manager that covers the agent's saved partners.
       if (needsAcslAgentCascade(role)) {
-        const orgIdSet = new Set(orgIds);
-        // Use the latest managers list (loadAcslManagers updates state above).
-        // Read from a fresh snapshot via setAcslManagers callback hack.
-        let managersSnapshot = [];
-        setAcslManagers((curr) => { managersSnapshot = curr; return curr; });
-        const managerIds = managersSnapshot
-          .filter((m) => Array.from(m.orgIds).some((id) => orgIdSet.has(id)))
-          .map((m) => m.id);
+        const managerIds = inferManagerIdsForAgent(orgIds, stateNames, managersSnapshot, assignmentRows);
         setSelectedManagerIds(new Set(managerIds));
       }
 
       // Always set partners last so reconcile effects (now bypassed) don't overwrite
       setSelectedPartnerIds(new Set(orgIds));
     } finally {
+      setEditAssignmentsLoading(false);
       // Release the guard after React has flushed the above state updates
       setTimeout(() => { hydratingRef.current = false; }, 50);
     }
@@ -665,14 +656,22 @@ const UserManagementPage = () => {
 
   const handleUpdateUser = async (e) => {
     e.preventDefault();
-    if (!userForm.full_name.trim()) { setFormErrors({ full_name: "Full name is required" }); return; }
+    if (!validateForm()) return;
     if (!selectedUser) return;
     setActionLoading("create"); // reuse 'create' key so submit button spinner works in shared form
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
         `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
-        { method: "PUT", headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" }, body: JSON.stringify({ full_name: userForm.full_name.trim(), phone: userForm.phone.trim() || null }) },
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            full_name: userForm.full_name.trim(),
+            phone: userForm.phone.trim() || null,
+            role: userForm.role,
+          }),
+        },
       );
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to update user");
