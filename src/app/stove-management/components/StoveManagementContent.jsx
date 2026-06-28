@@ -645,7 +645,7 @@ export default function StoveManagementContent() {
           <div className="bg-white border-x border-gray-200 overflow-x-auto relative">
             {loading && (
               <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
-                <Loader2 className="h-6 w-6 animate-spin text-brand" />
+                <Loader2 className="h-6 w-6 animate-spin text-[#4a5d0f]" />
               </div>
             )}
             <Table>
