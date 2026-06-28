@@ -695,28 +695,28 @@ export default function StoveManagementContent() {
                       const stove = item.stove;
                       const idx = rowIndex++;
                       return (
-                        <TableRow key={stove.id || stove.stove_id} className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/50"} hover:bg-gray-50`}>
-                          <TableCell className="font-mono font-medium text-gray-900 text-xs">{stove.stove_id}</TableCell>
-                          {!isAcslAgent && <TableCell className="text-xs">{stove.sales_reference || "—"}</TableCell>}
+                        <TableRow key={stove.id || stove.stove_id} className={`${idx % 2 === 0 ? "bg-white" : "bg-[#f4f7e3]"} hover:bg-[#eef3c4]`}>
+                          <TableCell className="font-mono font-medium text-gray-900 text-sm">{stove.stove_id}</TableCell>
+                          {!isAcslAgent && <TableCell className="text-sm">{stove.sales_reference || "—"}</TableCell>}
                           <TableCell>
                             <Badge className={stove.status === "sold"
-                              ? "bg-blue-100 text-blue-800 border-blue-200 text-xs"
-                              : "bg-green-100 text-green-800 border-green-200 text-xs"}>
+                              ? "bg-blue-100 text-blue-800 border-blue-200 text-sm"
+                              : "bg-green-100 text-green-800 border-green-200 text-sm"}>
                               {stove.status ? stove.status.charAt(0).toUpperCase() + stove.status.slice(1) : "—"}
                             </Badge>
                           </TableCell>
                           {isSuperAdmin && (
                             <>
-                              <TableCell className="text-xs text-gray-600">{stove.organization_name || "N/A"}</TableCell>
-                              <TableCell className="text-xs text-gray-600">{stove.branch || "N/A"}</TableCell>
-                              <TableCell className="text-xs text-gray-600">{stove.location || "N/A"}</TableCell>
+                              <TableCell className="text-sm text-gray-600">{stove.organization_name || "N/A"}</TableCell>
+                              <TableCell className="text-sm text-gray-600">{stove.branch || "N/A"}</TableCell>
+                              <TableCell className="text-sm text-gray-600">{stove.location || "N/A"}</TableCell>
                             </>
                           )}
-                          {isAcslAgent && <TableCell className="text-xs text-gray-600">{stove.organization_name || "—"}</TableCell>}
-                          <TableCell className="text-xs text-gray-600">
+                          {isAcslAgent && <TableCell className="text-sm text-gray-600">{stove.organization_name || "—"}</TableCell>}
+                          <TableCell className="text-sm text-gray-600">
                             {stove.status === "sold" ? formatDate(stove.sale_date || stove.date_sold) : "—"}
                           </TableCell>
-                          <TableCell className="text-xs text-gray-600">{stove.sold_to || "—"}</TableCell>
+                          <TableCell className="text-sm text-gray-600">{stove.sold_to || "—"}</TableCell>
                           <TableCell className="text-center">
                             <div className="flex items-center justify-center gap-2">
                               {stove.status === "sold" && !isAcslAgent && (
@@ -724,7 +724,7 @@ export default function StoveManagementContent() {
                                   size="sm"
                                   onClick={() => handleViewStove(stove)}
                                   disabled={loadingStoveId === stove.id}
-                                  className="bg-brand hover:bg-brand/90 text-white h-7 px-3 text-xs"
+                                  className="bg-[#4a5d0f] hover:bg-[#4a5d0f]/90 text-white h-7 px-3 text-sm"
                                 >
                                   {loadingStoveId === stove.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                                   Details
@@ -736,13 +736,13 @@ export default function StoveManagementContent() {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => { setStoveToArchive(stove); setShowArchiveModal(true); }}
-                                  className="h-7 px-3 text-xs border-red-200 text-red-600 hover:bg-red-50"
+                                  className="h-7 px-3 text-sm border-red-200 text-red-600 hover:bg-red-50"
                                 >
                                   Archive
                                 </Button>
                               )}
                               {stove.is_archived && (
-                                <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-xs">Archived</Badge>
+                                <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-sm">Archived</Badge>
                               )}
                             </div>
                           </TableCell>
