@@ -350,13 +350,27 @@ const UserManagementPage = () => {
   };
 
   const persistAgentSupervisorMarker = async (agentId, partnerIds, managerIds) => {
-    if (!agentId || partnerIds.length === 0 || managerIds.length !== 1) return;
+    if (!agentId || partnerIds.length === 0 || managerIds.length === 0) return;
     try {
-      await supabase
-        .from("super_admin_agent_organizations")
-        .update({ assigned_by: managerIds[0] })
-        .eq("agent_id", agentId)
-        .in("organization_id", partnerIds);
+      const selectedManagers = acslManagers.filter((m) => managerIds.includes(m.id));
+      const grouped = new Map();
+
+      partnerIds.forEach((partnerId) => {
+        const manager = selectedManagers.find((m) => m.orgIds.has(partnerId)) || selectedManagers[0];
+        if (!manager) return;
+        if (!grouped.has(manager.id)) grouped.set(manager.id, []);
+        grouped.get(manager.id).push(partnerId);
+      });
+
+      await Promise.all(
+        Array.from(grouped.entries()).map(([managerId, ids]) =>
+          supabase
+            .from("super_admin_agent_organizations")
+            .update({ assigned_by: managerId })
+            .eq("agent_id", agentId)
+            .in("organization_id", ids)
+        )
+      );
     } catch {
       // Non-fatal. Some deployments keep assigned_by write-protected; the UI
       // still falls back to exact partner-coverage inference.
