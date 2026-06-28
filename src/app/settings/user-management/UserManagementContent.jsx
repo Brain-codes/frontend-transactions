@@ -407,6 +407,7 @@ const UserManagementPage = () => {
   // Auto-check all partners in selected states when states change (Agent Manager flow)
   useEffect(() => {
     if (userForm.role !== "acsl_agent_manager") return;
+    if (hydratingRef.current) return;
     const ids = new Set(
       allOrgs
         .filter((o) => o.state && selectedStates.has(o.state))
