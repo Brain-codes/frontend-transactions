@@ -472,37 +472,48 @@ export default function StoveTransferHistoryContent() {
                           key={record.id}
                           className={`${idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]/40"} hover:bg-[#eef3c4] text-gray-700`}
                         >
-                          <TableCell className="text-xs whitespace-nowrap">
-                            {formatDate(record.transfer_date)}
-                          </TableCell>
                           <TableCell className="font-mono text-xs text-gray-600">
                             {record.transaction_id}
-                          </TableCell>
-                          <TableCell className="text-xs font-medium text-gray-900">
-                            {record.partner_name}
-                          </TableCell>
-                          <TableCell className="text-xs">{record.state || "—"}</TableCell>
-                          <TableCell className="text-xs">{record.branch || "—"}</TableCell>
-                          <TableCell className="text-xs">{record.sales_factory || "—"}</TableCell>
-                          <TableCell className="text-center">
-                            <span className="inline-flex items-center justify-center min-w-[2rem] text-xs font-semibold px-2 py-0.5 rounded-full bg-[#eef3c4] text-[#4a5d0f]">
-                              {record.stove_count}
-                            </span>
                           </TableCell>
                           <TableCell className="text-xs whitespace-nowrap">
                             {record.sales_date
                               ? new Date(record.sales_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
                               : "—"}
                           </TableCell>
+                          <TableCell className="text-xs font-medium text-gray-900">
+                            {record.partner_name}
+                          </TableCell>
                           <TableCell className="text-center">
-                            <Button
-                              size="sm"
-                              className="h-7 px-3 text-xs rounded-none bg-[#4a5d0f] hover:bg-[#3a4a0c] text-white gap-1"
-                              onClick={() => openModal(record)}
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                              View IDs
-                            </Button>
+                            <span className="inline-flex items-center justify-center min-w-[2rem] text-xs font-semibold px-2 py-0.5 rounded-full bg-[#eef3c4] text-[#4a5d0f]">
+                              {record.stove_count}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs">{record.state || "—"}</TableCell>
+                          <TableCell className="text-xs">{record.branch || "—"}</TableCell>
+                          <TableCell className="text-xs">{record.sales_factory || "—"}</TableCell>
+                          <TableCell className="text-center">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0 rounded-none"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="text-xs">
+                                <DropdownMenuItem disabled className="flex flex-col items-start gap-0.5 opacity-100">
+                                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Transfer Date</span>
+                                  <span className="font-medium">{formatDate(record.transfer_date)}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={() => openModal(record)} className="cursor-pointer gap-2">
+                                  <Eye className="h-3.5 w-3.5" />
+                                  View Stove IDs
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       ))
