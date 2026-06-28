@@ -75,7 +75,7 @@ import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AssignOrganizationsModal from "../../super-admin-agents/components/AssignOrganizationsModal";
 import organizationsService from "../../services/organizationsService";
 import superAdminAgentService from "../../services/superAdminAgentService";
-import adminAgentService from "../../services/adminAgentService";
+
 
 // Nigerian states (36 + FCT)
 const NIGERIAN_STATES = [
