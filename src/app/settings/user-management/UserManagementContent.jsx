@@ -360,7 +360,7 @@ const UserManagementPage = () => {
 
   const openEditModal = (user) => {
     setSelectedUser(user);
-    setUserForm({ full_name: user.full_name || "", email: user.email || "", phone: user.phone || "", role: user.role || "acsl_agent", password: "", auto_generate_password: true });
+    setUserForm({ full_name: user.full_name || "", email: user.email || "", phone: user.phone || "", role: user.role || undefined, password: "", auto_generate_password: true });
     setFormErrors({});
     setShowEditModal(true);
   };
