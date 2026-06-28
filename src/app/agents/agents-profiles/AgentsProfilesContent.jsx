@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import superAdminAgentService from "../../services/superAdminAgentService";
+import { createClientComponentClient } from "@/lib/supabaseClient";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import ViewSuperAdminAgentModal from "../../super-admin-agents/components/ViewSuperAdminAgentModal";
 import EditSuperAdminAgentModal from "../../super-admin-agents/components/EditSuperAdminAgentModal";
@@ -48,6 +49,51 @@ import {
 import { MapPin, Building2, Search } from "lucide-react";
 
 const PAGE_SIZE = 10;
+
+// Direct-assignment table for ACSL Agents → Organizations.
+// Try the canonical agent column first, fall back to alternates once.
+const ASSIGNMENT_TABLE = "super_admin_agent_organizations";
+const AGENT_COLUMN_CANDIDATES = ["agent_id", "super_admin_agent_id", "user_id"];
+let resolvedAgentColumn = null;
+
+async function resolveAgentColumn(supabase) {
+  if (resolvedAgentColumn) return resolvedAgentColumn;
+  for (const col of AGENT_COLUMN_CANDIDATES) {
+    const { error } = await supabase
+      .from(ASSIGNMENT_TABLE)
+      .select(col, { count: "exact", head: true })
+      .limit(1);
+    if (!error) {
+      resolvedAgentColumn = col;
+      return col;
+    }
+  }
+  return null;
+}
+
+async function fetchDirectPartnerCount(supabase, agentId) {
+  const col = await resolveAgentColumn(supabase);
+  if (!col) return null;
+  const { count, error } = await supabase
+    .from(ASSIGNMENT_TABLE)
+    .select("organization_id", { count: "exact", head: true })
+    .eq(col, agentId);
+  if (error) return null;
+  return count ?? 0;
+}
+
+async function fetchDirectPartnerList(supabase, agentId) {
+  const col = await resolveAgentColumn(supabase);
+  if (!col) return null;
+  const { data, error } = await supabase
+    .from(ASSIGNMENT_TABLE)
+    .select("organization_id, organizations(id, partner_name, state, branch)")
+    .eq(col, agentId);
+  if (error) return null;
+  return (data || [])
+    .map((row) => row.organizations)
+    .filter(Boolean);
+}
 
 const AgentsProfilesContent = () => {
   const { toast, toasts, removeToast } = useToast();
