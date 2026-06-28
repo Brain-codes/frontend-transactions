@@ -477,7 +477,11 @@ const UserManagementPage = () => {
       if (!res.ok) throw new Error(result.error || "Failed to create user");
 
       const newUserId = result.user?.id || result.data?.id;
-      if (newUserId && userForm.role === "acsl_agent_manager" && selectedStates.size > 0) {
+      if (
+        newUserId &&
+        (userForm.role === "acsl_agent_manager" || userForm.role === "acsl_agent") &&
+        selectedStates.size > 0
+      ) {
         try {
           await superAdminAgentService.setAgentStates(newUserId, Array.from(selectedStates));
         } catch {
