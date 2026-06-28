@@ -1277,6 +1277,7 @@ const UserManagementPage = () => {
                       <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
                       <SelectItem value="partner">Partner</SelectItem>
                       <SelectItem value="partner_agent">Partner Agent</SelectItem>
+                      <SelectItem value="agent_user">Agent</SelectItem>
                     </SelectContent>
                   </Select>
                   {formErrors.role && <p className="text-xs text-red-600">{formErrors.role}</p>}
