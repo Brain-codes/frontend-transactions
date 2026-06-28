@@ -154,6 +154,7 @@ const AgentsProfilesContent = () => {
   const [agents, setAgents] = useState([]);
   const [filters, setFilters] = useState({ search: "", status: "", role: "" });
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const [detailsAgent, setDetailsAgent] = useState(null);
   const [editingAgent, setEditingAgent] = useState(null);
