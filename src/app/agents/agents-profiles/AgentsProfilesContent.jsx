@@ -588,28 +588,20 @@ const AgentsProfilesContent = () => {
                         </sup>
                       )}
                     </TableCell>
+                    <TableCell className="text-sm text-gray-700 whitespace-nowrap">
+                      {a.phone || ""}
+                    </TableCell>
                     <TableCell className="text-sm text-gray-700">
-                      {a.role === "acsl_agent_manager" ? (
-                        <span className="text-gray-400">—</span>
-                      ) : a.role === "acsl_agent" ? (
+                      {a.role === "acsl_agent" ? (
                         a.supervisors === undefined ? (
                           <span className="text-gray-400 text-xs">Loading…</span>
                         ) : a.supervisors.length === 0 ? (
-                          <span className="text-gray-400">—</span>
+                          ""
                         ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {a.supervisors.map((name, i) => (
-                              <span
-                                key={i}
-                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700"
-                              >
-                                {name}
-                              </span>
-                            ))}
-                          </div>
+                          <span>{a.supervisors.join(", ")}</span>
                         )
                       ) : (
-                        <span className="text-gray-400">—</span>
+                        ""
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-center">
