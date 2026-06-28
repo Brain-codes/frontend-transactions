@@ -825,9 +825,11 @@ const UserManagementPage = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
-                      <SelectItem value="partner_agent">Partner Agent</SelectItem>
                       <SelectItem value="super_admin">Super Admin</SelectItem>
+                      <SelectItem value="acsl_agent_manager">ACSL Agent Manager</SelectItem>
+                      <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
+                      <SelectItem value="partner">Partner</SelectItem>
+                      <SelectItem value="partner_agent">Partner Agent</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
