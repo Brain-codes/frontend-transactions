@@ -76,6 +76,17 @@ import AssignOrganizationsModal from "../../super-admin-agents/components/Assign
 import organizationsService from "../../services/organizationsService";
 import superAdminAgentService from "../../services/superAdminAgentService";
 
+// Nigerian states (36 + FCT)
+const NIGERIAN_STATES = [
+  "Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno",
+  "Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT","Gombe","Imo",
+  "Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa",
+  "Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba",
+  "Yobe","Zamfara",
+];
+
+
+
 // Relative time formatter (same pattern as SalesAgentTable)
 const formatRelativeTime = (dateString) => {
   if (!dateString) return "Never";
