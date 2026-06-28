@@ -124,8 +124,8 @@ const getRoleLabel = (role) => {
   if (role === "acsl_agent" || role === "super_admin_agent") return "ACSL Agent";
   if (role === "acsl_agent_manager") return "ACSL Agent Manager";
   if (role === "partner" || role === "admin") return "Partner";
-  if (role === "partner_agent" || role === "agent") return "Partner Agent";
-  if (role === "agent_user") return "Agent";
+  if (role === "partner_agent") return "Partner Agent";
+  if (role === "agent" || role === "agent_user") return "Agent";
   return role;
 };
 
@@ -142,8 +142,8 @@ const getRoleBadgeClasses = (role) => {
     case "admin":
       return "bg-amber-100 text-amber-800 border border-amber-200";
     case "partner_agent":
-    case "agent":
       return "bg-emerald-100 text-emerald-800 border border-emerald-200";
+    case "agent":
     case "agent_user":
       return "bg-teal-100 text-teal-800 border border-teal-200";
     default:
