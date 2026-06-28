@@ -825,7 +825,7 @@ const UserManagementPage = () => {
                                 <TooltipTrigger asChild>
                                   <button
                                     type="button"
-                                    onClick={() => openEditModal(u)}
+                                    onClick={() => openEditView(u)}
                                     disabled={!!actionLoading}
                                     aria-label="Edit user"
                                     className="h-8 w-8 inline-flex items-center justify-center rounded-md text-gray-800 hover:bg-gray-50 disabled:opacity-50"
