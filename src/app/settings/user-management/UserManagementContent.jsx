@@ -1635,7 +1635,8 @@ const UserManagementPage = () => {
                 </div>
               )}
 
-              {/* Password Options */}
+              {/* Password Options — create only */}
+              {formMode === "create" && (
               <div className="space-y-3 border border-gray-200 rounded-md p-3 bg-[#fafcfc]">
                 <div className="flex items-center gap-2">
                   <input
@@ -1674,13 +1675,18 @@ const UserManagementPage = () => {
                   </div>
                 )}
               </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => { setShowCreateModal(false); resetForm(); }} disabled={actionLoading === "create"} className="shadow-none border-gray-300">
                   Cancel
                 </Button>
                 <Button type="submit" disabled={actionLoading === "create"} className="bg-[#4a5d0f] hover:bg-[#3d4f0c] text-white shadow-none">
-                  {actionLoading === "create" ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</> : <><UserPlus className="h-4 w-4 mr-2" />Create User</>}
+                  {actionLoading === "create"
+                    ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{formMode === "edit" ? "Saving..." : "Creating..."}</>
+                    : formMode === "edit"
+                      ? <><SquarePen className="h-4 w-4 mr-2" />Save Changes</>
+                      : <><UserPlus className="h-4 w-4 mr-2" />Create User</>}
                 </Button>
               </div>
             </form>
