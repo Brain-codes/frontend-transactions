@@ -506,11 +506,11 @@ const AgentsProfilesContent = () => {
           <Table>
             <TableHeader>
               <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
-                <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Full Name</TableHead>
-                <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Role</TableHead>
+                <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Agent Name</TableHead>
+                <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Supervisor(s)</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">States Assigned</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Partners Assigned</TableHead>
-                
+
                 <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -528,18 +528,40 @@ const AgentsProfilesContent = () => {
                     className="hover:bg-[#eef3c4] text-gray-700"
                     style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
                   >
-                    <TableCell className="text-sm font-medium text-gray-900">{a.full_name || "N/A"}</TableCell>
-                    <TableCell className="text-sm">
-                      {a.role ? (
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    <TableCell className="text-sm font-medium text-gray-900">
+                      <span className="align-baseline">{a.full_name || "N/A"}</span>
+                      {a.role && (
+                        <sup
+                          className={`ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold leading-none ${
                             ROLE_BADGE[a.role] || "bg-gray-100 text-gray-700"
                           }`}
                         >
                           {formatRole(a.role)}
-                        </span>
+                        </sup>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-700">
+                      {a.role === "acsl_agent_manager" ? (
+                        <span className="text-gray-400">—</span>
+                      ) : a.role === "acsl_agent" ? (
+                        a.supervisors === undefined ? (
+                          <span className="text-gray-400 text-xs">Loading…</span>
+                        ) : a.supervisors.length === 0 ? (
+                          <span className="text-gray-400">—</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {a.supervisors.map((name, i) => (
+                              <span
+                                key={i}
+                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700"
+                              >
+                                {name}
+                              </span>
+                            ))}
+                          </div>
+                        )
                       ) : (
-                        "—"
+                        <span className="text-gray-400">—</span>
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-center">
