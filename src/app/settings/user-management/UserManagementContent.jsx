@@ -831,7 +831,8 @@ const UserManagementPage = () => {
 
 
             <form onSubmit={handleCreateUser} className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
                 {/* Full Name */}
                 <div className="space-y-1.5">
                   <Label htmlFor="full_name" className="text-sm font-medium text-gray-700">Full Name <span className="text-red-500">*</span></Label>
