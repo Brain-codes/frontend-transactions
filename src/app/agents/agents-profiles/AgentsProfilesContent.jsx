@@ -138,24 +138,11 @@ function inferSupervisorsForAgent(agentOrgIds, managerInfo, assignmentRows = [])
     .sort((a, b) => a.extraPartners - b.extraPartners || a.name.localeCompare(b.name));
   if (fullCover.length > 0) return [fullCover[0].name];
 
-  // If no single manager covers every selected partner, return the smallest
-  // manager set that explains the agent's partner list.
-  const remaining = new Set(agentOrgIds);
-  const selected = [];
-  const pool = [...candidates];
-  while (remaining.size > 0 && pool.length > 0) {
-    pool.sort((a, b) => {
-      const aNew = Array.from(remaining).filter((id) => a.orgIds.has(id)).length;
-      const bNew = Array.from(remaining).filter((id) => b.orgIds.has(id)).length;
-      return bNew - aNew || a.extraPartners - b.extraPartners || a.name.localeCompare(b.name);
-    });
-    const best = pool.shift();
-    const covered = Array.from(remaining).filter((id) => best.orgIds.has(id));
-    if (covered.length === 0) break;
-    selected.push(best.name);
-    covered.forEach((id) => remaining.delete(id));
-  }
-  return selected;
+  // If older records do not have assigned_by, show only the single closest
+  // manager instead of listing every manager with a partial partner overlap.
+  // This prevents an agent assigned to one supervisor from appearing under many.
+  candidates.sort((a, b) => b.overlap - a.overlap || a.extraPartners - b.extraPartners || a.name.localeCompare(b.name));
+  return candidates.length > 0 ? [candidates[0].name] : [];
 }
 
 const AgentsProfilesContent = () => {
