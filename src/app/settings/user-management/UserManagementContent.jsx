@@ -125,6 +125,7 @@ const getRoleLabel = (role) => {
   if (role === "acsl_agent_manager") return "ACSL Agent Manager";
   if (role === "partner" || role === "admin") return "Partner";
   if (role === "partner_agent" || role === "agent") return "Partner Agent";
+  if (role === "agent_user") return "Agent";
   return role;
 };
 
@@ -143,6 +144,8 @@ const getRoleBadgeClasses = (role) => {
     case "partner_agent":
     case "agent":
       return "bg-emerald-100 text-emerald-800 border border-emerald-200";
+    case "agent_user":
+      return "bg-teal-100 text-teal-800 border border-teal-200";
     default:
       return "bg-gray-100 text-gray-800 border border-gray-200";
   }
@@ -329,7 +332,7 @@ const UserManagementPage = () => {
   // - partner_agent: flat partner-only picker (legacy)
   // - acsl_agent: cascade — States → Managers in those states → Partners of those managers
   // - acsl_agent_manager: States → Partners in those states (auto-checked)
-  const needsPartnerAssignment = (role) => role === "partner_agent" || role === "partner";
+  const needsPartnerAssignment = (role) => role === "partner_agent" || role === "partner" || role === "agent_user";
   const needsAcslAgentCascade = (role) => role === "acsl_agent";
   const needsStateAndPartnerAssignment = (role) => role === "acsl_agent_manager";
 
@@ -557,7 +560,7 @@ const UserManagementPage = () => {
     if (!userForm.email.trim()) errors.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email)) errors.email = "Invalid email format";
     if (!userForm.role) errors.role = "User Group is required";
-    if (userForm.role === "partner_agent" && selectedPartnerIds.size !== 1) errors.partner = "Select exactly one Partner for this agent";
+    if ((userForm.role === "partner_agent" || userForm.role === "agent_user") && selectedPartnerIds.size !== 1) errors.partner = "Select exactly one Partner for this agent";
     if (!userForm.auto_generate_password && !userForm.password) errors.password = "Password is required";
     else if (!userForm.auto_generate_password && userForm.password.length < 8) errors.password = "Password must be at least 8 characters";
     setFormErrors(errors);
@@ -618,7 +621,7 @@ const UserManagementPage = () => {
 
       // Partner Agents are bound to a single partner via profile.organization_id;
       // fall back to that value when no relational rows exist.
-      if (role === "partner_agent" && orgIds.length === 0 && user.organization_id) {
+      if ((role === "partner_agent" || role === "agent_user") && orgIds.length === 0 && user.organization_id) {
         orgIds = [user.organization_id];
       }
 
@@ -652,8 +655,10 @@ const UserManagementPage = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const isPartnerAgent = userForm.role === "partner_agent";
-      const partnerId = isPartnerAgent ? (Array.from(selectedPartnerIds)[0] || null) : null;
-      if (isPartnerAgent && !partnerId) throw new Error("A partner must be selected for a Partner Agent");
+      const isAgentUser = userForm.role === "agent_user";
+      const needsOrgBinding = isPartnerAgent || isAgentUser;
+      const partnerId = needsOrgBinding ? (Array.from(selectedPartnerIds)[0] || null) : null;
+      if (needsOrgBinding && !partnerId) throw new Error("A partner must be selected for this agent");
 
       const basePayload = {
         full_name: userForm.full_name.trim(),
@@ -680,9 +685,10 @@ const UserManagementPage = () => {
       let newUserId;
       let generatedPassword;
 
-      if (isPartnerAgent) {
-        // First try sending partner_agent + organization_id directly.
-        let attempt = await postUser("partner_agent", { organization_id: partnerId });
+      if (needsOrgBinding) {
+        const targetRole = isAgentUser ? "agent_user" : "partner_agent";
+        // First try sending the role + organization_id directly.
+        let attempt = await postUser(targetRole, { organization_id: partnerId });
 
         // If the edge function rejects the role, create as acsl_agent then promote via PUT.
         if (!attempt.ok) {
@@ -710,13 +716,13 @@ const UserManagementPage = () => {
               body: JSON.stringify({
                 full_name: userForm.full_name.trim(),
                 phone: userForm.phone.trim() || null,
-                role: "partner_agent",
+                role: targetRole,
                 organization_id: partnerId,
               }),
             },
           );
           const putResult = await putRes.json().catch(() => ({}));
-          if (!putRes.ok) throw new Error(putResult?.error || "Created user but failed to assign Partner Agent role");
+          if (!putRes.ok) throw new Error(putResult?.error || `Created user but failed to assign ${targetRole === "agent_user" ? "Agent" : "Partner Agent"} role`);
         } else {
           result = attempt.result;
           newUserId = result.user?.id || result.data?.id || result.data?.user?.id || result.id || null;
@@ -772,8 +778,9 @@ const UserManagementPage = () => {
     try {
       const role = userForm.role;
 
-      const partnerId = role === "partner_agent" ? (Array.from(selectedPartnerIds)[0] || null) : null;
-      if (role === "partner_agent" && !partnerId) throw new Error("A partner must be selected for a Partner Agent");
+      const isOrgBound = role === "partner_agent" || role === "agent_user";
+      const partnerId = isOrgBound ? (Array.from(selectedPartnerIds)[0] || null) : null;
+      if (isOrgBound && !partnerId) throw new Error("A partner must be selected for this agent");
 
       const { data: { session } } = await supabase.auth.getSession();
       const putBody = {
@@ -781,7 +788,7 @@ const UserManagementPage = () => {
         phone: userForm.phone.trim() || null,
         role,
       };
-      if (role === "partner_agent") putBody.organization_id = partnerId;
+      if (isOrgBound) putBody.organization_id = partnerId;
 
       const res = await fetch(
         `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
@@ -794,7 +801,7 @@ const UserManagementPage = () => {
       const result = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(result?.error || "Failed to update user");
 
-      if (role === "partner_agent") {
+      if (isOrgBound) {
         // Clear ACSL-style assignments so this user no longer appears under prior managers/states.
         try { await superAdminAgentService.setAgentStates(selectedUser.id, []); } catch { /* non-fatal */ }
         try { await superAdminAgentService.setAgentOrganizations(selectedUser.id, []); } catch { /* non-fatal */ }
@@ -933,6 +940,7 @@ const UserManagementPage = () => {
                 <SelectItem value="acsl_agent" className="text-xs">ACSL Agent</SelectItem>
                 <SelectItem value="partner" className="text-xs">Partner Admin</SelectItem>
                 <SelectItem value="partner_agent" className="text-xs">Partner Agent</SelectItem>
+                <SelectItem value="agent_user" className="text-xs">Agent</SelectItem>
               </SelectContent>
             </Select>
 
@@ -1270,6 +1278,7 @@ const UserManagementPage = () => {
                       <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
                       <SelectItem value="partner">Partner</SelectItem>
                       <SelectItem value="partner_agent">Partner Agent</SelectItem>
+                      <SelectItem value="agent_user">Agent</SelectItem>
                     </SelectContent>
                   </Select>
                   {formErrors.role && <p className="text-xs text-red-600">{formErrors.role}</p>}
@@ -1802,7 +1811,7 @@ const UserManagementPage = () => {
                         )
                         .map((org) => {
                           const checked = selectedPartnerIds.has(org.id);
-                          const isSingleSelect = userForm.role === "partner" || userForm.role === "partner_agent";
+                          const isSingleSelect = userForm.role === "partner" || userForm.role === "partner_agent" || userForm.role === "agent_user";
                           return (
                             <label
                               key={org.id}
@@ -1841,7 +1850,7 @@ const UserManagementPage = () => {
 
                   {selectedPartnerIds.size > 0 && (
                     <p className="text-xs text-[#4a5d0f] font-medium">
-                      {(userForm.role === "partner" || userForm.role === "partner_agent") ? "1 partner selected" : `${selectedPartnerIds.size} partner${selectedPartnerIds.size > 1 ? "s" : ""} selected`}
+                      {(userForm.role === "partner" || userForm.role === "partner_agent" || userForm.role === "agent_user") ? "1 partner selected" : `${selectedPartnerIds.size} partner${selectedPartnerIds.size > 1 ? "s" : ""} selected`}
                     </p>
                   )}
                 </div>

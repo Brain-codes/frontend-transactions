@@ -12,6 +12,7 @@ const groups: Group[] = [
   { name: "ACSL Agent", description: "Handles assigned partners, manages stoves, and creates sales on their behalf." },
   { name: "Partner", description: "Manages their own organization, partner agents, stoves, and sales records." },
   { name: "Partner Agent", description: "Creates and manages sales for their partner organization." },
+  { name: "Agent", description: "Standalone agent linked to a single partner; creates and manages sales for that partner." },
 ];
 
 export default function UserGroupsContent() {

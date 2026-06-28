@@ -6,7 +6,8 @@ export type AppRole =
   | "partner"
   | "admin"
   | "partner_agent"
-  | "agent";
+  | "agent"
+  | "agent_user";
 
 export type RouteKey =
   | "dashboard"
@@ -178,6 +179,10 @@ export const PERMISSIONS: Record<string, RolePermissions> = {
     features: ["manage-agents", "org-sales-view", "create-sale"],
   },
   partner_agent: {
+    routes: ["dashboard", "sales", "sales-create", "stove-manager", "profile", "sales-monitoring-app"],
+    features: ["create-sale"],
+  },
+  agent_user: {
     routes: ["dashboard", "sales", "sales-create", "stove-manager", "profile", "sales-monitoring-app"],
     features: ["create-sale"],
   },
