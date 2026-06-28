@@ -998,8 +998,8 @@ const UserManagementPage = () => {
           {showCreateModal && (
             <div className="space-y-5">
               <PageHeader
-                icon={UserPlus}
-                title="Create New User"
+                icon={formMode === "edit" ? SquarePen : UserPlus}
+                title={formMode === "edit" ? "Edit User" : "Create New User"}
                 right={
                   <Button
                     variant="outline"
@@ -1016,7 +1016,7 @@ const UserManagementPage = () => {
 
 
 
-            <form onSubmit={handleCreateUser} className="space-y-4 pt-2">
+            <form onSubmit={formMode === "edit" ? handleUpdateUser : handleCreateUser} className="space-y-4 pt-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
                 {/* Full Name */}
