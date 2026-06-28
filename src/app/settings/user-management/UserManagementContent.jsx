@@ -1812,7 +1812,7 @@ const UserManagementPage = () => {
                         )
                         .map((org) => {
                           const checked = selectedPartnerIds.has(org.id);
-                          const isSingleSelect = userForm.role === "partner" || userForm.role === "partner_agent" || userForm.role === "agent_user";
+                          const isSingleSelect = userForm.role === "partner" || isOrganizationBoundAgentRole(userForm.role);
                           return (
                             <label
                               key={org.id}
@@ -1851,7 +1851,7 @@ const UserManagementPage = () => {
 
                   {selectedPartnerIds.size > 0 && (
                     <p className="text-xs text-[#4a5d0f] font-medium">
-                      {(userForm.role === "partner" || userForm.role === "partner_agent" || userForm.role === "agent_user") ? "1 partner selected" : `${selectedPartnerIds.size} partner${selectedPartnerIds.size > 1 ? "s" : ""} selected`}
+                      {(userForm.role === "partner" || isOrganizationBoundAgentRole(userForm.role)) ? "1 partner selected" : `${selectedPartnerIds.size} partner${selectedPartnerIds.size > 1 ? "s" : ""} selected`}
                     </p>
                   )}
                 </div>
