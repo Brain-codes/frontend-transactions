@@ -917,149 +917,195 @@ const UserManagementPage = () => {
                   visiblePartners.forEach((p) => next.delete(p.id));
                   return next;
                 });
+                const sq = stateSearch.trim().toLowerCase();
+                const filteredStates = sq
+                  ? NIGERIAN_STATES.filter((s) => s.toLowerCase().includes(sq))
+                  : [];
+                const hasStates = selectedStates.size > 0;
                 return (
                   <>
                     {/* States block */}
-                    <div className="space-y-2 border border-[#eef3c4] rounded-md p-3 bg-[#f9fbed]">
+                    <div className="space-y-3 border border-gray-200 rounded-lg p-4 bg-white">
                       <div className="flex items-center justify-between gap-3 flex-wrap">
                         <Label className="text-sm font-semibold text-[#4a5d0f] flex items-center gap-1.5">
                           <Building2 className="h-4 w-4 text-[#4a5d0f]" />
                           Assign to States
-                        </Label>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-[#4a5d0f] font-medium">
-                            {selectedStates.size} of {NIGERIAN_STATES.length} selected
-                          </span>
-                          <button
-                            type="button"
-                            onClick={toggleAllStates}
-                            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                              allStatesSelected
-                                ? "bg-[#4a5d0f] text-white border-[#4a5d0f]"
-                                : "bg-white text-[#4a5d0f] border-[#4a5d0f] hover:bg-[#eef3c4]"
-                            }`}
-                          >
-                            {allStatesSelected ? "✓ All States" : "Select All States"}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-1">
-                        {NIGERIAN_STATES.map((s) => {
-                          const on = selectedStates.has(s);
-                          return (
-                            <button
-                              type="button"
-                              key={s}
-                              onClick={() => toggleState(s)}
-                              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                                on
-                                  ? "bg-[#4a5d0f] text-white border-[#4a5d0f]"
-                                  : "bg-white text-gray-700 border-gray-300 hover:border-[#4a5d0f] hover:text-[#4a5d0f]"
-                              }`}
-                            >
-                              {on ? "✓ " : ""}{s}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Partners in selected states */}
-                    <div className="space-y-2 border border-[#eef3c4] rounded-md p-3 bg-[#f9fbed]">
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <Label className="text-sm font-semibold text-[#4a5d0f] flex items-center gap-1.5">
-                          <Building2 className="h-4 w-4 text-[#4a5d0f]" />
-                          Assign Partners
-                          <span className="text-xs text-[#4a5d0f] font-normal">
-                            ({selectedPartnerIds.size} selected · {partnersInStates.length} available)
+                          <span className="text-xs text-gray-500 font-normal">
+                            ({selectedStates.size} of {NIGERIAN_STATES.length} selected)
                           </span>
                         </Label>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={selectAllVisible}
-                            disabled={visiblePartners.length === 0}
-                            className="text-xs px-2 py-1 rounded text-[#4a5d0f] hover:bg-[#eef3c4] disabled:opacity-40"
-                          >
-                            Select all
-                          </button>
-                          <button
-                            type="button"
-                            onClick={clearAllVisible}
-                            disabled={visiblePartners.length === 0}
-                            className="text-xs px-2 py-1 rounded text-gray-600 hover:bg-white disabled:opacity-40"
-                          >
-                            Clear
-                          </button>
-                        </div>
+                        <label className="flex items-center gap-1.5 text-xs text-[#4a5d0f] font-medium cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={allStatesSelected}
+                            onChange={toggleAllStates}
+                            className="rounded accent-[#4a5d0f]"
+                          />
+                          Select all states
+                        </label>
                       </div>
 
                       <div className="relative">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                         <Input
-                          placeholder="Search by name or branch..."
-                          value={partnerSearch}
-                          onChange={(e) => setPartnerSearch(e.target.value)}
-                          className="pl-8 h-8 text-sm bg-white shadow-none border-gray-300"
+                          placeholder="Search states to add..."
+                          value={stateSearch}
+                          onChange={(e) => setStateSearch(e.target.value)}
+                          className="pl-8 h-9 text-sm shadow-none border-gray-300"
                         />
                       </div>
 
-                      {orgsLoading ? (
-                        <div className="flex items-center gap-2 text-xs text-gray-500 py-2">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />Loading partners...
-                        </div>
-                      ) : selectedStates.size === 0 ? (
-                        <p className="text-xs text-gray-500 py-3 text-center">
-                          Select one or more states above to see partners.
-                        </p>
-                      ) : visiblePartners.length === 0 ? (
-                        <p className="text-xs text-gray-400 py-3 text-center">
-                          {partnersInStates.length === 0
-                            ? "No partners in selected states."
-                            : "No partners match your search."}
-                        </p>
-                      ) : (
-                        <div className="max-h-64 overflow-y-auto pr-1 bg-white rounded border border-gray-200 divide-y divide-gray-100">
-                          {visiblePartners.map((org) => {
-                            const checked = selectedPartnerIds.has(org.id);
-                            return (
-                              <label
-                                key={org.id}
-                                className={`flex items-center gap-2 px-2.5 py-2 cursor-pointer text-xs transition-colors ${
-                                  checked ? "bg-[#f9fbed] text-[#4a5d0f]" : "hover:bg-gray-50 text-gray-700"
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={() => {
-                                    setSelectedPartnerIds((prev) => {
-                                      const next = new Set(prev);
-                                      if (next.has(org.id)) next.delete(org.id);
-                                      else next.add(org.id);
-                                      return next;
-                                    });
-                                  }}
-                                  className="rounded accent-[#4a5d0f]"
-                                />
-                                <span className="flex-1 truncate font-medium">{org.partner_name}</span>
-                                {org.branch && (
-                                  <span className="text-gray-500 shrink-0 truncate max-w-[140px]">{org.branch}</span>
-                                )}
-                                {org.state && (
-                                  <span className="text-[10px] shrink-0 px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
-                                    {org.state}
-                                  </span>
-                                )}
-                              </label>
-                            );
-                          })}
+                      {sq && filteredStates.length > 0 && (
+                        <div className="bg-gray-50 border border-gray-200 rounded p-2 max-h-40 overflow-y-auto">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
+                            {filteredStates.map((s) => {
+                              const on = selectedStates.has(s);
+                              return (
+                                <label
+                                  key={s}
+                                  className="flex items-center gap-1.5 text-xs px-2 py-1 rounded hover:bg-white cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={on}
+                                    onChange={() => toggleState(s)}
+                                    className="rounded accent-[#4a5d0f]"
+                                  />
+                                  <span className={on ? "text-[#4a5d0f] font-medium" : "text-gray-700"}>{s}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
+                      {sq && filteredStates.length === 0 && (
+                        <p className="text-xs text-gray-400 py-1">No states match "{stateSearch}".</p>
+                      )}
+
+                      {hasStates ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {Array.from(selectedStates).sort().map((s) => (
+                            <span
+                              key={s}
+                              className="inline-flex items-center gap-1 text-xs pl-2.5 pr-1 py-1 rounded-full bg-[#4a5d0f] text-white"
+                            >
+                              {s}
+                              <button
+                                type="button"
+                                onClick={() => toggleState(s)}
+                                className="hover:bg-white/20 rounded-full p-0.5"
+                                aria-label={`Remove ${s}`}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        !sq && (
+                          <p className="text-xs text-gray-400">Search above and tick the states to assign, or pick "Select all states".</p>
+                        )
+                      )}
                     </div>
+
+                    {/* Partners — only after at least one state is selected */}
+                    {hasStates && (
+                      <div className="space-y-3 border border-gray-200 rounded-lg p-4 bg-white">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <Label className="text-sm font-semibold text-[#4a5d0f] flex items-center gap-1.5">
+                            <Building2 className="h-4 w-4 text-[#4a5d0f]" />
+                            Assign Partners
+                            <span className="text-xs text-gray-500 font-normal">
+                              ({selectedPartnerIds.size} selected · {partnersInStates.length} available)
+                            </span>
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={selectAllVisible}
+                              disabled={visiblePartners.length === 0}
+                              className="text-xs px-2.5 py-1 rounded border border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4] disabled:opacity-40"
+                            >
+                              Select all
+                            </button>
+                            <button
+                              type="button"
+                              onClick={clearAllVisible}
+                              disabled={visiblePartners.length === 0}
+                              className="text-xs px-2.5 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                          <Input
+                            placeholder="Search partners by name or branch..."
+                            value={partnerSearch}
+                            onChange={(e) => setPartnerSearch(e.target.value)}
+                            className="pl-8 h-9 text-sm shadow-none border-gray-300"
+                          />
+                        </div>
+
+                        {orgsLoading ? (
+                          <div className="flex items-center gap-2 text-xs text-gray-500 py-2">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />Loading partners...
+                          </div>
+                        ) : visiblePartners.length === 0 ? (
+                          <p className="text-xs text-gray-400 py-3 text-center">
+                            {partnersInStates.length === 0
+                              ? "No partners in selected states."
+                              : "No partners match your search."}
+                          </p>
+                        ) : (
+                          <div className="max-h-72 overflow-y-auto rounded border border-gray-200 bg-gray-50 p-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                              {visiblePartners.map((org) => {
+                                const checked = selectedPartnerIds.has(org.id);
+                                return (
+                                  <label
+                                    key={org.id}
+                                    className={`flex items-center gap-2 px-2.5 py-2 rounded cursor-pointer text-xs transition-colors border ${
+                                      checked
+                                        ? "bg-[#f9fbed] border-[#4a5d0f] text-[#4a5d0f]"
+                                        : "bg-white border-gray-200 hover:border-[#4a5d0f] text-gray-700"
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => {
+                                        setSelectedPartnerIds((prev) => {
+                                          const next = new Set(prev);
+                                          if (next.has(org.id)) next.delete(org.id);
+                                          else next.add(org.id);
+                                          return next;
+                                        });
+                                      }}
+                                      className="rounded accent-[#4a5d0f] shrink-0"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="truncate font-medium">{org.partner_name}</div>
+                                      <div className="flex items-center gap-1.5 text-[10px] text-gray-500 truncate">
+                                        {org.branch && <span className="truncate">{org.branch}</span>}
+                                        {org.branch && org.state && <span>·</span>}
+                                        {org.state && <span>{org.state}</span>}
+                                      </div>
+                                    </div>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </>
                 );
               })()}
+
 
 
 
