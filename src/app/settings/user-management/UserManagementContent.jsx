@@ -805,6 +805,15 @@ const UserManagementPage = () => {
         }
 
         if (newUserId) {
+          // Enforce the final role after every creation path. Some server paths
+          // accept the request but still create with the default ACSL Agent role.
+          await updateUserViaManageUsers(newUserId, {
+            full_name: userForm.full_name.trim(),
+            phone: userForm.phone.trim() || null,
+            role: targetRole,
+            organization_id: partnerId,
+          }, session.access_token);
+
           // Keep organization-bound agents clean: they should only be linked by
           // profiles.organization_id, not ACSL manager/state assignment tables.
           try { await superAdminAgentService.setAgentStates(newUserId, []); } catch { /* non-fatal */ }
