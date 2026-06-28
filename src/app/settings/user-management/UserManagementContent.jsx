@@ -777,9 +777,9 @@ const UserManagementPage = () => {
     if (!selectedUser) return;
     setActionLoading("create"); // reuse 'create' key so submit button spinner works in shared form
     try {
-      const role = userForm.role;
+      const role = getStoredAgentRole(userForm.role);
 
-      const isOrgBound = role === "partner_agent" || role === "agent_user";
+      const isOrgBound = isOrganizationBoundAgentRole(role);
       const partnerId = isOrgBound ? (Array.from(selectedPartnerIds)[0] || null) : null;
       if (isOrgBound && !partnerId) throw new Error("A partner must be selected for this agent");
 
