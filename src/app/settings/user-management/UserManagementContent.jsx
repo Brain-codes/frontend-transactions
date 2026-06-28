@@ -772,48 +772,35 @@ const UserManagementPage = () => {
     try {
       const role = userForm.role;
 
-      // Partner Agent: shared manage-users edge function rejects this role.
-      // Update the profile directly and bind to the single chosen partner.
-      if (role === "partner_agent") {
-        const partnerId = Array.from(selectedPartnerIds)[0] || null;
-        const { error: profErr } = await supabase
-          .from("profiles")
-          .update({
-            full_name: userForm.full_name.trim(),
-            phone: userForm.phone.trim() || null,
-            role: "partner_agent",
-            organization_id: partnerId,
-          })
-          .eq("id", selectedUser.id);
-        if (profErr) throw new Error(profErr.message || "Failed to update partner agent");
-
-        // Clear any leftover ACSL-style assignments so this user no longer
-        // appears under prior managers or state assignments.
-        try { await superAdminAgentService.setAgentStates(selectedUser.id, []); } catch { /* non-fatal */ }
-        try { await superAdminAgentService.setAgentOrganizations(selectedUser.id, []); } catch { /* non-fatal */ }
-
-        toast({ variant: "success", title: "User updated successfully" });
-        setShowCreateModal(false);
-        resetForm();
-        fetchUsers(pagination.page, pagination.page_size);
-        return;
-      }
+      const role = userForm.role;
+      const partnerId = role === "partner_agent" ? (Array.from(selectedPartnerIds)[0] || null) : null;
+      if (role === "partner_agent" && !partnerId) throw new Error("A partner must be selected for a Partner Agent");
 
       const { data: { session } } = await supabase.auth.getSession();
+      const putBody = {
+        full_name: userForm.full_name.trim(),
+        phone: userForm.phone.trim() || null,
+        role,
+      };
+      if (role === "partner_agent") putBody.organization_id = partnerId;
+
       const res = await fetch(
         `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
         {
           method: "PUT",
           headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            full_name: userForm.full_name.trim(),
-            phone: userForm.phone.trim() || null,
-            role: userForm.role,
-          }),
+          body: JSON.stringify(putBody),
         },
       );
-      const result = await res.json();
+      const result = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(result.error || "Failed to update user");
+
+      if (role === "partner_agent") {
+        // Clear ACSL-style assignments so this user no longer appears under prior managers/states.
+        try { await superAdminAgentService.setAgentStates(selectedUser.id, []); } catch { /* non-fatal */ }
+        try { await superAdminAgentService.setAgentOrganizations(selectedUser.id, []); } catch { /* non-fatal */ }
+      }
+
 
       // Ensure the changed User Group is reflected immediately in the app even
       // if the edge function only updates the auth user metadata.
