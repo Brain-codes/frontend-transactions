@@ -367,11 +367,17 @@ const UserManagementPage = () => {
 
       await Promise.all(
         Array.from(grouped.entries()).map(([managerId, ids]) =>
-          supabase
-            .from("super_admin_agent_organizations")
-            .update({ assigned_by: managerId })
-            .eq("agent_id", agentId)
-            .in("organization_id", ids)
+          (async () => {
+            const columns = ["agent_id", "super_admin_agent_id", "user_id"];
+            for (const column of columns) {
+              const { error } = await supabase
+                .from("super_admin_agent_organizations")
+                .update({ assigned_by: managerId })
+                .eq(column, agentId)
+                .in("organization_id", ids);
+              if (!error) return;
+            }
+          })()
         )
       );
     } catch {
