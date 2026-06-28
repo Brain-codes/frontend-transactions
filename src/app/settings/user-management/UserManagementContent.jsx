@@ -941,7 +941,7 @@ const UserManagementPage = () => {
                 <SelectItem value="acsl_agent" className="text-xs">ACSL Agent</SelectItem>
                 <SelectItem value="partner" className="text-xs">Partner Admin</SelectItem>
                 <SelectItem value="partner_agent" className="text-xs">Partner Agent</SelectItem>
-                <SelectItem value="agent_user" className="text-xs">Agent</SelectItem>
+                <SelectItem value="agent" className="text-xs">Agent</SelectItem>
               </SelectContent>
             </Select>
 
@@ -1279,7 +1279,7 @@ const UserManagementPage = () => {
                       <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
                       <SelectItem value="partner">Partner</SelectItem>
                       <SelectItem value="partner_agent">Partner Agent</SelectItem>
-                      <SelectItem value="agent_user">Agent</SelectItem>
+                      <SelectItem value="agent">Agent</SelectItem>
                     </SelectContent>
                   </Select>
                   {formErrors.role && <p className="text-xs text-red-600">{formErrors.role}</p>}
