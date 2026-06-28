@@ -154,6 +154,7 @@ const AgentsProfilesContent = () => {
   const [agents, setAgents] = useState([]);
   const [filters, setFilters] = useState({ search: "", status: "", role: "" });
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const [detailsAgent, setDetailsAgent] = useState(null);
   const [editingAgent, setEditingAgent] = useState(null);
@@ -461,11 +462,11 @@ const AgentsProfilesContent = () => {
     });
   }, [agents, filters]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const startRecord = filtered.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
-  const endRecord = Math.min(currentPage * PAGE_SIZE, filtered.length);
+  const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const startRecord = filtered.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endRecord = Math.min(currentPage * pageSize, filtered.length);
 
   const hasActiveFilters = filters.search !== "" || filters.status !== "" || filters.role !== "";
 
@@ -552,6 +553,7 @@ const AgentsProfilesContent = () => {
             <TableHeader>
               <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Agent Name</TableHead>
+                <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Agent Phone</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Supervisor(s)</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">States Assigned</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center rounded-tr-lg">Partners Assigned</TableHead>
@@ -560,7 +562,7 @@ const AgentsProfilesContent = () => {
             <TableBody className={loading ? "opacity-40" : ""}>
               {pageRows.length === 0 && !loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10 text-gray-500">
+                  <TableCell colSpan={8} className="text-center py-10 text-gray-500">
                     No agents found
                   </TableCell>
                 </TableRow>
@@ -586,28 +588,20 @@ const AgentsProfilesContent = () => {
                         </sup>
                       )}
                     </TableCell>
+                    <TableCell className="text-sm text-gray-700 whitespace-nowrap">
+                      {a.phone || ""}
+                    </TableCell>
                     <TableCell className="text-sm text-gray-700">
-                      {a.role === "acsl_agent_manager" ? (
-                        <span className="text-gray-400">—</span>
-                      ) : a.role === "acsl_agent" ? (
+                      {a.role === "acsl_agent" ? (
                         a.supervisors === undefined ? (
                           <span className="text-gray-400 text-xs">Loading…</span>
                         ) : a.supervisors.length === 0 ? (
-                          <span className="text-gray-400">—</span>
+                          ""
                         ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {a.supervisors.map((name, i) => (
-                              <span
-                                key={i}
-                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700"
-                              >
-                                {name}
-                              </span>
-                            ))}
-                          </div>
+                          <span>{a.supervisors.join(", ")}</span>
                         )
                       ) : (
-                        <span className="text-gray-400">—</span>
+                        ""
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-center">
@@ -654,11 +648,26 @@ const AgentsProfilesContent = () => {
         {/* Pagination footer */}
         {filtered.length > 0 && (
           <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-white">
-            <p className="text-sm text-gray-600">
-              Showing <span className="font-medium">{startRecord}</span> to{" "}
-              <span className="font-medium">{endRecord}</span> of{" "}
-              <span className="font-medium">{filtered.length}</span> agents
-            </p>
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-gray-600">
+                Showing <span className="font-medium">{startRecord}</span> to{" "}
+                <span className="font-medium">{endRecord}</span> of{" "}
+                <span className="font-medium">{filtered.length}</span> agents
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Rows per page</span>
+                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+                  <SelectTrigger className="h-8 w-[80px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[10, 25, 50, 100].map((n) => (
+                      <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             {totalPages > 1 && (
               <div className="flex items-center gap-1">
                 <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(1)} disabled={currentPage === 1}>
@@ -672,7 +681,7 @@ const AgentsProfilesContent = () => {
                     key={p}
                     variant={p === currentPage ? "default" : "outline"}
                     size="sm"
-                    className={`h-8 w-8 p-0 ${p === currentPage ? "bg-brand text-white hover:bg-brand" : ""}`}
+                    className={`h-8 w-8 p-0 ${p === currentPage ? "bg-black text-white hover:bg-black border-black" : ""}`}
                     onClick={() => setPage(p)}
                   >
                     {p}
