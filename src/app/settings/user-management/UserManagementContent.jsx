@@ -1063,8 +1063,8 @@ const UserManagementPage = () => {
                 {/* User Group */}
                 <div className="space-y-1.5">
                   <Label htmlFor="role" className="text-sm font-medium text-gray-700">User Group <span className="text-red-500">*</span></Label>
-                  <Select value={userForm.role} onValueChange={handleRoleChange}>
-                    <SelectTrigger id="role" className="shadow-none border-gray-300">
+                  <Select value={userForm.role} onValueChange={handleRoleChange} disabled={formMode === "edit"}>
+                    <SelectTrigger id="role" className={`shadow-none border-gray-300 ${formMode === "edit" ? "bg-gray-50 text-gray-500" : ""}`}>
                       <SelectValue placeholder="Select user group" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1076,6 +1076,7 @@ const UserManagementPage = () => {
                     </SelectContent>
                   </Select>
                   {formErrors.role && <p className="text-xs text-red-600">{formErrors.role}</p>}
+                  {formMode === "edit" && <p className="text-xs text-gray-400">Role cannot be changed here</p>}
                 </div>
               </div>
 
