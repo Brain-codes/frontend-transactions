@@ -196,6 +196,12 @@ const UserManagementPage = () => {
   const [selectedPartnerIds, setSelectedPartnerIds] = useState(new Set());
   const [selectedStates, setSelectedStates] = useState(new Set());
 
+  // ACSL Agent cascade: managers in selected states
+  const [acslManagers, setAcslManagers] = useState([]); // [{id, full_name, email, states:Set, orgIds:Set}]
+  const [managersLoading, setManagersLoading] = useState(false);
+  const [selectedManagerIds, setSelectedManagerIds] = useState(new Set());
+  const [managerSearch, setManagerSearch] = useState("");
+
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
