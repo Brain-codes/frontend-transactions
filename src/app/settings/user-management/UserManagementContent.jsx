@@ -652,65 +652,83 @@ const UserManagementPage = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const isPartnerAgent = userForm.role === "partner_agent";
+      const partnerId = isPartnerAgent ? (Array.from(selectedPartnerIds)[0] || null) : null;
+      if (isPartnerAgent && !partnerId) throw new Error("A partner must be selected for a Partner Agent");
 
-      // Create through the shared manage-users endpoint. For partner_agent
-      // (which the edge function does not accept), create as acsl_agent then
-      // patch the profile to set role=partner_agent and bind to the partner.
-      const payload = {
+      const basePayload = {
         full_name: userForm.full_name.trim(),
         email: userForm.email.trim(),
         phone: userForm.phone.trim() || null,
-        role: isPartnerAgent ? "acsl_agent" : userForm.role,
         auto_generate_password: userForm.auto_generate_password,
       };
-      if (!userForm.auto_generate_password) payload.password = userForm.password;
+      if (!userForm.auto_generate_password) basePayload.password = userForm.password;
 
-      const res = await fetch(
-        `${supabaseFunctionsUrl}/manage-users`,
-        { method: "POST", headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) },
-      );
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Failed to create user");
+      const postUser = async (role, extra = {}) => {
+        const res = await fetch(
+          `${supabaseFunctionsUrl}/manage-users`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ ...basePayload, role, ...extra }),
+          },
+        );
+        const result = await res.json().catch(() => ({}));
+        return { ok: res.ok, status: res.status, result };
+      };
 
-      let newUserId =
-        result.user?.id ||
-        result.data?.id ||
-        result.data?.user?.id ||
-        result.id ||
-        null;
+      let result;
+      let newUserId;
+      let generatedPassword;
 
       if (isPartnerAgent) {
-        const partnerId = Array.from(selectedPartnerIds)[0];
-        if (!partnerId) throw new Error("A partner must be selected for a Partner Agent");
+        // First try sending partner_agent + organization_id directly.
+        let attempt = await postUser("partner_agent", { organization_id: partnerId });
 
-        // Fallback: look up the freshly created user by email if id wasn't returned
-        if (!newUserId) {
-          const { data: lookup } = await supabase
-            .from("profiles")
-            .select("id")
-            .eq("email", userForm.email.trim().toLowerCase())
-            .maybeSingle();
-          newUserId = lookup?.id || null;
-        }
-        if (!newUserId) throw new Error("User was created but its ID could not be determined — cannot bind to partner.");
+        // If the edge function rejects the role, create as acsl_agent then promote via PUT.
+        if (!attempt.ok) {
+          attempt = await postUser("acsl_agent");
+          if (!attempt.ok) throw new Error(attempt.result?.error || "Failed to create user");
 
-        const { error: bindErr } = await supabase
-          .from("profiles")
-          .update({ role: "partner_agent", organization_id: partnerId })
-          .eq("id", newUserId);
-        if (bindErr) throw new Error(bindErr.message || "Failed to bind partner agent to partner");
+          newUserId =
+            attempt.result.user?.id || attempt.result.data?.id ||
+            attempt.result.data?.user?.id || attempt.result.id || null;
+          generatedPassword = attempt.result.generated_password;
 
-        // Verify the patch actually applied (RLS may silently filter the update)
-        const { data: verify, error: verifyErr } = await supabase
-          .from("profiles")
-          .select("role, organization_id")
-          .eq("id", newUserId)
-          .maybeSingle();
-        if (verifyErr) throw new Error(verifyErr.message || "Failed to verify partner agent role");
-        if (!verify || verify.role !== "partner_agent" || verify.organization_id !== partnerId) {
-          throw new Error("Profile update did not persist (likely an RLS policy on profiles prevents updating role/organization_id). User was created but role remains as initially set.");
+          if (!newUserId) {
+            const { data: lookup } = await supabase
+              .from("profiles").select("id")
+              .eq("email", userForm.email.trim().toLowerCase()).maybeSingle();
+            newUserId = lookup?.id || null;
+          }
+          if (!newUserId) throw new Error("User created but ID could not be resolved");
+
+          const putRes = await fetch(
+            `${supabaseFunctionsUrl}/manage-users/${newUserId}`,
+            {
+              method: "PUT",
+              headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                full_name: userForm.full_name.trim(),
+                phone: userForm.phone.trim() || null,
+                role: "partner_agent",
+                organization_id: partnerId,
+              }),
+            },
+          );
+          const putResult = await putRes.json().catch(() => ({}));
+          if (!putRes.ok) throw new Error(putResult?.error || "Created user but failed to assign Partner Agent role");
+        } else {
+          result = attempt.result;
+          newUserId = result.user?.id || result.data?.id || result.data?.user?.id || result.id || null;
+          generatedPassword = result.generated_password;
         }
       } else {
+        const attempt = await postUser(userForm.role);
+        if (!attempt.ok) throw new Error(attempt.result?.error || "Failed to create user");
+        result = attempt.result;
+        newUserId = result.user?.id || result.data?.id || result.data?.user?.id || result.id || null;
+        generatedPassword = result.generated_password;
+
         if (
           newUserId &&
           (userForm.role === "acsl_agent_manager" || userForm.role === "acsl_agent") &&
@@ -718,9 +736,7 @@ const UserManagementPage = () => {
         ) {
           try {
             await superAdminAgentService.setAgentStates(newUserId, Array.from(selectedStates));
-          } catch {
-            // non-fatal — user was created, state assignment failed
-          }
+          } catch { /* non-fatal */ }
         }
         if (newUserId && selectedPartnerIds.size > 0) {
           try {
@@ -728,19 +744,14 @@ const UserManagementPage = () => {
             if (userForm.role === "acsl_agent") {
               await persistAgentSupervisorMarker(newUserId, Array.from(selectedPartnerIds), Array.from(selectedManagerIds));
             }
-          } catch {
-            // non-fatal — user was created, org assignment failed
-          }
+          } catch { /* non-fatal */ }
         }
       }
-
-
-
 
       toast({
         variant: "success",
         title: "User created successfully",
-        description: result.generated_password ? `Password: ${result.generated_password}` : "User can now log in",
+        description: generatedPassword ? `Password: ${generatedPassword}` : "User can now log in",
       });
       setShowCreateModal(false);
       resetForm();
@@ -751,6 +762,7 @@ const UserManagementPage = () => {
       setActionLoading(null);
     }
   };
+
 
   const handleUpdateUser = async (e) => {
     e.preventDefault();
