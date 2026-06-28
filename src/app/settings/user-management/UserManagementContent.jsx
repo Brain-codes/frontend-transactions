@@ -644,6 +644,38 @@ const UserManagementPage = () => {
     if (!validateForm()) return;
     setActionLoading("create");
     try {
+      // Partner Agent: shared manage-users edge function does not accept this
+      // role. Use the partner-agent endpoint (manage-agents) and then bind the
+      // new agent to the chosen partner's organization.
+      if (userForm.role === "partner_agent") {
+        const partnerId = Array.from(selectedPartnerIds)[0];
+        const password = userForm.auto_generate_password
+          ? generateRandomPassword()
+          : userForm.password;
+        const createRes = await adminAgentService.createAgent(
+          userForm.full_name.trim(),
+          userForm.email.trim(),
+          password,
+          userForm.phone.trim() || null,
+        );
+        if (!createRes.success) throw new Error(createRes.error || "Failed to create partner agent");
+        const newId = createRes.data?.id || createRes.data?.user?.id;
+        if (newId && partnerId) {
+          try {
+            await supabase.from("profiles").update({ organization_id: partnerId }).eq("id", newId);
+          } catch { /* non-fatal */ }
+        }
+        toast({
+          variant: "success",
+          title: "Partner Agent created successfully",
+          description: userForm.auto_generate_password ? `Password: ${password}` : "User can now log in",
+        });
+        setShowCreateModal(false);
+        resetForm();
+        fetchUsers(1, pagination.page_size);
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       const payload = {
         full_name: userForm.full_name.trim(),
