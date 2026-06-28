@@ -320,8 +320,11 @@ const AgentsProfilesContent = () => {
             const supervisors = managerInfo
               .filter((m) => {
                 if (agentOrgIds.size === 0) return false;
-                for (const id of agentOrgIds) if (m.orgIds.has(id)) return true;
-                return false;
+                if (m.orgIds.size === 0) return false;
+                // Manager qualifies only if their assigned partners cover
+                // EVERY partner assigned to this agent (superset).
+                for (const id of agentOrgIds) if (!m.orgIds.has(id)) return false;
+                return true;
               })
               .map((m) => m.name);
             return { id: a.id, supervisors };
