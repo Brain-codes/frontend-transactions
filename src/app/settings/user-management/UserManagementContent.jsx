@@ -450,11 +450,82 @@ const UserManagementPage = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const openEditModal = (user) => {
+  const openEditView = async (user) => {
+    // Reset everything first
+    resetForm();
+    hydratingRef.current = true;
     setSelectedUser(user);
-    setUserForm({ full_name: user.full_name || "", email: user.email || "", phone: user.phone || "", role: user.role || undefined, password: "", auto_generate_password: true });
+    setFormMode("edit");
+    setUserForm({
+      full_name: user.full_name || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      role: user.role || undefined,
+      password: "",
+      auto_generate_password: true,
+    });
     setFormErrors({});
-    setShowEditModal(true);
+    setShowCreateModal(true);
+
+    // Load supporting data based on role
+    const role = user.role;
+    const needsOrgs =
+      needsPartnerAssignment(role) ||
+      needsStateAndPartnerAssignment(role) ||
+      needsAcslAgentCascade(role);
+
+    try {
+      if (needsOrgs && allOrgs.length === 0) {
+        setOrgsLoading(true);
+        try {
+          const result = await organizationsService.getAllOrganizations();
+          setAllOrgs(result.data || []);
+        } catch { /* non-fatal */ }
+        finally { setOrgsLoading(false); }
+      }
+      if (needsAcslAgentCascade(role) && acslManagers.length === 0) {
+        await loadAcslManagers();
+      }
+
+      // Hydrate states & partners from existing assignments
+      const [statesRes, orgsRes] = await Promise.allSettled([
+        superAdminAgentService.getAgentStates(user.id),
+        superAdminAgentService.getAgentOrganizations(user.id),
+      ]);
+      const statesList = statesRes.status === "fulfilled"
+        ? (statesRes.value?.data || statesRes.value?.states || statesRes.value || [])
+        : [];
+      const orgsList = orgsRes.status === "fulfilled"
+        ? (orgsRes.value?.data || orgsRes.value?.organizations || orgsRes.value || [])
+        : [];
+      const stateNames = Array.isArray(statesList)
+        ? statesList.map((s) => (typeof s === "string" ? s : s?.state)).filter(Boolean)
+        : [];
+      const orgIds = Array.isArray(orgsList)
+        ? orgsList.map((o) => o?.id || o?.organization_id).filter(Boolean)
+        : [];
+
+      setSelectedStates(new Set(stateNames));
+
+      // For acsl_agent: derive supervising managers from overlap of partner IDs
+      if (needsAcslAgentCascade(role)) {
+        const orgIdSet = new Set(orgIds);
+        // Use the latest managers list (loadAcslManagers updates state above).
+        // Read from a fresh snapshot via setAcslManagers callback hack.
+        let managersSnapshot = [];
+        setAcslManagers((curr) => { managersSnapshot = curr; return curr; });
+        const managerIds = managersSnapshot
+          .filter((m) => Array.from(m.orgIds).some((id) => orgIdSet.has(id)))
+          .map((m) => m.id);
+        setSelectedManagerIds(new Set(managerIds));
+      }
+
+      // Always set partners last so reconcile effects (now bypassed) don't overwrite
+      setSelectedPartnerIds(new Set(orgIds));
+    } finally {
+      // Release the guard after React has flushed the above state updates
+      setTimeout(() => { hydratingRef.current = false; }, 50);
+    }
   };
 
   // ── CRUD handlers ──────────────────────────────────────────────────────────
