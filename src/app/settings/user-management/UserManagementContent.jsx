@@ -332,9 +332,12 @@ const UserManagementPage = () => {
   // - partner_agent: flat partner-only picker (legacy)
   // - acsl_agent: cascade — States → Managers in those states → Partners of those managers
   // - acsl_agent_manager: States → Partners in those states (auto-checked)
-  const needsPartnerAssignment = (role) => role === "partner_agent" || role === "partner" || role === "agent_user";
+  const isStandaloneAgentRole = (role) => role === "agent" || role === "agent_user";
+  const isOrganizationBoundAgentRole = (role) => role === "partner_agent" || isStandaloneAgentRole(role);
+  const needsPartnerAssignment = (role) => role === "partner_agent" || role === "partner" || isStandaloneAgentRole(role);
   const needsAcslAgentCascade = (role) => role === "acsl_agent";
   const needsStateAndPartnerAssignment = (role) => role === "acsl_agent_manager";
+  const getStoredAgentRole = (role) => (role === "agent_user" ? "agent" : role);
 
   const normalizeStateNames = (list) => Array.isArray(list)
     ? list.map((s) => (typeof s === "string" ? s : s?.state)).filter(Boolean)
