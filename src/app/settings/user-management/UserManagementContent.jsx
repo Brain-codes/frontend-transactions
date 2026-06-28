@@ -328,7 +328,7 @@ const UserManagementPage = () => {
   // - partner_agent: flat partner-only picker (legacy)
   // - acsl_agent: cascade — States → Managers in those states → Partners of those managers
   // - acsl_agent_manager: States → Partners in those states (auto-checked)
-  const needsPartnerAssignment = (role) => role === "partner_agent";
+  const needsPartnerAssignment = (role) => role === "partner_agent" || role === "partner";
   const needsAcslAgentCascade = (role) => role === "acsl_agent";
   const needsStateAndPartnerAssignment = (role) => role === "acsl_agent_manager";
 
@@ -738,7 +738,7 @@ const UserManagementPage = () => {
       // old manager/partner relationships do not leak into profile views later.
       const role = userForm.role;
       const shouldHaveStates = role === "acsl_agent_manager" || role === "acsl_agent";
-      const shouldHavePartners = role === "acsl_agent_manager" || role === "acsl_agent" || role === "partner_agent";
+      const shouldHavePartners = role === "acsl_agent_manager" || role === "acsl_agent" || role === "partner_agent" || role === "partner";
       try {
         await superAdminAgentService.setAgentStates(selectedUser.id, shouldHaveStates ? Array.from(selectedStates) : []);
       } catch { /* non-fatal */ }
