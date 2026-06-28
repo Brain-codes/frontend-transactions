@@ -425,7 +425,7 @@ export default function StoveManagementContent() {
 
 
         {/* Filter Bar */}
-        <div className="bg-blue-50 p-3 rounded-lg border border-gray-200">
+        <div className="bg-[#f4f7e3] p-3 rounded-lg border border-gray-200">
           <div className="flex flex-wrap items-center gap-3">
 
             {/* Super admin: org search dropdown */}
@@ -650,24 +650,24 @@ export default function StoveManagementContent() {
             )}
             <Table>
               <TableHeader>
-                <TableRow className="bg-brand hover:bg-brand">
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Stove ID</TableHead>
+                <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Stove ID</TableHead>
                   {/* Sales Reference: super admin / partner */}
-                  {!isAcslAgent && <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Sales Reference</TableHead>}
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Status</TableHead>
+                  {!isAcslAgent && <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Sales Reference</TableHead>}
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
                   {/* Partner/Branch/State columns: super admin sees all orgs */}
                   {isSuperAdmin && (
                     <>
-                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner Name</TableHead>
-                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Branch</TableHead>
-                      <TableHead className="text-white font-semibold text-xs whitespace-nowrap">State</TableHead>
+                      <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Partner Name</TableHead>
+                      <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
+                      <TableHead className="text-white font-semibold text-sm whitespace-nowrap">State</TableHead>
                     </>
                   )}
                   {/* ACSL agent: partner column (they have multiple assigned partners) */}
-                  {isAcslAgent && <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Partner</TableHead>}
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Date Sold</TableHead>
-                  <TableHead className="text-white font-semibold text-xs whitespace-nowrap">Sold To</TableHead>
-                  <TableHead className="text-center text-white font-semibold text-xs whitespace-nowrap">Action</TableHead>
+                  {isAcslAgent && <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Partner</TableHead>}
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Date Sold</TableHead>
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Sold To</TableHead>
+                  <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className={loading ? "opacity-40" : ""}>
@@ -684,8 +684,8 @@ export default function StoveManagementContent() {
                       if (item.type === "group-header") {
                         rowIndex = 0;
                         return (
-                          <TableRow key={`gh-${i}`} className="bg-brand/10 border-y border-brand/20">
-                            <TableCell colSpan={colSpan} className="py-1.5 px-4 text-xs font-semibold text-brand">
+                          <TableRow key={`gh-${i}`} className="bg-[#4a5d0f]/10 border-y border-[#4a5d0f]/20">
+                            <TableCell colSpan={colSpan} className="py-1.5 px-4 text-sm font-semibold text-[#4a5d0f]">
                               {groupBy === "sales_reference" ? "Sales Ref: " : "Organization: "}{item.label}
                               <span className="ml-2 text-gray-500 font-normal">({item.count} stove{item.count !== 1 ? "s" : ""})</span>
                             </TableCell>
@@ -765,7 +765,7 @@ export default function StoveManagementContent() {
                 <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handlePageChange(pagination.page - 1)} disabled={pagination.page === 1}><ChevronLeft className="h-4 w-4 mr-1" />Prev</Button>
                 {getVisiblePages().map((p) => (
                   <Button key={p} variant={p === pagination.page ? "default" : "outline"} size="sm"
-                    className={`h-8 w-8 p-0 ${p === pagination.page ? "bg-brand text-white hover:bg-brand" : ""}`}
+                    className={`h-8 w-8 p-0 ${p === pagination.page ? "bg-[#4a5d0f] text-white hover:bg-[#4a5d0f]" : ""}`}
                     onClick={() => handlePageChange(p)}>{p}</Button>
                 ))}
                 <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => handlePageChange(pagination.page + 1)} disabled={pagination.page === pagination.total_pages}>Next<ChevronRight className="h-4 w-4 ml-1" /></Button>
