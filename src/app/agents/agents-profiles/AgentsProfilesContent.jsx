@@ -283,9 +283,78 @@ const AgentsProfilesContent = () => {
     }
   };
 
+  // Load ACSL Agent Managers with their assigned organizations so we can derive
+  // each ACSL Agent's supervisor(s) by partner overlap. There is no explicit
+  // agent→manager link in the schema, so overlap is the source of truth.
+  const hydrateSupervisors = async (agentsList) => {
+    try {
+      const managers = agentsList.filter((a) => a.role === "acsl_agent_manager");
+      const managerInfo = await Promise.all(
+        managers.map(async (m) => {
+          const orgIds = (await fetchDirectPartnerList(supabaseRef.current, m.id)) || [];
+          let ids = new Set();
+          if (Array.isArray(orgIds) && orgIds.length > 0) {
+            ids = new Set(orgIds.map((o) => o?.id).filter(Boolean));
+          } else {
+            try {
+              const r = await superAdminAgentService.getAgentOrganizations(m.id);
+              const list = r?.data || r?.organizations || r || [];
+              if (Array.isArray(list)) ids = new Set(list.map((o) => o?.id || o?.organization_id).filter(Boolean));
+            } catch { /* ignore */ }
+          }
+          return { id: m.id, name: m.full_name, orgIds: ids };
+        })
+      );
+
+      const acslAgents = agentsList.filter((a) => a.role === "acsl_agent");
+      const BATCH = 8;
+      for (let i = 0; i < acslAgents.length; i += BATCH) {
+        if (!isMountedRef.current) return;
+        const batch = acslAgents.slice(i, i + BATCH);
+        const results = await Promise.allSettled(
+          batch.map(async (a) => {
+            const orgs = await fetchDirectPartnerList(supabaseRef.current, a.id);
+            const agentOrgIds = Array.isArray(orgs)
+              ? new Set(orgs.map((o) => o?.id).filter(Boolean))
+              : new Set();
+            const supervisors = managerInfo
+              .filter((m) => {
+                if (agentOrgIds.size === 0) return false;
+                for (const id of agentOrgIds) if (m.orgIds.has(id)) return true;
+                return false;
+              })
+              .map((m) => m.name);
+            return { id: a.id, supervisors };
+          })
+        );
+        if (!isMountedRef.current) return;
+        const map = new Map();
+        results.forEach((r) => {
+          if (r.status === "fulfilled" && r.value) map.set(r.value.id, r.value.supervisors);
+        });
+        if (map.size > 0) {
+          setAgents((prev) =>
+            prev.map((x) => (map.has(x.id) ? { ...x, supervisors: map.get(x.id) } : x))
+          );
+        }
+      }
+    } catch { /* non-fatal */ }
+  };
+
   useEffect(() => {
-    loadAgents();
+    (async () => {
+      await loadAgents();
+    })();
   }, []);
+
+  // Run supervisor hydration once agents have been loaded.
+  useEffect(() => {
+    if (agents.length === 0) return;
+    if (agents.some((a) => a.role === "acsl_agent" && a.supervisors === undefined)) {
+      hydrateSupervisors(agents);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agents.length]);
 
   const handleViewCredentials = async (agent) => {
     setLoadingCredentialId(agent.id);
