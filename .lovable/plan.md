@@ -1,26 +1,22 @@
-# Fix: Failed to create Partner Agent
+## Goal
+Make Partner Agent creation work seamlessly from the Create New User form — same path as every other user group — and associate the new user with the selected Partner. Remove the failing `manage-agents` edge function call (which rejects with "Insufficient permissions to create agents") from this flow.
 
 ## Root cause
+`handleCreateUser` has a special-case branch for `partner_agent` that calls `adminAgentService.createAgent()` → `POST /functions/v1/manage-agents`. That edge function enforces its own role check and returns `500 Insufficient permissions to create agents` for the super admin. Every other role goes through `POST /functions/v1/manage-users`, which works.
 
-Network log shows the request goes to `undefined/functions/v1/manage-agents` → 404 (the HTML returned is the SPA fallback). The service reads `import.meta.env.VITE_SUPABASE_URL`, which is not defined in this environment. The rest of the app uses `supabaseFunctionsUrl` from `src/lib/supabaseConfig.ts`, which has hardcoded fallbacks and works.
+## Fix (frontend-only, no edge function changes)
+In `src/app/settings/user-management/UserManagementContent.jsx`:
 
-A secondary issue: `manage-agents` creates the auth user but typically tags `profiles.role` as `agent` (its native role), not `partner_agent`. After creation we must explicitly set both `role = 'partner_agent'` and `organization_id = <selected partner>` so the new user appears correctly in the Agents Profiles view and is bound 1:1 to the partner.
+1. **Remove the `partner_agent` special branch** in `handleCreateUser` that calls `adminAgentService.createAgent`.
+2. **Use the same `manage-users` POST path** all other roles use. Send the payload with `role: "acsl_agent"` as the create-time role (known-accepted by the edge function) — this gives us a fresh auth user + profile row.
+3. **Immediately patch the profile** of the new user via `supabase.from("profiles").update({ role: "partner_agent", organization_id: <selectedPartnerId> }).eq("id", newUserId)`. This converts the role and binds them to exactly one partner — matching "just create the user and associate with a partner".
+4. Skip the `setAgentStates` / `setAgentOrganizations` / supervisor-marker calls for `partner_agent` (not relevant; association is the single `organization_id`).
+5. Keep all existing UI validation: exactly one partner selected, single-select partner list for the `partner_agent` role.
+6. Leave `handleUpdateUser`'s existing direct-profile update for `partner_agent` as-is — it already works and matches this pattern.
 
-## Changes
+Drop the now-unused `adminAgentService` import if no other code in the file references it after the edit.
 
-1. `src/app/services/adminAgentService.jsx`
-   - Replace `const API_BASE_URL = import.meta.env.VITE_SUPABASE_URL;` and `API_FUNCTIONS_URL` derivation with `import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";` and use that everywhere `${API_FUNCTIONS_URL}` is referenced. This restores a valid URL and matches the rest of the codebase.
-
-2. `src/app/settings/user-management/UserManagementContent.jsx` — `handleCreateUser`, partner_agent branch
-   - After `adminAgentService.createAgent(...)` succeeds, update the new profile row in a single statement that sets BOTH `role: "partner_agent"` AND `organization_id: partnerId` (instead of only `organization_id`). Keep it best-effort with proper error surfacing if it fails (currently swallowed in `try{}catch{}` — convert to surface real errors via toast so future failures aren't silent).
-   - Validate `partnerId` exists before the call (already enforced by `validateForm`, but add a defensive guard).
-
-3. `src/app/settings/user-management/UserManagementContent.jsx` — `handleUpdateUser`, partner_agent branch
-   - No URL change needed (uses `supabase` client directly). Confirm it already sets `role` and `organization_id`. Leave as-is.
-
-## Verification
-
-- Create a new Partner Agent from the form → toast shows success; user appears in Users list with role "Partner Agent" and the chosen partner.
-- Open the new user in Edit → form re-hydrates with the same single partner selected.
-- Agents Profiles view lists the new user under the correct partner.
-- No more `undefined/functions/v1/...` requests in the network panel.
+## Result
+- Super admin (and anyone who can create other users) can create Partner Agents from the same form, same way, with no edge-function permission errors.
+- New Partner Agent is created, role is set to `partner_agent`, and `organization_id` is bound to the chosen partner.
+- No backend / edge function / RLS changes required.
