@@ -341,12 +341,15 @@ const UserManagementPage = () => {
     : [];
 
   const fetchDirectAgentAssignmentRows = async (agentId) => {
-    const { data, error } = await supabase
-      .from("super_admin_agent_organizations")
-      .select("organization_id, assigned_by")
-      .eq("agent_id", agentId);
-    if (error) return null;
-    return Array.isArray(data) ? data : [];
+    const columns = ["agent_id", "super_admin_agent_id", "user_id"];
+    for (const column of columns) {
+      const { data, error } = await supabase
+        .from("super_admin_agent_organizations")
+        .select("organization_id, assigned_by")
+        .eq(column, agentId);
+      if (!error) return Array.isArray(data) ? data : [];
+    }
+    return null;
   };
 
   const persistAgentSupervisorMarker = async (agentId, partnerIds, managerIds) => {
