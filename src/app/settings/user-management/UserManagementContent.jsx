@@ -1810,7 +1810,7 @@ const UserManagementPage = () => {
                         )
                         .map((org) => {
                           const checked = selectedPartnerIds.has(org.id);
-                          const isSingleSelect = userForm.role === "partner" || userForm.role === "partner_agent";
+                          const isSingleSelect = userForm.role === "partner" || userForm.role === "partner_agent" || userForm.role === "agent_user";
                           return (
                             <label
                               key={org.id}
