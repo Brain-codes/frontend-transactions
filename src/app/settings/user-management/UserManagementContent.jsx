@@ -624,7 +624,7 @@ const UserManagementPage = () => {
 
       // Partner Agents are bound to a single partner via profile.organization_id;
       // fall back to that value when no relational rows exist.
-      if ((role === "partner_agent" || role === "agent_user") && orgIds.length === 0 && user.organization_id) {
+      if (isOrganizationBoundAgentRole(role) && orgIds.length === 0 && user.organization_id) {
         orgIds = [user.organization_id];
       }
 
