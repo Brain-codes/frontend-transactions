@@ -111,6 +111,12 @@ interface PartnerOrg {
 }
 
 const ALL_STATES = Object.keys(lgaAndStates).sort();
+const AGENTS_PERFORMANCE_ROLES = ["acsl_agent", "acsl_agent_manager"] as const;
+const AGENTS_PERFORMANCE_ROLE_SET = new Set<string>(AGENTS_PERFORMANCE_ROLES);
+const AGENTS_PERFORMANCE_ROLE_LABELS: Record<string, string> = {
+  acsl_agent: "ACSL Agent",
+  acsl_agent_manager: "ACSL Manager",
+};
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -1468,35 +1474,76 @@ export default function SuperAdminAgentsContent() {
     setLoading(true);
     setError(null);
     try {
-      // Display ALL users regardless of role on the Agents Performance Report.
-      // Switched from the agents-only endpoint to manage-users.
       const { supabaseFunctionsUrl } = await import("@/lib/supabaseConfig");
       const token = await tokenManager.getValidToken();
-      const qs = new URLSearchParams({
-        page: String(page),
-        limit: String(pageSize),
-        sortBy: "created_at",
-        sortOrder: "desc",
-      });
-      if (search.trim()) qs.append("search", search.trim());
-      if (statusFilter !== "all") qs.append("status", statusFilter);
-      if (selectedRoles.length > 0) qs.append("role", selectedRoles.join(","));
-      if (dateFrom) qs.append("date_from", dateFrom);
-      if (dateTo) qs.append("date_to", dateTo);
+      const rolesToFetch = selectedRoles.length > 0
+        ? selectedRoles.filter((role) => AGENTS_PERFORMANCE_ROLE_SET.has(role))
+        : [...AGENTS_PERFORMANCE_ROLES];
 
-      const res = await fetch(`${supabaseFunctionsUrl}/manage-users?${qs.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        const text = await res.text();
-        throw new Error(`Unexpected response (${res.status}): ${text.slice(0, 120)}`);
+      if (rolesToFetch.length === 0) {
+        setAgents([]);
+        setRoleTotals({});
+        setPagination({
+          currentPage: 1,
+          itemsPerPage: pageSize,
+          totalItems: 0,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPrevPage: false,
+        });
+        setStoveTotals({ assigned: 0, sold: 0, unsold: 0 });
+        return;
       }
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || json.message || "Failed to load users");
 
-      const rows = (json.data || [])
-        .filter((u: any) => u.role !== "partner" && u.role !== "partner_agent")
+      const fetchRoleUsers = async (role: string) => {
+        const roleUsers: any[] = [];
+        let nextPage = 1;
+        let totalPagesForRole = 1;
+
+        do {
+          const qs = new URLSearchParams({
+            page: String(nextPage),
+            limit: "100",
+            sortBy: "created_at",
+            sortOrder: "desc",
+            role,
+          });
+          if (search.trim()) qs.append("search", search.trim());
+          if (statusFilter !== "all") qs.append("status", statusFilter);
+
+          const res = await fetch(`${supabaseFunctionsUrl}/manage-users?${qs.toString()}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const contentType = res.headers.get("content-type") || "";
+          if (!contentType.includes("application/json")) {
+            const text = await res.text();
+            throw new Error(`Unexpected response (${res.status}): ${text.slice(0, 120)}`);
+          }
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || json.message || "Failed to load users");
+
+          roleUsers.push(...(json.data || []));
+          totalPagesForRole = json.pagination?.totalPages ?? 1;
+          nextPage += 1;
+        } while (nextPage <= totalPagesForRole);
+
+        return roleUsers;
+      };
+
+      const allUsers = (await Promise.all(rolesToFetch.map(fetchRoleUsers))).flat();
+      const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+      const toTime = dateTo ? new Date(`${dateTo}T23:59:59`).getTime() : null;
+
+      const rows = allUsers
+        .filter((u: any) => AGENTS_PERFORMANCE_ROLE_SET.has(u.role))
+        .filter((u: any) => {
+          if (!fromTime && !toTime) return true;
+          const createdTime = new Date(u.created_at).getTime();
+          if (Number.isNaN(createdTime)) return false;
+          if (fromTime && createdTime < fromTime) return false;
+          if (toTime && createdTime > toTime) return false;
+          return true;
+        })
         .map((u: any) => ({
           id: u.id,
           full_name: u.full_name || u.name || u.email || "—",
@@ -1511,23 +1558,27 @@ export default function SuperAdminAgentsContent() {
           updated_by_name: u.updated_by_name ?? null,
           assigned_organizations_count: u.assigned_organizations_count ?? 0,
           assigned_states_count: u.assigned_states_count ?? 0,
-        }));
+          total_partners_count: u.total_partners_count ?? u.assigned_organizations_count ?? 0,
+        }))
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
       setAgents(rows);
-
-
-      const p = json.pagination;
-      setPagination(
-        p
-          ? {
-              currentPage: p.currentPage ?? p.page ?? page,
-              itemsPerPage: p.itemsPerPage ?? p.limit ?? pageSize,
-              totalItems: p.totalItems ?? p.total ?? rows.length,
-              totalPages: p.totalPages ?? 1,
-              hasNextPage: p.hasNextPage ?? false,
-              hasPrevPage: p.hasPrevPage ?? false,
-            }
-          : null,
+      setRoleTotals(
+        rows.reduce<Record<string, number>>((acc, row) => {
+          acc[row.role] = (acc[row.role] || 0) + 1;
+          return acc;
+        }, {})
       );
+
+      const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+      setPagination({
+        currentPage: Math.min(page, totalPages),
+        itemsPerPage: pageSize,
+        totalItems: rows.length,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      });
     } catch (err: any) {
       setError(err.message || "Failed to load users");
     } finally {
@@ -1535,48 +1586,7 @@ export default function SuperAdminAgentsContent() {
     }
   }, [page, pageSize, search, statusFilter, selectedRoles, dateFrom, dateTo]);
 
-  // Fetch per-role totals across the full filtered population (one count query per visible role).
-  const VISIBLE_KPI_ROLES = useMemo(
-    () => ["super_admin", "acsl_agent_manager", "acsl_agent", "partner_agent", "agent"],
-    [],
-  );
-  const fetchRoleTotals = useCallback(async () => {
-    try {
-      const { supabaseFunctionsUrl } = await import("@/lib/supabaseConfig");
-      const token = await tokenManager.getValidToken();
-      const rolesToFetch =
-        selectedRoles.length > 0
-          ? selectedRoles.filter((r) => VISIBLE_KPI_ROLES.includes(r))
-          : VISIBLE_KPI_ROLES;
-      const results = await Promise.all(
-        rolesToFetch.map(async (role) => {
-          const qs = new URLSearchParams({ page: "1", limit: "1", role });
-          if (search.trim()) qs.append("search", search.trim());
-          if (statusFilter !== "all") qs.append("status", statusFilter);
-          if (dateFrom) qs.append("date_from", dateFrom);
-          if (dateTo) qs.append("date_to", dateTo);
-          try {
-            const res = await fetch(`${supabaseFunctionsUrl}/manage-users?${qs.toString()}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) return [role, 0] as const;
-            const json = await res.json();
-            const total = json?.pagination?.totalItems ?? json?.pagination?.total ?? 0;
-            return [role, Number(total) || 0] as const;
-          } catch {
-            return [role, 0] as const;
-          }
-        }),
-      );
-      const next: Record<string, number> = {};
-      for (const [r, c] of results) next[r] = c;
-      setRoleTotals(next);
-    } catch (err) {
-      console.error("Role totals error:", err);
-    }
-  }, [VISIBLE_KPI_ROLES, selectedRoles, search, statusFilter, dateFrom, dateTo]);
-
-  useEffect(() => { fetchAgents(); fetchRoleTotals(); }, [fetchAgents, fetchRoleTotals]);
+  useEffect(() => { fetchAgents(); }, [fetchAgents]);
   useEffect(() => { setPage(1); }, [search, statusFilter, selectedRoles, dateFrom, dateTo]);
 
   // Hydrate Assigned / Collected / In Stock per agent from their assigned partner orgs.
