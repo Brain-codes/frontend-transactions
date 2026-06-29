@@ -493,6 +493,12 @@ const EndUserRecordsContent = () => {
           </>
         )}
       </div>
+      <AdminSalesDetailModal
+        open={!!selectedSale}
+        onClose={() => setSelectedSale(null)}
+        sale={selectedSale}
+        viewFrom="superAdmin"
+      />
     </DashboardLayout>
   );
 };
