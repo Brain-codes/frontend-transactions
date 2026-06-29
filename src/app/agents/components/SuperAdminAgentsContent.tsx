@@ -1782,16 +1782,6 @@ export default function SuperAdminAgentsContent() {
         <PageHeader
           icon={Users}
           title="Agents Performance Report"
-          right={
-            <Button
-              size="sm"
-              className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
-              onClick={() => setAgentFormMode("create")}
-            >
-              <Plus className="h-4 w-4" />
-              Create User
-            </Button>
-          }
         />
 
         {/* Filters */}
