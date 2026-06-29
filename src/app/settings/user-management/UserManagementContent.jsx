@@ -737,12 +737,17 @@ const UserManagementPage = () => {
         ? (acslManagers.length > 0 ? Promise.resolve(acslManagers) : loadAcslManagers())
         : Promise.resolve(acslManagers);
 
-      // Hydrate states & partners from existing assignments
+      // Hydrate states & partners from existing assignments.
+      // Only acsl_agent / acsl_agent_manager users live in the super-admin-agents
+      // tables — calling those endpoints for partner / partner_agent / agent
+      // returns 404 ("Agent not found"). Skip the lookups for those roles.
+      const isAcslLike = role === "acsl_agent" || role === "acsl_agent_manager";
       const [statesRes, orgsRes, assignmentRowsRes] = await Promise.allSettled([
-        superAdminAgentService.getAgentStates(user.id),
-        superAdminAgentService.getAgentOrganizations(user.id),
+        isAcslLike ? superAdminAgentService.getAgentStates(user.id) : Promise.resolve({ data: [] }),
+        isAcslLike ? superAdminAgentService.getAgentOrganizations(user.id) : Promise.resolve({ data: [] }),
         needsAcslAgentCascade(role) ? fetchDirectAgentAssignmentRows(user.id) : Promise.resolve([]),
       ]);
+
       const statesList = statesRes.status === "fulfilled"
         ? (statesRes.value?.data || statesRes.value?.states || statesRes.value || [])
         : [];
