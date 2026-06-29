@@ -257,20 +257,22 @@ const AgentsProfilesContent = () => {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || json.message || "Failed to load users");
 
-      const rows = (json.data || []).map((u) => ({
-        id: u.id,
-        full_name: u.full_name || u.name || u.email || "—",
-        email: u.email,
-        phone: u.phone ?? null,
-        role: u.role,
-        status: u.status || "active",
-        created_at: u.created_at,
-        last_login: u.last_login ?? null,
-        assigned_organizations_count: u.assigned_organizations_count ?? 0,
-        assigned_states_count: u.assigned_states_count ?? 0,
-        organization_id: u.organization_id ?? null,
-        organization: u.organization ?? null,
-      }));
+      const rows = (json.data || [])
+        .filter((u) => u.role !== "partner_agent" && u.role !== "partner")
+        .map((u) => ({
+          id: u.id,
+          full_name: u.full_name || u.name || u.email || "—",
+          email: u.email,
+          phone: u.phone ?? null,
+          role: u.role,
+          status: u.status || "active",
+          created_at: u.created_at,
+          last_login: u.last_login ?? null,
+          assigned_organizations_count: u.assigned_organizations_count ?? 0,
+          assigned_states_count: u.assigned_states_count ?? 0,
+          organization_id: u.organization_id ?? null,
+          organization: u.organization ?? null,
+        }));
       setAgents(rows);
       hydrateAgentCounts(rows);
     } catch (err) {
@@ -444,7 +446,11 @@ const AgentsProfilesContent = () => {
 
   const roles = useMemo(() => {
     const s = new Set();
-    agents.forEach((a) => a.role && s.add(a.role));
+    agents.forEach((a) => {
+      if (a.role && a.role !== "partner_agent" && a.role !== "partner") {
+        s.add(a.role);
+      }
+    });
     return Array.from(s).sort();
   }, [agents]);
 
