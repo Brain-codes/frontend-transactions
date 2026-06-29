@@ -73,6 +73,8 @@ const allNavItems = [
     ],
   },
 
+  { name: "End User Records", icon: FileText, route: "end-user-records", href: "/end-user-records" },
+
   { name: "Track Stoves", icon: Tag, route: "stove-management", href: "/stove-management" },
   {
     name: "Settings",

@@ -35,7 +35,8 @@ export type RouteKey =
   | "payment-models"
   | "profile"
   | "docs"
-  | "sales-monitoring-app";
+  | "sales-monitoring-app"
+  | "end-user-records";
 
 export type FeatureKey =
   | "global-filters"
@@ -100,6 +101,7 @@ const ALL_ROUTES: RouteKey[] = [
   "profile",
   "docs",
   "sales-monitoring-app",
+  "end-user-records",
 ];
 
 const ALL_FEATURES: FeatureKey[] = [
