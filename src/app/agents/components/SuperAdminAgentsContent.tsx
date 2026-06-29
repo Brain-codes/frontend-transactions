@@ -1558,8 +1558,9 @@ export default function SuperAdminAgentsContent() {
           updated_by_name: u.updated_by_name ?? null,
           assigned_organizations_count: u.assigned_organizations_count ?? 0,
           assigned_states_count: u.assigned_states_count ?? 0,
+          total_partners_count: u.total_partners_count ?? u.assigned_organizations_count ?? 0,
         }))
-        .sort((a: AcslAgent, b: AcslAgent) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setAgents(rows);
       setRoleTotals(
