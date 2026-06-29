@@ -829,9 +829,8 @@ const UserManagementPage = () => {
       const generatedPassword = result.generated_password || result.data?.password;
 
       if (needsOrgBinding) {
-        // Keep organization-bound agents clean: only profiles.organization_id binds them.
-        try { await superAdminAgentService.setAgentStates(newUserId, []); } catch { /* non-fatal */ }
-        try { await superAdminAgentService.setAgentOrganizations(newUserId, []); } catch { /* non-fatal */ }
+        // Organization-bound roles (partner, partner_agent, agent) are bound via profiles.organization_id only.
+        // Skip super-admin-agents assignment endpoints — they only exist for acsl_agent / acsl_agent_manager.
       } else {
         if (
           newUserId &&
@@ -900,9 +899,8 @@ const UserManagementPage = () => {
       if (!res.ok) throw new Error(result?.error || "Failed to update user");
 
       if (isOrgBound) {
-        // Clear ACSL-style assignments so this user no longer appears under prior managers/states.
-        try { await superAdminAgentService.setAgentStates(selectedUser.id, []); } catch { /* non-fatal */ }
-        try { await superAdminAgentService.setAgentOrganizations(selectedUser.id, []); } catch { /* non-fatal */ }
+        // Organization-bound roles bind via profiles.organization_id only.
+        // Skip super-admin-agents endpoints — they 404 for non-ACSL roles.
       } else {
         // Persist assignment updates (overwrites prior assignments). If the user
         // group changes to one without these assignments, clear stale links so
