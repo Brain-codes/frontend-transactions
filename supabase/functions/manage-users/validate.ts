@@ -37,14 +37,19 @@ export function validateUserData(data: any) {
     errors.push("Full name is required");
   }
 
-  // Role validation - allow acsl_agent (formerly super_admin_agent) and super_admin
-  if (!data.role || !["acsl_agent", "acsl_agent_manager", "super_admin_agent", "super_admin"].includes(data.role)) {
-    errors.push("Role must be 'acsl_agent', 'acsl_agent_manager', or 'super_admin'");
+  // Role validation - allow all supported roles
+  const ALLOWED_ROLES = ["super_admin", "acsl_agent_manager", "acsl_agent", "partner", "partner_agent", "agent"];
+  if (!data.role || !ALLOWED_ROLES.includes(data.role)) {
+    errors.push(`Role must be one of: ${ALLOWED_ROLES.join(", ")}`);
   }
 
   // Optional fields validation
   if (data.phone && typeof data.phone !== "string") {
     errors.push("Phone must be a string");
+  }
+
+  if (data.organization_id !== undefined && data.organization_id !== null && typeof data.organization_id !== "string") {
+    errors.push("organization_id must be a string");
   }
 
   if (errors.length > 0) {
@@ -57,6 +62,7 @@ export function validateUserData(data: any) {
     full_name: data.full_name.trim(),
     phone: data.phone?.trim() || null,
     role: data.role,
+    organization_id: data.organization_id || null,
     auto_generate_password: data.auto_generate_password || false,
   };
 }
