@@ -186,6 +186,12 @@ const AgentsProfilesContent = () => {
     setStatesSearch("");
     setStatesModalLoading(true);
     try {
+      if (["partner_agent", "agent", "partner"].includes(agent.role)) {
+        const org = agent.organization;
+        const list = org && org.state ? [{ state: org.state }] : [];
+        setStatesModalList(list);
+        return;
+      }
       const res = await superAdminAgentService.getAgentStates(agent.id);
       const list = res?.data || res?.states || res || [];
       setStatesModalList(Array.isArray(list) ? list : []);
@@ -202,6 +208,11 @@ const AgentsProfilesContent = () => {
     setPartnersSearch("");
     setPartnersModalLoading(true);
     try {
+      if (["partner_agent", "agent", "partner"].includes(agent.role)) {
+        const org = agent.organization;
+        setPartnersModalList(org ? [org] : []);
+        return;
+      }
       // ACSL Agents: the source of truth is the direct assignment table — not
       // the "by-state" endpoint which would list every partner in their states.
       let list = null;
