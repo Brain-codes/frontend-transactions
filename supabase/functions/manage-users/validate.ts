@@ -110,6 +110,15 @@ export function validateUpdateData(data: any) {
     }
   }
 
+  // Status validation (active/disabled)
+  if (data.status !== undefined) {
+    if (!["active", "disabled"].includes(data.status)) {
+      errors.push("Status must be either 'active' or 'disabled'");
+    } else {
+      validatedData.status = data.status;
+    }
+  }
+
   // Role validation (optional for updates)
   if (data.role !== undefined) {
     const ALLOWED_ROLES = ["super_admin", "acsl_agent_manager", "acsl_agent", "partner", "partner_agent", "agent"];
@@ -127,10 +136,6 @@ export function validateUpdateData(data: any) {
     } else {
       validatedData.organization_id = data.organization_id || null;
     }
-  }
-
-  if (errors.length > 0) {
-    throw new Error(`validation: ${errors.join(", ")}`);
   }
 
   if (errors.length > 0) {
