@@ -99,13 +99,13 @@ export default function PartnerAgentsProfilesContent() {
   const hasFilter = !!search;
 
   return (
-    <div className="space-y-4">
+    <div className="p-6 space-y-5">
       <PageHeader title="Partner Agents Profile" description="View all partner agents" />
 
       {/* Filter bar */}
       <div
         className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 p-3"
-        style={{ backgroundColor: "#FAFCFD" }}
+        style={{ backgroundColor: "#f4f7e3" }}
       >
         <Input
           placeholder="Search by name, phone, partner or state…"
@@ -123,11 +123,6 @@ export default function PartnerAgentsProfilesContent() {
           <X className="h-4 w-4 mr-1" />
           Reset Filters
         </Button>
-        <p className="ml-auto text-sm text-gray-600">
-          Showing <span className="font-medium">{startRecord}</span> to{" "}
-          <span className="font-medium">{endRecord}</span> of{" "}
-          <span className="font-medium">{filtered.length}</span> partner agents
-        </p>
       </div>
 
       {/* Table */}
