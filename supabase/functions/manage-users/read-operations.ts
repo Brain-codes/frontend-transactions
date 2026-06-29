@@ -33,12 +33,21 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
         count: "exact",
       });
 
-    if (role && ["acsl_agent", "acsl_agent_manager", "super_admin_agent", "super_admin"].includes(role)) {
+    const ALL_ROLES = [
+      "super_admin",
+      "acsl_agent_manager",
+      "acsl_agent",
+      "partner",
+      "partner_agent",
+      "agent",
+      "super_admin_agent",
+    ];
+    if (role && ALL_ROLES.includes(role)) {
       query = query.eq("role", role);
       console.log("🔍 Showing users with role:", role);
     } else {
-      query = query.in("role", ["acsl_agent", "acsl_agent_manager", "super_admin_agent", "super_admin"]);
-      console.log("🔍 Showing all super admin and ACSL agent users");
+      query = query.in("role", ALL_ROLES);
+      console.log("🔍 Showing all manageable users");
     }
 
     // Apply status filter

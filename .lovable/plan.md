@@ -1,50 +1,50 @@
 ## Problem
 
-Creating a **Partner Agent** currently fails or produces a wrong-role user. Root causes (verified in code):
+Two issues when creating Partner Agent / Agent users:
 
-1. `supabase/functions/manage-users/validate.ts` only allows roles `acsl_agent`, `acsl_agent_manager`, `super_admin_agent`, `super_admin`. Anything else returns `400 "Role must be ..."`.
-2. The same validator has no concept of `organization_id`, so the partner binding never reaches the profile.
-3. `validateUpdateData` doesn't accept `role` or `organization_id` either, and `updateUser` filters profiles by a hard-coded role list — so post-create "promotion" PUTs also fail for `partner_agent`/`agent`.
-4. The current client workaround in `UserManagementContent.jsx` (`handleCreateUser`, lines ~824–876) creates the user as `acsl_agent` then patches `profiles` directly. When the direct patch is blocked by RLS the user is left with the wrong role and a misleading "email already in use" error on retry.
+1. **Creation error** — `manage-users` edge function returns an error. Even when the user is actually created in Auth, the response is treated as failure by the client and a retry produces "email already in use".
+2. **Users invisible in User Management** — newly-created Partner Agent and Agent users never show up in the list view, even on refresh.
+
+### Root causes (verified in code)
+
+- `supabase/functions/manage-users/read-operations.ts` `getUsers()` hard-codes the role filter:
+  ```
+  .in("role", ["acsl_agent", "acsl_agent_manager", "super_admin_agent", "super_admin"])
+  ```
+  Partner / Partner Agent / Agent rows are filtered out of every list response, so the table can never show them.
+- The same file restricts the `role` query param to the same legacy set, so the role dropdown can't filter to the new roles either.
+- The edge function changes from the previous plan (allow `partner` / `partner_agent` / `agent`, accept `organization_id`, set role explicitly after create) were written into the repo but **not deployed** to the user's Supabase project. Until deploy, `validate.ts` on the server still rejects `partner_agent` and `agent` with `"Role must be ..."`, which is what the client surfaces as the creation error.
+- After a rejected `partner_agent` POST, the older client fallback (now removed in repo, but still the deployed behavior of any earlier session) sometimes created the auth user as `acsl_agent`, which is why retries hit "email already in use" while the orphan never appears in the (still role-filtered) list.
 
 ## Fix
 
-Make the edge function the single source of truth for any role — including `partner_agent` and `agent` — and let the client call it the same way it does for every other role.
+### 1. `supabase/functions/manage-users/read-operations.ts`
 
-### 1. Edge function: `supabase/functions/manage-users/`
+- Replace the hard-coded role list everywhere in `getUsers()` with the full supported set:
+  `["super_admin", "acsl_agent_manager", "acsl_agent", "partner", "partner_agent", "agent", "super_admin_agent"]`
+  (keep `super_admin_agent` for backward-compat with any legacy rows.)
+- Apply the same allowed list to the `role` query-param branch so the dropdown can filter by Partner / Partner Agent / Agent.
+- Leave the assigned-state / assigned-org count logic alone (it's role-gated and doesn't need to change).
 
-**`validate.ts` – `validateUserData`**
-- Expand allowed roles to:
-  `["super_admin", "acsl_agent_manager", "acsl_agent", "partner", "partner_agent", "agent"]`.
-- Accept optional `organization_id` (string UUID or null); include it in the returned object.
-- Keep `phone` optional (do not add a "phone required" rule).
+### 2. Confirm edge-function payload contract is consistent
 
-**`validate.ts` – `validateUpdateData`**
-- Accept optional `role` (same allowed list) and optional `organization_id`.
-- Include both in `validatedData` when present.
+- `validate.ts`, `write-operations.ts`, and `route-handler.ts` already accept `partner` / `partner_agent` / `agent` and `organization_id` (from the previous plan). No further code change there — just make sure the deployed function matches the repo.
 
-**`write-operations.ts` – `createUser`**
-- Pass `role` through to `app_metadata` / `user_metadata` as today.
-- After the profile row exists, update it with `{ role, organization_id }` from the validated payload (the DB trigger may default the role, so we explicitly set the final role + partner binding here).
-- Save credentials row with the real role and `organization_id`.
+### 3. Client — `src/app/settings/user-management/UserManagementContent.jsx`
 
-**`write-operations.ts` – `updateUser`**
-- Remove the `.in("role", [...])` filter so users of any role can be updated.
-- Allow `role` and `organization_id` in the update payload (already covered once `validateUpdateData` accepts them).
+- No new logic. Confirm `handleCreateUser` / `handleUpdateUser` send a single POST/PUT to `manage-users` with `{ role, organization_id }` and no fallback paths (already in place from the previous plan).
+- After the list-query fix above, the new users will show up immediately on the next list refresh.
 
-### 2. Client: `src/app/settings/user-management/UserManagementContent.jsx`
+### 4. Deploy + verify
 
-- Delete the "create as acsl_agent then patch profile" fallback in `handleCreateUser` (lines ~824–876).
-- For every role, send one POST to `manage-users` with `{ ...basePayload, role: targetRole, organization_id: partnerId || null }`.
-  - `partnerId` = the single selected partner for `partner_agent` / `agent` / `partner`, otherwise `null`.
-- Same simplification in `handleUpdateUser`: one PUT with `{ full_name, phone, role, organization_id }`.
-- Keep the existing UI rule that `partner_agent` / `agent` / `partner` show a single-select partner picker and require one partner before submit.
-- Continue clearing ACSL state/manager assignments for organization-bound roles after a successful create (already implemented).
+This project uses your own Supabase, not Lovable Cloud, so the updated `manage-users` function must be redeployed by you:
 
-### 3. Verification
+- Supabase Dashboard → Edge Functions → `manage-users` → Deploy (or `supabase functions deploy manage-users` via CLI).
 
-- Create a Partner Agent end-to-end: user appears in User Management with role **Partner Agent** and is bound to the chosen partner.
-- Repeat for **Agent**, **Partner**, **ACSL Agent**, **ACSL Agent Manager**, **Super Admin** — all succeed with no fallback path.
-- Edit a Partner Agent's role/partner and confirm the change persists.
+After deploy, verify end-to-end:
+- Create a Partner Agent bound to one partner → success, appears in User Management with role **Partner Agent**.
+- Create an Agent bound to one partner → success, appears with role **Agent**.
+- Filter the User Management table by role = Partner Agent / Agent → rows show.
+- Edit either user → role and partner persist.
 
-No schema migration is required; only the edge function and client are changed.
+No schema migration is required.
