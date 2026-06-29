@@ -176,19 +176,26 @@ export default function PartnerAgentsProfilesContent() {
         </div>
 
         {filtered.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-white border border-gray-200 rounded-b-lg px-3 py-2">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Rows per page</span>
-              <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
-                <SelectTrigger className="h-8 w-[80px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[10, 25, 50, 100].map((n) => (
-                    <SelectItem key={n} value={String(n)}>{n}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white border border-gray-200 rounded-b-lg px-4 py-3">
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-gray-600">
+                Showing <span className="font-medium">{startRecord}</span> to{" "}
+                <span className="font-medium">{endRecord}</span> of{" "}
+                <span className="font-medium">{filtered.length}</span> partner agents
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Rows per page</span>
+                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+                  <SelectTrigger className="h-8 w-[80px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[10, 25, 50, 100].map((n) => (
+                      <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             {totalPages > 1 && (
               <div className="flex items-center gap-1">
