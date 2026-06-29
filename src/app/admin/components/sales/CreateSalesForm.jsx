@@ -831,13 +831,22 @@ const CreateSalesForm = ({
                 className={errors.contactPhone ? "border-red-500" : ""}
               />
             </FormField>
-            <FormField label="End User Name *" error={errors.endUserName} htmlFor="endUserName">
+            <FormField label="End User First Name *" error={errors.endUserName} htmlFor="endUserName">
               <Input
                 id="endUserName"
                 value={formData.endUserName}
                 onChange={(e) => handleInputChange("endUserName", e.target.value)}
-                placeholder="End user name"
+                placeholder="End user first name"
                 className={errors.endUserName ? "border-red-500" : ""}
+              />
+            </FormField>
+            <FormField label="End User Surname *" error={errors.endUserSurname} htmlFor="endUserSurname">
+              <Input
+                id="endUserSurname"
+                value={formData.endUserSurname}
+                onChange={(e) => handleInputChange("endUserSurname", e.target.value)}
+                placeholder="End user surname"
+                className={errors.endUserSurname ? "border-red-500" : ""}
               />
             </FormField>
             <FormField label="End User Phone *" error={errors.phone} htmlFor="phone">
