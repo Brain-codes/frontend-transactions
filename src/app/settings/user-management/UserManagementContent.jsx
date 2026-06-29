@@ -1077,9 +1077,7 @@ const UserManagementPage = () => {
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Name</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Email</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone</TableHead>
-                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Role</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
-                    
                     <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
