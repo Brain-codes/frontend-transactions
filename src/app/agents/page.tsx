@@ -48,7 +48,7 @@ function PerformanceTabs() {
                 aria-selected={isActive}
                 onClick={() => setActive(t.key)}
                 className={[
-                  "relative inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
+                  "relative flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
                   isActive
                     ? "bg-[#4a5d0f] text-white shadow-[0_2px_8px_rgba(74,93,15,0.35)]"
                     : "text-[#4a5d0f] hover:bg-[#eef3c4]",
