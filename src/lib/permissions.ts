@@ -101,6 +101,7 @@ const ALL_ROUTES: RouteKey[] = [
   "profile",
   "docs",
   "sales-monitoring-app",
+  "end-user-records",
 ];
 
 const ALL_FEATURES: FeatureKey[] = [
