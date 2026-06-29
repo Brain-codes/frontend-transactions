@@ -36,7 +36,7 @@ function PerformanceTabs() {
         <div
           role="tablist"
           aria-label="Performance Report"
-          className="inline-flex items-center gap-1 rounded-xl border border-[#e5e7eb] bg-white p-1 shadow-sm"
+          className="flex w-full items-center gap-1 rounded-xl border border-[#e5e7eb] bg-white p-1 shadow-sm"
         >
           {tabs.map((t) => {
             const isActive = active === t.key;
