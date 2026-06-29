@@ -1,44 +1,38 @@
+## Goal
+Keep only the 2 most-recently-created Partner Agents in the system, and delete every other `partner_agent` record (both `profiles` row and `auth.users` entry) so the Partner Agents Profile view shows exactly the unified-system records.
 
-## Problem
+## Why this is needed
+The view fetches `role=partner_agent` from `profiles` via the `manage-users` edge function. Legacy/orphan rows from earlier creation attempts (before the unified flow) are still in `profiles`, inflating the list beyond the 2 you created.
 
-Partner Agent users now create successfully, but the Agent Profiles view shows blanks for them:
-- Supervisor → empty (logic only runs for `acsl_agent`)
-- States Assigned → 0
-- Partners Assigned → 0
+## Approach
+Since I can't run SQL directly against your Supabase, the cleanup runs through the existing `manage-users` edge function (which you control with your super_admin session) using its already-deployed DELETE endpoint. I'll add a one-time, guarded admin action on the Partner Agents Profile page.
 
-For a `partner_agent` (and `agent`) the source of truth is `profiles.organization_id` → that organization is simultaneously their Partner (supervisor), their assigned state, and their single assigned partner. Today the list endpoint never returns `organization_id`, and the UI never derives these fields for non-ACSL roles.
+### Steps
 
-## Changes
+1. **Add a "Clean Legacy Records" button** (visible to super_admin only) in the filter bar of `src/app/agents/partner-agents-profiles/PartnerAgentsProfilesContent.jsx`.
 
-### 1. `supabase/functions/manage-users/read-operations.ts`
-- Add `organization_id` to the `profiles` select.
-- After loading the page of users, batch-fetch organizations referenced by `partner_agent` / `agent` / `partner` rows in a single `organizations` query (`id, partner_name, state, branch`).
-- Attach to each such row:
-  - `organization_id`
-  - `organization` (`{ id, partner_name, state, branch }`)
-  - `assigned_organizations_count = 1` (when org exists)
-  - `assigned_states_count = 1` (when org.state present)
-- Leave `acsl_agent` / `acsl_agent_manager` behavior unchanged.
-- **User must redeploy the `manage-users` edge function** for these fields to appear.
+2. **Click flow:**
+   - Fetch all `partner_agent` users via `GET /manage-users?role=partner_agent&limit=500&sortBy=created_at&sortOrder=desc`.
+   - Identify the 2 newest (top 2 of the sorted list) → "keepers".
+   - Show a confirmation dialog listing the keepers (name + email + created_at) and the count of records that will be deleted, with the full deletion list collapsed for review.
+   - On confirm, loop the rest and call `DELETE /manage-users/{id}` for each (sequential, with per-row toast + progress counter).
+   - On finish, reload the list and toast the summary (deleted X, kept 2, failures Y).
 
-### 2. `src/app/agents/agents-profiles/AgentsProfilesContent.jsx`
-- In `loadAgents`, carry `organization_id` and `organization` through into row state.
-- Display logic per role:
-  - **Supervisor column** — for `partner_agent` and `agent`, render `organization.partner_name` (plain text, no badge). Falls back to `—` when org missing.
-  - **States Assigned** — for `partner_agent` / `agent`, show `1` when `organization.state` exists, else `0`.
-  - **Partners Assigned** — for `partner_agent` / `agent`, show `1` when `organization_id` exists.
-- Modal openers (`handleViewStates`, `handleViewPartners`) for these roles: skip the SAA endpoints and synthesize the list locally from `agent.organization` (one state row, one partner row) so the modals work without extra calls and without the 404s currently logged.
-- No changes to ACSL Agent / Manager hydration paths.
+3. **Safety guards:**
+   - Button disabled unless the current user is `super_admin`.
+   - Confirmation modal requires typing `DELETE` to enable the confirm button.
+   - If fewer than 3 records are returned, the button is disabled (nothing to clean).
+   - Each delete is wrapped in try/catch; failures are reported but don't abort the loop.
 
-### 3. Creation flow sanity (no behavior change unless a bug surfaces)
-- Confirm `UserManagementContent.jsx` Partner Agent path sets `role: 'partner_agent'` AND `organization_id` on the profile after creation (already implemented). No new code unless verification shows it's getting cleared.
+4. **No edge-function changes required.** `delete-operations.ts` already accepts `partner_agent` deletes (we updated that earlier), and it removes both the auth user and the profile row.
 
-## Out of scope
-- Editing the inference logic for ACSL Agents.
-- Any sales/performance recalculation.
-- Schema migrations (uses existing `profiles.organization_id` + `organizations`).
+### Files touched
+- `src/app/agents/partner-agents-profiles/PartnerAgentsProfilesContent.jsx` — add button, confirmation modal, and cleanup handler.
 
-## Verification
-1. Create a new Partner Agent assigned to Partner X (state Y).
-2. Open Agent Profiles → new row shows: Supervisor = "Partner X", States Assigned = 1, Partners Assigned = 1.
-3. Click the badges → modals list "Y" and "Partner X" respectively, no 404s in console.
+### Out of scope
+- No schema changes, no migrations, no SQL execution.
+- Other roles (`partner`, `agent`, `acsl_agent`) are not touched.
+- After cleanup, if you ever need the same operation for other roles, we can generalize it later.
+
+## What you'll see after running it
+The Partner Agents Profile view will show exactly 2 rows — the two you created — and the underlying `profiles` + `auth.users` tables will no longer hold the legacy partner_agent records.
