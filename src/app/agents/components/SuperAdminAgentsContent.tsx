@@ -1532,7 +1532,48 @@ export default function SuperAdminAgentsContent() {
     }
   }, [page, pageSize, search, statusFilter, selectedRoles, dateFrom, dateTo]);
 
-  useEffect(() => { fetchAgents(); }, [fetchAgents]);
+  // Fetch per-role totals across the full filtered population (one count query per visible role).
+  const VISIBLE_KPI_ROLES = useMemo(
+    () => ["super_admin", "acsl_agent_manager", "acsl_agent", "partner_agent", "agent"],
+    [],
+  );
+  const fetchRoleTotals = useCallback(async () => {
+    try {
+      const { supabaseFunctionsUrl } = await import("@/lib/supabaseConfig");
+      const token = await tokenManager.getValidToken();
+      const rolesToFetch =
+        selectedRoles.length > 0
+          ? selectedRoles.filter((r) => VISIBLE_KPI_ROLES.includes(r))
+          : VISIBLE_KPI_ROLES;
+      const results = await Promise.all(
+        rolesToFetch.map(async (role) => {
+          const qs = new URLSearchParams({ page: "1", limit: "1", role });
+          if (search.trim()) qs.append("search", search.trim());
+          if (statusFilter !== "all") qs.append("status", statusFilter);
+          if (dateFrom) qs.append("date_from", dateFrom);
+          if (dateTo) qs.append("date_to", dateTo);
+          try {
+            const res = await fetch(`${supabaseFunctionsUrl}/manage-users?${qs.toString()}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) return [role, 0] as const;
+            const json = await res.json();
+            const total = json?.pagination?.totalItems ?? json?.pagination?.total ?? 0;
+            return [role, Number(total) || 0] as const;
+          } catch {
+            return [role, 0] as const;
+          }
+        }),
+      );
+      const next: Record<string, number> = {};
+      for (const [r, c] of results) next[r] = c;
+      setRoleTotals(next);
+    } catch (err) {
+      console.error("Role totals error:", err);
+    }
+  }, [VISIBLE_KPI_ROLES, selectedRoles, search, statusFilter, dateFrom, dateTo]);
+
+  useEffect(() => { fetchAgents(); fetchRoleTotals(); }, [fetchAgents, fetchRoleTotals]);
   useEffect(() => { setPage(1); }, [search, statusFilter, selectedRoles, dateFrom, dateTo]);
 
   // Hydrate Assigned / Collected / In Stock per agent from their assigned partner orgs.
