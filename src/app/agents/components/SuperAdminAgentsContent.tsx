@@ -1443,6 +1443,8 @@ export default function SuperAdminAgentsContent() {
   const [stoveSort, setStoveSort] = useState<{ key: string | null; direction: "asc" | "desc" | null }>({ key: null, direction: null });
   // Deduped totals across unique partner organizations (avoids double-counting shared orgs).
   const [stoveTotals, setStoveTotals] = useState<{ assigned: number; sold: number; unsold: number } | null>(null);
+  // Per-role totals across all matching users (not just current page), used by KPI breakdown.
+  const [roleTotals, setRoleTotals] = useState<Record<string, number>>({});
   const cycleStoveSort = (key: string) => {
     setStoveSort((prev) => {
       if (prev.key !== key) return { key, direction: "asc" };
