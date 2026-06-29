@@ -17,6 +17,7 @@ export const createInitialFormData = () => ({
   contactPerson: "",
   contactPhone: "",
   endUserName: "",
+  endUserSurname: "",
   aka: "",
   stateBackup: "",
   lgaBackup: "",
