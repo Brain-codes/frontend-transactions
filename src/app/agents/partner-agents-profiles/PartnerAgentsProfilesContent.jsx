@@ -84,6 +84,58 @@ export default function PartnerAgentsProfilesContent() {
 
   useEffect(() => { loadAgents(); }, []); // eslint-disable-line
 
+  // Sort newest first so we can clearly identify keepers vs. legacy rows
+  const sortedByNewest = useMemo(
+    () =>
+      [...agents].sort(
+        (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+      ),
+    [agents]
+  );
+  const keepers = sortedByNewest.slice(0, 2);
+  const toDelete = sortedByNewest.slice(2);
+
+  const runCleanup = async () => {
+    if (confirmText !== "DELETE") return;
+    setCleaning(true);
+    setCleanupProgress({ done: 0, total: toDelete.length });
+    let ok = 0;
+    let failed = 0;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Not authenticated");
+      for (let i = 0; i < toDelete.length; i++) {
+        const u = toDelete[i];
+        try {
+          const res = await fetch(`${supabaseFunctionsUrl}/manage-users/${u.id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (!res.ok) {
+            failed++;
+          } else {
+            ok++;
+          }
+        } catch {
+          failed++;
+        }
+        setCleanupProgress({ done: i + 1, total: toDelete.length });
+      }
+      toast({
+        variant: failed === 0 ? "success" : "warning",
+        title: "Cleanup complete",
+        description: `Deleted ${ok}, kept ${keepers.length}, failed ${failed}`,
+      });
+    } catch (err) {
+      toast({ variant: "error", title: "Cleanup failed", description: err.message });
+    } finally {
+      setCleaning(false);
+      setCleanupOpen(false);
+      setConfirmText("");
+      await loadAgents();
+    }
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return agents;
