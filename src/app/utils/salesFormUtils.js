@@ -250,6 +250,7 @@ export const hasFormDataChanged = (currentData, originalData) => {
     "contactPerson",
     "contactPhone",
     "endUserName",
+    "endUserSurname",
     "aka",
     "phone",
     "otherPhone",
