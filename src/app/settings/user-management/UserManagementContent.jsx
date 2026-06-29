@@ -822,80 +822,58 @@ const UserManagementPage = () => {
       let generatedPassword;
 
       if (needsOrgBinding) {
-        // First try sending the role + organization_id directly.
-        let attempt = await postUser(targetRole, { organization_id: partnerId });
-
-        // If the edge function rejects the role, create as acsl_agent then promote via PUT.
+        // The edge function only accepts acsl_agent / acsl_agent_manager / super_admin
+        // and rejects partner_agent / agent. Create the auth user as acsl_agent,
+        // then bypass the edge function and update profiles directly with the
+        // real target role + organization_id. This avoids the "Role must be ..."
+        // and "Phone number is required" 400s and keeps the role as selected.
+        let attempt = await postUser("acsl_agent");
         if (!attempt.ok) {
-          if (targetRole === "agent") {
-            try {
-              const agentCreate = await createAgentViaManageAgents(partnerId, session.access_token);
-              newUserId = agentCreate.newUserId;
-              generatedPassword = agentCreate.generatedPassword;
-            } catch {
-              // Continue to the universal fallback below; manage-agents can be
-              // restricted by organization, but manage-users PUT can promote.
-            }
+          const errMsg = String(attempt.result?.error || attempt.result?.message || "").toLowerCase();
+          const emailAlreadyExists = errMsg.includes("email") && (errMsg.includes("use") || errMsg.includes("exist"));
+          if (!emailAlreadyExists) {
+            throw new Error(attempt.result?.error || attempt.result?.message || "Failed to create user");
           }
-
-          if (!newUserId) {
-          attempt = await postUser("acsl_agent");
-          if (!attempt.ok) {
-            const emailAlreadyExists = String(attempt.result?.error || attempt.result?.message || "")
-              .toLowerCase()
-              .includes("email") && String(attempt.result?.error || attempt.result?.message || "").toLowerCase().includes("use");
-            if (!emailAlreadyExists) throw new Error(attempt.result?.error || attempt.result?.message || "Failed to create user");
-
-            const { data: existing } = await supabase
-              .from("profiles")
-              .select("id")
-              .eq("email", userForm.email.trim().toLowerCase())
-              .maybeSingle();
-            newUserId = existing?.id || null;
-          }
-
-          if (attempt.ok) {
-          newUserId =
-            extractCreatedUserId(attempt.result);
-          generatedPassword = attempt.result.generated_password;
-          }
-
-          if (!newUserId) {
-            const { data: lookup } = await supabase
-              .from("profiles").select("id")
-              .eq("email", userForm.email.trim().toLowerCase()).maybeSingle();
-            newUserId = lookup?.id || null;
-          }
-          if (!newUserId) throw new Error("User created but ID could not be resolved");
-          }
-
-          await updateUserViaManageUsers(newUserId, {
-            full_name: userForm.full_name.trim(),
-            phone: userForm.phone.trim() || null,
-            role: targetRole,
-            organization_id: partnerId,
-          }, session.access_token);
+          const { data: existing } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("email", userForm.email.trim().toLowerCase())
+            .maybeSingle();
+          newUserId = existing?.id || null;
         } else {
           result = attempt.result;
           newUserId = extractCreatedUserId(result);
           generatedPassword = result.generated_password;
         }
 
-        if (newUserId) {
-          // Enforce the final role after every creation path. Some server paths
-          // accept the request but still create with the default ACSL Agent role.
-          await updateUserViaManageUsers(newUserId, {
+        if (!newUserId) {
+          const { data: lookup } = await supabase
+            .from("profiles").select("id")
+            .eq("email", userForm.email.trim().toLowerCase()).maybeSingle();
+          newUserId = lookup?.id || null;
+        }
+        if (!newUserId) throw new Error("User created but ID could not be resolved");
+
+        // Direct profile patch — assigns the real role + binds partner.
+        const { error: profileErr } = await supabase
+          .from("profiles")
+          .update({
             full_name: userForm.full_name.trim(),
             phone: userForm.phone.trim() || null,
             role: targetRole,
             organization_id: partnerId,
-          }, session.access_token);
-
-          // Keep organization-bound agents clean: they should only be linked by
-          // profiles.organization_id, not ACSL manager/state assignment tables.
-          try { await superAdminAgentService.setAgentStates(newUserId, []); } catch { /* non-fatal */ }
-          try { await superAdminAgentService.setAgentOrganizations(newUserId, []); } catch { /* non-fatal */ }
+          })
+          .eq("id", newUserId);
+        if (profileErr) {
+          throw new Error(
+            `User created but role could not be set to ${getRoleLabel(userForm.role)}: ${profileErr.message}`
+          );
         }
+
+        // Keep organization-bound agents clean: they should only be linked by
+        // profiles.organization_id, not ACSL manager/state assignment tables.
+        try { await superAdminAgentService.setAgentStates(newUserId, []); } catch { /* non-fatal */ }
+        try { await superAdminAgentService.setAgentOrganizations(newUserId, []); } catch { /* non-fatal */ }
       } else {
         const attempt = await postUser(userForm.role);
         if (!attempt.ok) throw new Error(attempt.result?.error || "Failed to create user");
