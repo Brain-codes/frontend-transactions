@@ -446,7 +446,11 @@ const AgentsProfilesContent = () => {
 
   const roles = useMemo(() => {
     const s = new Set();
-    agents.forEach((a) => a.role && s.add(a.role));
+    agents.forEach((a) => {
+      if (a.role && a.role !== "partner_agent" && a.role !== "partner") {
+        s.add(a.role);
+      }
+    });
     return Array.from(s).sort();
   }, [agents]);
 
