@@ -877,35 +877,22 @@ const UserManagementPage = () => {
 
       const { data: { session } } = await supabase.auth.getSession();
 
-      if (isOrgBound) {
-        // Edge function rejects partner_agent/agent roles. Patch profile directly.
-        const { error: profileErr } = await supabase
-          .from("profiles")
-          .update({
-            full_name: userForm.full_name.trim(),
-            phone: userForm.phone.trim() || null,
-            role,
-            organization_id: partnerId,
-          })
-          .eq("id", selectedUser.id);
-        if (profileErr) throw new Error(profileErr.message);
-      } else {
-        const putBody = {
-          full_name: userForm.full_name.trim(),
-          phone: userForm.phone.trim() || "",
-          role,
-        };
-        const res = await fetch(
-          `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
-          {
-            method: "PUT",
-            headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-            body: JSON.stringify(putBody),
-          },
-        );
-        const result = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(result?.error || "Failed to update user");
-      }
+      const putBody = {
+        full_name: userForm.full_name.trim(),
+        phone: userForm.phone.trim() || "",
+        role,
+        organization_id: isOrgBound ? partnerId : null,
+      };
+      const res = await fetch(
+        `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify(putBody),
+        },
+      );
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result?.error || "Failed to update user");
 
       if (isOrgBound) {
         // Clear ACSL-style assignments so this user no longer appears under prior managers/states.
