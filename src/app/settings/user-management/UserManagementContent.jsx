@@ -1077,16 +1077,14 @@ const UserManagementPage = () => {
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Name</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Email</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone</TableHead>
-                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Role</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
-                    
                     <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className={loading ? "opacity-40" : ""}>
                   {users.length === 0 && !loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-10 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-10 text-gray-500">
                         No users found
                       </TableCell>
                     </TableRow>
@@ -1096,16 +1094,25 @@ const UserManagementPage = () => {
                         key={u.id}
                         className={`${idx % 2 === 0 ? "bg-white" : "bg-[#f4f7e3]"} hover:bg-[#eef3c4] text-gray-700`}
                       >
-                        <TableCell className="text-sm font-medium text-gray-900">{u.full_name || "N/A"}</TableCell>
+                        <TableCell className="text-sm font-medium text-gray-900">
+                          <span className="align-baseline">{u.full_name || "N/A"}</span>
+                          {u.role && (
+                            <sup className={`ml-1 text-[9px] font-medium ${
+                              u.role === "super_admin" ? "text-red-600" :
+                              u.role === "acsl_agent_manager" ? "text-purple-600" :
+                              u.role === "acsl_agent" ? "text-green-700" :
+                              u.role === "partner" ? "text-blue-600" :
+                              u.role === "partner_agent" ? "text-amber-600" :
+                              u.role === "agent" || u.role === "agent_user" ? "text-cyan-700" :
+                              "text-gray-500"
+                            }`}>
+                              {getRoleLabel(u.role)}
+                            </sup>
+                          )}
+                        </TableCell>
                         <TableCell className="text-sm max-w-[180px] truncate">{u.email}</TableCell>
                         <TableCell className="text-sm text-gray-600">{u.phone || ""}</TableCell>
 
-                        {/* Role — colored badge per role */}
-                        <TableCell>
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${getRoleBadgeClasses(u.role)}`}>
-                            {getRoleLabel(u.role)}
-                          </span>
-                        </TableCell>
 
                         {/* Status */}
                         <TableCell>
