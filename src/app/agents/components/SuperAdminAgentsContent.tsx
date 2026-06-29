@@ -1993,13 +1993,14 @@ export default function SuperAdminAgentsContent() {
             partner: "Partner",
             partner_agent: "Partner Agent",
           };
-          const roleCounts: Record<string, number> = {};
-          agents.forEach((a) => {
-            const r = a.role || "other";
-            roleCounts[r] = (roleCounts[r] || 0) + 1;
-          });
-          const roleEntries = Object.entries(roleCounts).sort((a, b) => b[1] - a[1]);
-          const totalAgents = pagination?.totalItems ?? agents.length;
+          const roleCounts: Record<string, number> = { ...roleTotals };
+          delete roleCounts.partner;
+          delete roleCounts.admin;
+          const roleEntries = Object.entries(roleCounts)
+            .filter(([, c]) => c > 0)
+            .sort((a, b) => b[1] - a[1]);
+          const totalsSum = roleEntries.reduce((acc, [, c]) => acc + c, 0);
+          const totalAgents = totalsSum > 0 ? totalsSum : agents.length;
           const totalAssigned = stoveTotals?.assigned ?? 0;
           const totalSold = stoveTotals?.sold ?? 0;
           const totalUnsold = stoveTotals?.unsold ?? 0;
