@@ -257,6 +257,8 @@ const AgentsProfilesContent = () => {
         last_login: u.last_login ?? null,
         assigned_organizations_count: u.assigned_organizations_count ?? 0,
         assigned_states_count: u.assigned_states_count ?? 0,
+        organization_id: u.organization_id ?? null,
+        organization: u.organization ?? null,
       }));
       setAgents(rows);
       hydrateAgentCounts(rows);
