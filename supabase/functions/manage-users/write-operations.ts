@@ -145,12 +145,11 @@ export async function updateUser(
     const validatedData = validateUpdateData(updateData);
     console.log("✅ Update data validated");
 
-    // Check if the user exists and is a super admin user
+    // Check if the user exists (any role allowed)
     const { data: existingUser, error: checkError } = await supabase
       .from("profiles")
       .select("id, role, email")
       .eq("id", userId)
-      .in("role", ["acsl_agent", "acsl_agent_manager", "super_admin_agent", "super_admin"])
       .single();
 
     if (checkError) {
