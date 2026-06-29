@@ -124,18 +124,6 @@ export default function PartnerAgentsProfilesContent() {
           <X className="h-4 w-4 mr-1" />
           Reset Filters
         </Button>
-        {isSuperAdmin && (
-          <Button
-            onClick={() => { setConfirmText(""); setCleanupOpen(true); }}
-            size="sm"
-            className="h-9 ml-auto bg-red-600 hover:bg-red-700 text-white shadow-none"
-            disabled={loading || agents.length < 3}
-            title={agents.length < 3 ? "Nothing to clean" : "Keep newest 2, delete the rest"}
-          >
-            <Trash2 className="h-4 w-4 mr-1" />
-            Clean Legacy Records
-          </Button>
-        )}
       </div>
 
       {/* Table */}
