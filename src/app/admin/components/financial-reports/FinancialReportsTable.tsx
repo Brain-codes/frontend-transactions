@@ -79,7 +79,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
   return (
     <div className="space-y-0">
       {/* Pagination header */}
-      <div className="px-4 py-2 flex items-center justify-end">
+      <div className="bg-[#eef3c4] rounded-t-lg px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <p className="text-sm text-gray-600">
             Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
@@ -100,11 +100,14 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
             </Select>
           </div>
         </div>
+        <p className="text-sm font-bold text-green-500">
+          Total Sales: <span className="text-[#4a5d0f]">{totalRecords}</span>
+        </p>
       </div>
 
       {/* Table */}
-      <div className="bg-white border-x border-gray-200 overflow-x-auto mt-5">
-        <Table className="text-sm">
+      <div className="bg-white border-x border-gray-200 overflow-x-auto mt-1">
+        <Table className="text-xs">
           <TableHeader className="bg-[#4a5d0f]">
             <TableRow className="hover:bg-[#4a5d0f]">
               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Trans #</TableHead>
