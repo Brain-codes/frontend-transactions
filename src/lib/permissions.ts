@@ -35,7 +35,8 @@ export type RouteKey =
   | "payment-models"
   | "profile"
   | "docs"
-  | "sales-monitoring-app";
+  | "sales-monitoring-app"
+  | "end-user-records";
 
 export type FeatureKey =
   | "global-filters"
