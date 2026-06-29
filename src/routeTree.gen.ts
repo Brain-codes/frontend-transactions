@@ -35,6 +35,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as SalesCreateRouteImport } from './routes/sales/create'
 import { Route as PartnersProfilesRouteImport } from './routes/partners/profiles'
 import { Route as AgentsProfilesRouteImport } from './routes/agents/profiles'
+import { Route as AgentsPartnerAgentsProfilesRouteImport } from './routes/agents/partner-agents-profiles'
 import { Route as UserManagementUsersIndexRouteImport } from './routes/user-management/users/index'
 import { Route as UserManagementUserGroupsIndexRouteImport } from './routes/user-management/user-groups/index'
 import { Route as SuperAdminAgentStoveIdsIndexRouteImport } from './routes/super-admin-agent/stove-ids/index'
@@ -196,6 +197,12 @@ const AgentsProfilesRoute = AgentsProfilesRouteImport.update({
   path: '/agents/profiles',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AgentsPartnerAgentsProfilesRoute =
+  AgentsPartnerAgentsProfilesRouteImport.update({
+    id: '/agents/partner-agents-profiles',
+    path: '/agents/partner-agents-profiles',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const UserManagementUsersIndexRoute =
   UserManagementUsersIndexRouteImport.update({
     id: '/user-management/users/',
@@ -358,6 +365,7 @@ const AdminSalesCreateIndexRoute = AdminSalesCreateIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agents/partner-agents-profiles': typeof AgentsPartnerAgentsProfilesRoute
   '/agents/profiles': typeof AgentsProfilesRoute
   '/partners/profiles': typeof PartnersProfilesRoute
   '/sales/create': typeof SalesCreateRoute
@@ -415,6 +423,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agents/partner-agents-profiles': typeof AgentsPartnerAgentsProfilesRoute
   '/agents/profiles': typeof AgentsProfilesRoute
   '/partners/profiles': typeof PartnersProfilesRoute
   '/sales/create': typeof SalesCreateRoute
@@ -473,6 +482,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agents/partner-agents-profiles': typeof AgentsPartnerAgentsProfilesRoute
   '/agents/profiles': typeof AgentsProfilesRoute
   '/partners/profiles': typeof PartnersProfilesRoute
   '/sales/create': typeof SalesCreateRoute
@@ -532,6 +542,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/agents/partner-agents-profiles'
     | '/agents/profiles'
     | '/partners/profiles'
     | '/sales/create'
@@ -589,6 +600,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/agents/partner-agents-profiles'
     | '/agents/profiles'
     | '/partners/profiles'
     | '/sales/create'
@@ -646,6 +658,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/agents/partner-agents-profiles'
     | '/agents/profiles'
     | '/partners/profiles'
     | '/sales/create'
@@ -704,6 +717,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentsPartnerAgentsProfilesRoute: typeof AgentsPartnerAgentsProfilesRoute
   AgentsProfilesRoute: typeof AgentsProfilesRoute
   PartnersProfilesRoute: typeof PartnersProfilesRoute
   SalesCreateRoute: typeof SalesCreateRoute
@@ -944,6 +958,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentsProfilesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/agents/partner-agents-profiles': {
+      id: '/agents/partner-agents-profiles'
+      path: '/agents/partner-agents-profiles'
+      fullPath: '/agents/partner-agents-profiles'
+      preLoaderRoute: typeof AgentsPartnerAgentsProfilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/user-management/users/': {
       id: '/user-management/users/'
       path: '/user-management/users'
@@ -1152,6 +1173,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentsPartnerAgentsProfilesRoute: AgentsPartnerAgentsProfilesRoute,
   AgentsProfilesRoute: AgentsProfilesRoute,
   PartnersProfilesRoute: PartnersProfilesRoute,
   SalesCreateRoute: SalesCreateRoute,
