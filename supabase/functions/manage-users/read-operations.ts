@@ -29,7 +29,7 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
     // Build base query — when no role specified, return both super_admin and acsl_agent (formerly super_admin_agent)
     let query = supabase
       .from("profiles")
-      .select("id, full_name, email, phone, role, status, created_at, last_login", {
+      .select("id, full_name, email, phone, role, status, created_at, last_login, organization_id", {
         count: "exact",
       });
 
