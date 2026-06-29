@@ -23,11 +23,21 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Trash2,
 } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import { createClientComponentClient } from "@/lib/supabaseClient";
 import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";
 import { useToast, ToastContainer } from "@/components/ui/toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { useAuth } from "@/app/contexts/useAuth";
 
 export default function PartnerAgentsProfilesContent() {
   const supabase = createClientComponentClient();
