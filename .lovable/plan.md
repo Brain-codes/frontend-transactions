@@ -1,50 +1,44 @@
+
 ## Problem
 
-Two issues when creating Partner Agent / Agent users:
+Partner Agent users now create successfully, but the Agent Profiles view shows blanks for them:
+- Supervisor → empty (logic only runs for `acsl_agent`)
+- States Assigned → 0
+- Partners Assigned → 0
 
-1. **Creation error** — `manage-users` edge function returns an error. Even when the user is actually created in Auth, the response is treated as failure by the client and a retry produces "email already in use".
-2. **Users invisible in User Management** — newly-created Partner Agent and Agent users never show up in the list view, even on refresh.
+For a `partner_agent` (and `agent`) the source of truth is `profiles.organization_id` → that organization is simultaneously their Partner (supervisor), their assigned state, and their single assigned partner. Today the list endpoint never returns `organization_id`, and the UI never derives these fields for non-ACSL roles.
 
-### Root causes (verified in code)
-
-- `supabase/functions/manage-users/read-operations.ts` `getUsers()` hard-codes the role filter:
-  ```
-  .in("role", ["acsl_agent", "acsl_agent_manager", "super_admin_agent", "super_admin"])
-  ```
-  Partner / Partner Agent / Agent rows are filtered out of every list response, so the table can never show them.
-- The same file restricts the `role` query param to the same legacy set, so the role dropdown can't filter to the new roles either.
-- The edge function changes from the previous plan (allow `partner` / `partner_agent` / `agent`, accept `organization_id`, set role explicitly after create) were written into the repo but **not deployed** to the user's Supabase project. Until deploy, `validate.ts` on the server still rejects `partner_agent` and `agent` with `"Role must be ..."`, which is what the client surfaces as the creation error.
-- After a rejected `partner_agent` POST, the older client fallback (now removed in repo, but still the deployed behavior of any earlier session) sometimes created the auth user as `acsl_agent`, which is why retries hit "email already in use" while the orphan never appears in the (still role-filtered) list.
-
-## Fix
+## Changes
 
 ### 1. `supabase/functions/manage-users/read-operations.ts`
+- Add `organization_id` to the `profiles` select.
+- After loading the page of users, batch-fetch organizations referenced by `partner_agent` / `agent` / `partner` rows in a single `organizations` query (`id, partner_name, state, branch`).
+- Attach to each such row:
+  - `organization_id`
+  - `organization` (`{ id, partner_name, state, branch }`)
+  - `assigned_organizations_count = 1` (when org exists)
+  - `assigned_states_count = 1` (when org.state present)
+- Leave `acsl_agent` / `acsl_agent_manager` behavior unchanged.
+- **User must redeploy the `manage-users` edge function** for these fields to appear.
 
-- Replace the hard-coded role list everywhere in `getUsers()` with the full supported set:
-  `["super_admin", "acsl_agent_manager", "acsl_agent", "partner", "partner_agent", "agent", "super_admin_agent"]`
-  (keep `super_admin_agent` for backward-compat with any legacy rows.)
-- Apply the same allowed list to the `role` query-param branch so the dropdown can filter by Partner / Partner Agent / Agent.
-- Leave the assigned-state / assigned-org count logic alone (it's role-gated and doesn't need to change).
+### 2. `src/app/agents/agents-profiles/AgentsProfilesContent.jsx`
+- In `loadAgents`, carry `organization_id` and `organization` through into row state.
+- Display logic per role:
+  - **Supervisor column** — for `partner_agent` and `agent`, render `organization.partner_name` (plain text, no badge). Falls back to `—` when org missing.
+  - **States Assigned** — for `partner_agent` / `agent`, show `1` when `organization.state` exists, else `0`.
+  - **Partners Assigned** — for `partner_agent` / `agent`, show `1` when `organization_id` exists.
+- Modal openers (`handleViewStates`, `handleViewPartners`) for these roles: skip the SAA endpoints and synthesize the list locally from `agent.organization` (one state row, one partner row) so the modals work without extra calls and without the 404s currently logged.
+- No changes to ACSL Agent / Manager hydration paths.
 
-### 2. Confirm edge-function payload contract is consistent
+### 3. Creation flow sanity (no behavior change unless a bug surfaces)
+- Confirm `UserManagementContent.jsx` Partner Agent path sets `role: 'partner_agent'` AND `organization_id` on the profile after creation (already implemented). No new code unless verification shows it's getting cleared.
 
-- `validate.ts`, `write-operations.ts`, and `route-handler.ts` already accept `partner` / `partner_agent` / `agent` and `organization_id` (from the previous plan). No further code change there — just make sure the deployed function matches the repo.
+## Out of scope
+- Editing the inference logic for ACSL Agents.
+- Any sales/performance recalculation.
+- Schema migrations (uses existing `profiles.organization_id` + `organizations`).
 
-### 3. Client — `src/app/settings/user-management/UserManagementContent.jsx`
-
-- No new logic. Confirm `handleCreateUser` / `handleUpdateUser` send a single POST/PUT to `manage-users` with `{ role, organization_id }` and no fallback paths (already in place from the previous plan).
-- After the list-query fix above, the new users will show up immediately on the next list refresh.
-
-### 4. Deploy + verify
-
-This project uses your own Supabase, not Lovable Cloud, so the updated `manage-users` function must be redeployed by you:
-
-- Supabase Dashboard → Edge Functions → `manage-users` → Deploy (or `supabase functions deploy manage-users` via CLI).
-
-After deploy, verify end-to-end:
-- Create a Partner Agent bound to one partner → success, appears in User Management with role **Partner Agent**.
-- Create an Agent bound to one partner → success, appears with role **Agent**.
-- Filter the User Management table by role = Partner Agent / Agent → rows show.
-- Edit either user → role and partner persist.
-
-No schema migration is required.
+## Verification
+1. Create a new Partner Agent assigned to Partner X (state Y).
+2. Open Agent Profiles → new row shows: Supervisor = "Partner X", States Assigned = 1, Partners Assigned = 1.
+3. Click the badges → modals list "Y" and "Partner X" respectively, no 404s in console.

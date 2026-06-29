@@ -29,7 +29,7 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
     // Build base query — when no role specified, return both super_admin and acsl_agent (formerly super_admin_agent)
     let query = supabase
       .from("profiles")
-      .select("id, full_name, email, phone, role, status, created_at, last_login", {
+      .select("id, full_name, email, phone, role, status, created_at, last_login, organization_id", {
         count: "exact",
       });
 
@@ -77,6 +77,25 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
       throw new Error(`Database error: ${usersError.message}`);
     }
 
+    // Batch-fetch organizations for partner/partner_agent/agent rows
+    const orgIds = Array.from(
+      new Set(
+        (users || [])
+          .filter((u: any) =>
+            ["partner", "partner_agent", "agent"].includes(u.role) && u.organization_id
+          )
+          .map((u: any) => u.organization_id)
+      )
+    );
+    let orgMap = new Map<string, any>();
+    if (orgIds.length > 0) {
+      const { data: orgs } = await supabase
+        .from("organizations")
+        .select("id, partner_name, state, branch")
+        .in("id", orgIds);
+      (orgs || []).forEach((o: any) => orgMap.set(o.id, o));
+    }
+
     // Fetch assigned_organizations_count + assigned_states_count for each SAA user
     const usersWithCounts = await Promise.all(
       (users || []).map(async (user: any) => {
@@ -95,6 +114,15 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
             ...user,
             assigned_organizations_count: orgCount || 0,
             assigned_states_count: stateCount || 0,
+          };
+        }
+        if (["partner", "partner_agent", "agent"].includes(user.role)) {
+          const org = user.organization_id ? orgMap.get(user.organization_id) : null;
+          return {
+            ...user,
+            organization: org || null,
+            assigned_organizations_count: org ? 1 : 0,
+            assigned_states_count: org && org.state ? 1 : 0,
           };
         }
         return { ...user, assigned_organizations_count: 0, assigned_states_count: 0 };
