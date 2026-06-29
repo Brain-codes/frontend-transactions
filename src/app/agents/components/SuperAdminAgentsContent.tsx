@@ -1546,12 +1546,18 @@ export default function SuperAdminAgentsContent() {
 
         // 1. Orgs per agent (direct + via state assignments).
         const orgListResults = await Promise.all(
-          agents.map((a) =>
-            superAdminAgentService
+          agents.map((a) => {
+            // The super-admin-agents edge function only knows about ACSL roles
+            // (acsl_agent / acsl_agent_manager). Calling it for partner /
+            // partner_agent / agent roles 404s ("Agent not found"). Skip them.
+            if (a.role !== "acsl_agent" && a.role !== "acsl_agent_manager") {
+              return Promise.resolve({ id: a.id, orgs: [] as any[] });
+            }
+            return superAdminAgentService
               .getAgentOrganizations(a.id)
               .then((res: any) => ({ id: a.id, orgs: (res?.data || []) as any[] }))
-              .catch(() => ({ id: a.id, orgs: [] as any[] }))
-          )
+              .catch(() => ({ id: a.id, orgs: [] as any[] }));
+          })
         );
         if (cancelled) return;
 
