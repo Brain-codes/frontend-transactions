@@ -70,6 +70,23 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60">
 
+          {/* Sale Details */}
+          <div className="px-3 py-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase mb-1.5">Sale Details</p>
+            <div className="space-y-1 text-sm">
+              <div className="flex items-center gap-2 text-gray-600">
+                <span className="font-medium">Phone:</span>
+                <span>{sale.phone || "N/A"}</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-600">
+                <span className="font-medium">Partner:</span>
+                <span>{sale.organizations?.name || sale.organizations?.partner_name || sale.partner_name || "N/A"}</span>
+              </div>
+            </div>
+          </div>
+
+          <DropdownMenuSeparator />
+
           {/* Payment History */}
           <DropdownMenuItem
             onClick={() => onViewHistory(sale)}
