@@ -106,7 +106,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
       </div>
 
       {/* Table */}
-      <div className="bg-white border-x border-gray-200 overflow-x-auto mt-5">
+      <div className="bg-white border-x border-gray-200 overflow-x-auto mt-1">
         <Table className="text-xs">
           <TableHeader className="bg-[#4a5d0f]">
             <TableRow className="hover:bg-[#4a5d0f]">
