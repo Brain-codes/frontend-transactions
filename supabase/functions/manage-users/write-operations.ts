@@ -65,9 +65,23 @@ export async function createUser(
     // Wait for profile to be created by trigger
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
+    // Explicitly set role + organization_id (trigger may default role).
+    const { error: patchError } = await supabase
+      .from("profiles")
+      .update({
+        full_name: validatedData.full_name,
+        phone: validatedData.phone,
+        role: validatedData.role,
+        organization_id: validatedData.organization_id,
+      })
+      .eq("id", createdUser.user?.id);
+    if (patchError) {
+      console.warn("⚠️ Could not finalize profile fields:", patchError.message);
+    }
+
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("id, full_name, email, role, phone, status")
+      .select("id, full_name, email, role, phone, status, organization_id")
       .eq("id", createdUser.user?.id)
       .single();
 
@@ -91,7 +105,7 @@ export async function createUser(
       role: validatedData.role,
       is_dummy_email: false,
       partner_id: null,
-      organization_id: null,
+      organization_id: validatedData.organization_id,
     });
     if (credError) {
       console.warn("⚠️ Could not save credentials record:", credError.message);
