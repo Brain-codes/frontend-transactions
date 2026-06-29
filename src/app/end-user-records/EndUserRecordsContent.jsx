@@ -414,6 +414,16 @@ const EndUserRecordsContent = () => {
                         <TableCell className="py-2 px-2 whitespace-nowrap">
                           {sale.lga_backup || "N/A"}
                         </TableCell>
+                        <TableCell className="py-2 px-2 whitespace-nowrap text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-3 rounded-none border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4]"
+                            onClick={() => setSelectedSale(sale)}
+                          >
+                            Details
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
