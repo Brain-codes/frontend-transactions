@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import salesAdvancedService from "../services/salesAdvancedAPIService";
 import { lgaAndStates } from "../constants";
+import AdminSalesDetailModal from "../admin/components/sales/AdminSalesDetailModal";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "N/A";
