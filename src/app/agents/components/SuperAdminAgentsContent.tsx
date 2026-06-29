@@ -1996,6 +1996,7 @@ export default function SuperAdminAgentsContent() {
           const roleCounts: Record<string, number> = { ...roleTotals };
           delete roleCounts.partner;
           delete roleCounts.admin;
+          delete roleCounts.super_admin;
           const roleEntries = Object.entries(roleCounts)
             .filter(([, c]) => c > 0)
             .sort((a, b) => b[1] - a[1]);
