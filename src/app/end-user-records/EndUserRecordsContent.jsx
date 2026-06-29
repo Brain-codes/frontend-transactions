@@ -55,6 +55,7 @@ const EndUserRecordsContent = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortOrder, setSortOrder] = useState("desc");
+  const [selectedSale, setSelectedSale] = useState(null);
 
   const stateList = useMemo(() => Object.keys(lgaAndStates).sort(), []);
   const lgaList = useMemo(
