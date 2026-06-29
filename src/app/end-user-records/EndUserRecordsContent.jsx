@@ -378,7 +378,7 @@ const EndUserRecordsContent = () => {
                 <TableBody>
                   {paginatedSales.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                         {searchTerm || hasActiveFilters
                           ? "No records found matching your filters."
                           : "No end user records available."}
