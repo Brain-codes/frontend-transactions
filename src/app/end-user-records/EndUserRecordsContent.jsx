@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import salesAdvancedService from "../services/salesAdvancedAPIService";
 import { lgaAndStates } from "../constants";
+import AdminSalesDetailModal from "../admin/components/sales/AdminSalesDetailModal";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "N/A";
@@ -54,6 +55,7 @@ const EndUserRecordsContent = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortOrder, setSortOrder] = useState("desc");
+  const [selectedSale, setSelectedSale] = useState(null);
 
   const stateList = useMemo(() => Object.keys(lgaAndStates).sort(), []);
   const lgaList = useMemo(
@@ -370,12 +372,13 @@ const EndUserRecordsContent = () => {
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">End User</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">State</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">LGA</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedSales.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                         {searchTerm || hasActiveFilters
                           ? "No records found matching your filters."
                           : "No end user records available."}
@@ -410,6 +413,16 @@ const EndUserRecordsContent = () => {
                         </TableCell>
                         <TableCell className="py-2 px-2 whitespace-nowrap">
                           {sale.lga_backup || "N/A"}
+                        </TableCell>
+                        <TableCell className="py-2 px-2 whitespace-nowrap text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-3 rounded-none border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4]"
+                            onClick={() => setSelectedSale(sale)}
+                          >
+                            Details
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
@@ -480,6 +493,12 @@ const EndUserRecordsContent = () => {
           </>
         )}
       </div>
+      <AdminSalesDetailModal
+        open={!!selectedSale}
+        onClose={() => setSelectedSale(null)}
+        sale={selectedSale}
+        viewFrom="superAdmin"
+      />
     </DashboardLayout>
   );
 };

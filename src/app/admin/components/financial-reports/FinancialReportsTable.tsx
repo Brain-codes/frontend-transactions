@@ -119,13 +119,11 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                   Date <ArrowUpDown className="h-3 w-3" />
                 </div>
               </TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">End User</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Phone #</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">State</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Stove ID</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Payment Model</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Partner</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Expected</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">End User</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">State</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Stove ID</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Payment Model</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Expected</TableHead>
               <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Paid</TableHead>
               <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Balance</TableHead>
               <TableHead className="text-white font-semibold py-2 px-1 text-center whitespace-nowrap"> </TableHead>
@@ -140,16 +138,12 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                 <TableCell className="py-1 px-1 font-medium whitespace-nowrap">{sale.transaction_id || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{formatDate(sale.sales_date || sale.created_at)}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{sale.end_user_name || "N/A"}</TableCell>
-                <TableCell className="py-1 px-1 whitespace-nowrap">{sale.phone || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{sale.state_backup || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{sale.stove_serial_no || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">
                   {sale.is_installment
                     ? (sale.payment_model?.name || "Installment")
                     : "Full Payment"}
-                </TableCell>
-                <TableCell className="py-1 px-1 whitespace-nowrap">
-                  {sale.organizations?.name || sale.organizations?.partner_name || sale.partner_name || "N/A"}
                 </TableCell>
                 <TableCell className="py-1 px-1 text-right font-bold whitespace-nowrap">
                   {formatCurrency(sale.amount ?? 0)}

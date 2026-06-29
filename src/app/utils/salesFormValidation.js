@@ -34,9 +34,14 @@ export const validateSalesForm = (formData) => {
     errors.contactPhone = "Contact phone number is required";
   }
 
-  // End user name validation
+  // End user first name validation
   if (!formData.endUserName.trim()) {
-    errors.endUserName = "End user name is required";
+    errors.endUserName = "End user first name is required";
+  }
+
+  // End user surname validation
+  if (!formData.endUserSurname || !formData.endUserSurname.trim()) {
+    errors.endUserSurname = "End user surname is required";
   }
 
   // State validation
