@@ -31,17 +31,12 @@ import { useToast, ToastContainer } from "@/components/ui/toast";
 export default function PartnerAgentsProfilesContent() {
   const supabase = createClientComponentClient();
   const { toast, toasts, removeToast } = useToast();
-  const { isSuperAdmin } = useAuth();
 
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [cleanupOpen, setCleanupOpen] = useState(false);
-  const [confirmText, setConfirmText] = useState("");
-  const [cleaning, setCleaning] = useState(false);
-  const [cleanupProgress, setCleanupProgress] = useState({ done: 0, total: 0 });
 
   const loadAgents = async () => {
     setLoading(true);
