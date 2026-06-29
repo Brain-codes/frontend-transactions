@@ -372,6 +372,7 @@ const EndUserRecordsContent = () => {
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">End User</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">State</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">LGA</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
