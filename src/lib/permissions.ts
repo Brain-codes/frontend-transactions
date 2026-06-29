@@ -6,7 +6,8 @@ export type AppRole =
   | "partner"
   | "admin"
   | "partner_agent"
-  | "agent";
+  | "agent"
+  | "agent_user";
 
 export type RouteKey =
   | "dashboard"
@@ -34,7 +35,8 @@ export type RouteKey =
   | "payment-models"
   | "profile"
   | "docs"
-  | "sales-monitoring-app";
+  | "sales-monitoring-app"
+  | "end-user-records";
 
 export type FeatureKey =
   | "global-filters"
@@ -69,7 +71,7 @@ interface RolePermissions {
 export const ROLE_ALIASES: Record<string, AppRole> = {
   super_admin_agent: "acsl_agent",
   admin: "partner",
-  agent: "partner_agent",
+  agent_user: "agent",
 };
 
 const ALL_ROUTES: RouteKey[] = [
@@ -99,6 +101,7 @@ const ALL_ROUTES: RouteKey[] = [
   "profile",
   "docs",
   "sales-monitoring-app",
+  "end-user-records",
 ];
 
 const ALL_FEATURES: FeatureKey[] = [
@@ -178,6 +181,10 @@ export const PERMISSIONS: Record<string, RolePermissions> = {
     features: ["manage-agents", "org-sales-view", "create-sale"],
   },
   partner_agent: {
+    routes: ["dashboard", "sales", "sales-create", "stove-manager", "profile", "sales-monitoring-app"],
+    features: ["create-sale"],
+  },
+  agent: {
     routes: ["dashboard", "sales", "sales-create", "stove-manager", "profile", "sales-monitoring-app"],
     features: ["create-sale"],
   },

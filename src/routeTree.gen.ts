@@ -24,6 +24,7 @@ import { Route as PaymentModelsIndexRouteImport } from './routes/payment-models/
 import { Route as PartnersIndexRouteImport } from './routes/partners/index'
 import { Route as MapIndexRouteImport } from './routes/map/index'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
+import { Route as EndUserRecordsIndexRouteImport } from './routes/end-user-records/index'
 import { Route as DownloadIndexRouteImport } from './routes/download/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
@@ -138,6 +139,11 @@ const MapIndexRoute = MapIndexRouteImport.update({
 const LoginIndexRoute = LoginIndexRouteImport.update({
   id: '/login/',
   path: '/login/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EndUserRecordsIndexRoute = EndUserRecordsIndexRouteImport.update({
+  id: '/end-user-records/',
+  path: '/end-user-records/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DownloadIndexRoute = DownloadIndexRouteImport.update({
@@ -362,6 +368,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof DashboardIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/download/': typeof DownloadIndexRoute
+  '/end-user-records/': typeof EndUserRecordsIndexRoute
   '/login/': typeof LoginIndexRoute
   '/map/': typeof MapIndexRoute
   '/partners/': typeof PartnersIndexRoute
@@ -418,6 +425,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardIndexRoute
   '/docs': typeof DocsIndexRoute
   '/download': typeof DownloadIndexRoute
+  '/end-user-records': typeof EndUserRecordsIndexRoute
   '/login': typeof LoginIndexRoute
   '/map': typeof MapIndexRoute
   '/partners': typeof PartnersIndexRoute
@@ -475,6 +483,7 @@ export interface FileRoutesById {
   '/dashboard/': typeof DashboardIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/download/': typeof DownloadIndexRoute
+  '/end-user-records/': typeof EndUserRecordsIndexRoute
   '/login/': typeof LoginIndexRoute
   '/map/': typeof MapIndexRoute
   '/partners/': typeof PartnersIndexRoute
@@ -533,6 +542,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/docs/'
     | '/download/'
+    | '/end-user-records/'
     | '/login/'
     | '/map/'
     | '/partners/'
@@ -589,6 +599,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/docs'
     | '/download'
+    | '/end-user-records'
     | '/login'
     | '/map'
     | '/partners'
@@ -645,6 +656,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/docs/'
     | '/download/'
+    | '/end-user-records/'
     | '/login/'
     | '/map/'
     | '/partners/'
@@ -702,6 +714,7 @@ export interface RootRouteChildren {
   DashboardIndexRoute: typeof DashboardIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
   DownloadIndexRoute: typeof DownloadIndexRoute
+  EndUserRecordsIndexRoute: typeof EndUserRecordsIndexRoute
   LoginIndexRoute: typeof LoginIndexRoute
   MapIndexRoute: typeof MapIndexRoute
   PartnersIndexRoute: typeof PartnersIndexRoute
@@ -852,6 +865,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login/'
       preLoaderRoute: typeof LoginIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/end-user-records/': {
+      id: '/end-user-records/'
+      path: '/end-user-records'
+      fullPath: '/end-user-records/'
+      preLoaderRoute: typeof EndUserRecordsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/download/': {
@@ -1142,6 +1162,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardIndexRoute: DashboardIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
   DownloadIndexRoute: DownloadIndexRoute,
+  EndUserRecordsIndexRoute: EndUserRecordsIndexRoute,
   LoginIndexRoute: LoginIndexRoute,
   MapIndexRoute: MapIndexRoute,
   PartnersIndexRoute: PartnersIndexRoute,

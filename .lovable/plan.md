@@ -1,40 +1,55 @@
 ## Problem
 
-`CreateSalesForm` (used by `/sales/create`) decides how to source the organization based on `userRole`:
+When creating an **Agent** user, two backend validation errors fire and the user ends up saved as **ACSL Agent**:
 
-- **SAA roles** (`super_admin`, `acsl_agent`, `acsl_agent_manager`, `super_admin_agent`): show a partner picker, store the chosen org in `sessionStorage` (`saa_selected_org_id`).
-- **All other roles** (partner, partner_agent, anything new): read `organization_id` from the cached profile via `profileService.getOrganizationId()`.
+1. `POST /manage-users` with `role: "agent"` → 400 *"Role must be 'acsl_agent', 'acsl_agent_manager', or 'super_admin'"*.
+2. The fallback path then creates the user as `acsl_agent`, and the subsequent `PUT /manage-users/{id}` to promote it to `agent` fails with *"Role must be ..."* and/or *"Phone number is required"*.
+3. The direct `profiles` update fallback exists but is silently failing (likely RLS), so the role stays as `acsl_agent`.
 
-When that profile lookup returns nothing (stale cache, profile not yet fetched, user without an org assigned, or any role not in the SAA list), the form aborts with **"Organization ID not found. Please log in again."** That's the error currently blocking some users.
-
-The user wants one single sales form that works for every role, with no role-based dead ends.
+The `manage-users` edge function hard-codes the allowed roles and refuses `agent` (and also `partner_agent`, `partner`). Since the user wants Agent creation to "just work" without backend restrictions, we'll bypass the edge function for the role assignment step and update the `profiles` table directly, with an RLS policy that explicitly lets super_admins do it.
 
 ## Fix
 
-Make the form universally functional by removing the hard role gate and falling back to the partner picker whenever an org isn't already known.
+### 1. Client flow — `src/app/settings/user-management/UserManagementContent.jsx`
 
-### Changes to `src/app/admin/components/sales/CreateSalesForm.jsx`
+For any organization-bound role the edge function rejects (`agent`, `partner_agent`):
 
-1. Replace the static `isSuperAdmin` flag with a dynamic `needsPartnerSelection` state:
-   - `true` whenever `profileService.getOrganizationId()` returns nothing AND no `saa_selected_org_id` is in sessionStorage.
-   - This covers SAA roles (no personal org) and any other user whose profile org is missing.
-2. Before computing it, await `profileService.fetchAndStoreProfile()` once on mount so a fresh login or cache miss is resolved before we decide.
-3. Drive partner search visibility, stove fetching, and the "Organization ID not found" guard off `needsPartnerSelection` instead of `isSuperAdmin`. Users with a valid profile org keep the current auto-flow; users without one (regardless of role) get the partner picker.
-4. Remove the `setError("Organization ID not found. Please log in again.")` line entirely — once the picker is the fallback, that dead end no longer exists. Show a small inline hint ("Select a partner to load available stoves") instead.
-5. Keep `userRole`/`userId` only to choose the partner data source:
-   - `super_admin` → `manage-organizations` (all partners).
-   - SAA agent roles → `superAdminAgentService.getAgentOrganizations(userId)` (their assigned partners).
-   - Any other role that ends up needing the picker → same `manage-organizations` listing, filtered by what RLS allows them to see. No new permission rules.
-6. On submit, source `organizationId` from (in order): selected partner → `saa_selected_org_id` → `profileService.getOrganizationId()`. Same precedence everywhere — no role branching.
+- Create the auth user via `POST /manage-users` with `role: "acsl_agent"` (the only role the function accepts that doesn't require an org).
+- Skip the `PUT /manage-users/{id}` promotion (it's the source of both 400 errors).
+- Directly update `public.profiles` via the Supabase client:
+  ```
+  supabase.from('profiles')
+    .update({ role: 'agent', organization_id: partnerId, phone, full_name })
+    .eq('id', newUserId)
+  ```
+- Clear any ACSL-style state/organization assignment rows so the Agent isn't accidentally linked to managers.
+- Remove the now-obsolete `createAgentViaManageAgents` attempt and the multi-step PUT fallback for these roles (they only produce noisy errors).
+- For `handleUpdateUser`, when the target role is `agent`/`partner_agent`, do the same: send a `phone` (default to empty string instead of `null` to avoid the "Phone number is required" error when the edge function is used for other fields) and update `role` + `organization_id` directly against `profiles`.
 
-### Out of scope
+### 2. Supabase migration — allow super_admin to maintain profile roles
 
-- No changes to routing, permissions, RLS, or the create-sale API.
-- No visual redesign of the form; only the gating logic and the partner-picker visibility change.
+Add a migration that ensures super_admins can update any profile's `role`, `organization_id`, `full_name`, and `phone`:
 
-## Verification
+```sql
+DROP POLICY IF EXISTS "Super admins can update any profile" ON public.profiles;
+CREATE POLICY "Super admins can update any profile"
+ON public.profiles
+FOR UPDATE
+TO authenticated
+USING (public.has_role(auth.uid(), 'super_admin'))
+WITH CHECK (public.has_role(auth.uid(), 'super_admin'));
+```
 
-- Log in as a partner with a valid org → form loads stoves automatically (unchanged).
-- Log in as `super_admin` → partner picker appears, then stoves load (unchanged).
-- Log in as any user whose profile is missing `organization_id` → partner picker now appears instead of the blocking error.
-- Confirm no console errors and the create flow completes for each case.
+(Keeps existing policies intact; adds super-admin override so direct `profiles` updates from the client succeed.)
+
+### 3. Validation tightening
+
+In `validateForm`, keep the existing "select exactly one partner" check for `agent`/`partner_agent`. After fix verification: create a new Agent end-to-end, confirm:
+- No 400 toast appears.
+- Row in User Management shows role badge "Agent".
+- Agent appears under the chosen partner in Agents Profiles.
+
+## Out of scope
+
+- No changes to the `manage-users` edge function itself (not editable from this codebase).
+- No changes to other roles' creation flows.

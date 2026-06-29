@@ -1,6 +1,6 @@
 
 import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
@@ -76,6 +76,18 @@ import AssignOrganizationsModal from "../../super-admin-agents/components/Assign
 import organizationsService from "../../services/organizationsService";
 import superAdminAgentService from "../../services/superAdminAgentService";
 
+
+// Nigerian states (36 + FCT)
+const NIGERIAN_STATES = [
+  "Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno",
+  "Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT","Gombe","Imo",
+  "Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa",
+  "Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba",
+  "Yobe","Zamfara",
+];
+
+
+
 // Relative time formatter (same pattern as SalesAgentTable)
 const formatRelativeTime = (dateString) => {
   if (!dateString) return "Never";
@@ -112,7 +124,8 @@ const getRoleLabel = (role) => {
   if (role === "acsl_agent" || role === "super_admin_agent") return "ACSL Agent";
   if (role === "acsl_agent_manager") return "ACSL Agent Manager";
   if (role === "partner" || role === "admin") return "Partner";
-  if (role === "partner_agent" || role === "agent") return "Partner Agent";
+  if (role === "partner_agent") return "Partner Agent";
+  if (role === "agent" || role === "agent_user") return "Agent";
   return role;
 };
 
@@ -129,8 +142,10 @@ const getRoleBadgeClasses = (role) => {
     case "admin":
       return "bg-amber-100 text-amber-800 border border-amber-200";
     case "partner_agent":
-    case "agent":
       return "bg-emerald-100 text-emerald-800 border border-emerald-200";
+    case "agent":
+    case "agent_user":
+      return "bg-teal-100 text-teal-800 border border-teal-200";
     default:
       return "bg-gray-100 text-gray-800 border border-gray-200";
   }
@@ -158,19 +173,21 @@ const UserManagementPage = () => {
 
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [formMode, setFormMode] = useState("create"); // "create" | "edit"
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAssignOrgsModal, setShowAssignOrgsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedUserForOrgs, setSelectedUserForOrgs] = useState(null);
   const [actionLoading, setActionLoading] = useState(null); // stores userId or 'create'/'delete' etc.
+  const [editAssignmentsLoading, setEditAssignmentsLoading] = useState(false);
+  const hydratingRef = useRef(false);
 
   // Form state
   const [userForm, setUserForm] = useState({
     full_name: "",
     email: "",
     phone: "",
-    role: "acsl_agent",
+    role: undefined,
     password: "",
     auto_generate_password: true,
   });
@@ -181,7 +198,16 @@ const UserManagementPage = () => {
   const [allOrgs, setAllOrgs] = useState([]);
   const [orgsLoading, setOrgsLoading] = useState(false);
   const [partnerSearch, setPartnerSearch] = useState("");
+  const [stateSearch, setStateSearch] = useState("");
   const [selectedPartnerIds, setSelectedPartnerIds] = useState(new Set());
+  const [selectedStates, setSelectedStates] = useState(new Set());
+
+  // ACSL Agent cascade: managers in selected states
+  const [acslManagers, setAcslManagers] = useState([]); // [{id, full_name, email, states:Set, orgIds:Set}]
+  const [managersLoading, setManagersLoading] = useState(false);
+  const [selectedManagerIds, setSelectedManagerIds] = useState(new Set());
+  const [managerSearch, setManagerSearch] = useState("");
+
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -286,51 +312,475 @@ const UserManagementPage = () => {
   const startRecord = users.length > 0 ? (pagination.page - 1) * pagination.page_size + 1 : 0;
   const endRecord = Math.min(pagination.page * pagination.page_size, pagination.total_count);
 
+  const generateTemporaryPassword = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+    const required = ["A", "a", "7", "!"];
+    const randomValues = new Uint32Array(10);
+    crypto.getRandomValues(randomValues);
+    const rest = Array.from(randomValues, (n) => chars[n % chars.length]);
+    return [...required, ...rest].sort(() => Math.random() - 0.5).join("");
+  };
+
+  const extractCreatedUserId = (result) =>
+    result?.user?.id ||
+    result?.data?.id ||
+    result?.data?.user?.id ||
+    result?.data?.agent?.id ||
+    result?.agent?.id ||
+    result?.id ||
+    null;
+
+  const updateUserViaManageUsers = async (userId, body, accessToken) => {
+    const res = await fetch(`${supabaseFunctionsUrl}/manage-users/${userId}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(result?.error || result?.message || "Failed to update user");
+    return result;
+  };
+
+  const readUserProfile = async (userId) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, role, organization_id")
+      .eq("id", userId)
+      .maybeSingle();
+    return data || null;
+  };
+
+  const profileMatches = (profile, body) => {
+    if (!profile) return false;
+    const expectedRole = getStoredAgentRole(body.role);
+    const roleOk = !expectedRole || profile.role === expectedRole;
+    const orgOk = body.organization_id === undefined || profile.organization_id === body.organization_id;
+    return roleOk && orgOk;
+  };
+
+  const enforceFinalUserProfile = async (userId, body, accessToken) => {
+    let lastError = null;
+
+    // 1) Preferred path: server-side edge function bypasses RLS.
+    try {
+      await updateUserViaManageUsers(userId, body, accessToken);
+    } catch (err) {
+      lastError = err;
+    }
+
+    let profile = await readUserProfile(userId);
+    if (profileMatches(profile, body)) return profile;
+
+    // 2) Fallback path: try direct profile update for projects whose RLS allows
+    // super admin profile maintenance. This fixes accepted-but-defaulted roles.
+    try {
+      const updateBody = {
+        full_name: body.full_name,
+        phone: body.phone,
+        role: getStoredAgentRole(body.role),
+      };
+      if (body.organization_id !== undefined) updateBody.organization_id = body.organization_id;
+      await supabase.from("profiles").update(updateBody).eq("id", userId);
+    } catch (err) {
+      lastError = err;
+    }
+
+    profile = await readUserProfile(userId);
+    if (profileMatches(profile, body)) return profile;
+
+    // 3) Agent-specific legacy endpoint fallback.
+    if (getStoredAgentRole(body.role) === "agent") {
+      try {
+        const res = await fetch(`${supabaseFunctionsUrl}/manage-agents/${userId}`, {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            full_name: body.full_name,
+            phone: body.phone,
+            role: "agent",
+            organization_id: body.organization_id,
+          }),
+        });
+        if (!res.ok) {
+          const result = await res.json().catch(() => ({}));
+          throw new Error(result?.error || result?.message || "Failed to update Agent role");
+        }
+      } catch (err) {
+        lastError = err;
+      }
+      profile = await readUserProfile(userId);
+      if (profileMatches(profile, body)) return profile;
+    }
+
+    throw new Error(
+      lastError?.message ||
+      `User was created, but the final ${getRoleLabel(body.role)} role could not be saved. Please check backend role restrictions.`
+    );
+  };
+
+  const createAgentViaManageAgents = async (partnerId, accessToken) => {
+    const password = userForm.auto_generate_password ? generateTemporaryPassword() : userForm.password;
+    const res = await fetch(`${supabaseFunctionsUrl}/manage-agents`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        full_name: userForm.full_name.trim(),
+        email: userForm.email.trim().toLowerCase(),
+        phone: userForm.phone.trim() || null,
+        password,
+        role: "agent",
+      }),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || result?.success === false) {
+      throw new Error(result?.error || result?.message || "Failed to create Agent user");
+    }
+    const newUserId = extractCreatedUserId(result);
+    if (!newUserId) throw new Error("Agent created but ID could not be resolved");
+    await enforceFinalUserProfile(newUserId, {
+      full_name: userForm.full_name.trim(),
+      phone: userForm.phone.trim() || null,
+      role: "agent",
+      organization_id: partnerId,
+    }, accessToken);
+    return { result, newUserId, generatedPassword: userForm.auto_generate_password ? password : null };
+  };
+
   // ── Form helpers ───────────────────────────────────────────────────────────
 
   const resetForm = () => {
-    setUserForm({ full_name: "", email: "", phone: "", role: "acsl_agent", password: "", auto_generate_password: true });
+    setUserForm({ full_name: "", email: "", phone: "", role: undefined, password: "", auto_generate_password: true });
     setFormErrors({});
     setShowPassword(false);
     setPartnerSearch("");
     setSelectedPartnerIds(new Set());
+    setSelectedStates(new Set());
+    setSelectedManagerIds(new Set());
+    setManagerSearch("");
+    setEditAssignmentsLoading(false);
+    setFormMode("create");
+    setSelectedUser(null);
   };
 
-  const needsPartnerAssignment = (role) => role === "acsl_agent" || role === "partner_agent";
+  // Role classifiers
+  // - partner_agent: flat partner-only picker (legacy)
+  // - acsl_agent: cascade — States → Managers in those states → Partners of those managers
+  // - acsl_agent_manager: States → Partners in those states (auto-checked)
+  const isStandaloneAgentRole = (role) => role === "agent" || role === "agent_user";
+  const isOrganizationBoundAgentRole = (role) => role === "partner_agent" || isStandaloneAgentRole(role);
+  const needsPartnerAssignment = (role) => role === "partner_agent" || role === "partner" || isStandaloneAgentRole(role);
+  const needsAcslAgentCascade = (role) => role === "acsl_agent";
+  const needsStateAndPartnerAssignment = (role) => role === "acsl_agent_manager";
+  const getStoredAgentRole = (role) => (role === "agent_user" ? "agent" : role);
+
+  const normalizeStateNames = (list) => Array.isArray(list)
+    ? list.map((s) => (typeof s === "string" ? s : s?.state)).filter(Boolean)
+    : [];
+
+  const normalizeOrgIds = (list) => Array.isArray(list)
+    ? list.map((o) => o?.id || o?.organization_id).filter(Boolean)
+    : [];
+
+  const fetchDirectAgentAssignmentRows = async (agentId) => {
+    const columns = ["agent_id", "super_admin_agent_id", "user_id"];
+    for (const column of columns) {
+      const { data, error } = await supabase
+        .from("super_admin_agent_organizations")
+        .select("organization_id, assigned_by")
+        .eq(column, agentId);
+      if (!error) return Array.isArray(data) ? data : [];
+    }
+    return null;
+  };
+
+  const persistAgentSupervisorMarker = async (agentId, partnerIds, managerIds) => {
+    if (!agentId || partnerIds.length === 0 || managerIds.length === 0) return;
+    try {
+      const selectedManagers = acslManagers.filter((m) => managerIds.includes(m.id));
+      const grouped = new Map();
+
+      partnerIds.forEach((partnerId) => {
+        const manager = selectedManagers.find((m) => m.orgIds.has(partnerId)) || selectedManagers[0];
+        if (!manager) return;
+        if (!grouped.has(manager.id)) grouped.set(manager.id, []);
+        grouped.get(manager.id).push(partnerId);
+      });
+
+      await Promise.all(
+        Array.from(grouped.entries()).map(([managerId, ids]) =>
+          (async () => {
+            const columns = ["agent_id", "super_admin_agent_id", "user_id"];
+            for (const column of columns) {
+              const { error } = await supabase
+                .from("super_admin_agent_organizations")
+                .update({ assigned_by: managerId })
+                .eq(column, agentId)
+                .in("organization_id", ids);
+              if (!error) return;
+            }
+          })()
+        )
+      );
+    } catch {
+      // Non-fatal. Some deployments keep assigned_by write-protected; the UI
+      // still falls back to exact partner-coverage inference.
+    }
+  };
+
+  const inferManagerIdsForAgent = (orgIds, stateNames, managers, assignmentRows = []) => {
+    const orgIdSet = new Set(orgIds);
+    const stateSet = new Set(stateNames);
+    if (orgIdSet.size === 0 || managers.length === 0) return [];
+
+    const assignedByIds = new Set(
+      assignmentRows
+        .map((row) => row?.assigned_by)
+        .filter((id) => managers.some((m) => m.id === id))
+    );
+    if (assignedByIds.size > 0) return Array.from(assignedByIds);
+
+    const coversAllAgentPartners = (manager) => {
+      if (manager.orgIds.size === 0) return false;
+      for (const id of orgIdSet) if (!manager.orgIds.has(id)) return false;
+      return true;
+    };
+
+    const candidates = managers
+      .filter((manager) => {
+        if (!coversAllAgentPartners(manager)) return false;
+        if (stateSet.size === 0) return true;
+        return Array.from(stateSet).some((state) => manager.states.has(state));
+      })
+      .map((manager) => ({
+        ...manager,
+        extraPartners: Math.max(0, manager.orgIds.size - orgIdSet.size),
+        stateOverlap: Array.from(stateSet).filter((state) => manager.states.has(state)).length,
+      }))
+      .sort((a, b) => a.extraPartners - b.extraPartners || b.stateOverlap - a.stateOverlap || a.full_name.localeCompare(b.full_name));
+
+    if (candidates.length > 0) return [candidates[0].id];
+
+    const overlapping = managers
+      .filter((manager) => Array.from(orgIdSet).some((id) => manager.orgIds.has(id)))
+      .map((manager) => ({
+        ...manager,
+        overlap: Array.from(orgIdSet).filter((id) => manager.orgIds.has(id)).length,
+        extraPartners: Math.max(0, manager.orgIds.size - orgIdSet.size),
+      }))
+      .sort((a, b) => b.overlap - a.overlap || a.extraPartners - b.extraPartners || a.full_name.localeCompare(b.full_name));
+
+    return overlapping.length > 0 ? [overlapping[0].id] : [];
+  };
+
+  const ensureOrganizationsLoaded = async () => {
+    if (allOrgs.length > 0) return allOrgs;
+    setOrgsLoading(true);
+    try {
+      const result = await organizationsService.getAllOrganizations();
+      const orgs = result.data || [];
+      setAllOrgs(orgs);
+      return orgs;
+    } catch {
+      return [];
+    } finally {
+      setOrgsLoading(false);
+    }
+  };
+
+  // Load all ACSL Agent Managers + their assigned states & orgs (for cascade)
+  const loadAcslManagers = async () => {
+    setManagersLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const qs = new URLSearchParams({ page: "1", limit: "500", role: "acsl_agent_manager" });
+      const res = await fetch(`${supabaseFunctionsUrl}/manage-users?${qs}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to load managers");
+      const base = (json.data || []).filter((u) => u.role === "acsl_agent_manager");
+      const enriched = await Promise.all(
+        base.map(async (u) => {
+          const [statesRes, orgsRes] = await Promise.allSettled([
+            superAdminAgentService.getAgentStates(u.id),
+            superAdminAgentService.getAgentOrganizations(u.id),
+          ]);
+          const statesList = statesRes.status === "fulfilled"
+            ? (statesRes.value?.data || statesRes.value?.states || statesRes.value || [])
+            : [];
+          const orgsList = orgsRes.status === "fulfilled"
+            ? (orgsRes.value?.data || orgsRes.value?.organizations || orgsRes.value || [])
+            : [];
+          const stateNames = Array.isArray(statesList)
+            ? statesList.map((s) => (typeof s === "string" ? s : s?.state)).filter(Boolean)
+            : [];
+          const orgIds = Array.isArray(orgsList)
+            ? orgsList.map((o) => o?.id || o?.organization_id).filter(Boolean)
+            : [];
+          return {
+            id: u.id,
+            full_name: u.full_name || u.email,
+            email: u.email,
+            states: new Set(stateNames),
+            orgIds: new Set(orgIds),
+          };
+        })
+      );
+      setAcslManagers(enriched);
+      return enriched;
+    } catch {
+      setAcslManagers([]);
+      return [];
+    } finally {
+      setManagersLoading(false);
+    }
+  };
 
   const handleRoleChange = async (role) => {
     setUserForm((prev) => ({ ...prev, role }));
     setSelectedPartnerIds(new Set());
+    setSelectedStates(new Set());
+    setSelectedManagerIds(new Set());
     setPartnerSearch("");
-    if (needsPartnerAssignment(role) && allOrgs.length === 0) {
-      setOrgsLoading(true);
-      try {
-        const result = await organizationsService.getAllOrganizations();
-        setAllOrgs(result.data || []);
-      } catch {
-        // silently fail — user can still proceed without partner assignment
-      } finally {
-        setOrgsLoading(false);
-      }
+    setManagerSearch("");
+    const shouldLoadOrgs =
+      needsPartnerAssignment(role) ||
+      needsStateAndPartnerAssignment(role) ||
+      needsAcslAgentCascade(role);
+    if (shouldLoadOrgs) {
+      await ensureOrganizationsLoaded();
+    }
+    if (needsAcslAgentCascade(role) && acslManagers.length === 0) {
+      await loadAcslManagers();
     }
   };
+
+  // Auto-check all partners in selected states when states change (Agent Manager flow)
+  useEffect(() => {
+    if (userForm.role !== "acsl_agent_manager") return;
+    if (hydratingRef.current) return;
+    const ids = new Set(
+      allOrgs
+        .filter((o) => o.state && selectedStates.has(o.state))
+        .map((o) => o.id)
+    );
+    setSelectedPartnerIds(ids);
+  }, [selectedStates, allOrgs, userForm.role]);
+
+  // When ACSL Agent cascade selections change, reconcile selected partners to
+  // the union of partners belonging to the currently-selected managers AND in
+  // the currently-selected states. Removing a manager/state drops their partners.
+  useEffect(() => {
+    if (userForm.role !== "acsl_agent") return;
+    if (hydratingRef.current) return;
+    const allowedOrgIds = new Set();
+    acslManagers
+      .filter((m) => selectedManagerIds.has(m.id))
+      .forEach((m) => m.orgIds.forEach((id) => allowedOrgIds.add(id)));
+    // Limit to partners that are also in selected states (if any)
+    const inStateOrgIds = new Set(
+      allOrgs
+        .filter((o) => allowedOrgIds.has(o.id) && (selectedStates.size === 0 || (o.state && selectedStates.has(o.state))))
+        .map((o) => o.id)
+    );
+    // Keep saved/manual selections that are still valid. Do not auto-add every
+    // partner under the selected manager(s), otherwise editing an ACSL Agent
+    // expands their assignment beyond the partners explicitly selected.
+    setSelectedPartnerIds((prev) => new Set(Array.from(prev).filter((id) => inStateOrgIds.has(id))));
+  }, [selectedManagerIds, selectedStates, acslManagers, allOrgs, userForm.role]);
+
+
 
   const validateForm = () => {
     const errors = {};
     if (!userForm.full_name.trim()) errors.full_name = "Full name is required";
     if (!userForm.email.trim()) errors.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email)) errors.email = "Invalid email format";
+    if (!userForm.role) errors.role = "User Group is required";
+    if (isOrganizationBoundAgentRole(userForm.role) && selectedPartnerIds.size !== 1) errors.partner = "Select exactly one Partner for this agent";
     if (!userForm.auto_generate_password && !userForm.password) errors.password = "Password is required";
     else if (!userForm.auto_generate_password && userForm.password.length < 8) errors.password = "Password must be at least 8 characters";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const openEditModal = (user) => {
+  const openEditView = async (user) => {
+    // Reset everything first
+    resetForm();
+    hydratingRef.current = true;
+    setEditAssignmentsLoading(true);
     setSelectedUser(user);
-    setUserForm({ full_name: user.full_name || "", email: user.email || "", phone: user.phone || "", role: user.role || "acsl_agent", password: "", auto_generate_password: true });
+    setFormMode("edit");
+    setUserForm({
+      full_name: user.full_name || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      role: user.role || undefined,
+      password: "",
+      auto_generate_password: true,
+    });
     setFormErrors({});
-    setShowEditModal(true);
+    setShowCreateModal(true);
+
+    // Load supporting data based on role. Start the slower lookups immediately,
+    // but hydrate saved states/partners first so the edit form does not sit
+    // blank below the User Group field while manager metadata is still loading.
+    const role = user.role;
+    const needsOrgs =
+      needsPartnerAssignment(role) ||
+      needsStateAndPartnerAssignment(role) ||
+      needsAcslAgentCascade(role);
+
+    try {
+      const orgsLoadPromise = needsOrgs ? ensureOrganizationsLoaded() : Promise.resolve(allOrgs);
+      const managersLoadPromise = needsAcslAgentCascade(role)
+        ? (acslManagers.length > 0 ? Promise.resolve(acslManagers) : loadAcslManagers())
+        : Promise.resolve(acslManagers);
+
+      // Hydrate states & partners from existing assignments
+      const [statesRes, orgsRes, assignmentRowsRes] = await Promise.allSettled([
+        superAdminAgentService.getAgentStates(user.id),
+        superAdminAgentService.getAgentOrganizations(user.id),
+        needsAcslAgentCascade(role) ? fetchDirectAgentAssignmentRows(user.id) : Promise.resolve([]),
+      ]);
+      const statesList = statesRes.status === "fulfilled"
+        ? (statesRes.value?.data || statesRes.value?.states || statesRes.value || [])
+        : [];
+      const orgsList = orgsRes.status === "fulfilled"
+        ? (orgsRes.value?.data || orgsRes.value?.organizations || orgsRes.value || [])
+        : [];
+      const stateNames = normalizeStateNames(statesList);
+      const assignmentRows = assignmentRowsRes.status === "fulfilled" && Array.isArray(assignmentRowsRes.value)
+        ? assignmentRowsRes.value
+        : [];
+      const directOrgIds = normalizeOrgIds(assignmentRows);
+      let orgIds = directOrgIds.length > 0 ? directOrgIds : normalizeOrgIds(orgsList);
+
+      // Partner Agents are bound to a single partner via profile.organization_id;
+      // fall back to that value when no relational rows exist.
+      if (isOrganizationBoundAgentRole(role) && orgIds.length === 0 && user.organization_id) {
+        orgIds = [user.organization_id];
+      }
+
+      setSelectedStates(new Set(stateNames));
+      setSelectedPartnerIds(new Set(orgIds));
+
+      // For acsl_agent: retain the original manager selection as tightly as
+      // possible. Prefer the assignment creator when available, otherwise use
+      // the single best manager that covers the agent's saved partners.
+      if (needsAcslAgentCascade(role)) {
+        const managersSnapshot = await managersLoadPromise;
+        const managerIds = inferManagerIdsForAgent(orgIds, stateNames, managersSnapshot, assignmentRows);
+        setSelectedManagerIds(new Set(managerIds));
+        await orgsLoadPromise;
+      } else {
+        await orgsLoadPromise;
+      }
+    } finally {
+      setEditAssignmentsLoading(false);
+      // Release the guard after React has flushed the above state updates
+      setTimeout(() => { hydratingRef.current = false; }, 50);
+    }
   };
 
   // ── CRUD handlers ──────────────────────────────────────────────────────────
@@ -341,35 +791,119 @@ const UserManagementPage = () => {
     setActionLoading("create");
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const payload = {
+      const targetRole = getStoredAgentRole(userForm.role);
+      const needsOrgBinding = isOrganizationBoundAgentRole(userForm.role);
+      const partnerId = needsOrgBinding ? (Array.from(selectedPartnerIds)[0] || null) : null;
+      if (needsOrgBinding && !partnerId) throw new Error("A partner must be selected for this agent");
+
+      const basePayload = {
         full_name: userForm.full_name.trim(),
         email: userForm.email.trim(),
         phone: userForm.phone.trim() || null,
-        role: userForm.role,
         auto_generate_password: userForm.auto_generate_password,
       };
-      if (!userForm.auto_generate_password) payload.password = userForm.password;
+      if (!userForm.auto_generate_password) basePayload.password = userForm.password;
 
-      const res = await fetch(
-        `${supabaseFunctionsUrl}/manage-users`,
-        { method: "POST", headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) },
-      );
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Failed to create user");
+      const postUser = async (role, extra = {}) => {
+        const res = await fetch(
+          `${supabaseFunctionsUrl}/manage-users`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ ...basePayload, role, ...extra }),
+          },
+        );
+        const result = await res.json().catch(() => ({}));
+        return { ok: res.ok, status: res.status, result };
+      };
 
-      const newUserId = result.user?.id || result.data?.id;
-      if (newUserId && selectedPartnerIds.size > 0) {
-        try {
-          await superAdminAgentService.setAgentOrganizations(newUserId, Array.from(selectedPartnerIds));
-        } catch {
-          // non-fatal — user was created, org assignment failed
+      let result;
+      let newUserId;
+      let generatedPassword;
+
+      if (needsOrgBinding) {
+        // The edge function only accepts acsl_agent / acsl_agent_manager / super_admin
+        // and rejects partner_agent / agent. Create the auth user as acsl_agent,
+        // then bypass the edge function and update profiles directly with the
+        // real target role + organization_id. This avoids the "Role must be ..."
+        // and "Phone number is required" 400s and keeps the role as selected.
+        let attempt = await postUser("acsl_agent");
+        if (!attempt.ok) {
+          const errMsg = String(attempt.result?.error || attempt.result?.message || "").toLowerCase();
+          const emailAlreadyExists = errMsg.includes("email") && (errMsg.includes("use") || errMsg.includes("exist"));
+          if (!emailAlreadyExists) {
+            throw new Error(attempt.result?.error || attempt.result?.message || "Failed to create user");
+          }
+          const { data: existing } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("email", userForm.email.trim().toLowerCase())
+            .maybeSingle();
+          newUserId = existing?.id || null;
+        } else {
+          result = attempt.result;
+          newUserId = extractCreatedUserId(result);
+          generatedPassword = result.generated_password;
+        }
+
+        if (!newUserId) {
+          const { data: lookup } = await supabase
+            .from("profiles").select("id")
+            .eq("email", userForm.email.trim().toLowerCase()).maybeSingle();
+          newUserId = lookup?.id || null;
+        }
+        if (!newUserId) throw new Error("User created but ID could not be resolved");
+
+        // Direct profile patch — assigns the real role + binds partner.
+        const { error: profileErr } = await supabase
+          .from("profiles")
+          .update({
+            full_name: userForm.full_name.trim(),
+            phone: userForm.phone.trim() || null,
+            role: targetRole,
+            organization_id: partnerId,
+          })
+          .eq("id", newUserId);
+        if (profileErr) {
+          throw new Error(
+            `User created but role could not be set to ${getRoleLabel(userForm.role)}: ${profileErr.message}`
+          );
+        }
+
+        // Keep organization-bound agents clean: they should only be linked by
+        // profiles.organization_id, not ACSL manager/state assignment tables.
+        try { await superAdminAgentService.setAgentStates(newUserId, []); } catch { /* non-fatal */ }
+        try { await superAdminAgentService.setAgentOrganizations(newUserId, []); } catch { /* non-fatal */ }
+      } else {
+        const attempt = await postUser(userForm.role);
+        if (!attempt.ok) throw new Error(attempt.result?.error || "Failed to create user");
+        result = attempt.result;
+        newUserId = extractCreatedUserId(result);
+        generatedPassword = result.generated_password;
+
+        if (
+          newUserId &&
+          (userForm.role === "acsl_agent_manager" || userForm.role === "acsl_agent") &&
+          selectedStates.size > 0
+        ) {
+          try {
+            await superAdminAgentService.setAgentStates(newUserId, Array.from(selectedStates));
+          } catch { /* non-fatal */ }
+        }
+        if (newUserId && selectedPartnerIds.size > 0) {
+          try {
+            await superAdminAgentService.setAgentOrganizations(newUserId, Array.from(selectedPartnerIds));
+            if (userForm.role === "acsl_agent") {
+              await persistAgentSupervisorMarker(newUserId, Array.from(selectedPartnerIds), Array.from(selectedManagerIds));
+            }
+          } catch { /* non-fatal */ }
         }
       }
 
       toast({
         variant: "success",
         title: "User created successfully",
-        description: result.generated_password ? `Password: ${result.generated_password}` : "User can now log in",
+        description: generatedPassword ? `Password: ${generatedPassword}` : "User can now log in",
       });
       setShowCreateModal(false);
       resetForm();
@@ -381,22 +915,75 @@ const UserManagementPage = () => {
     }
   };
 
-  const handleEditUser = async (e) => {
+
+  const handleUpdateUser = async (e) => {
     e.preventDefault();
-    if (!userForm.full_name.trim()) { setFormErrors({ full_name: "Full name is required" }); return; }
-    setActionLoading("edit");
+    if (!validateForm()) return;
+    if (!selectedUser) return;
+    setActionLoading("create"); // reuse 'create' key so submit button spinner works in shared form
     try {
+      const role = getStoredAgentRole(userForm.role);
+
+      const isOrgBound = isOrganizationBoundAgentRole(role);
+      const partnerId = isOrgBound ? (Array.from(selectedPartnerIds)[0] || null) : null;
+      if (isOrgBound && !partnerId) throw new Error("A partner must be selected for this agent");
+
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(
-        `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
-        { method: "PUT", headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" }, body: JSON.stringify({ full_name: userForm.full_name.trim(), phone: userForm.phone.trim() || null }) },
-      );
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Failed to update user");
+
+      if (isOrgBound) {
+        // Edge function rejects partner_agent/agent roles. Patch profile directly.
+        const { error: profileErr } = await supabase
+          .from("profiles")
+          .update({
+            full_name: userForm.full_name.trim(),
+            phone: userForm.phone.trim() || null,
+            role,
+            organization_id: partnerId,
+          })
+          .eq("id", selectedUser.id);
+        if (profileErr) throw new Error(profileErr.message);
+      } else {
+        const putBody = {
+          full_name: userForm.full_name.trim(),
+          phone: userForm.phone.trim() || "",
+          role,
+        };
+        const res = await fetch(
+          `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
+          {
+            method: "PUT",
+            headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+            body: JSON.stringify(putBody),
+          },
+        );
+        const result = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(result?.error || "Failed to update user");
+      }
+
+      if (isOrgBound) {
+        // Clear ACSL-style assignments so this user no longer appears under prior managers/states.
+        try { await superAdminAgentService.setAgentStates(selectedUser.id, []); } catch { /* non-fatal */ }
+        try { await superAdminAgentService.setAgentOrganizations(selectedUser.id, []); } catch { /* non-fatal */ }
+      } else {
+        // Persist assignment updates (overwrites prior assignments). If the user
+        // group changes to one without these assignments, clear stale links so
+        // old manager/partner relationships do not leak into profile views later.
+        const shouldHaveStates = role === "acsl_agent_manager" || role === "acsl_agent";
+        const shouldHavePartners = role === "acsl_agent_manager" || role === "acsl_agent" || role === "partner";
+        try {
+          await superAdminAgentService.setAgentStates(selectedUser.id, shouldHaveStates ? Array.from(selectedStates) : []);
+        } catch { /* non-fatal */ }
+        try {
+          await superAdminAgentService.setAgentOrganizations(selectedUser.id, shouldHavePartners ? Array.from(selectedPartnerIds) : []);
+          if (role === "acsl_agent") {
+            await persistAgentSupervisorMarker(selectedUser.id, Array.from(selectedPartnerIds), Array.from(selectedManagerIds));
+          }
+        } catch { /* non-fatal */ }
+      }
+
 
       toast({ variant: "success", title: "User updated successfully" });
-      setShowEditModal(false);
-      setSelectedUser(null);
+      setShowCreateModal(false);
       resetForm();
       fetchUsers(pagination.page, pagination.page_size);
     } catch (err) {
@@ -405,6 +992,7 @@ const UserManagementPage = () => {
       setActionLoading(null);
     }
   };
+
 
   const handleToggleUserStatus = async (userId, currentStatus) => {
     setActionLoading(userId);
@@ -457,6 +1045,7 @@ const UserManagementPage = () => {
       <DashboardLayout currentRoute="settings" title="User Management">
         <div className="p-6 space-y-5">
 
+          {!showCreateModal && (<>
           <PageHeader
             icon={Users}
             title="User Management"
@@ -510,6 +1099,7 @@ const UserManagementPage = () => {
                 <SelectItem value="acsl_agent" className="text-xs">ACSL Agent</SelectItem>
                 <SelectItem value="partner" className="text-xs">Partner Admin</SelectItem>
                 <SelectItem value="partner_agent" className="text-xs">Partner Agent</SelectItem>
+                <SelectItem value="agent" className="text-xs">Agent</SelectItem>
               </SelectContent>
             </Select>
 
@@ -599,7 +1189,7 @@ const UserManagementPage = () => {
                                 <TooltipTrigger asChild>
                                   <button
                                     type="button"
-                                    onClick={() => openEditModal(u)}
+                                    onClick={() => openEditView(u)}
                                     disabled={!!actionLoading}
                                     aria-label="Edit user"
                                     className="h-8 w-8 inline-flex items-center justify-center rounded-md text-gray-800 hover:bg-gray-50 disabled:opacity-50"
@@ -687,7 +1277,7 @@ const UserManagementPage = () => {
                                     <DropdownMenuSeparator />
                                   </>
                                 )}
-                                <DropdownMenuItem onClick={() => openEditModal(u)}>
+                                <DropdownMenuItem onClick={() => openEditView(u)}>
                                   <Edit className="h-4 w-4 mr-2" />
                                   Edit
                                 </DropdownMenuItem>
@@ -767,77 +1357,592 @@ const UserManagementPage = () => {
               </div>
             )}
           </div>
-        </div>
+          </>)}
 
-        {/* ── Create User Modal ──────────────────────────────────────────────── */}
-        <Dialog open={showCreateModal} onOpenChange={(open) => { if (!open) { setShowCreateModal(false); resetForm(); } }}>
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New User</DialogTitle>
-              <DialogDescription>Add a new user to the system</DialogDescription>
-            </DialogHeader>
+          {showCreateModal && (
+            <div className="space-y-5">
+              <PageHeader
+                icon={formMode === "edit" ? SquarePen : UserPlus}
+                title={formMode === "edit" ? "Edit User" : "Create New User"}
+                right={
+                  <Button
+                    variant="outline"
+                    className="text-sm h-10 px-4 flex items-center gap-1.5 shadow-none border-gray-300"
+                    onClick={() => { setShowCreateModal(false); resetForm(); }}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Back to User Management
+                  </Button>
+                }
+              />
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
 
-            <form onSubmit={handleCreateUser} className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-4">
+
+
+
+            <form onSubmit={formMode === "edit" ? handleUpdateUser : handleCreateUser} className="space-y-4 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
                 {/* Full Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="full_name">Full Name <span className="text-red-500">*</span></Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="full_name" className="text-sm font-medium text-gray-700">Full Name <span className="text-red-500">*</span></Label>
                   <Input
                     id="full_name"
                     placeholder="Enter full name"
                     value={userForm.full_name}
                     onChange={(e) => setUserForm((prev) => ({ ...prev, full_name: e.target.value }))}
-                    className={formErrors.full_name ? "border-red-500" : ""}
+                    className={`shadow-none ${formErrors.full_name ? "border-red-500" : "border-gray-300"}`}
                   />
                   {formErrors.full_name && <p className="text-xs text-red-600">{formErrors.full_name}</p>}
                 </div>
 
                 {/* Email */}
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email <span className="text-red-500">*</span></Label>
                   <Input
                     id="email"
                     type="email"
                     placeholder="Enter email address"
                     value={userForm.email}
                     onChange={(e) => setUserForm((prev) => ({ ...prev, email: e.target.value }))}
-                    className={formErrors.email ? "border-red-500" : ""}
+                    disabled={formMode === "edit"}
+                    className={`shadow-none ${formErrors.email ? "border-red-500" : "border-gray-300"} ${formMode === "edit" ? "bg-gray-50 cursor-not-allowed text-gray-500" : ""}`}
                   />
                   {formErrors.email && <p className="text-xs text-red-600">{formErrors.email}</p>}
+                  {formMode === "edit" && <p className="text-xs text-gray-400">Email cannot be changed</p>}
                 </div>
 
                 {/* Phone */}
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone <span className="text-gray-400 text-xs font-normal">(optional)</span></Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="phone" className="text-sm font-medium text-gray-700">Phone</Label>
                   <Input
                     id="phone"
                     placeholder="Enter phone number"
                     value={userForm.phone}
                     onChange={(e) => setUserForm((prev) => ({ ...prev, phone: e.target.value }))}
+                    className="shadow-none border-gray-300"
                   />
                 </div>
 
-                {/* Role */}
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role <span className="text-red-500">*</span></Label>
+                {/* User Group */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="role" className="text-sm font-medium text-gray-700">User Group <span className="text-red-500">*</span></Label>
                   <Select value={userForm.role} onValueChange={handleRoleChange}>
-                    <SelectTrigger id="role">
-                      <SelectValue />
+                    <SelectTrigger id="role" className="shadow-none border-gray-300">
+                      <SelectValue placeholder="Select user group" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
-                      <SelectItem value="partner_agent">Partner Agent</SelectItem>
                       <SelectItem value="super_admin">Super Admin</SelectItem>
+                      <SelectItem value="acsl_agent_manager">ACSL Agent Manager</SelectItem>
+                      <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
+                      <SelectItem value="partner">Partner</SelectItem>
+                      <SelectItem value="partner_agent">Partner Agent</SelectItem>
+                      <SelectItem value="agent">Agent</SelectItem>
                     </SelectContent>
                   </Select>
+                  {formErrors.role && <p className="text-xs text-red-600">{formErrors.role}</p>}
+                  {formMode === "edit" && <p className="text-xs text-gray-400">Changing the user group updates the assignment fields below.</p>}
                 </div>
               </div>
 
-              {/* Partner Assignment — shown for ACSL Agent and Partner Agent */}
+              {formMode === "edit" && editAssignmentsLoading && (
+                <div className="flex items-center gap-2 rounded-md border border-[#eef3c4] bg-[#f9fbed] px-3 py-2 text-sm text-[#4a5d0f]">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading saved states, managers, and partners...
+                </div>
+              )}
+
+              {/* ACSL Agent Manager — assign States, then Partners in those states */}
+              {needsStateAndPartnerAssignment(userForm.role) && (() => {
+                const partnersInStates = allOrgs.filter((o) => o.state && selectedStates.has(o.state));
+                const q = partnerSearch.trim().toLowerCase();
+                const visiblePartners = q
+                  ? partnersInStates.filter((o) =>
+                      (o.partner_name || "").toLowerCase().includes(q) ||
+                      (o.branch || "").toLowerCase().includes(q)
+                    )
+                  : partnersInStates;
+                const allStatesSelected = selectedStates.size === NIGERIAN_STATES.length;
+                const toggleState = (s) => setSelectedStates((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(s)) next.delete(s); else next.add(s);
+                  return next;
+                });
+                const toggleAllStates = () => setSelectedStates(allStatesSelected ? new Set() : new Set(NIGERIAN_STATES));
+                const selectAllVisible = () => setSelectedPartnerIds((prev) => {
+                  const next = new Set(prev);
+                  visiblePartners.forEach((p) => next.add(p.id));
+                  return next;
+                });
+                const clearAllVisible = () => setSelectedPartnerIds((prev) => {
+                  const next = new Set(prev);
+                  visiblePartners.forEach((p) => next.delete(p.id));
+                  return next;
+                });
+                const sq = stateSearch.trim().toLowerCase();
+                const filteredStates = sq
+                  ? NIGERIAN_STATES.filter((s) => s.toLowerCase().includes(sq))
+                  : [];
+                const hasStates = selectedStates.size > 0;
+                return (
+                  <>
+                    {/* States block */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <Label className="text-sm font-semibold text-[#4a5d0f] flex items-center gap-1.5">
+                          Assign User to State
+                          <span className="text-xs text-gray-500 font-normal">
+                            ({selectedStates.size} of {NIGERIAN_STATES.length} selected)
+                          </span>
+                        </Label>
+                        <label className="flex items-center gap-1.5 text-xs text-[#4a5d0f] font-medium cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={allStatesSelected}
+                            onChange={toggleAllStates}
+                            className="rounded accent-[#4a5d0f]"
+                          />
+                          Select all states
+                        </label>
+                      </div>
+
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                        <Input
+                          placeholder="Search states to add..."
+                          value={stateSearch}
+                          onChange={(e) => setStateSearch(e.target.value)}
+                          className="pl-8 h-9 text-sm shadow-none border-gray-300"
+                        />
+                      </div>
+
+                      {sq && filteredStates.length > 0 && (
+                        <div className="bg-gray-50 border border-gray-200 rounded p-2 max-h-40 overflow-y-auto">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
+                            {filteredStates.map((s) => {
+                              const on = selectedStates.has(s);
+                              return (
+                                <label
+                                  key={s}
+                                  className="flex items-center gap-1.5 text-xs px-2 py-1 rounded hover:bg-white cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={on}
+                                    onChange={() => toggleState(s)}
+                                    className="rounded accent-[#4a5d0f]"
+                                  />
+                                  <span className={on ? "text-[#4a5d0f] font-medium" : "text-gray-700"}>{s}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      {sq && filteredStates.length === 0 && (
+                        <p className="text-xs text-gray-400 py-1">No states match "{stateSearch}".</p>
+                      )}
+
+                      {hasStates ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {Array.from(selectedStates).sort().map((s) => (
+                            <span
+                              key={s}
+                              className="inline-flex items-center gap-1 text-xs pl-2.5 pr-1 py-1 rounded-full bg-[#4a5d0f] text-white"
+                            >
+                              {s}
+                              <button
+                                type="button"
+                                onClick={() => toggleState(s)}
+                                className="hover:bg-white/20 rounded-full p-0.5"
+                                aria-label={`Remove ${s}`}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        !sq && (
+                          <p className="text-xs text-gray-400">Search above and tick the states to assign, or pick "Select all states".</p>
+                        )
+                      )}
+                    </div>
+
+                    {/* Partners — only after at least one state is selected */}
+                    {hasStates && (
+                      <div className="space-y-3 border border-gray-200 rounded-lg p-4 bg-white">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <Label className="text-sm font-semibold text-[#4a5d0f]">
+                            Assign Partners
+                            <span className="text-xs text-gray-500 font-normal">
+                              ({selectedPartnerIds.size} selected · {partnersInStates.length} available)
+                            </span>
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={selectAllVisible}
+                              disabled={visiblePartners.length === 0}
+                              className="text-xs px-2.5 py-1 rounded border border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4] disabled:opacity-40"
+                            >
+                              Select all
+                            </button>
+                            <button
+                              type="button"
+                              onClick={clearAllVisible}
+                              disabled={visiblePartners.length === 0}
+                              className="text-xs px-2.5 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                          <Input
+                            placeholder="Search partners by name or branch..."
+                            value={partnerSearch}
+                            onChange={(e) => setPartnerSearch(e.target.value)}
+                            className="pl-8 h-9 text-sm shadow-none border-gray-300"
+                          />
+                        </div>
+
+                        {orgsLoading ? (
+                          <div className="flex items-center gap-2 text-xs text-gray-500 py-2">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />Loading partners...
+                          </div>
+                        ) : visiblePartners.length === 0 ? (
+                          <p className="text-xs text-gray-400 py-3 text-center">
+                            {partnersInStates.length === 0
+                              ? "No partners in selected states."
+                              : "No partners match your search."}
+                          </p>
+                        ) : (
+                          <div className="max-h-72 overflow-y-auto rounded border border-gray-200 bg-gray-50 p-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                              {visiblePartners.map((org) => {
+                                const checked = selectedPartnerIds.has(org.id);
+                                return (
+                                  <label
+                                    key={org.id}
+                                    className={`flex items-center gap-2 px-2.5 py-2 rounded cursor-pointer text-xs transition-colors border ${
+                                      checked
+                                        ? "bg-[#f9fbed] border-[#4a5d0f] text-[#4a5d0f]"
+                                        : "bg-white border-gray-200 hover:border-[#4a5d0f] text-gray-700"
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => {
+                                        setSelectedPartnerIds((prev) => {
+                                          const next = new Set(prev);
+                                          if (next.has(org.id)) next.delete(org.id);
+                                          else next.add(org.id);
+                                          return next;
+                                        });
+                                      }}
+                                      className="rounded accent-[#4a5d0f] shrink-0"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="truncate font-medium">{org.partner_name}</div>
+                                      <div className="flex items-center gap-1.5 text-[10px] text-gray-500 truncate">
+                                        {org.branch && <span className="truncate">{org.branch}</span>}
+                                        {org.branch && org.state && <span>·</span>}
+                                        {org.state && <span>{org.state}</span>}
+                                      </div>
+                                    </div>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+
+
+
+              {/* ACSL Agent — Cascade: States → Managers in those states → Partners of those managers */}
+              {needsAcslAgentCascade(userForm.role) && (() => {
+                const allStatesSelected = selectedStates.size === NIGERIAN_STATES.length;
+                const toggleState = (s) => setSelectedStates((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(s)) next.delete(s); else next.add(s);
+                  return next;
+                });
+                const toggleAllStates = () =>
+                  setSelectedStates(allStatesSelected ? new Set() : new Set(NIGERIAN_STATES));
+                const sq = stateSearch.trim().toLowerCase();
+                const filteredStates = sq ? NIGERIAN_STATES.filter((s) => s.toLowerCase().includes(sq)) : [];
+                const hasStates = selectedStates.size > 0;
+
+                // Managers whose assigned states overlap with the selected states
+                const managersInStates = acslManagers.filter((m) =>
+                  Array.from(m.states).some((s) => selectedStates.has(s))
+                );
+                const mq = managerSearch.trim().toLowerCase();
+                const visibleManagers = mq
+                  ? managersInStates.filter(
+                      (m) =>
+                        (m.full_name || "").toLowerCase().includes(mq) ||
+                        (m.email || "").toLowerCase().includes(mq)
+                    )
+                  : managersInStates;
+                const toggleManager = (id) =>
+                  setSelectedManagerIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(id)) next.delete(id); else next.add(id);
+                    return next;
+                  });
+                const selectAllManagers = () =>
+                  setSelectedManagerIds((prev) => {
+                    const next = new Set(prev);
+                    visibleManagers.forEach((m) => next.add(m.id));
+                    return next;
+                  });
+                const clearAllManagers = () => setSelectedManagerIds(new Set());
+
+                // Partners belonging to selected managers AND in selected states
+                const allowedOrgIds = new Set();
+                acslManagers
+                  .filter((m) => selectedManagerIds.has(m.id))
+                  .forEach((m) => m.orgIds.forEach((id) => allowedOrgIds.add(id)));
+                const partnersOfManagers = allOrgs.filter(
+                  (o) => allowedOrgIds.has(o.id) && (selectedStates.size === 0 || (o.state && selectedStates.has(o.state)))
+                );
+                const pq = partnerSearch.trim().toLowerCase();
+                const visiblePartners = pq
+                  ? partnersOfManagers.filter(
+                      (o) =>
+                        (o.partner_name || "").toLowerCase().includes(pq) ||
+                        (o.branch || "").toLowerCase().includes(pq)
+                    )
+                  : partnersOfManagers;
+                const togglePartner = (id) =>
+                  setSelectedPartnerIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(id)) next.delete(id); else next.add(id);
+                    return next;
+                  });
+                const selectAllPartners = () =>
+                  setSelectedPartnerIds((prev) => {
+                    const next = new Set(prev);
+                    visiblePartners.forEach((p) => next.add(p.id));
+                    return next;
+                  });
+                const clearAllPartners = () =>
+                  setSelectedPartnerIds((prev) => {
+                    const next = new Set(prev);
+                    visiblePartners.forEach((p) => next.delete(p.id));
+                    return next;
+                  });
+
+                return (
+                  <>
+                    {/* Step 1 — States */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <Label className="text-sm font-semibold text-[#4a5d0f]">
+                          Assign User to State
+                          <span className="text-xs text-gray-500 font-normal ml-1">
+                            ({selectedStates.size} of {NIGERIAN_STATES.length} selected)
+                          </span>
+                        </Label>
+                        <label className="flex items-center gap-1.5 text-xs text-[#4a5d0f] font-medium cursor-pointer select-none">
+                          <input type="checkbox" checked={allStatesSelected} onChange={toggleAllStates} className="rounded accent-[#4a5d0f]" />
+                          Select all states
+                        </label>
+                      </div>
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                        <Input
+                          placeholder="Search states to add..."
+                          value={stateSearch}
+                          onChange={(e) => setStateSearch(e.target.value)}
+                          className="pl-8 h-9 text-sm shadow-none border-gray-300"
+                        />
+                      </div>
+                      {sq && filteredStates.length > 0 && (
+                        <div className="bg-gray-50 border border-gray-200 rounded p-2 max-h-40 overflow-y-auto">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
+                            {filteredStates.map((s) => {
+                              const on = selectedStates.has(s);
+                              return (
+                                <label key={s} className="flex items-center gap-1.5 text-xs px-2 py-1 rounded hover:bg-white cursor-pointer">
+                                  <input type="checkbox" checked={on} onChange={() => toggleState(s)} className="rounded accent-[#4a5d0f]" />
+                                  <span className={on ? "text-[#4a5d0f] font-medium" : "text-gray-700"}>{s}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      {hasStates && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {Array.from(selectedStates).sort().map((s) => (
+                            <span key={s} className="inline-flex items-center gap-1 text-xs pl-2.5 pr-1 py-1 rounded-full bg-[#4a5d0f] text-white">
+                              {s}
+                              <button type="button" onClick={() => toggleState(s)} className="hover:bg-white/20 rounded-full p-0.5" aria-label={`Remove ${s}`}>
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {!hasStates && !sq && (
+                        <p className="text-xs text-gray-400">Search above and tick the states to assign, or pick "Select all states".</p>
+                      )}
+                    </div>
+
+                    {/* Step 2 — Managers in selected states */}
+                    {hasStates && (
+                      <div className="space-y-3 border border-gray-200 rounded-lg p-4 bg-white">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <Label className="text-sm font-semibold text-[#4a5d0f]">
+                            Assign ACSL Agent Manager(s)
+                            <span className="text-xs text-gray-500 font-normal ml-1">
+                              ({selectedManagerIds.size} selected · {managersInStates.length} available)
+                            </span>
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={selectAllManagers} disabled={visibleManagers.length === 0}
+                              className="text-xs px-2.5 py-1 rounded border border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4] disabled:opacity-40">
+                              Select all
+                            </button>
+                            <button type="button" onClick={clearAllManagers} disabled={selectedManagerIds.size === 0}
+                              className="text-xs px-2.5 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40">
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                          <Input
+                            placeholder="Search managers by name or email..."
+                            value={managerSearch}
+                            onChange={(e) => setManagerSearch(e.target.value)}
+                            className="pl-8 h-9 text-sm shadow-none border-gray-300"
+                          />
+                        </div>
+                        {managersLoading ? (
+                          <div className="flex items-center gap-2 text-xs text-gray-500 py-2">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />Loading managers...
+                          </div>
+                        ) : visibleManagers.length === 0 ? (
+                          <p className="text-xs text-gray-400 py-3 text-center">
+                            {managersInStates.length === 0
+                              ? "No ACSL Agent Managers cover the selected states."
+                              : "No managers match your search."}
+                          </p>
+                        ) : (
+                          <div className="max-h-60 overflow-y-auto rounded border border-gray-200 bg-gray-50 p-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                              {visibleManagers.map((m) => {
+                                const checked = selectedManagerIds.has(m.id);
+                                const sharedStates = Array.from(m.states).filter((s) => selectedStates.has(s));
+                                return (
+                                  <label key={m.id}
+                                    className={`flex items-center gap-2 px-2.5 py-2 rounded cursor-pointer text-xs transition-colors border ${
+                                      checked ? "bg-[#f9fbed] border-[#4a5d0f] text-[#4a5d0f]" : "bg-white border-gray-200 hover:border-[#4a5d0f] text-gray-700"
+                                    }`}>
+                                    <input type="checkbox" checked={checked} onChange={() => toggleManager(m.id)} className="rounded accent-[#4a5d0f] shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="truncate font-medium">{m.full_name}</div>
+                                      <div className="text-[10px] text-gray-500 truncate">
+                                        {sharedStates.length} state{sharedStates.length === 1 ? "" : "s"} · {m.orgIds.size} partner{m.orgIds.size === 1 ? "" : "s"}
+                                      </div>
+                                    </div>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Step 3 — Partners of selected managers */}
+                    {hasStates && selectedManagerIds.size > 0 && (
+                      <div className="space-y-3 border border-gray-200 rounded-lg p-4 bg-white">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <Label className="text-sm font-semibold text-[#4a5d0f]">
+                            Assign Partners
+                            <span className="text-xs text-gray-500 font-normal ml-1">
+                              ({selectedPartnerIds.size} selected · {partnersOfManagers.length} available)
+                            </span>
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={selectAllPartners} disabled={visiblePartners.length === 0}
+                              className="text-xs px-2.5 py-1 rounded border border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4] disabled:opacity-40">
+                              Select all
+                            </button>
+                            <button type="button" onClick={clearAllPartners} disabled={visiblePartners.length === 0}
+                              className="text-xs px-2.5 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40">
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                          <Input
+                            placeholder="Search partners by name or branch..."
+                            value={partnerSearch}
+                            onChange={(e) => setPartnerSearch(e.target.value)}
+                            className="pl-8 h-9 text-sm shadow-none border-gray-300"
+                          />
+                        </div>
+                        {orgsLoading ? (
+                          <div className="flex items-center gap-2 text-xs text-gray-500 py-2">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />Loading partners...
+                          </div>
+                        ) : visiblePartners.length === 0 ? (
+                          <p className="text-xs text-gray-400 py-3 text-center">
+                            {partnersOfManagers.length === 0
+                              ? "Selected managers have no partners in the chosen states."
+                              : "No partners match your search."}
+                          </p>
+                        ) : (
+                          <div className="max-h-72 overflow-y-auto rounded border border-gray-200 bg-gray-50 p-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                              {visiblePartners.map((org) => {
+                                const checked = selectedPartnerIds.has(org.id);
+                                return (
+                                  <label key={org.id}
+                                    className={`flex items-center gap-2 px-2.5 py-2 rounded cursor-pointer text-xs transition-colors border ${
+                                      checked ? "bg-[#f9fbed] border-[#4a5d0f] text-[#4a5d0f]" : "bg-white border-gray-200 hover:border-[#4a5d0f] text-gray-700"
+                                    }`}>
+                                    <input type="checkbox" checked={checked} onChange={() => togglePartner(org.id)} className="rounded accent-[#4a5d0f] shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="truncate font-medium">{org.partner_name}</div>
+                                      <div className="flex items-center gap-1.5 text-[10px] text-gray-500 truncate">
+                                        {org.branch && <span className="truncate">{org.branch}</span>}
+                                        {org.branch && org.state && <span>·</span>}
+                                        {org.state && <span>{org.state}</span>}
+                                      </div>
+                                    </div>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* Partner Assignment — shown for Partner and Partner Agent */}
               {needsPartnerAssignment(userForm.role) && (
-                <div className="space-y-2 border border-blue-100 rounded-lg p-3 bg-blue-50/40">
-                  <Label className="text-sm font-medium flex items-center gap-1.5">
-                    <Building2 className="h-4 w-4 text-brand" />
+                <div className="space-y-2 border border-[#eef3c4] rounded-md p-3 bg-[#f9fbed]">
+                  <Label className="text-sm font-semibold text-[#4a5d0f]">
                     Assign Partners <span className="text-gray-400 font-normal text-xs">(optional)</span>
                   </Label>
 
@@ -847,7 +1952,7 @@ const UserManagementPage = () => {
                       placeholder="Search partners..."
                       value={partnerSearch}
                       onChange={(e) => setPartnerSearch(e.target.value)}
-                      className="pl-8 h-8 text-sm bg-white"
+                      className="pl-8 h-8 text-sm bg-white shadow-none border-gray-300"
                     />
                   </div>
 
@@ -865,24 +1970,32 @@ const UserManagementPage = () => {
                         )
                         .map((org) => {
                           const checked = selectedPartnerIds.has(org.id);
+                          const isSingleSelect = userForm.role === "partner" || isOrganizationBoundAgentRole(userForm.role);
                           return (
                             <label
                               key={org.id}
-                              className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-xs transition-colors ${checked ? "bg-blue-100 text-blue-800" : "hover:bg-white text-gray-700"}`}
+                              className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-xs transition-colors ${checked ? "bg-[#eef3c4] text-[#4a5d0f]" : "hover:bg-white text-gray-700"}`}
+                              onClick={() => {
+                                if (isSingleSelect) {
+                                  setSelectedPartnerIds(new Set([org.id]));
+                                }
+                              }}
                             >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => {
-                                  setSelectedPartnerIds((prev) => {
-                                    const next = new Set(prev);
-                                    if (next.has(org.id)) next.delete(org.id);
-                                    else next.add(org.id);
-                                    return next;
-                                  });
-                                }}
-                                className="rounded"
-                              />
+                              {!isSingleSelect && (
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => {
+                                    setSelectedPartnerIds((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(org.id)) next.delete(org.id);
+                                      else next.add(org.id);
+                                      return next;
+                                    });
+                                  }}
+                                  className="rounded accent-[#4a5d0f]"
+                                />
+                              )}
                               <span className="flex-1 truncate font-medium">{org.partner_name}</span>
                               {org.state && <span className="text-gray-400 shrink-0">{org.state}</span>}
                             </label>
@@ -895,29 +2008,30 @@ const UserManagementPage = () => {
                   )}
 
                   {selectedPartnerIds.size > 0 && (
-                    <p className="text-xs text-blue-600 font-medium">
-                      {selectedPartnerIds.size} partner{selectedPartnerIds.size > 1 ? "s" : ""} selected
+                    <p className="text-xs text-[#4a5d0f] font-medium">
+                      {(userForm.role === "partner" || isOrganizationBoundAgentRole(userForm.role)) ? "1 partner selected" : `${selectedPartnerIds.size} partner${selectedPartnerIds.size > 1 ? "s" : ""} selected`}
                     </p>
                   )}
                 </div>
               )}
 
-              {/* Password Options */}
-              <div className="space-y-3 border border-gray-100 rounded-lg p-3 bg-gray-50">
+              {/* Password Options — create only */}
+              {formMode === "create" && (
+              <div className="space-y-3 border border-gray-200 rounded-md p-3 bg-[#fafcfc]">
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
                     id="auto_generate"
                     checked={userForm.auto_generate_password}
                     onChange={(e) => setUserForm((prev) => ({ ...prev, auto_generate_password: e.target.checked }))}
-                    className="rounded"
+                    className="rounded accent-[#4a5d0f]"
                   />
-                  <Label htmlFor="auto_generate" className="cursor-pointer text-sm">Auto-generate password</Label>
+                  <Label htmlFor="auto_generate" className="cursor-pointer text-sm font-medium text-gray-700">Auto-generate password</Label>
                 </div>
 
                 {!userForm.auto_generate_password && (
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password <span className="text-red-500">*</span></Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password <span className="text-red-500">*</span></Label>
                     <div className="relative">
                       <Input
                         id="password"
@@ -925,98 +2039,57 @@ const UserManagementPage = () => {
                         placeholder="Min 8 characters"
                         value={userForm.password}
                         onChange={(e) => setUserForm((prev) => ({ ...prev, password: e.target.value }))}
-                        className={formErrors.password ? "border-red-500" : ""}
+                        className={`shadow-none pr-9 ${formErrors.password ? "border-red-500" : "border-gray-300"}`}
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                        className="absolute right-0.5 top-1/2 -translate-y-1/2 h-7 w-7 p-0 hover:bg-transparent"
                         onClick={() => setShowPassword(!showPassword)}
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showPassword ? <EyeOff className="h-4 w-4 text-gray-500" /> : <Eye className="h-4 w-4 text-gray-500" />}
                       </Button>
                     </div>
                     {formErrors.password && <p className="text-xs text-red-600">{formErrors.password}</p>}
                   </div>
                 )}
               </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => { setShowCreateModal(false); resetForm(); }} disabled={actionLoading === "create"}>
+                <Button type="button" variant="outline" onClick={() => { setShowCreateModal(false); resetForm(); }} disabled={actionLoading === "create"} className="shadow-none border-gray-300">
                   Cancel
                 </Button>
-                <Button type="submit" disabled={actionLoading === "create"} className="bg-brand hover:bg-brand/90 text-white">
-                  {actionLoading === "create" ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</> : <><UserPlus className="h-4 w-4 mr-2" />Create User</>}
+                <Button type="submit" disabled={actionLoading === "create"} className="bg-[#4a5d0f] hover:bg-[#3d4f0c] text-white shadow-none">
+                  {actionLoading === "create"
+                    ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{formMode === "edit" ? "Saving..." : "Creating..."}</>
+                    : formMode === "edit"
+                      ? <><SquarePen className="h-4 w-4 mr-2" />Save Changes</>
+                      : <><UserPlus className="h-4 w-4 mr-2" />Create User</>}
                 </Button>
               </div>
             </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* ── Edit User Modal ────────────────────────────────────────────────── */}
-        <Dialog open={showEditModal} onOpenChange={(open) => { if (!open) { setShowEditModal(false); setSelectedUser(null); resetForm(); } }}>
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Edit User</DialogTitle>
-              <DialogDescription>Update user information (email cannot be changed)</DialogDescription>
-            </DialogHeader>
-
-            <form onSubmit={handleEditUser} className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit_full_name">Full Name <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="edit_full_name"
-                    placeholder="Enter full name"
-                    value={userForm.full_name}
-                    onChange={(e) => setUserForm((prev) => ({ ...prev, full_name: e.target.value }))}
-                    className={formErrors.full_name ? "border-red-500" : ""}
-                  />
-                  {formErrors.full_name && <p className="text-xs text-red-600">{formErrors.full_name}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="edit_email">Email</Label>
-                  <Input id="edit_email" type="email" value={userForm.email} disabled className="bg-gray-100 cursor-not-allowed" />
-                  <p className="text-xs text-gray-400">Email cannot be changed</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="edit_phone">Phone <span className="text-gray-400 text-xs font-normal">(optional)</span></Label>
-                  <Input
-                    id="edit_phone"
-                    placeholder="Enter phone number"
-                    value={userForm.phone}
-                    onChange={(e) => setUserForm((prev) => ({ ...prev, phone: e.target.value }))}
-                  />
-                </div>
               </div>
+            </div>
+          )}
+        </div>
 
-              <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => { setShowEditModal(false); setSelectedUser(null); resetForm(); }} disabled={actionLoading === "edit"}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={actionLoading === "edit"} className="bg-brand hover:bg-brand/90 text-white">
-                  {actionLoading === "edit" ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Updating...</> : <><Edit className="h-4 w-4 mr-2" />Update User</>}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        {/* Edit User uses the inline Create/Edit view above */}
+
 
         {/* ── Delete Confirmation Modal ──────────────────────────────────────── */}
         <Dialog open={showDeleteModal} onOpenChange={(open) => { if (!open) { setShowDeleteModal(false); setSelectedUser(null); } }}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-red-600">Delete User</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="sm:max-w-md shadow-none">
+            <DialogHeader className="border-b pb-3 mb-1">
+              <DialogTitle className="text-lg font-semibold text-red-600">Delete User</DialogTitle>
+              <DialogDescription className="text-sm text-gray-500">
                 This action cannot be undone. The user and all their data will be permanently removed.
               </DialogDescription>
             </DialogHeader>
 
             {selectedUser && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-1.5 text-sm text-gray-700">
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 space-y-1.5 text-sm text-gray-700">
                 <p><strong>Name:</strong> {selectedUser.full_name}</p>
                 <p><strong>Email:</strong> {selectedUser.email}</p>
                 <p><strong>Role:</strong> {getRoleLabel(selectedUser.role)}</p>
@@ -1024,10 +2097,10 @@ const UserManagementPage = () => {
             )}
 
             <div className="flex justify-end gap-3 pt-2">
-              <Button variant="outline" onClick={() => { setShowDeleteModal(false); setSelectedUser(null); }} disabled={actionLoading === "delete"}>
+              <Button variant="outline" onClick={() => { setShowDeleteModal(false); setSelectedUser(null); }} disabled={actionLoading === "delete"} className="shadow-none border-gray-300">
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={handleDeleteUser} disabled={actionLoading === "delete"}>
+              <Button variant="destructive" onClick={handleDeleteUser} disabled={actionLoading === "delete"} className="shadow-none">
                 {actionLoading === "delete" ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Deleting...</> : <><Trash2 className="h-4 w-4 mr-2" />Delete User</>}
               </Button>
             </div>

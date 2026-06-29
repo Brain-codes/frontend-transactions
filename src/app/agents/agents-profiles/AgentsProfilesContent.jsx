@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import superAdminAgentService from "../../services/superAdminAgentService";
+import { createClientComponentClient } from "@/lib/supabaseClient";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import ViewSuperAdminAgentModal from "../../super-admin-agents/components/ViewSuperAdminAgentModal";
 import EditSuperAdminAgentModal from "../../super-admin-agents/components/EditSuperAdminAgentModal";
@@ -49,12 +50,111 @@ import { MapPin, Building2, Search } from "lucide-react";
 
 const PAGE_SIZE = 10;
 
+// Direct-assignment table for ACSL Agents → Organizations.
+// Try the canonical agent column first, fall back to alternates once.
+const ASSIGNMENT_TABLE = "super_admin_agent_organizations";
+const AGENT_COLUMN_CANDIDATES = ["agent_id", "super_admin_agent_id", "user_id"];
+let resolvedAgentColumn = null;
+
+async function resolveAgentColumn(supabase) {
+  if (resolvedAgentColumn) return resolvedAgentColumn;
+  for (const col of AGENT_COLUMN_CANDIDATES) {
+    const { error } = await supabase
+      .from(ASSIGNMENT_TABLE)
+      .select(col, { count: "exact", head: true })
+      .limit(1);
+    if (!error) {
+      resolvedAgentColumn = col;
+      return col;
+    }
+  }
+  return null;
+}
+
+async function fetchDirectPartnerCount(supabase, agentId) {
+  const col = await resolveAgentColumn(supabase);
+  if (!col) return null;
+  const { count, error } = await supabase
+    .from(ASSIGNMENT_TABLE)
+    .select("organization_id", { count: "exact", head: true })
+    .eq(col, agentId);
+  if (error) return null;
+  return count ?? 0;
+}
+
+async function fetchDirectPartnerList(supabase, agentId) {
+  const col = await resolveAgentColumn(supabase);
+  if (!col) return null;
+  const { data, error } = await supabase
+    .from(ASSIGNMENT_TABLE)
+    .select("organization_id, organizations(id, partner_name, state, branch)")
+    .eq(col, agentId);
+  if (error) return null;
+  return (data || [])
+    .map((row) => row.organizations)
+    .filter(Boolean);
+}
+
+async function fetchDirectPartnerAssignmentRows(supabase, agentId) {
+  const col = await resolveAgentColumn(supabase);
+  if (!col) return null;
+  const { data, error } = await supabase
+    .from(ASSIGNMENT_TABLE)
+    .select("organization_id, assigned_by, organizations(id, partner_name, state, branch)")
+    .eq(col, agentId);
+  if (error) return null;
+  return Array.isArray(data) ? data : [];
+}
+
+function inferSupervisorsForAgent(agentOrgIds, managerInfo, assignmentRows = []) {
+  if (agentOrgIds.size === 0 || managerInfo.length === 0) return [];
+
+  const assignedByManagers = new Set(
+    assignmentRows
+      .map((row) => row?.assigned_by)
+      .filter((id) => managerInfo.some((m) => m.id === id))
+  );
+  if (assignedByManagers.size > 0) {
+    return managerInfo
+      .filter((m) => assignedByManagers.has(m.id))
+      .map((m) => m.name);
+  }
+
+  const candidates = managerInfo
+    .map((m) => {
+      let overlap = 0;
+      for (const id of agentOrgIds) if (m.orgIds.has(id)) overlap += 1;
+      return {
+        ...m,
+        overlap,
+        coversAll: overlap === agentOrgIds.size,
+        extraPartners: Math.max(0, m.orgIds.size - agentOrgIds.size),
+      };
+    })
+    .filter((m) => m.overlap > 0);
+
+  const fullCover = candidates
+    .filter((m) => m.coversAll)
+    .sort((a, b) => a.extraPartners - b.extraPartners || a.name.localeCompare(b.name));
+  if (fullCover.length > 0) return [fullCover[0].name];
+
+  // If older records do not have assigned_by, show only the single closest
+  // manager instead of listing every manager with a partial partner overlap.
+  // This prevents an agent assigned to one supervisor from appearing under many.
+  candidates.sort((a, b) => b.overlap - a.overlap || a.extraPartners - b.extraPartners || a.name.localeCompare(b.name));
+  return candidates.length > 0 ? [candidates[0].name] : [];
+}
+
 const AgentsProfilesContent = () => {
   const { toast, toasts, removeToast } = useToast();
+  const supabaseRef = useRef(null);
+  if (!supabaseRef.current) supabaseRef.current = createClientComponentClient();
+  const isMountedRef = useRef(true);
   const [loading, setLoading] = useState(false);
   const [agents, setAgents] = useState([]);
   const [filters, setFilters] = useState({ search: "", status: "", role: "" });
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const [detailsAgent, setDetailsAgent] = useState(null);
   const [editingAgent, setEditingAgent] = useState(null);
@@ -72,6 +172,13 @@ const AgentsProfilesContent = () => {
   const [partnersModalLoading, setPartnersModalLoading] = useState(false);
   const [statesSearch, setStatesSearch] = useState("");
   const [partnersSearch, setPartnersSearch] = useState("");
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const openStatesModal = async (agent) => {
     setStatesModalAgent(agent);
@@ -95,8 +202,16 @@ const AgentsProfilesContent = () => {
     setPartnersSearch("");
     setPartnersModalLoading(true);
     try {
-      const res = await superAdminAgentService.getAgentOrganizations(agent.id);
-      const list = res?.data || res?.organizations || res || [];
+      // ACSL Agents: the source of truth is the direct assignment table — not
+      // the "by-state" endpoint which would list every partner in their states.
+      let list = null;
+      if (agent.role === "acsl_agent") {
+        list = await fetchDirectPartnerList(supabaseRef.current, agent.id);
+      }
+      if (!list) {
+        const res = await superAdminAgentService.getAgentOrganizations(agent.id);
+        list = res?.data || res?.organizations || res || [];
+      }
       setPartnersModalList(Array.isArray(list) ? list : []);
     } catch (err) {
       toast({ variant: "error", title: "Failed to load partners", description: err.message });
@@ -144,6 +259,7 @@ const AgentsProfilesContent = () => {
         assigned_states_count: u.assigned_states_count ?? 0,
       }));
       setAgents(rows);
+      hydrateAgentCounts(rows);
     } catch (err) {
       toast({ variant: "error", title: "Failed to load agents", description: err.message });
     } finally {
@@ -151,9 +267,140 @@ const AgentsProfilesContent = () => {
     }
   };
 
+  // Hydrate States/Partners counts client-side. For ACSL Agents the partner
+  // count comes from the direct assignment table (so explicitly-assigned
+  // partners are the source of truth, not the by-state derived list). For
+  // ACSL Agent Managers the existing by-state endpoint stays authoritative.
+  // Updates are batched into a single setAgents call per batch to avoid the
+  // re-render storm that made the page appear to reload.
+  const hydrateAgentCounts = async (agentsList) => {
+    const targets = agentsList.filter(
+      (a) => a.role === "acsl_agent" || a.role === "acsl_agent_manager"
+    );
+    const BATCH = 8;
+    for (let i = 0; i < targets.length; i += BATCH) {
+      if (!isMountedRef.current) return;
+      const batch = targets.slice(i, i + BATCH);
+      const results = await Promise.allSettled(
+        batch.map(async (a) => {
+          const orgsPromise =
+            a.role === "acsl_agent"
+              ? fetchDirectPartnerCount(supabaseRef.current, a.id).then((n) =>
+                  n === null
+                    ? superAdminAgentService.getAgentOrganizations(a.id)
+                    : { __count: n }
+                )
+              : superAdminAgentService.getAgentOrganizations(a.id);
+          const [statesRes, orgsRes] = await Promise.allSettled([
+            superAdminAgentService.getAgentStates(a.id),
+            orgsPromise,
+          ]);
+          const updates = {};
+          if (statesRes.status === "fulfilled") {
+            const r = statesRes.value;
+            const list = r?.data || r?.states || r || [];
+            if (Array.isArray(list)) updates.assigned_states_count = list.length;
+          }
+          if (orgsRes.status === "fulfilled") {
+            const r = orgsRes.value;
+            if (r && typeof r.__count === "number") {
+              updates.assigned_organizations_count = r.__count;
+            } else {
+              const list = r?.data || r?.organizations || r || [];
+              if (Array.isArray(list)) updates.assigned_organizations_count = list.length;
+            }
+          }
+          return { id: a.id, updates };
+        })
+      );
+      if (!isMountedRef.current) return;
+      const updatesById = new Map();
+      results.forEach((res) => {
+        if (
+          res.status === "fulfilled" &&
+          res.value &&
+          Object.keys(res.value.updates).length > 0
+        ) {
+          updatesById.set(res.value.id, res.value.updates);
+        }
+      });
+      if (updatesById.size > 0) {
+        setAgents((prev) =>
+          prev.map((x) =>
+            updatesById.has(x.id) ? { ...x, ...updatesById.get(x.id) } : x
+          )
+        );
+      }
+    }
+  };
+
+  // Load ACSL Agent Managers with their assigned organizations so we can derive
+  // each ACSL Agent's supervisor(s). Prefer direct assignment authors when they
+  // are managers; otherwise pick the smallest manager set that explains the
+  // agent's exact direct partner assignments.
+  const hydrateSupervisors = async (agentsList) => {
+    try {
+      const managers = agentsList.filter((a) => a.role === "acsl_agent_manager");
+      const managerInfo = await Promise.all(
+        managers.map(async (m) => {
+          const orgIds = (await fetchDirectPartnerList(supabaseRef.current, m.id)) || [];
+          let ids = new Set();
+          if (Array.isArray(orgIds) && orgIds.length > 0) {
+            ids = new Set(orgIds.map((o) => o?.id).filter(Boolean));
+          } else {
+            try {
+              const r = await superAdminAgentService.getAgentOrganizations(m.id);
+              const list = r?.data || r?.organizations || r || [];
+              if (Array.isArray(list)) ids = new Set(list.map((o) => o?.id || o?.organization_id).filter(Boolean));
+            } catch { /* ignore */ }
+          }
+          return { id: m.id, name: m.full_name, orgIds: ids };
+        })
+      );
+
+      const acslAgents = agentsList.filter((a) => a.role === "acsl_agent");
+      const BATCH = 8;
+      for (let i = 0; i < acslAgents.length; i += BATCH) {
+        if (!isMountedRef.current) return;
+        const batch = acslAgents.slice(i, i + BATCH);
+        const results = await Promise.allSettled(
+          batch.map(async (a) => {
+            const assignmentRows = await fetchDirectPartnerAssignmentRows(supabaseRef.current, a.id);
+            const agentOrgIds = Array.isArray(assignmentRows)
+              ? new Set(assignmentRows.map((row) => row?.organization_id || row?.organizations?.id).filter(Boolean))
+              : new Set();
+            const supervisors = inferSupervisorsForAgent(agentOrgIds, managerInfo, assignmentRows || []);
+            return { id: a.id, supervisors };
+          })
+        );
+        if (!isMountedRef.current) return;
+        const map = new Map();
+        results.forEach((r) => {
+          if (r.status === "fulfilled" && r.value) map.set(r.value.id, r.value.supervisors);
+        });
+        if (map.size > 0) {
+          setAgents((prev) =>
+            prev.map((x) => (map.has(x.id) ? { ...x, supervisors: map.get(x.id) } : x))
+          );
+        }
+      }
+    } catch { /* non-fatal */ }
+  };
+
   useEffect(() => {
-    loadAgents();
+    (async () => {
+      await loadAgents();
+    })();
   }, []);
+
+  // Run supervisor hydration once agents have been loaded.
+  useEffect(() => {
+    if (agents.length === 0) return;
+    if (agents.some((a) => a.role === "acsl_agent" && a.supervisors === undefined)) {
+      hydrateSupervisors(agents);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agents.length]);
 
   const handleViewCredentials = async (agent) => {
     setLoadingCredentialId(agent.id);
@@ -188,11 +435,16 @@ const AgentsProfilesContent = () => {
     return Array.from(s).sort();
   }, [agents]);
 
-  const formatRole = (r) =>
-    (r || "")
+  const formatRole = (r) => {
+    if (r === "agent" || r === "agent_user") return "Agent";
+    if (r === "partner_agent") return "Partner Agent";
+    if (r === "acsl_agent") return "ACSL Agent";
+    if (r === "acsl_agent_manager") return "ACSL Agent Manager";
+    return (r || "")
       .split("_")
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(" ");
+  };
 
   const ROLE_BADGE = {
     acsl_agent: "bg-blue-100 text-blue-700",
@@ -200,6 +452,8 @@ const AgentsProfilesContent = () => {
     super_admin: "bg-red-100 text-red-700",
     partner: "bg-amber-100 text-amber-700",
     partner_agent: "bg-teal-100 text-teal-700",
+    agent: "bg-cyan-100 text-cyan-700",
+    agent_user: "bg-cyan-100 text-cyan-700",
   };
 
   const filtered = useMemo(() => {
@@ -215,11 +469,11 @@ const AgentsProfilesContent = () => {
     });
   }, [agents, filters]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const startRecord = filtered.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
-  const endRecord = Math.min(currentPage * PAGE_SIZE, filtered.length);
+  const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const startRecord = filtered.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endRecord = Math.min(currentPage * pageSize, filtered.length);
 
   const hasActiveFilters = filters.search !== "" || filters.status !== "" || filters.role !== "";
 
@@ -305,12 +559,11 @@ const AgentsProfilesContent = () => {
           <Table>
             <TableHeader>
               <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
-                <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Full Name</TableHead>
-                <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Role</TableHead>
+                <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Agent Name</TableHead>
+                <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Agent Phone</TableHead>
+                <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Supervisor(s)</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">States Assigned</TableHead>
-                <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Partners Assigned</TableHead>
-                
-                <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
+                <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center rounded-tr-lg">Partners Assigned</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className={loading ? "opacity-40" : ""}>
@@ -327,18 +580,36 @@ const AgentsProfilesContent = () => {
                     className="hover:bg-[#eef3c4] text-gray-700"
                     style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
                   >
-                    <TableCell className="text-sm font-medium text-gray-900">{a.full_name || "N/A"}</TableCell>
-                    <TableCell className="text-sm">
-                      {a.role ? (
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                            ROLE_BADGE[a.role] || "bg-gray-100 text-gray-700"
-                          }`}
-                        >
+                    <TableCell className="text-sm font-medium text-gray-900">
+                      <span className="align-baseline">{a.full_name || "N/A"}</span>
+                      {a.role && (
+                        <sup className={`ml-1 text-[9px] font-medium ${
+                          a.role === "super_admin" ? "text-red-600" :
+                          a.role === "acsl_agent_manager" ? "text-purple-600" :
+                          a.role === "acsl_agent" ? "text-green-700" :
+                          a.role === "partner" ? "text-blue-600" :
+                          a.role === "partner_agent" ? "text-amber-600" :
+                          a.role === "agent" || a.role === "agent_user" ? "text-cyan-700" :
+                          "text-gray-500"
+                        }`}>
                           {formatRole(a.role)}
-                        </span>
+                        </sup>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-700 whitespace-nowrap">
+                      {a.phone || ""}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-700">
+                      {a.role === "acsl_agent" ? (
+                        a.supervisors === undefined ? (
+                          <span className="text-gray-400 text-xs">Loading…</span>
+                        ) : a.supervisors.length === 0 ? (
+                          ""
+                        ) : (
+                          <span>{a.supervisors.join(", ")}</span>
+                        )
                       ) : (
-                        "—"
+                        ""
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-center">
@@ -375,17 +646,6 @@ const AgentsProfilesContent = () => {
                         );
                       })()}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end">
-                        <button
-                          type="button"
-                          onClick={() => setAssignAgent(a)}
-                          className="inline-flex items-center justify-center h-8 px-3 rounded-md bg-[#4a5d0f] text-white text-xs font-medium shadow-sm hover:bg-[#3d4d0c] active:scale-[0.98] transition"
-                        >
-                          Assign a Partner
-                        </button>
-                      </div>
-                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -396,11 +656,26 @@ const AgentsProfilesContent = () => {
         {/* Pagination footer */}
         {filtered.length > 0 && (
           <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-white">
-            <p className="text-sm text-gray-600">
-              Showing <span className="font-medium">{startRecord}</span> to{" "}
-              <span className="font-medium">{endRecord}</span> of{" "}
-              <span className="font-medium">{filtered.length}</span> agents
-            </p>
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-gray-600">
+                Showing <span className="font-medium">{startRecord}</span> to{" "}
+                <span className="font-medium">{endRecord}</span> of{" "}
+                <span className="font-medium">{filtered.length}</span> agents
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Rows per page</span>
+                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+                  <SelectTrigger className="h-8 w-[80px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[10, 25, 50, 100].map((n) => (
+                      <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             {totalPages > 1 && (
               <div className="flex items-center gap-1">
                 <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(1)} disabled={currentPage === 1}>
@@ -414,7 +689,7 @@ const AgentsProfilesContent = () => {
                     key={p}
                     variant={p === currentPage ? "default" : "outline"}
                     size="sm"
-                    className={`h-8 w-8 p-0 ${p === currentPage ? "bg-brand text-white hover:bg-brand" : ""}`}
+                    className={`h-8 w-8 p-0 ${p === currentPage ? "bg-black text-white hover:bg-black border-black" : ""}`}
                     onClick={() => setPage(p)}
                   >
                     {p}
