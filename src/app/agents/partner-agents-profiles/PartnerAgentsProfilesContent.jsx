@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import { createClientComponentClient } from "@/lib/supabaseClient";
+import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 
 export default function PartnerAgentsProfilesContent() {
