@@ -1647,17 +1647,21 @@ export default function SuperAdminAgentsContent() {
         );
         if (cancelled) return;
 
-        // 4. Global deduped totals — each org counted once regardless of how many agents share it.
+        // 4. Global totals — sum per-agent values so KPI cards match the
+        //    per-row "Sold" column shown in the table/chart. Using the
+        //    deduped org-level stove_ids.status='sold' count diverged from
+        //    the actual sales records each agent created.
         let globalAssigned = 0;
-        let globalSoldOrg = 0;
-        for (const oid of orgIds) {
-          globalAssigned += stoveTotalByOrg[oid] || 0;
-          globalSoldOrg += stoveSoldByOrg[oid] || 0;
+        let globalSold = 0;
+        for (const a of agents) {
+          const orgs = agentToOrgIds[a.id] || [];
+          for (const oid of orgs) globalAssigned += stoveTotalByOrg[oid] || 0;
+          globalSold += soldByAgent[a.id] || 0;
         }
         setStoveTotals({
           assigned: globalAssigned,
-          sold: globalSoldOrg,
-          unsold: Math.max(0, globalAssigned - globalSoldOrg),
+          sold: globalSold,
+          unsold: Math.max(0, globalAssigned - globalSold),
         });
 
         // 5. Merge per-agent stove_summary (row badges still reflect each agent's view).
@@ -1671,6 +1675,7 @@ export default function SuperAdminAgentsContent() {
             return { ...a, stove_summary: { received, sold, available } };
           })
         );
+
       } catch {
         // silent: columns fall back to em-dash
       }
