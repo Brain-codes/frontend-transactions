@@ -23,21 +23,36 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Trash2,
 } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import { createClientComponentClient } from "@/lib/supabaseClient";
 import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";
 import { useToast, ToastContainer } from "@/components/ui/toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { useAuth } from "@/app/contexts/useAuth";
 
 export default function PartnerAgentsProfilesContent() {
   const supabase = createClientComponentClient();
   const { toast, toasts, removeToast } = useToast();
+  const { isSuperAdmin } = useAuth();
 
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [cleanupOpen, setCleanupOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [cleaning, setCleaning] = useState(false);
+  const [cleanupProgress, setCleanupProgress] = useState({ done: 0, total: 0 });
 
   const loadAgents = async () => {
     setLoading(true);
@@ -68,6 +83,58 @@ export default function PartnerAgentsProfilesContent() {
   };
 
   useEffect(() => { loadAgents(); }, []); // eslint-disable-line
+
+  // Sort newest first so we can clearly identify keepers vs. legacy rows
+  const sortedByNewest = useMemo(
+    () =>
+      [...agents].sort(
+        (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+      ),
+    [agents]
+  );
+  const keepers = sortedByNewest.slice(0, 2);
+  const toDelete = sortedByNewest.slice(2);
+
+  const runCleanup = async () => {
+    if (confirmText !== "DELETE") return;
+    setCleaning(true);
+    setCleanupProgress({ done: 0, total: toDelete.length });
+    let ok = 0;
+    let failed = 0;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Not authenticated");
+      for (let i = 0; i < toDelete.length; i++) {
+        const u = toDelete[i];
+        try {
+          const res = await fetch(`${supabaseFunctionsUrl}/manage-users/${u.id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (!res.ok) {
+            failed++;
+          } else {
+            ok++;
+          }
+        } catch {
+          failed++;
+        }
+        setCleanupProgress({ done: i + 1, total: toDelete.length });
+      }
+      toast({
+        variant: failed === 0 ? "success" : "warning",
+        title: "Cleanup complete",
+        description: `Deleted ${ok}, kept ${keepers.length}, failed ${failed}`,
+      });
+    } catch (err) {
+      toast({ variant: "error", title: "Cleanup failed", description: err.message });
+    } finally {
+      setCleaning(false);
+      setCleanupOpen(false);
+      setConfirmText("");
+      await loadAgents();
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -123,6 +190,18 @@ export default function PartnerAgentsProfilesContent() {
           <X className="h-4 w-4 mr-1" />
           Reset Filters
         </Button>
+        {isSuperAdmin && (
+          <Button
+            onClick={() => { setConfirmText(""); setCleanupOpen(true); }}
+            size="sm"
+            className="h-9 ml-auto bg-red-600 hover:bg-red-700 text-white shadow-none"
+            disabled={loading || agents.length < 3}
+            title={agents.length < 3 ? "Nothing to clean" : "Keep newest 2, delete the rest"}
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Clean Legacy Records
+          </Button>
+        )}
       </div>
 
       {/* Table */}
@@ -227,6 +306,72 @@ export default function PartnerAgentsProfilesContent() {
           </div>
         )}
       </div>
+
+      <Dialog open={cleanupOpen} onOpenChange={(o) => !cleaning && setCleanupOpen(o)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Clean Legacy Partner Agent Records</DialogTitle>
+            <DialogDescription>
+              This will keep the 2 most recently created partner agents and permanently delete the rest (auth users + profiles). This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 text-sm">
+            <div>
+              <p className="font-semibold text-gray-900 mb-1">Keep ({keepers.length})</p>
+              <ul className="bg-green-50 border border-green-200 rounded p-2 space-y-1">
+                {keepers.map((u) => (
+                  <li key={u.id} className="text-gray-800">
+                    {u.full_name || "(no name)"} — {u.email}
+                    <span className="text-gray-500"> · {u.created_at?.slice(0, 10)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900 mb-1">Delete ({toDelete.length})</p>
+              <ul className="bg-red-50 border border-red-200 rounded p-2 space-y-1 max-h-60 overflow-y-auto">
+                {toDelete.map((u) => (
+                  <li key={u.id} className="text-gray-800">
+                    {u.full_name || "(no name)"} — {u.email}
+                    <span className="text-gray-500"> · {u.created_at?.slice(0, 10)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-1">
+                Type <span className="font-mono font-semibold">DELETE</span> to confirm
+              </label>
+              <Input
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                disabled={cleaning}
+                className="max-w-xs"
+              />
+            </div>
+            {cleaning && (
+              <p className="text-gray-600">
+                Deleting… {cleanupProgress.done} / {cleanupProgress.total}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCleanupOpen(false)} disabled={cleaning}>
+              Cancel
+            </Button>
+            <Button
+              onClick={runCleanup}
+              disabled={confirmText !== "DELETE" || cleaning || toDelete.length === 0}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {cleaning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Delete {toDelete.length} records
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
