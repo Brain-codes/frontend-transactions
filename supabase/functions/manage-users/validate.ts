@@ -110,13 +110,27 @@ export function validateUpdateData(data: any) {
     }
   }
 
-  // Status validation (active/disabled)
-  if (data.status !== undefined) {
-    if (!["active", "disabled"].includes(data.status)) {
-      errors.push("Status must be either 'active' or 'disabled'");
+  // Role validation (optional for updates)
+  if (data.role !== undefined) {
+    const ALLOWED_ROLES = ["super_admin", "acsl_agent_manager", "acsl_agent", "partner", "partner_agent", "agent"];
+    if (!ALLOWED_ROLES.includes(data.role)) {
+      errors.push(`Role must be one of: ${ALLOWED_ROLES.join(", ")}`);
     } else {
-      validatedData.status = data.status;
+      validatedData.role = data.role;
     }
+  }
+
+  // Organization binding (optional for updates; null clears it)
+  if (data.organization_id !== undefined) {
+    if (data.organization_id !== null && typeof data.organization_id !== "string") {
+      errors.push("organization_id must be a string or null");
+    } else {
+      validatedData.organization_id = data.organization_id || null;
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`validation: ${errors.join(", ")}`);
   }
 
   if (errors.length > 0) {
