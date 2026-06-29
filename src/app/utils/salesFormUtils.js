@@ -186,7 +186,10 @@ export const transformFormDataForAPI = (formData, isEdit = false) => {
     salesDate: formData.salesDate,
     contactPerson: formData.contactPerson,
     contactPhone: formData.contactPhone,
-    endUserName: formData.endUserName,
+    endUserName: [formData.endUserName, formData.endUserSurname]
+      .map((s) => (s || "").trim())
+      .filter(Boolean)
+      .join(" "),
     aka: formData.aka,
     phone: formData.phone,
     otherPhone: formData.otherPhone,
