@@ -26,7 +26,8 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
       sortOrder,
     });
 
-    // Build base query — when no role specified, return both super_admin and acsl_agent (formerly super_admin_agent)
+    // Build base query. Partner organization profiles are managed in Partner
+    // views, not User Management, so keep partner/admin rows out here.
     let query = supabase
       .from("profiles")
       .select("id, full_name, email, phone, role, status, created_at, last_login, organization_id", {
@@ -48,6 +49,8 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
       query = query.in("role", ALL_ROLES);
       console.log("🔍 Showing all manageable users");
     }
+
+    query = query.not("role", "in", "(partner,admin)");
 
     // Apply status filter
     if (status && ["active", "disabled"].includes(status)) {
@@ -76,12 +79,12 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
       throw new Error(`Database error: ${usersError.message}`);
     }
 
-    // Batch-fetch organizations for partner/partner_agent/agent rows
+    // Batch-fetch organizations for partner_agent/agent rows
     const orgIds = Array.from(
       new Set(
         (users || [])
           .filter((u: any) =>
-            ["partner", "partner_agent", "agent"].includes(u.role) && u.organization_id
+            ["partner_agent", "agent"].includes(u.role) && u.organization_id
           )
           .map((u: any) => u.organization_id)
       )
@@ -115,7 +118,7 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
             assigned_states_count: stateCount || 0,
           };
         }
-        if (["partner", "partner_agent", "agent"].includes(user.role)) {
+        if (["partner_agent", "agent"].includes(user.role)) {
           const org = user.organization_id ? orgMap.get(user.organization_id) : null;
           return {
             ...user,

@@ -129,6 +129,18 @@ const getRoleLabel = (role) => {
   return role;
 };
 
+const HIDDEN_USER_MANAGEMENT_ROLES = new Set(["partner", "admin"]);
+const USER_MANAGEMENT_QUERY_ROLES = [
+  "super_admin",
+  "acsl_agent_manager",
+  "acsl_agent",
+  "partner_agent",
+  "agent",
+  "super_admin_agent",
+];
+
+const isVisibleUserManagementRole = (role) => !HIDDEN_USER_MANAGEMENT_ROLES.has(role);
+
 const getRoleBadgeClasses = (role) => {
   switch (role) {
     case "super_admin":
@@ -233,22 +245,71 @@ const UserManagementPage = () => {
       if (currentFilters.status) params.append("status", currentFilters.status);
       if (currentFilters.role) params.append("role", currentFilters.role);
 
-      const res = await fetch(
-        `${supabaseFunctionsUrl}/manage-users?${params}`,
-        { headers: { Authorization: `Bearer ${session.access_token}` } },
-      );
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Failed to fetch users");
+      const fetchRolePage = async (role, rolePage = 1) => {
+        const roleParams = new URLSearchParams(params);
+        roleParams.set("page", rolePage.toString());
+        roleParams.set("limit", "100");
+        roleParams.set("role", role);
+        const res = await fetch(
+          `${supabaseFunctionsUrl}/manage-users?${roleParams}`,
+          { headers: { Authorization: `Bearer ${session.access_token}` } },
+        );
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Failed to fetch users");
+        return result;
+      };
 
-      setUsers(result.data || []);
-      if (result.pagination) {
+      const visibleRoles = currentFilters.role
+        ? [currentFilters.role].filter(isVisibleUserManagementRole)
+        : USER_MANAGEMENT_QUERY_ROLES;
+
+      if (visibleRoles.length === 0) {
+        setUsers([]);
         setPagination({
-          page: result.pagination.currentPage || 1,
-          page_size: result.pagination.itemsPerPage || 10,
-          total_count: result.pagination.totalItems || 0,
-          total_pages: result.pagination.totalPages || 0,
+          page,
+          page_size: pageSize,
+          total_count: 0,
+          total_pages: 0,
         });
+        return;
       }
+
+      const firstResults = await Promise.all(visibleRoles.map((role) => fetchRolePage(role, 1)));
+      const remainingRequests = [];
+      firstResults.forEach((result, index) => {
+        const role = visibleRoles[index];
+        const totalPages = result.pagination?.totalPages || 1;
+        for (let rolePage = 2; rolePage <= totalPages; rolePage += 1) {
+          remainingRequests.push(fetchRolePage(role, rolePage));
+        }
+      });
+
+      const remainingResults = remainingRequests.length > 0 ? await Promise.all(remainingRequests) : [];
+      const allVisibleUsers = [...firstResults, ...remainingResults]
+        .flatMap((result) => result.data || [])
+        .filter((user) => isVisibleUserManagementRole(user.role));
+
+      const sortedUsers = allVisibleUsers.sort((a, b) => {
+        const aValue = a?.[currentSortBy] ?? "";
+        const bValue = b?.[currentSortBy] ?? "";
+        const direction = currentSortOrder.toLowerCase() === "asc" ? 1 : -1;
+        if (currentSortBy === "created_at" || currentSortBy === "last_login") {
+          return direction * (new Date(aValue || 0).getTime() - new Date(bValue || 0).getTime());
+        }
+        return direction * String(aValue).localeCompare(String(bValue));
+      });
+
+      const totalCount = sortedUsers.length;
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const safePage = totalPages > 0 ? Math.min(page, totalPages) : 1;
+      const pageStart = (safePage - 1) * pageSize;
+      setUsers(sortedUsers.slice(pageStart, pageStart + pageSize));
+      setPagination({
+        page: safePage,
+        page_size: pageSize,
+        total_count: totalCount,
+        total_pages: totalPages,
+      });
     } catch (err) {
       toast({ variant: "error", title: "Failed to fetch users", description: err.message });
       setUsers([]);
@@ -1094,12 +1155,11 @@ const UserManagementPage = () => {
                       >
                         <TableCell className="text-sm font-medium text-gray-900">
                           <span className="align-baseline">{u.full_name || "N/A"}</span>
-                          {u.role && (
+                      {u.role && isVisibleUserManagementRole(u.role) && (
                             <sup className={`ml-1 text-[9px] font-medium ${
                               u.role === "super_admin" ? "text-red-600" :
                               u.role === "acsl_agent_manager" ? "text-purple-600" :
                               u.role === "acsl_agent" ? "text-green-700" :
-                              u.role === "partner" ? "text-blue-600" :
                               u.role === "partner_agent" ? "text-amber-600" :
                               u.role === "agent" || u.role === "agent_user" ? "text-cyan-700" :
                               "text-gray-500"
@@ -1379,7 +1439,6 @@ const UserManagementPage = () => {
                       <SelectItem value="super_admin">Super Admin</SelectItem>
                       <SelectItem value="acsl_agent_manager">ACSL Agent Manager</SelectItem>
                       <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
-                      <SelectItem value="partner">Partner</SelectItem>
                       <SelectItem value="partner_agent">Partner Agent</SelectItem>
                       <SelectItem value="agent">Agent</SelectItem>
                     </SelectContent>
