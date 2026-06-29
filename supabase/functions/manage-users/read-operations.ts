@@ -37,7 +37,6 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
       "super_admin",
       "acsl_agent_manager",
       "acsl_agent",
-      "partner",
       "partner_agent",
       "agent",
       "super_admin_agent",

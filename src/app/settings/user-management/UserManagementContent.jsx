@@ -1034,7 +1034,7 @@ const UserManagementPage = () => {
                 <SelectItem value="all" className="text-xs">All Roles</SelectItem>
                 <SelectItem value="super_admin" className="text-xs">Super Admin</SelectItem>
                 <SelectItem value="acsl_agent" className="text-xs">ACSL Agent</SelectItem>
-                <SelectItem value="partner" className="text-xs">Partner Admin</SelectItem>
+                
                 <SelectItem value="partner_agent" className="text-xs">Partner Agent</SelectItem>
                 <SelectItem value="agent" className="text-xs">Agent</SelectItem>
               </SelectContent>
