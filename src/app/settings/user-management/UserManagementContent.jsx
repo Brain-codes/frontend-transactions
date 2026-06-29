@@ -817,70 +817,17 @@ const UserManagementPage = () => {
         return { ok: res.ok, status: res.status, result };
       };
 
-      let result;
-      let newUserId;
-      let generatedPassword;
+      const attempt = await postUser(targetRole, { organization_id: partnerId });
+      if (!attempt.ok) throw new Error(attempt.result?.error || attempt.result?.message || "Failed to create user");
+      const result = attempt.result;
+      const newUserId = extractCreatedUserId(result);
+      const generatedPassword = result.generated_password || result.data?.password;
 
       if (needsOrgBinding) {
-        // The edge function only accepts acsl_agent / acsl_agent_manager / super_admin
-        // and rejects partner_agent / agent. Create the auth user as acsl_agent,
-        // then bypass the edge function and update profiles directly with the
-        // real target role + organization_id. This avoids the "Role must be ..."
-        // and "Phone number is required" 400s and keeps the role as selected.
-        let attempt = await postUser("acsl_agent");
-        if (!attempt.ok) {
-          const errMsg = String(attempt.result?.error || attempt.result?.message || "").toLowerCase();
-          const emailAlreadyExists = errMsg.includes("email") && (errMsg.includes("use") || errMsg.includes("exist"));
-          if (!emailAlreadyExists) {
-            throw new Error(attempt.result?.error || attempt.result?.message || "Failed to create user");
-          }
-          const { data: existing } = await supabase
-            .from("profiles")
-            .select("id")
-            .eq("email", userForm.email.trim().toLowerCase())
-            .maybeSingle();
-          newUserId = existing?.id || null;
-        } else {
-          result = attempt.result;
-          newUserId = extractCreatedUserId(result);
-          generatedPassword = result.generated_password;
-        }
-
-        if (!newUserId) {
-          const { data: lookup } = await supabase
-            .from("profiles").select("id")
-            .eq("email", userForm.email.trim().toLowerCase()).maybeSingle();
-          newUserId = lookup?.id || null;
-        }
-        if (!newUserId) throw new Error("User created but ID could not be resolved");
-
-        // Direct profile patch — assigns the real role + binds partner.
-        const { error: profileErr } = await supabase
-          .from("profiles")
-          .update({
-            full_name: userForm.full_name.trim(),
-            phone: userForm.phone.trim() || null,
-            role: targetRole,
-            organization_id: partnerId,
-          })
-          .eq("id", newUserId);
-        if (profileErr) {
-          throw new Error(
-            `User created but role could not be set to ${getRoleLabel(userForm.role)}: ${profileErr.message}`
-          );
-        }
-
-        // Keep organization-bound agents clean: they should only be linked by
-        // profiles.organization_id, not ACSL manager/state assignment tables.
+        // Keep organization-bound agents clean: only profiles.organization_id binds them.
         try { await superAdminAgentService.setAgentStates(newUserId, []); } catch { /* non-fatal */ }
         try { await superAdminAgentService.setAgentOrganizations(newUserId, []); } catch { /* non-fatal */ }
       } else {
-        const attempt = await postUser(userForm.role);
-        if (!attempt.ok) throw new Error(attempt.result?.error || "Failed to create user");
-        result = attempt.result;
-        newUserId = extractCreatedUserId(result);
-        generatedPassword = result.generated_password;
-
         if (
           newUserId &&
           (userForm.role === "acsl_agent_manager" || userForm.role === "acsl_agent") &&
@@ -930,35 +877,22 @@ const UserManagementPage = () => {
 
       const { data: { session } } = await supabase.auth.getSession();
 
-      if (isOrgBound) {
-        // Edge function rejects partner_agent/agent roles. Patch profile directly.
-        const { error: profileErr } = await supabase
-          .from("profiles")
-          .update({
-            full_name: userForm.full_name.trim(),
-            phone: userForm.phone.trim() || null,
-            role,
-            organization_id: partnerId,
-          })
-          .eq("id", selectedUser.id);
-        if (profileErr) throw new Error(profileErr.message);
-      } else {
-        const putBody = {
-          full_name: userForm.full_name.trim(),
-          phone: userForm.phone.trim() || "",
-          role,
-        };
-        const res = await fetch(
-          `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
-          {
-            method: "PUT",
-            headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-            body: JSON.stringify(putBody),
-          },
-        );
-        const result = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(result?.error || "Failed to update user");
-      }
+      const putBody = {
+        full_name: userForm.full_name.trim(),
+        phone: userForm.phone.trim() || "",
+        role,
+        organization_id: isOrgBound ? partnerId : null,
+      };
+      const res = await fetch(
+        `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify(putBody),
+        },
+      );
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result?.error || "Failed to update user");
 
       if (isOrgBound) {
         // Clear ACSL-style assignments so this user no longer appears under prior managers/states.
