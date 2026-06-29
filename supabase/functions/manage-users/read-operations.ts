@@ -50,7 +50,7 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
       console.log("🔍 Showing all manageable users");
     }
 
-    query = query.not("role", "in", "(partner,admin)");
+    query = query.not("role", "eq", "partner").not("role", "eq", "admin");
 
     // Apply status filter
     if (status && ["active", "disabled"].includes(status)) {
