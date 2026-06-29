@@ -60,7 +60,7 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
   lgaList = [],
 }) => {
   return (
-    <div className="bg-[#eef3c4] p-4 rounded-lg ">
+    <div className="bg-[#fafafa] p-4 rounded-lg border border-gray-200">
       <div className="flex flex-wrap items-center gap-4">
         {/* Search */}
         <div className="relative md:w-[400px] w-full">
