@@ -621,6 +621,8 @@ const AgentsProfilesContent = () => {
                         ) : (
                           <span>{a.supervisors.join(", ")}</span>
                         )
+                      ) : ["partner_agent", "agent"].includes(a.role) ? (
+                        <span>{a.organization?.partner_name || ""}</span>
                       ) : (
                         ""
                       )}
