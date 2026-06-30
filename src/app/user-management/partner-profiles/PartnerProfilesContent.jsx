@@ -405,6 +405,25 @@ const PartnerProfilesContent = () => {
                         </span>
                       )}
                     </TableCell>
+                    <TableCell className="text-center">
+                      {stoveCounts[p.id] === undefined ? (
+                        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-full text-xs font-medium bg-gray-100 text-gray-400">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        </span>
+                      ) : stoveCounts[p.id] > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => openStovesModal(p)}
+                          className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 border border-purple-200 hover:bg-purple-200 transition cursor-pointer"
+                          title="View all stove IDs"
+                        >
+                          {stoveCounts[p.id].toLocaleString()}
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-full text-xs font-semibold bg-rose-100 text-rose-700 border border-rose-200">
+                          0
+                        </span>
+                      )}
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <TooltipProvider delayDuration={150}>
