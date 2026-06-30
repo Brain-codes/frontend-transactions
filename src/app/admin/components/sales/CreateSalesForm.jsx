@@ -1068,37 +1068,68 @@ const CreateSalesForm = ({
             <FormField label={`Stove Serial No *${isEditMode ? " (locked)" : ""}`} error={errors.stoveSerialNo} htmlFor="stoveSerialNo">
               {isEditMode ? (
                 <Input value={formData.stoveSerialNo || stoveSearchTerm || ""} readOnly className="bg-gray-100" />
-              ) : (
+              ) : (() => {
+                const partnerPickerActive = needsPartnerSelection;
+                const branchPending = partnerPickerActive && selectedPartnerName && !formData.partnerName;
+                const noPartnerYet = partnerPickerActive && !selectedPartnerName;
+                const stoveDisabled = stovesLoading || noPartnerYet || branchPending;
+                const stovePlaceholder = noPartnerYet
+                  ? "Select a partner first"
+                  : branchPending
+                    ? "Select a branch to load stoves"
+                    : stovesLoading
+                      ? "Loading stove IDs..."
+                      : "Search stove ID...";
+                const showCount = !stovesLoading && !noPartnerYet && !branchPending && formData.partnerName;
+                return (
                 <div className="relative stove-search-container">
                   <Input
                     id="stoveSerialNo"
                     value={stoveSearchTerm}
                     onChange={(e) => { setStoveSearchTerm(e.target.value); setShowStoveDropdown(true); }}
                     onFocus={() => setShowStoveDropdown(true)}
-                    placeholder={stovesLoading ? "Loading..." : isSuperAdmin && !formData.partnerName ? "Select a partner first" : "Search stove ID..."}
+                    placeholder={stovePlaceholder}
                     className={errors.stoveSerialNo ? "border-red-500" : ""}
-                    disabled={stovesLoading || (isSuperAdmin && !formData.partnerName)}
+                    disabled={stoveDisabled}
                   />
-                  {showStoveDropdown && filteredStoves.length > 0 && (
+                  {showStoveDropdown && !stoveDisabled && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-auto">
-                      {filteredStoves.map((stove) => (
-                        <div
-                          key={stove.id}
-                          className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
-                          onClick={() => {
-                            setFormData((prev) => ({ ...prev, stoveSerialNo: stove.stove_id }));
-                            setStoveSearchTerm(stove.stove_id);
-                            setShowStoveDropdown(false);
-                            if (errors.stoveSerialNo) setErrors((prev) => ({ ...prev, stoveSerialNo: null }));
-                          }}
-                        >
-                          {stove.stove_id}
+                      {stovesLoading ? (
+                        <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading stove IDs...
                         </div>
-                      ))}
+                      ) : filteredStoves.length === 0 ? (
+                        <p className="px-3 py-2 text-sm text-muted-foreground">
+                          {availableStoves.length === 0
+                            ? "No available stoves for this partner"
+                            : "No matching stove IDs"}
+                        </p>
+                      ) : (
+                        filteredStoves.map((stove) => (
+                          <div
+                            key={stove.id || stove.stove_id}
+                            className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+                            onClick={() => {
+                              setFormData((prev) => ({ ...prev, stoveSerialNo: stove.stove_id }));
+                              setStoveSearchTerm(stove.stove_id);
+                              setShowStoveDropdown(false);
+                              if (errors.stoveSerialNo) setErrors((prev) => ({ ...prev, stoveSerialNo: null }));
+                            }}
+                          >
+                            {stove.stove_id}
+                          </div>
+                        ))
+                      )}
                     </div>
                   )}
+                  {showCount && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {availableStoves.length} available stove{availableStoves.length === 1 ? "" : "s"}
+                    </p>
+                  )}
                 </div>
-              )}
+                );
+              })()}
             </FormField>
 
             {/* Payment type */}
