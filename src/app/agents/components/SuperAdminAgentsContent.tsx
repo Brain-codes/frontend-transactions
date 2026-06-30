@@ -2216,9 +2216,15 @@ export default function SuperAdminAgentsContent() {
                         {agent.phone || ""}
                       </TableCell>
                       <TableCell className="text-center">
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                        <button
+                          type="button"
+                          onClick={() => setPartnersModalAgent(agent)}
+                          disabled={(agent.assigned_organizations_count ?? 0) === 0}
+                          className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          title="View assigned partners"
+                        >
                           {(agent.assigned_organizations_count ?? 0).toLocaleString()}
-                        </span>
+                        </button>
                       </TableCell>
                       {/* Stoves split into 3 columns */}
                       <TableCell className="text-center">
