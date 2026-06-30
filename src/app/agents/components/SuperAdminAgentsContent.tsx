@@ -647,13 +647,18 @@ function AgentPartnersModal({
     setLoading(true);
     try {
       const result = await superAdminAgentService.getAgentOrganizations(agent.id);
-      const orgs: PartnerOrg[] = (result.data || []).map((o: any) => ({
-        id: o.id,
-        partner_name: o.partner_name,
-        state: o.state ?? null,
-        branch: o.branch ?? null,
-        source: o.source === "state" ? "state" : "direct",
-      }));
+      // Only show partners that were explicitly assigned in the User Manager
+      // (direct assignments). State-derived partners are excluded so the modal
+      // matches the badge count and the User Manager.
+      const orgs: PartnerOrg[] = (result.data || [])
+        .filter((o: any) => !o.source || o.source === "direct")
+        .map((o: any) => ({
+          id: o.id,
+          partner_name: o.partner_name,
+          state: o.state ?? null,
+          branch: o.branch ?? null,
+          source: "direct" as const,
+        }));
       setPartners(orgs);
     } catch (err: any) {
       setError(err.message || "Failed to load partners");
@@ -661,6 +666,7 @@ function AgentPartnersModal({
       setLoading(false);
     }
   };
+
 
   if (!agent) return null;
 
