@@ -917,9 +917,11 @@ const UserManagementPage = () => {
         title: "User created successfully",
         description: generatedPassword ? `Password: ${generatedPassword}` : "User can now log in",
       });
+      try { window.dispatchEvent(new CustomEvent("acsl:user-updated", { detail: { id: newUserId } })); } catch { /* ssr-safe */ }
       setShowCreateModal(false);
       resetForm();
       fetchUsers(1, pagination.page_size);
+
     } catch (err) {
       toast({ variant: "error", title: "Failed to create user", description: err.message });
     } finally {
