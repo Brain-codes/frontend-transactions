@@ -738,6 +738,17 @@ const CreateSalesForm = ({
     fetchPaymentModels(org.id);
   };
 
+  const resetStoveSelection = () => {
+    setAvailableStoves([]);
+    setFilteredStoves([]);
+    setStoveSearchTerm("");
+    setShowStoveDropdown(false);
+    setFormData((prev) => ({ ...prev, stoveSerialNo: "" }));
+    if (errors.stoveSerialNo) {
+      setErrors((prev) => ({ ...prev, stoveSerialNo: null }));
+    }
+  };
+
   const handlePartnerPick = async (partnerName) => {
     setSelectedPartnerName(partnerName);
     setSelectedState("");
@@ -746,6 +757,7 @@ const CreateSalesForm = ({
     setShowPartnerDropdown(false);
     handleInputChange("partnerName", partnerName);
     handleInputChange("retailerBranch", "");
+    resetStoveSelection();
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.removeItem("saa_selected_org_id");
     }
@@ -792,6 +804,7 @@ const CreateSalesForm = ({
   const handleStatePick = (stateValue) => {
     setSelectedState(stateValue);
     handleInputChange("retailerBranch", "");
+    resetStoveSelection();
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.removeItem("saa_selected_org_id");
     }
@@ -803,6 +816,7 @@ const CreateSalesForm = ({
     const org = partnerBranches.find((r) => r.id === orgId);
     if (org) finalizeBranchPick(org);
   };
+
 
 
 
