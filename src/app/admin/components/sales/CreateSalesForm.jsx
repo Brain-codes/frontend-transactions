@@ -166,12 +166,8 @@ const CreateSalesForm = ({
 
   // Debounced partner search (any user without a known org can pick a partner)
   useEffect(() => {
-    if (!needsPartnerSelection || isEditMode) return;
-    // For super_admin allow empty search to list all partners; other roles require a query
-    if (userRole !== "super_admin" && !partnerSearch.trim()) {
-      setPartners([]);
-      return;
-    }
+    if (isEditMode) return;
+
 
     const t = setTimeout(async () => {
       setPartnersLoading(true);
@@ -294,11 +290,17 @@ const CreateSalesForm = ({
               ? sessionStorage.getItem("saa_selected_org_name")
               : null;
 
+          const preselectedPartnerName = saaPartnerName || profileData?.partnerName || "";
           setFormData((prev) => ({
             ...prev,
             transactionId: generateTransactionId(),
-            partnerName: saaPartnerName || profileData?.partnerName || "",
+            partnerName: preselectedPartnerName,
           }));
+          if (preselectedPartnerName) {
+            setPartnerSearch(preselectedPartnerName);
+            setSelectedPartnerName(preselectedPartnerName);
+          }
+
 
           // Auto-load stoves only if we already have an org; otherwise wait for partner pick
           if (!mustPickPartner) {
@@ -857,11 +859,8 @@ const CreateSalesForm = ({
         <div>
           <Label className="text-base font-semibold">Transaction Information</Label>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
-            <div>
-              <Label>Transaction ID</Label>
-              <Input value={formData.transactionId || "Auto-generated"} readOnly className="bg-gray-100" />
-              {errors.transactionId && <p className="text-sm text-red-500 mt-1">{errors.transactionId}</p>}
-            </div>
+            {/* Transaction ID is auto-generated and hidden from the UI */}
+
             <FormField label="Sales Date *" error={errors.salesDate} htmlFor="salesDate">
               <Input
                 id="salesDate"
@@ -877,7 +876,7 @@ const CreateSalesForm = ({
                 className={errors.salesDate ? "border-red-500" : ""}
               />
             </FormField>
-            {needsPartnerSelection && !isEditMode ? (
+            {!isEditMode ? (
               <>
                 <div>
                   <Label htmlFor="partnerSearch">Partner *</Label>
@@ -899,10 +898,11 @@ const CreateSalesForm = ({
                         }
                       }}
                       onFocus={() => setShowPartnerDropdown(true)}
-                      placeholder={partnersLoading ? "Searching..." : "Type to search partner..."}
+                      placeholder={partnersLoading ? "Loading partners..." : "Click to select or type to search..."}
                       className={errors.partnerName ? "border-red-500" : ""}
                     />
-                    {showPartnerDropdown && (userRole === "super_admin" || partnerSearch.trim()) && (
+                    {showPartnerDropdown && (
+
                       <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-52 overflow-auto">
                         {partnersLoading ? (
                           <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
