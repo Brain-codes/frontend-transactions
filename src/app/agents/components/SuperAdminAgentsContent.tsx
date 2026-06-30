@@ -1617,13 +1617,23 @@ export default function SuperAdminAgentsContent() {
         );
         if (cancelled) return;
 
+        // For stove math we use ALL orgs the agent can reach (direct + via state).
+        // For partner *counts* we use ONLY direct assignments, so the badge
+        // matches what was explicitly set in the User Manager.
         const agentToOrgIds: Record<string, string[]> = {};
+        const agentToDirectOrgIds: Record<string, string[]> = {};
         const allOrgIds = new Set<string>();
         for (const r of orgListResults) {
           const ids = r.orgs.map((o: any) => o.id).filter(Boolean);
+          const directIds = r.orgs
+            .filter((o: any) => !o.source || o.source === "direct")
+            .map((o: any) => o.id)
+            .filter(Boolean);
           agentToOrgIds[r.id] = ids;
+          agentToDirectOrgIds[r.id] = directIds;
           ids.forEach((id) => allOrgIds.add(id));
         }
+
 
         // 2. Stove counts per org — total + sold (status-based, deduped at org level).
         const orgIds = Array.from(allOrgIds);
