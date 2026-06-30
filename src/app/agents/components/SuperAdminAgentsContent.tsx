@@ -1685,7 +1685,21 @@ export default function SuperAdminAgentsContent() {
             for (const oid of orgs) received += stoveTotalByOrg[oid] || 0;
             const sold = soldByAgent[a.id] || 0;
             const available = Math.max(0, received - sold);
-            return { ...a, stove_summary: { received, sold, available } };
+            // For ACSL roles, prefer the hydrated org count so managers also
+            // see their assigned partners (backend list may not populate it).
+            const isAcslRole = a.role === "acsl_agent" || a.role === "acsl_agent_manager";
+            const assigned_organizations_count = isAcslRole
+              ? orgs.length
+              : a.assigned_organizations_count;
+            const total_partners_count = isAcslRole
+              ? orgs.length
+              : a.total_partners_count;
+            return {
+              ...a,
+              assigned_organizations_count,
+              total_partners_count,
+              stove_summary: { received, sold, available },
+            };
           })
         );
 
