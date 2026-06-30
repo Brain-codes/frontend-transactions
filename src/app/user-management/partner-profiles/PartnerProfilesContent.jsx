@@ -424,6 +424,7 @@ const PartnerProfilesContent = () => {
                           0
                         </span>
                       )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <TooltipProvider delayDuration={150}>
