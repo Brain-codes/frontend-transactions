@@ -297,7 +297,45 @@ class PaymentModelService {
       .eq("sale_id", saleId)
       .order("payment_date", { ascending: false });
     if (error) throw new Error(error.message);
-    return { success: true, data: data || [] };
+
+    const payments = data || [];
+    const total_paid = payments.reduce(
+      (acc, p) => acc + Number(p.amount || 0),
+      0,
+    );
+
+    // Pull sale + payment model context for the modal
+    let payment_model = null;
+    let sale_amount = 0;
+    try {
+      const { data: sale } = await supabase
+        .from("sales")
+        .select("amount, total_paid, payment_model_id")
+        .eq("id", saleId)
+        .maybeSingle();
+      if (sale) {
+        sale_amount = Number(sale.amount || 0);
+        if (sale.payment_model_id) {
+          const { data: pm } = await supabase
+            .from("payment_models")
+            .select("*")
+            .eq("id", sale.payment_model_id)
+            .maybeSingle();
+          payment_model = pm || null;
+        }
+      }
+    } catch (_) {
+      // non-critical
+    }
+
+    const summary = {
+      total_paid,
+      payment_count: payments.length,
+      balance: Math.max(0, sale_amount - total_paid),
+      sale_amount,
+    };
+
+    return { success: true, data: payments, summary, payment_model };
   }
 
   async recordInstallmentPayment(saleId, payload) {
