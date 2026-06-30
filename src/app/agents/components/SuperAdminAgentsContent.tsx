@@ -813,6 +813,9 @@ function AgentPartnersModal({
                       <TableCell className="text-xs text-gray-600">
                         {partner.branch || "—"}
                       </TableCell>
+                      <TableCell className="text-xs text-gray-900 text-right font-semibold">
+                        {partner.available_stoves ?? 0}
+                      </TableCell>
                       {/* <TableCell>
                         <span
                           className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
