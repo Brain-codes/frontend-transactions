@@ -2272,7 +2272,10 @@ export default function SuperAdminAgentsContent() {
                       style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
                     >
                       <TableCell className="text-sm font-medium text-gray-900">
-                          {agent.full_name}
+                        <span>{agent.full_name}</span>
+                        <sup className="ml-0.5 text-[9px] text-[#4a5d0f] font-semibold">
+                          {AGENTS_PERFORMANCE_ROLE_LABELS[agent.role] || agent.role}
+                        </sup>
                       </TableCell>
                       <TableCell className="text-sm text-gray-700">
                         {agent.phone || ""}
