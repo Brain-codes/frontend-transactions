@@ -23,8 +23,8 @@ function CreateSaleView() {
       title="Sell Stove"
       description="Record a new stove sale transaction"
     >
-      <div className="p-6">
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="px-6 pb-6 pt-2">
+        <div className="bg-white p-6">
           <CreateSalesForm
             isModal={false}
             showSuccessState={true}
