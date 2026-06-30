@@ -1250,7 +1250,7 @@ const CreateSalesForm = ({
             ) : null}
 
             {/* Sale amount */}
-            <FormField label={`Sale Amount (₦) *${isInstallment && selectedModel ? " — by model" : ""}`} error={errors.amount} htmlFor="amount">
+            <FormField label="Sale Amount (₦) *" error={errors.amount} htmlFor="amount">
               <Input
                 id="amount"
                 type="text"
@@ -1258,8 +1258,8 @@ const CreateSalesForm = ({
                 value={formatAmountInput(formData.amount)}
                 onChange={(e) => handleInputChange("amount", parseAmountInput(e.target.value))}
                 placeholder="Enter amount"
-                className={`${errors.amount ? "border-red-500" : ""} ${(isInstallment && selectedModel) || isEditMode ? "bg-gray-100" : ""}`}
-                readOnly={(isInstallment && !!selectedModel) || isEditMode}
+                className={`${errors.amount ? "border-red-500" : ""} ${isEditMode ? "bg-gray-100" : ""}`}
+                readOnly={isEditMode}
               />
             </FormField>
           </div>
