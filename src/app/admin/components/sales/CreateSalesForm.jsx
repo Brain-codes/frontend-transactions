@@ -160,7 +160,8 @@ const CreateSalesForm = ({
   // Debounced partner search (any user without a known org can pick a partner)
   useEffect(() => {
     if (!needsPartnerSelection || isEditMode) return;
-    if (!partnerSearch.trim()) {
+    // For super_admin allow empty search to list all partners; other roles require a query
+    if (userRole !== "super_admin" && !partnerSearch.trim()) {
       setPartners([]);
       return;
     }
@@ -175,13 +176,18 @@ const CreateSalesForm = ({
           const result = await superAdminAgentService.getAgentOrganizations(userId);
           const all = result.data || [];
           const q = partnerSearch.trim().toLowerCase();
-          setPartners(all.filter((p) =>
-            (p.partner_name || "").toLowerCase().includes(q) ||
-            (p.branch || "").toLowerCase().includes(q)
-          ));
+          setPartners(
+            q
+              ? all.filter((p) =>
+                  (p.partner_name || "").toLowerCase().includes(q) ||
+                  (p.branch || "").toLowerCase().includes(q)
+                )
+              : all
+          );
         } else {
           const { data: { session } } = await supabase.auth.getSession();
-          const params = new URLSearchParams({ limit: "50", offset: "0", search: partnerSearch.trim() });
+          const params = new URLSearchParams({ limit: "100", offset: "0" });
+          if (partnerSearch.trim()) params.set("search", partnerSearch.trim());
           const res = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
             { headers: { Authorization: `Bearer ${session.access_token}` } }
