@@ -53,7 +53,7 @@ const allNavItems = [
     ],
   },
   {
-    name: "Manage Agents",
+    name: "Agent Management",
     icon: Users,
     route: "agents",
     children: [
