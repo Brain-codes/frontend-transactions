@@ -160,7 +160,8 @@ const CreateSalesForm = ({
   // Debounced partner search (any user without a known org can pick a partner)
   useEffect(() => {
     if (!needsPartnerSelection || isEditMode) return;
-    if (!partnerSearch.trim()) {
+    // For super_admin allow empty search to list all partners; other roles require a query
+    if (userRole !== "super_admin" && !partnerSearch.trim()) {
       setPartners([]);
       return;
     }
@@ -175,13 +176,18 @@ const CreateSalesForm = ({
           const result = await superAdminAgentService.getAgentOrganizations(userId);
           const all = result.data || [];
           const q = partnerSearch.trim().toLowerCase();
-          setPartners(all.filter((p) =>
-            (p.partner_name || "").toLowerCase().includes(q) ||
-            (p.branch || "").toLowerCase().includes(q)
-          ));
+          setPartners(
+            q
+              ? all.filter((p) =>
+                  (p.partner_name || "").toLowerCase().includes(q) ||
+                  (p.branch || "").toLowerCase().includes(q)
+                )
+              : all
+          );
         } else {
           const { data: { session } } = await supabase.auth.getSession();
-          const params = new URLSearchParams({ limit: "50", offset: "0", search: partnerSearch.trim() });
+          const params = new URLSearchParams({ limit: "100", offset: "0" });
+          if (partnerSearch.trim()) params.set("search", partnerSearch.trim());
           const res = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
             { headers: { Authorization: `Bearer ${session.access_token}` } }
@@ -258,12 +264,20 @@ const CreateSalesForm = ({
             return result;
           };
 
+          // Super admins always pick a partner explicitly on each new sale
+          if (userRole === "super_admin" && typeof sessionStorage !== "undefined") {
+            sessionStorage.removeItem("saa_selected_org_id");
+            sessionStorage.removeItem("saa_selected_org_name");
+          }
+
           // Determine whether we have an org context yet
           const knownOrgId =
-            profileService.getOrganizationId() ||
-            (typeof sessionStorage !== "undefined"
-              ? sessionStorage.getItem("saa_selected_org_id")
-              : null);
+            userRole === "super_admin"
+              ? null
+              : profileService.getOrganizationId() ||
+                (typeof sessionStorage !== "undefined"
+                  ? sessionStorage.getItem("saa_selected_org_id")
+                  : null);
           const mustPickPartner = !knownOrgId;
           setNeedsPartnerSelection(mustPickPartner);
 
@@ -759,7 +773,7 @@ const CreateSalesForm = ({
                     placeholder={partnersLoading ? "Searching..." : "Type to search partner..."}
                     className={errors.partnerName ? "border-red-500" : ""}
                   />
-                  {showPartnerDropdown && partnerSearch.trim() && (
+                  {showPartnerDropdown && (userRole === "super_admin" || partnerSearch.trim()) && (
                     <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-52 overflow-auto">
                       {partnersLoading ? (
                         <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
