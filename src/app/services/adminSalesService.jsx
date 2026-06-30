@@ -37,50 +37,34 @@ class AdminSalesService {
     return headers;
   }
 
-  // Get available stove IDs for creating new sales
+  // Get available stove IDs for creating new sales - queries Supabase directly
   async getAvailableStoveIds(organizationId = null, status = "available") {
     try {
-      const headers = await this.getHeaders();
+      let query = this.supabase
+        .from("stove_ids")
+        .select("id, stove_id, status, organization_id, created_at")
+        .eq("is_archived", false)
+        .order("stove_id", { ascending: true })
+        .limit(2000);
 
-      // Prepare request body similar to Flutter code
-      const requestBody = {};
       if (organizationId) {
-        requestBody.organization_id = organizationId;
+        query = query.eq("organization_id", organizationId);
       }
       if (status) {
-        requestBody.status = status;
+        // "available" = anything not sold
+        if (status === "available") {
+          query = query.neq("status", "sold");
+        } else {
+          query = query.eq("status", status);
+        }
       }
 
-      const response = await fetch(this.getStovesURL, {
-        method: "POST", // Changed to POST to send body with organization_id
-        headers,
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      // Handle different response formats like in Flutter code
-      let stoveIDList;
-      if (data.data && Array.isArray(data.data)) {
-        stoveIDList = data.data;
-      } else if (Array.isArray(data)) {
-        stoveIDList = data;
-      } else {
-        console.error("Unexpected response format:", typeof data);
-        return {
-          success: false,
-          data: [],
-          error: "Unexpected response format from server",
-        };
-      }
+      const { data, error } = await query;
+      if (error) throw error;
 
       return {
         success: true,
-        data: stoveIDList,
+        data: data || [],
         error: null,
       };
     } catch (error) {
@@ -92,6 +76,7 @@ class AdminSalesService {
       };
     }
   }
+
 
   // Upload image for sales (stove images, agreement documents) - Updated to match Flutter
   async uploadImage(file, type) {
