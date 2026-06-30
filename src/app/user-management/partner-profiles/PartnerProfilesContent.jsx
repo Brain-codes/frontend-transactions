@@ -236,6 +236,43 @@ const PartnerProfilesContent = () => {
     return () => { cancelled = true; };
   }, [pageRows, agentCounts]);
 
+  // Lazy fetch stove totals per visible partner
+  useEffect(() => {
+    const missing = pageRows.filter((p) => stoveCounts[p.id] === undefined);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const ids = missing.map((p) => p.id);
+      try {
+        const counts = {};
+        ids.forEach((id) => { counts[id] = 0; });
+        const BATCH = 50;
+        for (let i = 0; i < ids.length; i += BATCH) {
+          const slice = ids.slice(i, i + BATCH);
+          const { data } = await supabase
+            .from("stove_ids")
+            .select("organization_id")
+            .in("organization_id", slice)
+            .eq("is_archived", false);
+          (data || []).forEach((r) => {
+            counts[r.organization_id] = (counts[r.organization_id] || 0) + 1;
+          });
+        }
+        if (cancelled) return;
+        setStoveCounts((prev) => ({ ...prev, ...counts }));
+      } catch {
+        if (!cancelled) {
+          setStoveCounts((prev) => {
+            const next = { ...prev };
+            ids.forEach((id) => { if (next[id] === undefined) next[id] = 0; });
+            return next;
+          });
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [pageRows, stoveCounts]);
+
   const hasActiveFilters = filters.search !== "" || filters.state !== "";
 
 
