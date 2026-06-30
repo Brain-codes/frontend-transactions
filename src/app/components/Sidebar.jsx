@@ -44,7 +44,7 @@ const allNavItems = [
     ],
   },
   {
-    name: "Manage Partners",
+    name: "Partner Management",
     icon: UserCheck,
     route: "partners",
     children: [
