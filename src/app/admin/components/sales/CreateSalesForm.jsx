@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import { SUPABASE_URL } from "@/lib/supabaseConfig";
 import { useRouter } from "@/compat/navigation";
 import Link from "@/compat/Link";
 import { Button } from "@/components/ui/button";
@@ -195,7 +196,7 @@ const CreateSalesForm = ({
           const params = new URLSearchParams({ limit: "100", offset: "0" });
           if (partnerSearch.trim()) params.set("search", partnerSearch.trim());
           const res = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
+            `${SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
             { headers: { Authorization: `Bearer ${session.access_token}` } }
           );
           const result = await res.json();
@@ -764,7 +765,7 @@ const CreateSalesForm = ({
           search: partnerName,
         });
         const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
+          `${SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
           { headers: { Authorization: `Bearer ${session.access_token}` } },
         );
         const result = await res.json();
