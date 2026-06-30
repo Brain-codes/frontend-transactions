@@ -1,51 +1,54 @@
-## Goal
-Make the Payment Models view fully functional without depending on undeployed Supabase Edge Functions. The `payment_models` and `organization_payment_models` tables already exist in your Supabase project (per `SUPABASE_TABLE_OVERVIEW.md`), so no schema changes are required — only client code.
+## Problem
 
-## What's wrong today
-`paymentModelService.js` calls edge functions at `/functions/v1/payment-models` and `/functions/v1/organization-payment-models`. Those functions are not deployed on your external Supabase, so every call returns **HTTP 404**. The Create / Edit / Delete / Assign modals all fail.
+The Residential Address field on the Sales form never becomes usable:
 
-## Fix — rewrite the service to use the Supabase client directly
-Replace the edge-function HTTP layer with direct Supabase queries (RLS already restricts writes to super_admin). All UI files (`PaymentModelsContent.tsx`, `AssignPaymentModelsModal.jsx`, `CreateSalesForm.jsx`) keep their existing function signatures — no UI changes needed.
+1. **`google-places-input.jsx` fetches the Maps key from an edge function** (`/functions/v1/get-google-keys`) that is **not deployed** on your external Supabase project → fetch returns 404 → `isLoaded` stays `false` → the input is `disabled` forever and shows "Loading Google Places…".
+2. **It uses the legacy Places library** (`google.maps.places.AutocompleteService` + `PlacesService`). Google has retired legacy Places for keys created after March 1, 2025 — even if the script loads, suggestions silently return zero results on new keys.
+3. The input is `disabled={disabled || !isLoaded}`, so when Places fails for any reason the user **cannot even type a plain address** as a fallback.
 
-### `src/app/services/paymentModelService.js` — rewrite
+Your project already has `VITE_GOOGLE_MAPS_API_KEY` in `.env.local` (the map page uses it directly), so the edge-function detour is unnecessary.
 
-- `getPaymentModels({ show_all, status, search })`
-  - Query `payment_models` with `creator:profiles!created_by(id, full_name, email)`
-  - Apply `is_active` filter (non-super-admins forced to active; super-admin honors `status` filter)
-  - Apply `ilike('name', %search%)` if search provided
-  - Compute `top_model` from `sales` grouped by `payment_model_id` (single query, count client-side)
-  - Return `{ success, data, total, top_model }`
+## Fix — rewrite `src/app/components/ui/google-places-input.jsx`
 
-- `getPaymentModel(id)` — single row + count of rows in `organization_payment_models` for that model
+Single-file change. Public API (`value`, `onChange`, `placeholder`, `disabled`, `className`) and the shape returned to `onChange` (`fullAddress, street, city, state, country, latitude, longitude`) stay identical, so `CreateSalesForm.jsx` does not change.
 
-- `createPaymentModel({ name, description, duration_months, fixed_price, min_down_payment })`
-  - Validate client-side (name required, duration ≥ 1, price > 0, min_down ≤ price)
-  - Insert with `created_by = auth.uid()`
+### What changes inside the component
 
-- `updatePaymentModel(id, patch)` — patch allowed fields including `is_active`
+1. **Load the key synchronously from env**
+   - Read `import.meta.env.VITE_GOOGLE_MAPS_API_KEY`.
+   - Remove the `supabase.auth.getSession()` + `fetch('/functions/v1/get-google-keys')` block entirely.
+   - If the key is missing, log a clear console error and render the input in plain-text mode (still editable).
 
-- `deletePaymentModel(id)`
-  - Count `sales` referencing the model
-  - If > 0 → soft delete (set `is_active = false`)
-  - Else → delete `organization_payment_models` rows then delete the model
+2. **Load Maps JS the modern way**
+   - Inject one `<script>` with `https://maps.googleapis.com/maps/api/js?key=…&v=weekly&libraries=places&loading=async&callback=__gmInitPlaces`.
+   - Use a single global init callback shared across all instances; if the script tag already exists, just await the callback.
+   - Do NOT set `mapId` and do NOT use `AdvancedMarkerElement` (per Lovable Maps guidance).
 
-- `getOrgPaymentModels(orgId)` — query `organization_payment_models` with `payment_model:payment_models(*)`
+3. **Switch to Places API (New)** — fixes the "no suggestions" issue on modern keys
+   - Predictions: `const { AutocompleteSuggestion, AutocompleteSessionToken } = await google.maps.importLibrary('places');` then `AutocompleteSuggestion.fetchAutocompleteSuggestions({ input, sessionToken, includedRegionCodes: ['ng'] })`.
+   - One `AutocompleteSessionToken` per typing session (reset after a selection).
+   - Debounce input by ~250 ms to avoid hammering the API per keystroke.
+   - Details: on selection call `suggestion.placePrediction.toPlace()` then `place.fetchFields({ fields: ['formattedAddress', 'addressComponents', 'location', 'displayName'] })`. Map `addressComponents` → `street/city/state/country` using the same `types` logic that's already in the file.
 
-- `setOrgPaymentModels(orgId, ids)`
-  - Fetch current assignments
-  - Delete rows whose `payment_model_id` is no longer in `ids`
-  - Insert new rows for added ids with `assigned_by = auth.uid()`
+4. **Never block typing**
+   - Remove `disabled={disabled || !isLoaded}` — only honor the parent `disabled` prop.
+   - On every keystroke, also call `onChange({ fullAddress: typedText, … })` so a user can save a free-text address even if Places never loads. Coordinates stay `null` until a suggestion is picked.
+   - Replace the persistent "Loading Google Places…" overlay with a small inline hint that only shows while the script is still loading AND the input is empty.
 
-- `removeOrgPaymentModel(orgId, modelId)` — delete the matching row
-
-- `getInstallmentPayments(saleId)` / `recordInstallmentPayment(saleId, data)` — direct queries on `installment_payments`
-
-Each method returns the same shape the UI already expects (`{ success: true, data, ... }`) so no caller has to change.
+5. **Clearer failure messaging**
+   - If the script loads but `AutocompleteSuggestion.fetchAutocompleteSuggestions` throws `REQUEST_DENIED` / `ApiNotActivatedMapError`, show a one-line hint under the input: *"Address suggestions unavailable — enable Places API (New) in your Google Cloud project."* The input remains usable.
 
 ## Files touched
-- `src/app/services/paymentModelService.js` — full rewrite (single file)
+
+- `src/app/components/ui/google-places-input.jsx` — full rewrite (only file).
+- No changes to `CreateSalesForm.jsx`, no schema changes, no edge functions.
+
+## Prerequisite on your Google Cloud project
+
+For autocomplete to return suggestions, the key in `.env.local` (`VITE_GOOGLE_MAPS_API_KEY`) must have **Places API (New)** enabled (in addition to Maps JavaScript API which the map page already uses). If only the legacy Places API is enabled, the rewrite still leaves the field fully typeable but suggestions won't appear until Places API (New) is turned on — the inline hint above will tell you that's what's missing.
 
 ## Out of scope
-- No schema/migration changes (tables already exist)
-- No UI changes to `PaymentModelsContent.tsx` or modals
-- Edge functions in `supabase/functions/payment-models/` and `organization-payment-models/` stay in the repo but are no longer called
+
+- No changes to the Map page (`src/app/map/page.jsx`) — it works.
+- No changes to the System Configuration screen.
+- No new edge functions; the unused `get-google-keys` function is left in the repo but no longer called.
