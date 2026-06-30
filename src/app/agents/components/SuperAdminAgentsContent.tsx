@@ -1594,6 +1594,12 @@ export default function SuperAdminAgentsContent() {
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
   useEffect(() => { setPage(1); }, [search, statusFilter, selectedRoles, dateFrom, dateTo]);
+  useEffect(() => {
+    const handler = () => { fetchAgents(); };
+    window.addEventListener("acsl:user-updated", handler);
+    return () => window.removeEventListener("acsl:user-updated", handler);
+  }, [fetchAgents]);
+
 
   // Hydrate Assigned / Collected / In Stock per agent from their assigned partner orgs.
   // Assigned = total stoves across agent's partners; Collected = sold; In Stock = available.
