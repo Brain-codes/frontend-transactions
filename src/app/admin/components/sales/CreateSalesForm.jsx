@@ -663,20 +663,6 @@ const CreateSalesForm = ({
         setError("Please select a payment model for installment payment");
         return;
       }
-      if (
-        initialPaymentAmount &&
-        selectedModel?.min_down_payment > 0 &&
-        parseFloat(initialPaymentAmount) < parseFloat(selectedModel.min_down_payment)
-      ) {
-        setError(
-          `Initial payment must be at least ${formatCurrency(selectedModel.min_down_payment)}`
-        );
-        return;
-      }
-      if (initialPaymentAmount && parseFloat(initialPaymentAmount) > 0 && !initialPaymentMethod) {
-        setError("Please select a payment method for the initial payment");
-        return;
-      }
     }
 
     // For edit mode, check if any changes were made
@@ -1264,7 +1250,7 @@ const CreateSalesForm = ({
             ) : null}
 
             {/* Sale amount */}
-            <FormField label={`Sale Amount (₦) *${isInstallment && selectedModel ? " — by model" : ""}`} error={errors.amount} htmlFor="amount">
+            <FormField label="Sale Amount (₦) *" error={errors.amount} htmlFor="amount">
               <Input
                 id="amount"
                 type="text"
@@ -1272,8 +1258,8 @@ const CreateSalesForm = ({
                 value={formatAmountInput(formData.amount)}
                 onChange={(e) => handleInputChange("amount", parseAmountInput(e.target.value))}
                 placeholder="Enter amount"
-                className={`${errors.amount ? "border-red-500" : ""} ${(isInstallment && selectedModel) || isEditMode ? "bg-gray-100" : ""}`}
-                readOnly={(isInstallment && !!selectedModel) || isEditMode}
+                className={`${errors.amount ? "border-red-500" : ""} ${isEditMode ? "bg-gray-100" : ""}`}
+                readOnly={isEditMode}
               />
             </FormField>
           </div>
@@ -1301,59 +1287,11 @@ const CreateSalesForm = ({
                 {selectedModel.min_down_payment > 0 && (
                   <p className="text-sm text-amber-700 mt-2 flex items-center gap-1">
                     <Info className="h-3.5 w-3.5" />
-                    Min. down payment: {formatCurrency(selectedModel.min_down_payment)}
+                    Suggested down payment (guide only): {formatCurrency(selectedModel.min_down_payment)}
                   </p>
                 )}
               </div>
 
-              {/* Initial payment fields */}
-              <div className="border-t pt-3">
-                <Label className="text-base font-semibold">Initial Payment (Optional)</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-4 mt-2">
-                  <FormField label="Amount (₦)" htmlFor="initialPaymentAmount">
-                    <Input
-                      id="initialPaymentAmount"
-                      type="text"
-                      inputMode="numeric"
-                      value={formatAmountInput(initialPaymentAmount)}
-                      onChange={(e) => {
-                        const raw = parseAmountInput(e.target.value);
-                        if (raw === "" || parseFloat(raw) <= parseFloat(selectedModel.fixed_price)) setInitialPaymentAmount(raw);
-                      }}
-                      placeholder={selectedModel.min_down_payment > 0 ? `Min: ${formatCurrency(selectedModel.min_down_payment)}` : "Enter amount"}
-                    />
-                    {initialPaymentAmount && selectedModel.min_down_payment > 0 && parseFloat(initialPaymentAmount) < parseFloat(selectedModel.min_down_payment) && (
-                      <p className="text-sm text-amber-600 mt-1">Min. {formatCurrency(selectedModel.min_down_payment)}</p>
-                    )}
-                  </FormField>
-                  <FormField label="Method" htmlFor="initialPaymentMethod">
-                    <Select value={initialPaymentMethod} onValueChange={(v) => setInitialPaymentMethod(v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select method" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="transfer">Transfer</SelectItem>
-                        <SelectItem value="pos">POS</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormField>
-                </div>
-                {initialPaymentAmount && parseFloat(initialPaymentAmount) > 0 && (
-                  <div className="mt-3">
-                    <ImageUploadSection
-                      label="Proof of Payment"
-                      preview={initialPaymentProofPreview}
-                      uploading={uploadingProof}
-                      onUpload={handleProofImageUpload}
-                      placeholder="Upload proof of initial payment"
-                      uploadIcon={FileText}
-                      buttonText="Upload Proof"
-                      changeButtonText="Change Proof"
-                    />
-                  </div>
-                )}
-              </div>
             </div>
           )}
         </div>
