@@ -895,6 +895,7 @@ const CreateSalesForm = ({
                           setSelectedState("");
                           setPartnerBranches([]);
                           handleInputChange("retailerBranch", "");
+                          resetStoveSelection();
                         }
                       }}
                       onFocus={() => setShowPartnerDropdown(true)}
