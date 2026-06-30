@@ -108,6 +108,7 @@ interface PartnerOrg {
   state: string | null;
   branch: string | null;
   source: "direct" | "state";
+  available_stoves?: number;
 }
 
 const ALL_STATES = Object.keys(lgaAndStates).sort();
