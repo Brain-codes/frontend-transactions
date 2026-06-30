@@ -109,6 +109,11 @@ const PartnerProfilesContent = () => {
   const [agentsModalPartner, setAgentsModalPartner] = useState(null);
   const [agentsModalList, setAgentsModalList] = useState([]);
   const [agentsModalLoading, setAgentsModalLoading] = useState(false);
+  const [stoveCounts, setStoveCounts] = useState({}); // orgId -> total received
+  const [stovesModalPartner, setStovesModalPartner] = useState(null);
+  const [stovesModalList, setStovesModalList] = useState([]);
+  const [stovesModalLoading, setStovesModalLoading] = useState(false);
+  const [stovesModalSearch, setStovesModalSearch] = useState("");
 
   const openAgentsModal = async (partner) => {
     setAgentsModalPartner(partner);
@@ -124,6 +129,30 @@ const PartnerProfilesContent = () => {
       setAgentsModalLoading(false);
     }
   };
+
+  const openStovesModal = async (partner) => {
+    setStovesModalPartner(partner);
+    setStovesModalLoading(true);
+    setStovesModalList([]);
+    setStovesModalSearch("");
+    try {
+      const { data, error } = await supabase
+        .from("stove_ids")
+        .select("id, stove_id, status, created_at")
+        .eq("organization_id", partner.id)
+        .eq("is_archived", false)
+        .order("stove_id", { ascending: true });
+      if (error) throw error;
+      const list = data || [];
+      setStovesModalList(list);
+      setStoveCounts((prev) => ({ ...prev, [partner.id]: list.length }));
+    } catch (err) {
+      toast({ variant: "error", title: "Failed to load stoves", description: err.message });
+    } finally {
+      setStovesModalLoading(false);
+    }
+  };
+
 
 
   const loadPartners = async () => {
