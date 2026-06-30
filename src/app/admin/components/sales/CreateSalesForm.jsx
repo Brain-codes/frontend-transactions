@@ -166,12 +166,8 @@ const CreateSalesForm = ({
 
   // Debounced partner search (any user without a known org can pick a partner)
   useEffect(() => {
-    if (!needsPartnerSelection || isEditMode) return;
-    // For super_admin allow empty search to list all partners; other roles require a query
-    if (userRole !== "super_admin" && !partnerSearch.trim()) {
-      setPartners([]);
-      return;
-    }
+    if (isEditMode) return;
+
 
     const t = setTimeout(async () => {
       setPartnersLoading(true);
