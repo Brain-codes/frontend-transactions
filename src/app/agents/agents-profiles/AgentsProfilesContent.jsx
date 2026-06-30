@@ -298,18 +298,19 @@ const AgentsProfilesContent = () => {
       const batch = targets.slice(i, i + BATCH);
       const results = await Promise.allSettled(
         batch.map(async (a) => {
-          const orgsPromise =
-            a.role === "acsl_agent"
-              ? fetchDirectPartnerCount(supabaseRef.current, a.id).then((n) =>
-                  n === null
-                    ? superAdminAgentService.getAgentOrganizations(a.id)
-                    : { __count: n }
-                )
-              : superAdminAgentService.getAgentOrganizations(a.id);
+          // Both ACSL Agents and ACSL Agent Managers count direct partner
+          // assignments only — state-derived partners must not inflate the
+          // badge (it must match the User Manager).
+          const orgsPromise = fetchDirectPartnerCount(supabaseRef.current, a.id).then((n) =>
+            n === null
+              ? superAdminAgentService.getAgentOrganizations(a.id)
+              : { __count: n }
+          );
           const [statesRes, orgsRes] = await Promise.allSettled([
             superAdminAgentService.getAgentStates(a.id),
             orgsPromise,
           ]);
+
           const updates = {};
           if (statesRes.status === "fulfilled") {
             const r = statesRes.value;
@@ -322,8 +323,12 @@ const AgentsProfilesContent = () => {
               updates.assigned_organizations_count = r.__count;
             } else {
               const list = r?.data || r?.organizations || r || [];
-              if (Array.isArray(list)) updates.assigned_organizations_count = list.length;
+              if (Array.isArray(list)) {
+                const direct = list.filter((o) => !o?.source || o.source === "direct");
+                updates.assigned_organizations_count = direct.length;
+              }
             }
+
           }
           return { id: a.id, updates };
         })
@@ -407,6 +412,13 @@ const AgentsProfilesContent = () => {
       await loadAgents();
     })();
   }, []);
+
+  useEffect(() => {
+    const handler = () => { loadAgents(); };
+    window.addEventListener("acsl:user-updated", handler);
+    return () => window.removeEventListener("acsl:user-updated", handler);
+  }, []);
+
 
   // Run supervisor hydration once agents have been loaded.
   useEffect(() => {

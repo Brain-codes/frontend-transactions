@@ -647,13 +647,18 @@ function AgentPartnersModal({
     setLoading(true);
     try {
       const result = await superAdminAgentService.getAgentOrganizations(agent.id);
-      const orgs: PartnerOrg[] = (result.data || []).map((o: any) => ({
-        id: o.id,
-        partner_name: o.partner_name,
-        state: o.state ?? null,
-        branch: o.branch ?? null,
-        source: o.source === "state" ? "state" : "direct",
-      }));
+      // Only show partners that were explicitly assigned in the User Manager
+      // (direct assignments). State-derived partners are excluded so the modal
+      // matches the badge count and the User Manager.
+      const orgs: PartnerOrg[] = (result.data || [])
+        .filter((o: any) => !o.source || o.source === "direct")
+        .map((o: any) => ({
+          id: o.id,
+          partner_name: o.partner_name,
+          state: o.state ?? null,
+          branch: o.branch ?? null,
+          source: "direct" as const,
+        }));
       setPartners(orgs);
     } catch (err: any) {
       setError(err.message || "Failed to load partners");
@@ -661,6 +666,7 @@ function AgentPartnersModal({
       setLoading(false);
     }
   };
+
 
   if (!agent) return null;
 
@@ -1588,6 +1594,12 @@ export default function SuperAdminAgentsContent() {
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
   useEffect(() => { setPage(1); }, [search, statusFilter, selectedRoles, dateFrom, dateTo]);
+  useEffect(() => {
+    const handler = () => { fetchAgents(); };
+    window.addEventListener("acsl:user-updated", handler);
+    return () => window.removeEventListener("acsl:user-updated", handler);
+  }, [fetchAgents]);
+
 
   // Hydrate Assigned / Collected / In Stock per agent from their assigned partner orgs.
   // Assigned = total stoves across agent's partners; Collected = sold; In Stock = available.
@@ -1617,13 +1629,23 @@ export default function SuperAdminAgentsContent() {
         );
         if (cancelled) return;
 
+        // For stove math we use ALL orgs the agent can reach (direct + via state).
+        // For partner *counts* we use ONLY direct assignments, so the badge
+        // matches what was explicitly set in the User Manager.
         const agentToOrgIds: Record<string, string[]> = {};
+        const agentToDirectOrgIds: Record<string, string[]> = {};
         const allOrgIds = new Set<string>();
         for (const r of orgListResults) {
           const ids = r.orgs.map((o: any) => o.id).filter(Boolean);
+          const directIds = r.orgs
+            .filter((o: any) => !o.source || o.source === "direct")
+            .map((o: any) => o.id)
+            .filter(Boolean);
           agentToOrgIds[r.id] = ids;
+          agentToDirectOrgIds[r.id] = directIds;
           ids.forEach((id) => allOrgIds.add(id));
         }
+
 
         // 2. Stove counts per org — total + sold (status-based, deduped at org level).
         const orgIds = Array.from(allOrgIds);
@@ -1688,12 +1710,14 @@ export default function SuperAdminAgentsContent() {
             // For ACSL roles, prefer the hydrated org count so managers also
             // see their assigned partners (backend list may not populate it).
             const isAcslRole = a.role === "acsl_agent" || a.role === "acsl_agent_manager";
+            const directOrgs = agentToDirectOrgIds[a.id] || [];
             const assigned_organizations_count = isAcslRole
-              ? orgs.length
+              ? directOrgs.length
               : a.assigned_organizations_count;
             const total_partners_count = isAcslRole
-              ? orgs.length
+              ? directOrgs.length
               : a.total_partners_count;
+
             return {
               ...a,
               assigned_organizations_count,
