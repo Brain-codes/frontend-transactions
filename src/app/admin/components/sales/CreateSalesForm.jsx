@@ -853,11 +853,8 @@ const CreateSalesForm = ({
         <div>
           <Label className="text-base font-semibold">Transaction Information</Label>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
-            <div>
-              <Label>Transaction ID</Label>
-              <Input value={formData.transactionId || "Auto-generated"} readOnly className="bg-gray-100" />
-              {errors.transactionId && <p className="text-sm text-red-500 mt-1">{errors.transactionId}</p>}
-            </div>
+            {/* Transaction ID is auto-generated and hidden from the UI */}
+
             <FormField label="Sales Date *" error={errors.salesDate} htmlFor="salesDate">
               <Input
                 id="salesDate"
