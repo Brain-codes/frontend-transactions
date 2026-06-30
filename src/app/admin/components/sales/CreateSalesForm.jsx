@@ -451,16 +451,23 @@ const CreateSalesForm = ({
     const organizationId = orgId ||
       profileService.getOrganizationId() ||
       (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("saa_selected_org_id") : null);
-    if (!organizationId) return;
     try {
       setModelsLoading(true);
-      const result = await paymentModelService.getOrgPaymentModels(organizationId);
-      if (result.data && result.data.length > 0) {
-        const models = result.data
-          .map((a) => a.payment_model)
-          .filter((m) => m && m.is_active !== false);
-        setPaymentModels(models);
+      let models = [];
+      if (organizationId) {
+        const result = await paymentModelService.getOrgPaymentModels(organizationId);
+        if (result?.data?.length > 0) {
+          models = result.data
+            .map((a) => a.payment_model)
+            .filter((m) => m && m.is_active !== false);
+        }
       }
+      // Fallback: list all active payment models if none assigned to org
+      if (models.length === 0) {
+        const all = await paymentModelService.getPaymentModels({ status: "active" });
+        models = (all?.data || []).filter((m) => m && m.is_active !== false);
+      }
+      setPaymentModels(models);
     } catch (err) {
       console.error("Error fetching payment models:", err);
     } finally {
@@ -468,11 +475,12 @@ const CreateSalesForm = ({
     }
   };
 
-  // Fetch payment models on mount for non-super-admin users (create mode only)
+  // Fetch payment models on mount so the picker is always available
   useEffect(() => {
-    if (isEditMode || isSuperAdmin) return;
+    if (isEditMode) return;
     fetchPaymentModels();
   }, [isEditMode]);
+
 
   // Update selected model details when model ID changes
   useEffect(() => {
