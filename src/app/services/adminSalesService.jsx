@@ -77,6 +77,54 @@ class AdminSalesService {
     }
   }
 
+  // Search stove IDs for a partner (AJAX). Returns up to `limit` matches.
+  async searchStoveIds(organizationId, term = "", limit = 20) {
+    try {
+      if (!organizationId) {
+        return { success: true, data: [], error: null };
+      }
+      let query = this.supabase
+        .from("stove_ids")
+        .select("id, stove_id, status, organization_id")
+        .eq("organization_id", organizationId)
+        .eq("is_archived", false)
+        .neq("status", "sold")
+        .order("stove_id", { ascending: true })
+        .limit(limit);
+      const t = (term || "").trim();
+      if (t) query = query.ilike("stove_id", `%${t}%`);
+      const { data, error } = await query;
+      if (error) throw error;
+      return { success: true, data: data || [], error: null };
+    } catch (error) {
+      console.error("Error searching stove IDs:", error);
+      return { success: false, data: [], error: error.message || "Failed to search stove IDs" };
+    }
+  }
+
+  // Validate that a given stove_id exists, is available, and belongs to the partner org.
+  async validateStoveId(organizationId, stoveId) {
+    try {
+      if (!organizationId || !stoveId) {
+        return { success: true, valid: false, data: null, error: null };
+      }
+      const { data, error } = await this.supabase
+        .from("stove_ids")
+        .select("id, stove_id, status, organization_id, is_archived")
+        .eq("organization_id", organizationId)
+        .eq("stove_id", stoveId.trim())
+        .maybeSingle();
+      if (error) throw error;
+      const valid = !!data && data.is_archived === false && data.status !== "sold";
+      return { success: true, valid, data: data || null, error: null };
+    } catch (error) {
+      console.error("Error validating stove ID:", error);
+      return { success: false, valid: false, data: null, error: error.message || "Failed to validate stove ID" };
+    }
+  }
+
+
+
 
   // Upload image for sales (stove images, agreement documents) - Updated to match Flutter
   async uploadImage(file, type) {

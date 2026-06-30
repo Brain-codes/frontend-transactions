@@ -21,6 +21,8 @@ import {
   Loader2,
   AlertCircle,
   Info,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import DateRangePicker from "@/app/components/ui/date-range-picker";
 import GooglePlacesInput from "@/app/components/ui/google-places-input";
@@ -116,6 +118,12 @@ const CreateSalesForm = ({
   const [stoveSearchTerm, setStoveSearchTerm] = useState("");
   const [showStoveDropdown, setShowStoveDropdown] = useState(false);
   const [filteredStoves, setFilteredStoves] = useState([]);
+  const [stoveSearching, setStoveSearching] = useState(false);
+  // Validation status for the typed/selected stove ID:
+  //  "idle" | "checking" | "valid" | "invalid"
+  const [stoveValidity, setStoveValidity] = useState("idle");
+  const [stoveValidityMessage, setStoveValidityMessage] = useState("");
+
 
   // Partner search state (super admin only)
   const [partners, setPartners] = useState([]);
@@ -135,17 +143,76 @@ const CreateSalesForm = ({
   // Get states from constants
   const nigerianStates = Object.keys(lgaAndStates).sort();
 
-  // Filter stoves based on search term
+  // Helper: resolve the currently active partner organization id
+  const getActiveOrgId = () => {
+    const sessionOrg = typeof sessionStorage !== "undefined"
+      ? sessionStorage.getItem("saa_selected_org_id")
+      : null;
+    return sessionOrg || profileService.getOrganizationId() || null;
+  };
+
+  // AJAX search: pull stove IDs as the user types (debounced).
+  // Only IDs that belong to the selected partner org and are not sold are returned.
   useEffect(() => {
-    if (stoveSearchTerm.trim() === "") {
-      setFilteredStoves(availableStoves);
-    } else {
-      const filtered = availableStoves.filter((stove) =>
-        stove.stove_id.toLowerCase().includes(stoveSearchTerm.toLowerCase())
-      );
-      setFilteredStoves(filtered);
+    if (isEditMode) return; // edit mode locks the stove id
+    const orgId = getActiveOrgId();
+    if (!orgId) {
+      setFilteredStoves([]);
+      return;
     }
-  }, [stoveSearchTerm, availableStoves]);
+    let cancelled = false;
+    setStoveSearching(true);
+    const handle = setTimeout(async () => {
+      const res = await adminSalesService.searchStoveIds(orgId, stoveSearchTerm, 25);
+      if (cancelled) return;
+      setFilteredStoves(res.success ? (res.data || []) : []);
+      setStoveSearching(false);
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+      setStoveSearching(false);
+    };
+  }, [stoveSearchTerm, formData.partnerName, formData.retailerBranch, isEditMode]);
+
+  // Validate the typed stove id against the partner's available stoves (debounced).
+  useEffect(() => {
+    if (isEditMode) return;
+    const orgId = getActiveOrgId();
+    const term = (stoveSearchTerm || "").trim();
+    if (!orgId || !term) {
+      setStoveValidity("idle");
+      setStoveValidityMessage("");
+      return;
+    }
+    let cancelled = false;
+    setStoveValidity("checking");
+    setStoveValidityMessage("");
+    const handle = setTimeout(async () => {
+      const res = await adminSalesService.validateStoveId(orgId, term);
+      if (cancelled) return;
+      if (res.success && res.valid) {
+        setStoveValidity("valid");
+        setStoveValidityMessage("Valid stove ID for this partner.");
+        setFormData((prev) => ({ ...prev, stoveSerialNo: term }));
+        if (errors.stoveSerialNo) setErrors((prev) => ({ ...prev, stoveSerialNo: null }));
+      } else {
+        setStoveValidity("invalid");
+        setStoveValidityMessage(
+          res.success
+            ? "This stove ID is not assigned to the selected partner or is unavailable."
+            : "Could not validate stove ID. Please try again.",
+        );
+        setFormData((prev) => ({ ...prev, stoveSerialNo: "" }));
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [stoveSearchTerm, formData.partnerName, formData.retailerBranch, isEditMode]);
+
+
 
   // Close stove dropdown when clicking outside
   useEffect(() => {
@@ -745,11 +812,14 @@ const CreateSalesForm = ({
     setFilteredStoves([]);
     setStoveSearchTerm("");
     setShowStoveDropdown(false);
+    setStoveValidity("idle");
+    setStoveValidityMessage("");
     setFormData((prev) => ({ ...prev, stoveSerialNo: "" }));
     if (errors.stoveSerialNo) {
       setErrors((prev) => ({ ...prev, stoveSerialNo: null }));
     }
   };
+
 
   const handlePartnerPick = async (partnerName) => {
     setSelectedPartnerName(partnerName);
@@ -1072,37 +1142,54 @@ const CreateSalesForm = ({
                 const partnerPickerActive = needsPartnerSelection;
                 const branchPending = partnerPickerActive && selectedPartnerName && !formData.partnerName;
                 const noPartnerYet = partnerPickerActive && !selectedPartnerName;
-                const stoveDisabled = stovesLoading || noPartnerYet || branchPending;
+                const stoveDisabled = noPartnerYet || branchPending;
                 const stovePlaceholder = noPartnerYet
                   ? "Select a partner first"
                   : branchPending
-                    ? "Select a branch to load stoves"
-                    : stovesLoading
-                      ? "Loading stove IDs..."
-                      : "Search stove ID...";
-                const showCount = !stovesLoading && !noPartnerYet && !branchPending && formData.partnerName;
+                    ? "Select a branch to continue"
+                    : "Type to search stove ID...";
+                const term = (stoveSearchTerm || "").trim();
+                const showDropdown = showStoveDropdown && !stoveDisabled && term.length > 0;
                 return (
                 <div className="relative stove-search-container">
-                  <Input
-                    id="stoveSerialNo"
-                    value={stoveSearchTerm}
-                    onChange={(e) => { setStoveSearchTerm(e.target.value); setShowStoveDropdown(true); }}
-                    onFocus={() => setShowStoveDropdown(true)}
-                    placeholder={stovePlaceholder}
-                    className={errors.stoveSerialNo ? "border-red-500" : ""}
-                    disabled={stoveDisabled}
-                  />
-                  {showStoveDropdown && !stoveDisabled && (
+                  <div className="relative">
+                    <Input
+                      id="stoveSerialNo"
+                      value={stoveSearchTerm}
+                      onChange={(e) => { setStoveSearchTerm(e.target.value); setShowStoveDropdown(true); }}
+                      onFocus={() => setShowStoveDropdown(true)}
+                      placeholder={stovePlaceholder}
+                      className={`pr-9 ${
+                        errors.stoveSerialNo || stoveValidity === "invalid"
+                          ? "border-red-500"
+                          : stoveValidity === "valid"
+                            ? "border-green-600"
+                            : ""
+                      }`}
+                      disabled={stoveDisabled}
+                      autoComplete="off"
+                    />
+                    <div className="absolute inset-y-0 right-2 flex items-center">
+                      {stoveValidity === "checking" && (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
+                      {stoveValidity === "valid" && (
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      )}
+                      {stoveValidity === "invalid" && (
+                        <XCircle className="h-4 w-4 text-red-600" />
+                      )}
+                    </div>
+                  </div>
+                  {showDropdown && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-auto">
-                      {stovesLoading ? (
+                      {stoveSearching ? (
                         <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading stove IDs...
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching...
                         </div>
                       ) : filteredStoves.length === 0 ? (
                         <p className="px-3 py-2 text-sm text-muted-foreground">
-                          {availableStoves.length === 0
-                            ? "No available stoves for this partner"
-                            : "No matching stove IDs"}
+                          No matching stove IDs for this partner
                         </p>
                       ) : (
                         filteredStoves.map((stove) => (
@@ -1110,8 +1197,8 @@ const CreateSalesForm = ({
                             key={stove.id || stove.stove_id}
                             className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
                             onClick={() => {
-                              setFormData((prev) => ({ ...prev, stoveSerialNo: stove.stove_id }));
                               setStoveSearchTerm(stove.stove_id);
+                              setFormData((prev) => ({ ...prev, stoveSerialNo: stove.stove_id }));
                               setShowStoveDropdown(false);
                               if (errors.stoveSerialNo) setErrors((prev) => ({ ...prev, stoveSerialNo: null }));
                             }}
@@ -1122,14 +1209,17 @@ const CreateSalesForm = ({
                       )}
                     </div>
                   )}
-                  {showCount && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {availableStoves.length} available stove{availableStoves.length === 1 ? "" : "s"}
+                  {stoveValidityMessage && (
+                    <p className={`mt-1 text-xs ${
+                      stoveValidity === "valid" ? "text-green-600" : "text-red-600"
+                    }`}>
+                      {stoveValidityMessage}
                     </p>
                   )}
                 </div>
                 );
               })()}
+
             </FormField>
 
             {/* Payment type */}
