@@ -108,6 +108,7 @@ interface PartnerOrg {
   state: string | null;
   branch: string | null;
   source: "direct" | "state";
+  available_stoves?: number;
 }
 
 const ALL_STATES = Object.keys(lgaAndStates).sort();
@@ -624,6 +625,7 @@ function AgentPartnersModal({
   onClose: () => void;
 }) {
   const PAGE_SIZE = 10;
+  const { supabase } = useAuth();
   const [loading, setLoading] = useState(false);
   const [partners, setPartners] = useState<PartnerOrg[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -647,13 +649,40 @@ function AgentPartnersModal({
     setLoading(true);
     try {
       const result = await superAdminAgentService.getAgentOrganizations(agent.id);
-      const orgs: PartnerOrg[] = (result.data || []).map((o: any) => ({
-        id: o.id,
-        partner_name: o.partner_name,
-        state: o.state ?? null,
-        branch: o.branch ?? null,
-        source: o.source === "state" ? "state" : "direct",
-      }));
+      // Only show partners that were explicitly assigned in the User Manager
+      // (direct assignments). State-derived partners are excluded so the modal
+      // matches the badge count and the User Manager.
+      const orgs: PartnerOrg[] = (result.data || [])
+        .filter((o: any) => !o.source || o.source === "direct")
+        .map((o: any) => ({
+          id: o.id,
+          partner_name: o.partner_name,
+          state: o.state ?? null,
+          branch: o.branch ?? null,
+          source: "direct" as const,
+          available_stoves: 0,
+        }));
+
+      // Fetch available (unsold) stove counts per org
+      const orgIds = orgs.map((o) => o.id);
+      if (orgIds.length > 0 && supabase) {
+        const BATCH = 50;
+        const counts: Record<string, number> = {};
+        for (let i = 0; i < orgIds.length; i += BATCH) {
+          const slice = orgIds.slice(i, i + BATCH);
+          const { data } = await supabase
+            .from("stove_ids")
+            .select("organization_id")
+            .in("organization_id", slice)
+            .eq("is_archived", false)
+            .neq("status", "sold");
+          (data || []).forEach((r: any) => {
+            counts[r.organization_id] = (counts[r.organization_id] || 0) + 1;
+          });
+        }
+        orgs.forEach((o) => { o.available_stoves = counts[o.id] || 0; });
+      }
+
       setPartners(orgs);
     } catch (err: any) {
       setError(err.message || "Failed to load partners");
@@ -661,6 +690,7 @@ function AgentPartnersModal({
       setLoading(false);
     }
   };
+
 
   if (!agent) return null;
 
@@ -760,6 +790,9 @@ function AgentPartnersModal({
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                       Branch
                     </TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap text-right">
+                      Available Stoves
+                    </TableHead>
                     {/* <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                       Assignment
                     </TableHead> */}
@@ -779,6 +812,9 @@ function AgentPartnersModal({
                       </TableCell>
                       <TableCell className="text-xs text-gray-600">
                         {partner.branch || "—"}
+                      </TableCell>
+                      <TableCell className="text-xs text-gray-900 text-right font-semibold">
+                        {partner.available_stoves ?? 0}
                       </TableCell>
                       {/* <TableCell>
                         <span
@@ -1588,6 +1624,12 @@ export default function SuperAdminAgentsContent() {
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
   useEffect(() => { setPage(1); }, [search, statusFilter, selectedRoles, dateFrom, dateTo]);
+  useEffect(() => {
+    const handler = () => { fetchAgents(); };
+    window.addEventListener("acsl:user-updated", handler);
+    return () => window.removeEventListener("acsl:user-updated", handler);
+  }, [fetchAgents]);
+
 
   // Hydrate Assigned / Collected / In Stock per agent from their assigned partner orgs.
   // Assigned = total stoves across agent's partners; Collected = sold; In Stock = available.
@@ -1617,18 +1659,34 @@ export default function SuperAdminAgentsContent() {
         );
         if (cancelled) return;
 
+        // For stove math we use ALL orgs the agent can reach (direct + via state).
+        // For partner *counts* we use ONLY direct assignments, so the badge
+        // matches what was explicitly set in the User Manager.
         const agentToOrgIds: Record<string, string[]> = {};
+        const agentToDirectOrgIds: Record<string, string[]> = {};
         const allOrgIds = new Set<string>();
         for (const r of orgListResults) {
           const ids = r.orgs.map((o: any) => o.id).filter(Boolean);
+          const directIds = r.orgs
+            .filter((o: any) => !o.source || o.source === "direct")
+            .map((o: any) => o.id)
+            .filter(Boolean);
           agentToOrgIds[r.id] = ids;
+          agentToDirectOrgIds[r.id] = directIds;
           ids.forEach((id) => allOrgIds.add(id));
         }
 
-        // 2. Stove counts per org — total + sold (status-based, deduped at org level).
-        const orgIds = Array.from(allOrgIds);
+
+        // 2. Stove counts per org — count AVAILABLE (unsold, non-archived) stoves
+        //    per organization. "Records to collect" must reflect stoves still
+        //    available at the agent's directly-assigned partners.
+        const directOrgIdSet = new Set<string>();
+        Object.values(agentToDirectOrgIds).forEach((ids) =>
+          ids.forEach((id) => directOrgIdSet.add(id))
+        );
+        const orgIds = Array.from(directOrgIdSet);
         const BATCH = 200;
-        const stoveTotalByOrg: Record<string, number> = {};
+        const stoveAvailableByOrg: Record<string, number> = {};
         const stoveSoldByOrg: Record<string, number> = {};
         for (let i = 0; i < orgIds.length; i += BATCH) {
           const slice = orgIds.slice(i, i + BATCH);
@@ -1639,9 +1697,11 @@ export default function SuperAdminAgentsContent() {
             .eq("is_archived", false);
           (data || []).forEach((s: any) => {
             const oid = s.organization_id;
-            stoveTotalByOrg[oid] = (stoveTotalByOrg[oid] || 0) + 1;
-            if (String(s.status || "").toLowerCase() === "sold") {
+            const status = String(s.status || "").toLowerCase();
+            if (status === "sold") {
               stoveSoldByOrg[oid] = (stoveSoldByOrg[oid] || 0) + 1;
+            } else {
+              stoveAvailableByOrg[oid] = (stoveAvailableByOrg[oid] || 0) + 1;
             }
           });
         }
@@ -1660,15 +1720,13 @@ export default function SuperAdminAgentsContent() {
         );
         if (cancelled) return;
 
-        // 4. Global totals — sum per-agent values so KPI cards match the
-        //    per-row "Sold" column shown in the table/chart. Using the
-        //    deduped org-level stove_ids.status='sold' count diverged from
-        //    the actual sales records each agent created.
+        // 4. Global totals — sum per-agent "to-collect" (available stoves at
+        //    each agent's directly-assigned partners) and per-agent collected.
         let globalAssigned = 0;
         let globalSold = 0;
         for (const a of agents) {
-          const orgs = agentToOrgIds[a.id] || [];
-          for (const oid of orgs) globalAssigned += stoveTotalByOrg[oid] || 0;
+          const orgs = agentToDirectOrgIds[a.id] || [];
+          for (const oid of orgs) globalAssigned += stoveAvailableByOrg[oid] || 0;
           globalSold += soldByAgent[a.id] || 0;
         }
         setStoveTotals({
@@ -1677,15 +1735,33 @@ export default function SuperAdminAgentsContent() {
           unsold: Math.max(0, globalAssigned - globalSold),
         });
 
-        // 5. Merge per-agent stove_summary (row badges still reflect each agent's view).
+        // 5. Merge per-agent stove_summary. received = available stoves at
+        //    direct partners (true "to collect"); sold = agent's own sales;
+        //    available = remaining after the agent's collections.
         setAgents((prev) =>
           prev.map((a) => {
-            const orgs = agentToOrgIds[a.id] || [];
+            const orgs = agentToDirectOrgIds[a.id] || [];
             let received = 0;
-            for (const oid of orgs) received += stoveTotalByOrg[oid] || 0;
+            for (const oid of orgs) received += stoveAvailableByOrg[oid] || 0;
             const sold = soldByAgent[a.id] || 0;
             const available = Math.max(0, received - sold);
-            return { ...a, stove_summary: { received, sold, available } };
+            // For ACSL roles, prefer the hydrated org count so managers also
+            // see their assigned partners (backend list may not populate it).
+            const isAcslRole = a.role === "acsl_agent" || a.role === "acsl_agent_manager";
+            const directOrgs = agentToDirectOrgIds[a.id] || [];
+            const assigned_organizations_count = isAcslRole
+              ? directOrgs.length
+              : a.assigned_organizations_count;
+            const total_partners_count = isAcslRole
+              ? directOrgs.length
+              : a.total_partners_count;
+
+            return {
+              ...a,
+              assigned_organizations_count,
+              total_partners_count,
+              stove_summary: { received, sold, available },
+            };
           })
         );
 
@@ -2202,9 +2278,15 @@ export default function SuperAdminAgentsContent() {
                         {agent.phone || ""}
                       </TableCell>
                       <TableCell className="text-center">
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                        <button
+                          type="button"
+                          onClick={() => setPartnersModalAgent(agent)}
+                          disabled={(agent.assigned_organizations_count ?? 0) === 0}
+                          className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          title="View assigned partners"
+                        >
                           {(agent.assigned_organizations_count ?? 0).toLocaleString()}
-                        </span>
+                        </button>
                       </TableCell>
                       {/* Stoves split into 3 columns */}
                       <TableCell className="text-center">
