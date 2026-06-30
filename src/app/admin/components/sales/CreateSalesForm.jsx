@@ -1475,7 +1475,7 @@ const CreateSalesForm = ({
                 error={errors.agreementImage}
                 uploadIcon={FileText}
                 buttonText="Upload Agreement"
-                changeButtonText="Change Document"
+                accept="application/pdf,image/*"
               />
             </div>
           </div>
