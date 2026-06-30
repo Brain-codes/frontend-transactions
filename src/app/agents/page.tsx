@@ -16,7 +16,7 @@ function PerformanceTabs() {
 
   const tabs = useMemo(() => {
     const list: { key: TabKey; label: string; icon: typeof Users }[] = [];
-    if (showAgents) list.push({ key: "agents", label: "Agents Performance Report", icon: Users });
+    if (showAgents) list.push({ key: "agents", label: "ACSL Agents Performance Report", icon: Users });
     list.push({ key: "partners", label: "Partners Performance Report", icon: Building2 });
     return list;
   }, [showAgents]);
