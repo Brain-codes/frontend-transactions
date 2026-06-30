@@ -108,6 +108,7 @@ interface PartnerOrg {
   state: string | null;
   branch: string | null;
   source: "direct" | "state";
+  available_stoves?: number;
 }
 
 const ALL_STATES = Object.keys(lgaAndStates).sort();
@@ -624,6 +625,7 @@ function AgentPartnersModal({
   onClose: () => void;
 }) {
   const PAGE_SIZE = 10;
+  const { supabase } = useAuth();
   const [loading, setLoading] = useState(false);
   const [partners, setPartners] = useState<PartnerOrg[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -658,7 +660,29 @@ function AgentPartnersModal({
           state: o.state ?? null,
           branch: o.branch ?? null,
           source: "direct" as const,
+          available_stoves: 0,
         }));
+
+      // Fetch available (unsold) stove counts per org
+      const orgIds = orgs.map((o) => o.id);
+      if (orgIds.length > 0 && supabase) {
+        const BATCH = 50;
+        const counts: Record<string, number> = {};
+        for (let i = 0; i < orgIds.length; i += BATCH) {
+          const slice = orgIds.slice(i, i + BATCH);
+          const { data } = await supabase
+            .from("stove_ids")
+            .select("organization_id")
+            .in("organization_id", slice)
+            .eq("is_archived", false)
+            .neq("status", "sold");
+          (data || []).forEach((r: any) => {
+            counts[r.organization_id] = (counts[r.organization_id] || 0) + 1;
+          });
+        }
+        orgs.forEach((o) => { o.available_stoves = counts[o.id] || 0; });
+      }
+
       setPartners(orgs);
     } catch (err: any) {
       setError(err.message || "Failed to load partners");
@@ -766,6 +790,9 @@ function AgentPartnersModal({
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                       Branch
                     </TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap text-right">
+                      Available Stoves
+                    </TableHead>
                     {/* <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                       Assignment
                     </TableHead> */}
@@ -785,6 +812,9 @@ function AgentPartnersModal({
                       </TableCell>
                       <TableCell className="text-xs text-gray-600">
                         {partner.branch || "—"}
+                      </TableCell>
+                      <TableCell className="text-xs text-gray-900 text-right font-semibold">
+                        {partner.available_stoves ?? 0}
                       </TableCell>
                       {/* <TableCell>
                         <span
