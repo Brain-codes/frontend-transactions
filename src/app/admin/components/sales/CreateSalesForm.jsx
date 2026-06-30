@@ -141,17 +141,76 @@ const CreateSalesForm = ({
   // Get states from constants
   const nigerianStates = Object.keys(lgaAndStates).sort();
 
-  // Filter stoves based on search term
+  // Helper: resolve the currently active partner organization id
+  const getActiveOrgId = () => {
+    const sessionOrg = typeof sessionStorage !== "undefined"
+      ? sessionStorage.getItem("saa_selected_org_id")
+      : null;
+    return sessionOrg || profileService.getOrganizationId() || null;
+  };
+
+  // AJAX search: pull stove IDs as the user types (debounced).
+  // Only IDs that belong to the selected partner org and are not sold are returned.
   useEffect(() => {
-    if (stoveSearchTerm.trim() === "") {
-      setFilteredStoves(availableStoves);
-    } else {
-      const filtered = availableStoves.filter((stove) =>
-        stove.stove_id.toLowerCase().includes(stoveSearchTerm.toLowerCase())
-      );
-      setFilteredStoves(filtered);
+    if (isEditMode) return; // edit mode locks the stove id
+    const orgId = getActiveOrgId();
+    if (!orgId) {
+      setFilteredStoves([]);
+      return;
     }
-  }, [stoveSearchTerm, availableStoves]);
+    let cancelled = false;
+    setStoveSearching(true);
+    const handle = setTimeout(async () => {
+      const res = await adminSalesService.searchStoveIds(orgId, stoveSearchTerm, 25);
+      if (cancelled) return;
+      setFilteredStoves(res.success ? (res.data || []) : []);
+      setStoveSearching(false);
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+      setStoveSearching(false);
+    };
+  }, [stoveSearchTerm, formData.partnerName, formData.retailerBranch, isEditMode]);
+
+  // Validate the typed stove id against the partner's available stoves (debounced).
+  useEffect(() => {
+    if (isEditMode) return;
+    const orgId = getActiveOrgId();
+    const term = (stoveSearchTerm || "").trim();
+    if (!orgId || !term) {
+      setStoveValidity("idle");
+      setStoveValidityMessage("");
+      return;
+    }
+    let cancelled = false;
+    setStoveValidity("checking");
+    setStoveValidityMessage("");
+    const handle = setTimeout(async () => {
+      const res = await adminSalesService.validateStoveId(orgId, term);
+      if (cancelled) return;
+      if (res.success && res.valid) {
+        setStoveValidity("valid");
+        setStoveValidityMessage("Valid stove ID for this partner.");
+        setFormData((prev) => ({ ...prev, stoveSerialNo: term }));
+        if (errors.stoveSerialNo) setErrors((prev) => ({ ...prev, stoveSerialNo: null }));
+      } else {
+        setStoveValidity("invalid");
+        setStoveValidityMessage(
+          res.success
+            ? "This stove ID is not assigned to the selected partner or is unavailable."
+            : "Could not validate stove ID. Please try again.",
+        );
+        setFormData((prev) => ({ ...prev, stoveSerialNo: "" }));
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [stoveSearchTerm, formData.partnerName, formData.retailerBranch, isEditMode]);
+
+
 
   // Close stove dropdown when clicking outside
   useEffect(() => {
