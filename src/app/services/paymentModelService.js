@@ -23,10 +23,21 @@ class PaymentModelService {
   }
 
   async request(url, options = {}) {
-    const response = await fetch(url, {
-      ...options,
-      headers: await this.getHeaders(),
-    });
+    let response;
+    try {
+      response = await fetch(url, {
+        ...options,
+        headers: await this.getHeaders(),
+      });
+    } catch (err) {
+      // Network error — treat as feature unavailable so UI can degrade gracefully
+      return { success: true, data: [], total: 0, unavailable: true };
+    }
+
+    // Gracefully handle missing edge function (feature not deployed on this project)
+    if (response.status === 404) {
+      return { success: true, data: [], total: 0, unavailable: true };
+    }
 
     const result = await response.json().catch(() => ({}));
 
