@@ -369,7 +369,7 @@ const PartnerProfilesContent = () => {
             <TableBody className={loading ? "opacity-40" : ""}>
               {pageRows.length === 0 && !loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-10 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-10 text-gray-500">
                     No partners found
                   </TableCell>
                 </TableRow>
