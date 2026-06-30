@@ -1287,7 +1287,7 @@ const CreateSalesForm = ({
                 {selectedModel.min_down_payment > 0 && (
                   <p className="text-sm text-amber-700 mt-2 flex items-center gap-1">
                     <Info className="h-3.5 w-3.5" />
-                    Min. down payment: {formatCurrency(selectedModel.min_down_payment)}
+                    Suggested down payment (guide only): {formatCurrency(selectedModel.min_down_payment)}
                   </p>
                 )}
               </div>
