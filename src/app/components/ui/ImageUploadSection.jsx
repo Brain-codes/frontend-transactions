@@ -65,7 +65,7 @@ const ImageUploadSection = ({
                 ) : (
                   <Upload className="h-4 w-4 mr-2" />
                 )}
-                Upload Image
+                {buttonText}
               </Button>
               {placeholder && (
                 <p className="text-sm text-gray-500 mt-2">{placeholder}</p>
