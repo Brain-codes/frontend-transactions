@@ -328,11 +328,28 @@ class PaymentModelService {
       // non-critical
     }
 
+    const fixed_price = Number(payment_model?.fixed_price || sale_amount || 0);
+    const remaining_balance = Math.max(0, fixed_price - total_paid);
+    const progress_percent = fixed_price > 0 ? Math.min(100, Math.round((total_paid / fixed_price) * 100)) : 0;
+    const payment_status =
+      total_paid <= 0
+        ? "not_applicable"
+        : remaining_balance <= 0
+        ? "fully_paid"
+        : "partially_paid";
+
     const summary = {
       total_paid,
       payment_count: payments.length,
-      balance: Math.max(0, sale_amount - total_paid),
+      balance: remaining_balance,
+      remaining: remaining_balance,
+      remaining_balance,
       sale_amount,
+      total_amount: fixed_price,
+      fixed_price,
+      progress_percent,
+      payment_status,
+      is_installment: true,
     };
 
     return { success: true, data: payments, summary, payment_model };
