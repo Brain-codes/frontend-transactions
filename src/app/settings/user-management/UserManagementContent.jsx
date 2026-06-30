@@ -983,9 +983,11 @@ const UserManagementPage = () => {
 
 
       toast({ variant: "success", title: "User updated successfully" });
+      try { window.dispatchEvent(new CustomEvent("acsl:user-updated", { detail: { id: selectedUser.id } })); } catch { /* ssr-safe */ }
       setShowCreateModal(false);
       resetForm();
       fetchUsers(pagination.page, pagination.page_size);
+
     } catch (err) {
       toast({ variant: "error", title: "Failed to update user", description: err.message });
     } finally {
