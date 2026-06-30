@@ -44,7 +44,7 @@ const allNavItems = [
     ],
   },
   {
-    name: "Manage Partners",
+    name: "Partner Management",
     icon: UserCheck,
     route: "partners",
     children: [
@@ -53,7 +53,7 @@ const allNavItems = [
     ],
   },
   {
-    name: "Manage Agents",
+    name: "Agent Management",
     icon: Users,
     route: "agents",
     children: [
