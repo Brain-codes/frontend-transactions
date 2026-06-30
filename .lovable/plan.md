@@ -1,30 +1,42 @@
-## Problem
+## Goal
 
-On the Agents Performance Report, the **Total Agents** KPI shows `387` while the per-role breakdown badges below it show small numbers like `Partner: 6, Partner Agent: 2`. The two never tally.
+In the Agents Performance view, the "Partners Assigned" badge for ACSL Agents and ACSL Agent Managers must equal the count shown in the User Manager — i.e. only partners the admin explicitly picked for that user. State-derived partners should no longer inflate the badge. The view must also pick up changes immediately after a save in the User Manager.
 
-Root cause (in `src/app/agents/components/SuperAdminAgentsContent.tsx`, around lines 1944–1990):
+## Changes
 
-- `totalAgents` is read from `pagination.totalItems` returned by the paged `manage-users` request → represents **all users in the system** (≈387).
-- The role breakdown badges are computed from the local `agents` array, which only contains the **current page** (e.g. 10 rows). So the badges only describe whatever happened to land on page 1.
-- `partner` is also included in the breakdown even though Partner records are intentionally hidden elsewhere (User Management view).
+### 1. Use the direct partner count in the Agents Performance table
+File: `src/app/agents/components/SuperAdminAgentsContent.tsx`
 
-## Fix
+In the hydration effect (around lines 1603–1704):
+- When calling `superAdminAgentService.getAgentOrganizations(a.id)`, filter the returned orgs to only those with `source === "direct"` (or missing `source`, treating that as direct). State-resolved entries are excluded from the count.
+- Set both `assigned_organizations_count` and `total_partners_count` to the size of that filtered direct list for ACSL roles.
+- Keep the stove "received / sold / available" aggregation using the full org set (direct + state) so sales/stove KPIs remain accurate — only the *partner count* changes.
 
-Make the headline KPI and the breakdown describe the same population, computed across **all matching users** (respecting the active filters: search, status, dateFrom, dateTo, selectedRoles), not just the current page.
+The badge rendering at lines ~2222–2226 and the modal (`AgentPartnersModal`) will then show the direct partners only, matching the User Manager.
 
-1. In `SuperAdminAgentsContent.tsx`, add a new state `roleTotals: Record<string, number>` and a `fetchRoleTotals()` helper.
-2. `fetchRoleTotals()` issues one lightweight `manage-users?role=<role>&limit=1&...filters` request per visible role in parallel and reads `pagination.totalItems` from each response. Visible roles: `super_admin`, `acsl_agent_manager`, `acsl_agent`, `partner_agent`, `agent` (exclude `partner` and `admin` to match the rest of the app).
-3. It applies the same filters currently sent by `fetchAgents` (`search`, `status`, `date_from`, `date_to`) so totals stay in sync with the table when the user filters; if `selectedRoles` is non-empty, only fetch counts for those roles.
-4. Call `fetchRoleTotals()` from the same `useEffect` that calls `fetchAgents` (same dependency list).
-5. In the KPI block:
-   - Replace `totalAgents = pagination?.totalItems ?? agents.length` with `totalAgents = Object.values(roleTotals).reduce((a,b)=>a+b, 0)` (fall back to `agents.length` while loading).
-   - Replace the page-derived `roleCounts` with `roleTotals` for the breakdown badges, using the same `ROLE_LABELS` mapping. Drop any `partner` entry defensively.
-   - Sort badges by count desc, hide zero-count roles.
+### 2. Same fix in the ACSL Agents Profile view
+File: `src/app/agents/agents-profiles/AgentsProfilesContent.jsx`
 
-After this, the big number equals the sum of the badges, and both reflect the true counts under the current filters.
+In `hydrateAgentCounts` (around line 291), apply the same direct-only filter so the Partners Assigned column on `/agents/profiles` matches.
 
-## Files touched
+### 3. Refresh after edits in the User Manager
+When a user is saved in `UserManagementContent.jsx`, the Agents Performance view does not currently know to refetch. Two-part fix:
+- After a successful save in `UserManagementContent.jsx`, dispatch a lightweight browser event, e.g. `window.dispatchEvent(new CustomEvent("acsl:user-updated", { detail: { id } }))`.
+- In `SuperAdminAgentsContent.tsx` and `AgentsProfilesContent.jsx`, add a `useEffect` that listens for `acsl:user-updated` and calls the existing `fetchAgents()` / refresh function. This guarantees that changing partner assignments in the User Manager and switching back to the Performance view shows the updated count without a hard reload.
 
-- `src/app/agents/components/SuperAdminAgentsContent.tsx` (KPI block + new role-totals fetch)
+### 4. Modal consistency
+The "Partners Assigned" badge opens `AgentPartnersModal`. Confirm the modal also filters to direct assignments so the list length matches the badge (one-line change in the modal's data prep, if needed).
 
-No backend / edge function changes.
+## Out of scope
+
+- No change to state assignment semantics — managers still retain reporting access to all partners in their assigned states; only the badge/count definition changes.
+- No edge-function changes required; the existing `getAgentOrganizations` endpoint already tags entries with `source`, so the filter is purely client-side.
+- Stove/sales KPI math is unchanged.
+
+## Verification
+
+1. In User Manager, set an ACSL Agent Manager to 1 direct partner + 1 state. Save.
+2. Open Agents Performance — badge shows `1`. Click it — modal lists that 1 partner.
+3. Edit the same user, change to 3 direct partners. Save. Performance view badge updates to `3` on return without a manual refresh.
+4. ACSL Agents Profile view shows the same `3`.
+5. Stoves/Sold/Records counts remain unaffected.
