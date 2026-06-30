@@ -790,6 +790,9 @@ function AgentPartnersModal({
                     <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                       Branch
                     </TableHead>
+                    <TableHead className="text-white font-semibold text-xs whitespace-nowrap text-right">
+                      Available Stoves
+                    </TableHead>
                     {/* <TableHead className="text-white font-semibold text-xs whitespace-nowrap">
                       Assignment
                     </TableHead> */}
