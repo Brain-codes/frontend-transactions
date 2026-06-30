@@ -76,7 +76,7 @@ const ImageUploadSection = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept={accept}
           className="hidden"
           onChange={handleFileSelect}
         />
