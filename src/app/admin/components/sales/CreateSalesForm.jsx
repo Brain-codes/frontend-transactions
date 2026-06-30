@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { SUPABASE_URL } from "@/lib/supabaseConfig";
+import { supabaseUrl as SUPABASE_URL } from "@/lib/supabaseConfig";
 import { useRouter } from "@/compat/navigation";
 import Link from "@/compat/Link";
 import { Button } from "@/components/ui/button";
