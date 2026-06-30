@@ -1,5 +1,6 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { supabaseUrl as SUPABASE_URL } from "@/lib/supabaseConfig";
 import { useRouter } from "@/compat/navigation";
 import Link from "@/compat/Link";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,8 @@ import {
   Loader2,
   AlertCircle,
   Info,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import DateRangePicker from "@/app/components/ui/date-range-picker";
 import GooglePlacesInput from "@/app/components/ui/google-places-input";
@@ -115,6 +118,12 @@ const CreateSalesForm = ({
   const [stoveSearchTerm, setStoveSearchTerm] = useState("");
   const [showStoveDropdown, setShowStoveDropdown] = useState(false);
   const [filteredStoves, setFilteredStoves] = useState([]);
+  const [stoveSearching, setStoveSearching] = useState(false);
+  // Validation status for the typed/selected stove ID:
+  //  "idle" | "checking" | "valid" | "invalid"
+  const [stoveValidity, setStoveValidity] = useState("idle");
+  const [stoveValidityMessage, setStoveValidityMessage] = useState("");
+
 
   // Partner search state (super admin only)
   const [partners, setPartners] = useState([]);
@@ -122,23 +131,88 @@ const CreateSalesForm = ({
   const [showPartnerDropdown, setShowPartnerDropdown] = useState(false);
   const [partnersLoading, setPartnersLoading] = useState(false);
 
+  // Partner → State → Branch cascade
+  const [selectedPartnerName, setSelectedPartnerName] = useState("");
+  const [partnerBranches, setPartnerBranches] = useState([]); // org rows for picked partner
+  const [selectedState, setSelectedState] = useState("");
+  const [branchesLoading, setBranchesLoading] = useState(false);
+
   // Determine if this is edit mode
   const isEditMode = mode === "edit" && initialData;
 
   // Get states from constants
   const nigerianStates = Object.keys(lgaAndStates).sort();
 
-  // Filter stoves based on search term
+  // Helper: resolve the currently active partner organization id
+  const getActiveOrgId = () => {
+    const sessionOrg = typeof sessionStorage !== "undefined"
+      ? sessionStorage.getItem("saa_selected_org_id")
+      : null;
+    return sessionOrg || profileService.getOrganizationId() || null;
+  };
+
+  // AJAX search: pull stove IDs as the user types (debounced).
+  // Only IDs that belong to the selected partner org and are not sold are returned.
   useEffect(() => {
-    if (stoveSearchTerm.trim() === "") {
-      setFilteredStoves(availableStoves);
-    } else {
-      const filtered = availableStoves.filter((stove) =>
-        stove.stove_id.toLowerCase().includes(stoveSearchTerm.toLowerCase())
-      );
-      setFilteredStoves(filtered);
+    if (isEditMode) return; // edit mode locks the stove id
+    const orgId = getActiveOrgId();
+    if (!orgId) {
+      setFilteredStoves([]);
+      return;
     }
-  }, [stoveSearchTerm, availableStoves]);
+    let cancelled = false;
+    setStoveSearching(true);
+    const handle = setTimeout(async () => {
+      const res = await adminSalesService.searchStoveIds(orgId, stoveSearchTerm, 25);
+      if (cancelled) return;
+      setFilteredStoves(res.success ? (res.data || []) : []);
+      setStoveSearching(false);
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+      setStoveSearching(false);
+    };
+  }, [stoveSearchTerm, formData.partnerName, formData.retailerBranch, isEditMode]);
+
+  // Validate the typed stove id against the partner's available stoves (debounced).
+  useEffect(() => {
+    if (isEditMode) return;
+    const orgId = getActiveOrgId();
+    const term = (stoveSearchTerm || "").trim();
+    if (!orgId || !term) {
+      setStoveValidity("idle");
+      setStoveValidityMessage("");
+      return;
+    }
+    let cancelled = false;
+    setStoveValidity("checking");
+    setStoveValidityMessage("");
+    const handle = setTimeout(async () => {
+      const res = await adminSalesService.validateStoveId(orgId, term);
+      if (cancelled) return;
+      if (res.success && res.valid) {
+        setStoveValidity("valid");
+        setStoveValidityMessage("Valid stove ID for this partner.");
+        setFormData((prev) => ({ ...prev, stoveSerialNo: term }));
+        if (errors.stoveSerialNo) setErrors((prev) => ({ ...prev, stoveSerialNo: null }));
+      } else {
+        setStoveValidity("invalid");
+        setStoveValidityMessage(
+          res.success
+            ? "This stove ID is not assigned to the selected partner or is unavailable."
+            : "Could not validate stove ID. Please try again.",
+        );
+        setFormData((prev) => ({ ...prev, stoveSerialNo: "" }));
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [stoveSearchTerm, formData.partnerName, formData.retailerBranch, isEditMode]);
+
+
 
   // Close stove dropdown when clicking outside
   useEffect(() => {
@@ -159,11 +233,8 @@ const CreateSalesForm = ({
 
   // Debounced partner search (any user without a known org can pick a partner)
   useEffect(() => {
-    if (!needsPartnerSelection || isEditMode) return;
-    if (!partnerSearch.trim()) {
-      setPartners([]);
-      return;
-    }
+    if (isEditMode) return;
+
 
     const t = setTimeout(async () => {
       setPartnersLoading(true);
@@ -175,15 +246,20 @@ const CreateSalesForm = ({
           const result = await superAdminAgentService.getAgentOrganizations(userId);
           const all = result.data || [];
           const q = partnerSearch.trim().toLowerCase();
-          setPartners(all.filter((p) =>
-            (p.partner_name || "").toLowerCase().includes(q) ||
-            (p.branch || "").toLowerCase().includes(q)
-          ));
+          setPartners(
+            q
+              ? all.filter((p) =>
+                  (p.partner_name || "").toLowerCase().includes(q) ||
+                  (p.branch || "").toLowerCase().includes(q)
+                )
+              : all
+          );
         } else {
           const { data: { session } } = await supabase.auth.getSession();
-          const params = new URLSearchParams({ limit: "50", offset: "0", search: partnerSearch.trim() });
+          const params = new URLSearchParams({ limit: "100", offset: "0" });
+          if (partnerSearch.trim()) params.set("search", partnerSearch.trim());
           const res = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
+            `${SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
             { headers: { Authorization: `Bearer ${session.access_token}` } }
           );
           const result = await res.json();
@@ -258,12 +334,20 @@ const CreateSalesForm = ({
             return result;
           };
 
+          // Super admins always pick a partner explicitly on each new sale
+          if (userRole === "super_admin" && typeof sessionStorage !== "undefined") {
+            sessionStorage.removeItem("saa_selected_org_id");
+            sessionStorage.removeItem("saa_selected_org_name");
+          }
+
           // Determine whether we have an org context yet
           const knownOrgId =
-            profileService.getOrganizationId() ||
-            (typeof sessionStorage !== "undefined"
-              ? sessionStorage.getItem("saa_selected_org_id")
-              : null);
+            userRole === "super_admin"
+              ? null
+              : profileService.getOrganizationId() ||
+                (typeof sessionStorage !== "undefined"
+                  ? sessionStorage.getItem("saa_selected_org_id")
+                  : null);
           const mustPickPartner = !knownOrgId;
           setNeedsPartnerSelection(mustPickPartner);
 
@@ -273,11 +357,17 @@ const CreateSalesForm = ({
               ? sessionStorage.getItem("saa_selected_org_name")
               : null;
 
+          const preselectedPartnerName = saaPartnerName || profileData?.partnerName || "";
           setFormData((prev) => ({
             ...prev,
             transactionId: generateTransactionId(),
-            partnerName: saaPartnerName || profileData?.partnerName || "",
+            partnerName: preselectedPartnerName,
           }));
+          if (preselectedPartnerName) {
+            setPartnerSearch(preselectedPartnerName);
+            setSelectedPartnerName(preselectedPartnerName);
+          }
+
 
           // Auto-load stoves only if we already have an org; otherwise wait for partner pick
           if (!mustPickPartner) {
@@ -361,16 +451,23 @@ const CreateSalesForm = ({
     const organizationId = orgId ||
       profileService.getOrganizationId() ||
       (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("saa_selected_org_id") : null);
-    if (!organizationId) return;
     try {
       setModelsLoading(true);
-      const result = await paymentModelService.getOrgPaymentModels(organizationId);
-      if (result.data && result.data.length > 0) {
-        const models = result.data
-          .map((a) => a.payment_model)
-          .filter((m) => m && m.is_active !== false);
-        setPaymentModels(models);
+      let models = [];
+      if (organizationId) {
+        const result = await paymentModelService.getOrgPaymentModels(organizationId);
+        if (result?.data?.length > 0) {
+          models = result.data
+            .map((a) => a.payment_model)
+            .filter((m) => m && m.is_active !== false);
+        }
       }
+      // Fallback: list all active payment models if none assigned to org
+      if (models.length === 0) {
+        const all = await paymentModelService.getPaymentModels({ status: "active" });
+        models = (all?.data || []).filter((m) => m && m.is_active !== false);
+      }
+      setPaymentModels(models);
     } catch (err) {
       console.error("Error fetching payment models:", err);
     } finally {
@@ -378,11 +475,12 @@ const CreateSalesForm = ({
     }
   };
 
-  // Fetch payment models on mount for non-super-admin users (create mode only)
+  // Fetch payment models on mount so the picker is always available
   useEffect(() => {
-    if (isEditMode || isSuperAdmin) return;
+    if (isEditMode) return;
     fetchPaymentModels();
   }, [isEditMode]);
+
 
   // Update selected model details when model ID changes
   useEffect(() => {
@@ -565,20 +663,6 @@ const CreateSalesForm = ({
         setError("Please select a payment model for installment payment");
         return;
       }
-      if (
-        initialPaymentAmount &&
-        selectedModel?.min_down_payment > 0 &&
-        parseFloat(initialPaymentAmount) < parseFloat(selectedModel.min_down_payment)
-      ) {
-        setError(
-          `Initial payment must be at least ${formatCurrency(selectedModel.min_down_payment)}`
-        );
-        return;
-      }
-      if (initialPaymentAmount && parseFloat(initialPaymentAmount) > 0 && !initialPaymentMethod) {
-        setError("Please select a payment method for the initial payment");
-        return;
-      }
     }
 
     // For edit mode, check if any changes were made
@@ -685,6 +769,123 @@ const CreateSalesForm = ({
     );
   }
 
+  // Distinct partners (by partner_name) shown in the cascade dropdown
+  const distinctPartners = useMemo(() => {
+    const seen = new Map();
+    for (const p of partners) {
+      const key = p.partner_name || "";
+      if (key && !seen.has(key)) seen.set(key, p);
+    }
+    return Array.from(seen.values());
+  }, [partners]);
+
+  const availableStates = useMemo(() => {
+    const set = new Set(partnerBranches.map((b) => b.state).filter(Boolean));
+    return Array.from(set).sort();
+  }, [partnerBranches]);
+
+  const availableBranches = useMemo(
+    () => partnerBranches.filter((b) => b.state === selectedState),
+    [partnerBranches, selectedState],
+  );
+
+  const finalizeBranchPick = (org) => {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem("saa_selected_org_id", org.id);
+      sessionStorage.setItem("saa_selected_org_name", org.partner_name || "");
+    }
+    handleInputChange("partnerName", org.partner_name || "");
+    handleInputChange("retailerBranch", org.branch || "");
+    setErrors((prev) => ({ ...prev, partnerName: null, state: null, branch: null }));
+    fetchAvailableStoves();
+    fetchPaymentModels(org.id);
+  };
+
+  const resetStoveSelection = () => {
+    setAvailableStoves([]);
+    setFilteredStoves([]);
+    setStoveSearchTerm("");
+    setShowStoveDropdown(false);
+    setStoveValidity("idle");
+    setStoveValidityMessage("");
+    setFormData((prev) => ({ ...prev, stoveSerialNo: "" }));
+    if (errors.stoveSerialNo) {
+      setErrors((prev) => ({ ...prev, stoveSerialNo: null }));
+    }
+  };
+
+
+  const handlePartnerPick = async (partnerName) => {
+    setSelectedPartnerName(partnerName);
+    setSelectedState("");
+    setPartnerBranches([]);
+    setPartnerSearch(partnerName);
+    setShowPartnerDropdown(false);
+    handleInputChange("partnerName", partnerName);
+    handleInputChange("retailerBranch", "");
+    resetStoveSelection();
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.removeItem("saa_selected_org_id");
+    }
+
+    setBranchesLoading(true);
+    try {
+      let rows = [];
+      const isSaaAgent = isSuperAdmin && userRole !== "super_admin";
+      if (isSaaAgent) {
+        const result = await superAdminAgentService.getAgentOrganizations(userId);
+        rows = (result.data || []).filter((o) => o.partner_name === partnerName);
+      } else {
+        const { data: { session } } = await supabase.auth.getSession();
+        const params = new URLSearchParams({
+          limit: "500",
+          offset: "0",
+          search: partnerName,
+        });
+        const res = await fetch(
+          `${SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
+          { headers: { Authorization: `Bearer ${session.access_token}` } },
+        );
+        const result = await res.json();
+        if (res.ok) {
+          rows = (result.data || []).filter((o) => o.partner_name === partnerName);
+        }
+      }
+      setPartnerBranches(rows);
+
+      // Auto-select when only one option
+      const states = Array.from(new Set(rows.map((r) => r.state).filter(Boolean)));
+      if (states.length === 1) {
+        setSelectedState(states[0]);
+        const branches = rows.filter((r) => r.state === states[0]);
+        if (branches.length === 1) finalizeBranchPick(branches[0]);
+      }
+    } catch (err) {
+      console.error("Error loading partner branches:", err);
+    } finally {
+      setBranchesLoading(false);
+    }
+  };
+
+  const handleStatePick = (stateValue) => {
+    setSelectedState(stateValue);
+    handleInputChange("retailerBranch", "");
+    resetStoveSelection();
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.removeItem("saa_selected_org_id");
+    }
+    const branches = partnerBranches.filter((r) => r.state === stateValue);
+    if (branches.length === 1) finalizeBranchPick(branches[0]);
+  };
+
+  const handleBranchPick = (orgId) => {
+    const org = partnerBranches.find((r) => r.id === orgId);
+    if (org) finalizeBranchPick(org);
+  };
+
+
+
+
   return (
     <div className="max-w-5xl mx-auto p-5">
       {/* Sales Form Header */}
@@ -715,18 +916,15 @@ const CreateSalesForm = ({
 
       <form
         onSubmit={handleSubmit}
-        className="space-y-6 [&_input]:shadow-none [&_textarea]:shadow-none [&_[role=combobox]]:shadow-none"
+        className="space-y-4 [&_input]:shadow-none [&_textarea]:shadow-none [&_[role=combobox]]:shadow-none"
       >
 
         {/* Transaction Information */}
-        <div>
-          <Label className="text-base font-semibold">Transaction Information</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
-            <div>
-              <Label>Transaction ID</Label>
-              <Input value={formData.transactionId || "Auto-generated"} readOnly className="bg-gray-100" />
-              {errors.transactionId && <p className="text-sm text-red-500 mt-1">{errors.transactionId}</p>}
-            </div>
+        <div className="bg-[#fafafa] rounded-xl border border-gray-100 p-5">
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Transaction Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-4 mt-2">
+            {/* Transaction ID is auto-generated and hidden from the UI */}
+
             <FormField label="Sales Date *" error={errors.salesDate} htmlFor="salesDate">
               <Input
                 id="salesDate"
@@ -739,79 +937,135 @@ const CreateSalesForm = ({
                   handleInputChange("salesDate", value);
                 }}
                 max={new Date().toISOString().split("T")[0]}
-                className={errors.salesDate ? "border-red-500" : ""}
+                className={`w-48 ${errors.salesDate ? "border-red-500" : ""}`}
               />
             </FormField>
-            {needsPartnerSelection && !isEditMode ? (
-              <div>
-                <Label htmlFor="partnerSearch">Partner *</Label>
-                <div className="relative partner-search-container">
-                  <Input
-                    id="partnerSearch"
-                    value={partnerSearch}
-                    onChange={(e) => {
-                      setPartnerSearch(e.target.value);
-                      setShowPartnerDropdown(true);
-                      // Clear previously selected partner when user edits the field
-                      if (formData.partnerName) handleInputChange("partnerName", "");
-                    }}
-                    onFocus={() => setShowPartnerDropdown(true)}
-                    placeholder={partnersLoading ? "Searching..." : "Type to search partner..."}
-                    className={errors.partnerName ? "border-red-500" : ""}
-                  />
-                  {showPartnerDropdown && partnerSearch.trim() && (
-                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-52 overflow-auto">
-                      {partnersLoading ? (
-                        <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching...
-                        </div>
-                      ) : partners.length === 0 ? (
-                        <p className="px-3 py-2 text-sm text-muted-foreground">No partners found</p>
-                      ) : (
-                        partners.map((p) => (
-                          <div
-                            key={p.id}
-                            className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
-                            onClick={() => {
-                              sessionStorage.setItem("saa_selected_org_id", p.id);
-                              sessionStorage.setItem("saa_selected_org_name", p.partner_name || "");
-                              handleInputChange("partnerName", p.partner_name || "");
-                              setPartnerSearch(`${p.partner_name}${p.branch ? ` (${p.branch})` : ""}`);
-                              setShowPartnerDropdown(false);
-                              if (errors.partnerName) setErrors((prev) => ({ ...prev, partnerName: null }));
-                              // Now that an org is selected, fetch stoves and payment models
-                              fetchAvailableStoves();
-                              fetchPaymentModels(p.id);
-                            }}
-                          >
-                            {p.partner_name}
-                            {p.branch && <span className="text-muted-foreground"> ({p.branch})</span>}
+            {!isEditMode ? (
+              <>
+                <div>
+                  <Label htmlFor="partnerSearch">Partner *</Label>
+                  <div className="relative partner-search-container">
+                    <Input
+                      id="partnerSearch"
+                      value={partnerSearch}
+                      onChange={(e) => {
+                        setPartnerSearch(e.target.value);
+                        setShowPartnerDropdown(true);
+                        // Clear previously selected partner & cascade when user edits
+                        if (formData.partnerName) handleInputChange("partnerName", "");
+                        if (selectedPartnerName) {
+                          setSelectedPartnerName("");
+                          setSelectedState("");
+                          setPartnerBranches([]);
+                          handleInputChange("retailerBranch", "");
+                          resetStoveSelection();
+                        }
+                      }}
+                      onFocus={() => setShowPartnerDropdown(true)}
+                      placeholder={partnersLoading ? "Loading partners..." : "Click to select or type to search..."}
+                      className={errors.partnerName ? "border-red-500" : ""}
+                    />
+                    {showPartnerDropdown && (
+
+                      <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-52 overflow-auto">
+                        {partnersLoading ? (
+                          <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching...
                           </div>
-                        ))
-                      )}
-                    </div>
-                  )}
+                        ) : distinctPartners.length === 0 ? (
+                          <p className="px-3 py-2 text-sm text-muted-foreground">No partners found</p>
+                        ) : (
+                          distinctPartners.map((p) => (
+                            <div
+                              key={p.partner_name}
+                              className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+                              onClick={() => handlePartnerPick(p.partner_name)}
+                            >
+                              {p.partner_name}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {errors.partnerName && <p className="text-sm text-red-500 mt-1">{errors.partnerName}</p>}
                 </div>
-                {errors.partnerName && <p className="text-sm text-red-500 mt-1">{errors.partnerName}</p>}
-              </div>
+
+                <div>
+                  <Label htmlFor="partnerState">State *</Label>
+                  <Select
+                    value={selectedState}
+                    onValueChange={handleStatePick}
+                    disabled={!selectedPartnerName || branchesLoading || availableStates.length === 0}
+                  >
+                    <SelectTrigger id="partnerState">
+                      <SelectValue
+                        placeholder={
+                          !selectedPartnerName
+                            ? "Select a partner first"
+                            : branchesLoading
+                              ? "Loading..."
+                              : availableStates.length === 0
+                                ? "No states available"
+                                : "Select state"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableStates.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="partnerBranch">Branch *</Label>
+                  <Select
+                    value={
+                      formData.retailerBranch
+                        ? partnerBranches.find(
+                            (b) => b.state === selectedState && b.branch === formData.retailerBranch,
+                          )?.id || ""
+                        : ""
+                    }
+                    onValueChange={handleBranchPick}
+                    disabled={!selectedState || availableBranches.length === 0}
+                  >
+                    <SelectTrigger id="partnerBranch">
+                      <SelectValue
+                        placeholder={
+                          !selectedState
+                            ? "Select a state first"
+                            : availableBranches.length === 0
+                              ? "No branches available"
+                              : "Select branch"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableBranches.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>{b.branch}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
             ) : (
-              <ReadOnlyTile label="Partner" value={formData.partnerName} />
+              <>
+                <ReadOnlyTile label="Partner" value={formData.partnerName} />
+                <ReadOnlyTile label="Branch" value={formData.retailerBranch} />
+              </>
             )}
-            <FormField label="Retailer / Branch / CSO" htmlFor="retailerBranch">
-              <Input
-                id="retailerBranch"
-                value={formData.retailerBranch}
-                onChange={(e) => handleInputChange("retailerBranch", e.target.value)}
-                placeholder="Branch or agency"
-              />
-            </FormField>
           </div>
         </div>
 
+
+
         {/* Buyer & End User */}
-        <div>
-          <Label className="text-base font-semibold">Buyer &amp; End User</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
+        <div className="bg-[#fafafa] rounded-xl border border-gray-100 p-5">
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Buyer &amp; End User</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4">
             <FormField label="Contact Person / Buyer *" error={errors.contactPerson} htmlFor="contactPerson">
               <Input
                 id="contactPerson"
@@ -871,44 +1125,95 @@ const CreateSalesForm = ({
         </div>
 
         {/* Sale & Payment */}
-        <div>
-          <Label className="text-base font-semibold">Sale &amp; Payment</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
+        <div className="bg-[#fafafa] rounded-xl border border-gray-100 p-5">
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Sale &amp; Payment</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4">
             {/* Stove serial */}
             <FormField label={`Stove Serial No *${isEditMode ? " (locked)" : ""}`} error={errors.stoveSerialNo} htmlFor="stoveSerialNo">
               {isEditMode ? (
                 <Input value={formData.stoveSerialNo || stoveSearchTerm || ""} readOnly className="bg-gray-100" />
-              ) : (
+              ) : (() => {
+                const partnerPickerActive = needsPartnerSelection;
+                const branchPending = partnerPickerActive && selectedPartnerName && !formData.partnerName;
+                const noPartnerYet = partnerPickerActive && !selectedPartnerName;
+                const stoveDisabled = noPartnerYet || branchPending;
+                const stovePlaceholder = noPartnerYet
+                  ? "Select a partner first"
+                  : branchPending
+                    ? "Select a branch to continue"
+                    : "Type to search stove ID...";
+                const term = (stoveSearchTerm || "").trim();
+                const showDropdown = showStoveDropdown && !stoveDisabled && term.length > 0;
+                return (
                 <div className="relative stove-search-container">
-                  <Input
-                    id="stoveSerialNo"
-                    value={stoveSearchTerm}
-                    onChange={(e) => { setStoveSearchTerm(e.target.value); setShowStoveDropdown(true); }}
-                    onFocus={() => setShowStoveDropdown(true)}
-                    placeholder={stovesLoading ? "Loading..." : isSuperAdmin && !formData.partnerName ? "Select a partner first" : "Search stove ID..."}
-                    className={errors.stoveSerialNo ? "border-red-500" : ""}
-                    disabled={stovesLoading || (isSuperAdmin && !formData.partnerName)}
-                  />
-                  {showStoveDropdown && filteredStoves.length > 0 && (
+                  <div className="relative">
+                    <Input
+                      id="stoveSerialNo"
+                      value={stoveSearchTerm}
+                      onChange={(e) => { setStoveSearchTerm(e.target.value); setShowStoveDropdown(true); }}
+                      onFocus={() => setShowStoveDropdown(true)}
+                      placeholder={stovePlaceholder}
+                      className={`pr-9 ${
+                        errors.stoveSerialNo || stoveValidity === "invalid"
+                          ? "border-red-500"
+                          : stoveValidity === "valid"
+                            ? "border-green-600"
+                            : ""
+                      }`}
+                      disabled={stoveDisabled}
+                      autoComplete="off"
+                    />
+                    <div className="absolute inset-y-0 right-2 flex items-center">
+                      {stoveValidity === "checking" && (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
+                      {stoveValidity === "valid" && (
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      )}
+                      {stoveValidity === "invalid" && (
+                        <XCircle className="h-4 w-4 text-red-600" />
+                      )}
+                    </div>
+                  </div>
+                  {showDropdown && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-auto">
-                      {filteredStoves.map((stove) => (
-                        <div
-                          key={stove.id}
-                          className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
-                          onClick={() => {
-                            setFormData((prev) => ({ ...prev, stoveSerialNo: stove.stove_id }));
-                            setStoveSearchTerm(stove.stove_id);
-                            setShowStoveDropdown(false);
-                            if (errors.stoveSerialNo) setErrors((prev) => ({ ...prev, stoveSerialNo: null }));
-                          }}
-                        >
-                          {stove.stove_id}
+                      {stoveSearching ? (
+                        <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching...
                         </div>
-                      ))}
+                      ) : filteredStoves.length === 0 ? (
+                        <p className="px-3 py-2 text-sm text-muted-foreground">
+                          No matching stove IDs for this partner
+                        </p>
+                      ) : (
+                        filteredStoves.map((stove) => (
+                          <div
+                            key={stove.id || stove.stove_id}
+                            className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+                            onClick={() => {
+                              setStoveSearchTerm(stove.stove_id);
+                              setFormData((prev) => ({ ...prev, stoveSerialNo: stove.stove_id }));
+                              setShowStoveDropdown(false);
+                              if (errors.stoveSerialNo) setErrors((prev) => ({ ...prev, stoveSerialNo: null }));
+                            }}
+                          >
+                            {stove.stove_id}
+                          </div>
+                        ))
+                      )}
                     </div>
                   )}
+                  {stoveValidityMessage && (
+                    <p className={`mt-1 text-xs ${
+                      stoveValidity === "valid" ? "text-green-600" : "text-red-600"
+                    }`}>
+                      {stoveValidityMessage}
+                    </p>
+                  )}
                 </div>
-              )}
+                );
+              })()}
+
             </FormField>
 
             {/* Payment type */}
@@ -945,7 +1250,7 @@ const CreateSalesForm = ({
             ) : null}
 
             {/* Sale amount */}
-            <FormField label={`Sale Amount (₦) *${isInstallment && selectedModel ? " — by model" : ""}`} error={errors.amount} htmlFor="amount">
+            <FormField label="Sale Amount (₦) *" error={errors.amount} htmlFor="amount">
               <Input
                 id="amount"
                 type="text"
@@ -953,8 +1258,8 @@ const CreateSalesForm = ({
                 value={formatAmountInput(formData.amount)}
                 onChange={(e) => handleInputChange("amount", parseAmountInput(e.target.value))}
                 placeholder="Enter amount"
-                className={`${errors.amount ? "border-red-500" : ""} ${(isInstallment && selectedModel) || isEditMode ? "bg-gray-100" : ""}`}
-                readOnly={(isInstallment && !!selectedModel) || isEditMode}
+                className={`${errors.amount ? "border-red-500" : ""} ${isEditMode ? "bg-gray-100" : ""}`}
+                readOnly={isEditMode}
               />
             </FormField>
           </div>
@@ -982,67 +1287,19 @@ const CreateSalesForm = ({
                 {selectedModel.min_down_payment > 0 && (
                   <p className="text-sm text-amber-700 mt-2 flex items-center gap-1">
                     <Info className="h-3.5 w-3.5" />
-                    Min. down payment: {formatCurrency(selectedModel.min_down_payment)}
+                    Suggested down payment (guide only): {formatCurrency(selectedModel.min_down_payment)}
                   </p>
                 )}
               </div>
 
-              {/* Initial payment fields */}
-              <div className="border-t pt-3">
-                <Label className="text-base font-semibold">Initial Payment (Optional)</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-4 mt-2">
-                  <FormField label="Amount (₦)" htmlFor="initialPaymentAmount">
-                    <Input
-                      id="initialPaymentAmount"
-                      type="text"
-                      inputMode="numeric"
-                      value={formatAmountInput(initialPaymentAmount)}
-                      onChange={(e) => {
-                        const raw = parseAmountInput(e.target.value);
-                        if (raw === "" || parseFloat(raw) <= parseFloat(selectedModel.fixed_price)) setInitialPaymentAmount(raw);
-                      }}
-                      placeholder={selectedModel.min_down_payment > 0 ? `Min: ${formatCurrency(selectedModel.min_down_payment)}` : "Enter amount"}
-                    />
-                    {initialPaymentAmount && selectedModel.min_down_payment > 0 && parseFloat(initialPaymentAmount) < parseFloat(selectedModel.min_down_payment) && (
-                      <p className="text-sm text-amber-600 mt-1">Min. {formatCurrency(selectedModel.min_down_payment)}</p>
-                    )}
-                  </FormField>
-                  <FormField label="Method" htmlFor="initialPaymentMethod">
-                    <Select value={initialPaymentMethod} onValueChange={(v) => setInitialPaymentMethod(v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select method" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="transfer">Transfer</SelectItem>
-                        <SelectItem value="pos">POS</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormField>
-                </div>
-                {initialPaymentAmount && parseFloat(initialPaymentAmount) > 0 && (
-                  <div className="mt-3">
-                    <ImageUploadSection
-                      label="Proof of Payment"
-                      preview={initialPaymentProofPreview}
-                      uploading={uploadingProof}
-                      onUpload={handleProofImageUpload}
-                      placeholder="Upload proof of initial payment"
-                      uploadIcon={FileText}
-                      buttonText="Upload Proof"
-                      changeButtonText="Change Proof"
-                    />
-                  </div>
-                )}
-              </div>
             </div>
           )}
         </div>
 
         {/* Location */}
-        <div>
-          <Label className="text-base font-semibold">Location</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
+        <div className="bg-[#fafafa] rounded-xl border border-gray-100 p-5">
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Location</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4">
             <FormField label="State *" error={errors.stateBackup} htmlFor="stateBackup">
               <Select value={formData.stateBackup} onValueChange={handleStateChange}>
                 <SelectTrigger className={errors.stateBackup ? "border-red-500" : ""}>
@@ -1093,9 +1350,9 @@ const CreateSalesForm = ({
         </div>
 
         {/* Stove Set */}
-        <div>
-          <Label className="text-base font-semibold">Stove Set</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
+        <div className="bg-[#fafafa] rounded-xl border border-gray-100 p-5">
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Stove Set</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4">
             <FormField label="Pots Quantity" htmlFor="potQuantity">
               <Select value={formData.potQuantity.toString()} onValueChange={(v) => handleInputChange("potQuantity", v)}>
                 <SelectTrigger>
@@ -1124,9 +1381,9 @@ const CreateSalesForm = ({
         </div>
 
         {/* Cooking Habits */}
-        <div>
-          <Label className="text-base font-semibold">Cooking Habits</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
+        <div className="bg-[#fafafa] rounded-xl border border-gray-100 p-5">
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Cooking Habits</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4">
             <div className="md:col-span-2 lg:col-span-3">
               <Label>Previous Stove Type</Label>
               <div className="flex flex-wrap gap-4 mt-2">
@@ -1170,8 +1427,8 @@ const CreateSalesForm = ({
         </div>
 
         {/* Terms & Conditions */}
-        <div className={errors.termsAccepted ? "border border-red-400 rounded-lg p-4" : ""}>
-          <Label className="text-base font-semibold">Terms &amp; Conditions *</Label>
+        <div className={`bg-[#fafafa] rounded-xl p-5 ${errors.termsAccepted ? "border border-red-400" : "border border-gray-100"}`}>
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Terms &amp; Conditions *</h3>
           <p className="text-sm text-muted-foreground mt-1 mb-3">All items below must be acknowledged before submitting.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
             {[
@@ -1197,7 +1454,7 @@ const CreateSalesForm = ({
         </div>
 
         {/* Images & Signature */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-4 bg-[#fafafa] rounded-xl border border-gray-100 p-5">
           <div>
             <Label className="text-base font-semibold">Images &amp; Documents</Label>
             <div className="space-y-4 mt-2">
@@ -1218,7 +1475,7 @@ const CreateSalesForm = ({
                 error={errors.agreementImage}
                 uploadIcon={FileText}
                 buttonText="Upload Agreement"
-                changeButtonText="Change Document"
+                accept="application/pdf,image/*"
               />
             </div>
           </div>

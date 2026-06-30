@@ -37,50 +37,34 @@ class AdminSalesService {
     return headers;
   }
 
-  // Get available stove IDs for creating new sales
+  // Get available stove IDs for creating new sales - queries Supabase directly
   async getAvailableStoveIds(organizationId = null, status = "available") {
     try {
-      const headers = await this.getHeaders();
+      let query = this.supabase
+        .from("stove_ids")
+        .select("id, stove_id, status, organization_id, created_at")
+        .eq("is_archived", false)
+        .order("stove_id", { ascending: true })
+        .limit(2000);
 
-      // Prepare request body similar to Flutter code
-      const requestBody = {};
       if (organizationId) {
-        requestBody.organization_id = organizationId;
+        query = query.eq("organization_id", organizationId);
       }
       if (status) {
-        requestBody.status = status;
+        // "available" = anything not sold
+        if (status === "available") {
+          query = query.neq("status", "sold");
+        } else {
+          query = query.eq("status", status);
+        }
       }
 
-      const response = await fetch(this.getStovesURL, {
-        method: "POST", // Changed to POST to send body with organization_id
-        headers,
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      // Handle different response formats like in Flutter code
-      let stoveIDList;
-      if (data.data && Array.isArray(data.data)) {
-        stoveIDList = data.data;
-      } else if (Array.isArray(data)) {
-        stoveIDList = data;
-      } else {
-        console.error("Unexpected response format:", typeof data);
-        return {
-          success: false,
-          data: [],
-          error: "Unexpected response format from server",
-        };
-      }
+      const { data, error } = await query;
+      if (error) throw error;
 
       return {
         success: true,
-        data: stoveIDList,
+        data: data || [],
         error: null,
       };
     } catch (error) {
@@ -93,37 +77,141 @@ class AdminSalesService {
     }
   }
 
+  // Search stove IDs for a partner (AJAX). Returns up to `limit` matches.
+  async searchStoveIds(organizationId, term = "", limit = 20) {
+    try {
+      if (!organizationId) {
+        return { success: true, data: [], error: null };
+      }
+      let query = this.supabase
+        .from("stove_ids")
+        .select("id, stove_id, status, organization_id")
+        .eq("organization_id", organizationId)
+        .eq("is_archived", false)
+        .neq("status", "sold")
+        .order("stove_id", { ascending: true })
+        .limit(limit);
+      const t = (term || "").trim();
+      if (t) query = query.ilike("stove_id", `%${t}%`);
+      const { data, error } = await query;
+      if (error) throw error;
+      return { success: true, data: data || [], error: null };
+    } catch (error) {
+      console.error("Error searching stove IDs:", error);
+      return { success: false, data: [], error: error.message || "Failed to search stove IDs" };
+    }
+  }
+
+  // Validate that a given stove_id exists, is available, and belongs to the partner org.
+  async validateStoveId(organizationId, stoveId) {
+    try {
+      if (!organizationId || !stoveId) {
+        return { success: true, valid: false, data: null, error: null };
+      }
+      const { data, error } = await this.supabase
+        .from("stove_ids")
+        .select("id, stove_id, status, organization_id, is_archived")
+        .eq("organization_id", organizationId)
+        .eq("stove_id", stoveId.trim())
+        .maybeSingle();
+      if (error) throw error;
+      const valid = !!data && data.is_archived === false && data.status !== "sold";
+      return { success: true, valid, data: data || null, error: null };
+    } catch (error) {
+      console.error("Error validating stove ID:", error);
+      return { success: false, valid: false, data: null, error: error.message || "Failed to validate stove ID" };
+    }
+  }
+
+
+
+
   // Upload image for sales (stove images, agreement documents) - Updated to match Flutter
   async uploadImage(file, type) {
     try {
+      if (!file) throw new Error("No file provided");
+
+      // Try the edge function first (legacy path). If it isn't deployed or
+      // fails for any reason, fall back to a direct Supabase Storage upload
+      // so the form keeps working without infrastructure dependencies.
       const token = await this.getToken();
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("type", type);
+        const headers = {};
+        if (token) headers.Authorization = `Bearer ${token}`;
 
-      // Create FormData to match Flutter implementation
-      // FormData is a standard Web API available in browsers
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("type", type);
+        const response = await fetch(`${API_FUNCTIONS_URL}/upload-image`, {
+          method: "POST",
+          headers,
+          body: formData,
+        });
 
-      const headers = {};
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
+        if (response.ok) {
+          const data = await response.json();
+          return { success: true, data, error: null };
+        }
+        // fallthrough to direct upload on any non-OK response
+        console.warn(
+          `[uploadImage] edge function returned ${response.status}; falling back to direct storage upload`
+        );
+      } catch (edgeErr) {
+        console.warn(
+          "[uploadImage] edge function unavailable; falling back to direct storage upload",
+          edgeErr?.message || edgeErr
+        );
       }
-      // Don't set Content-Type for FormData, let browser set it with boundary
 
-      const response = await fetch(`${API_FUNCTIONS_URL}/upload-image`, {
-        method: "POST",
-        headers,
-        body: formData,
-      });
+      // ── Direct upload to Supabase Storage ───────────────────────────────
+      const {
+        data: { user },
+        error: userError,
+      } = await this.supabase.auth.getUser();
+      if (userError || !user) throw new Error("Not authenticated");
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      const safeName = (file.name || "upload")
+        .replace(/[^a-zA-Z0-9._-]/g, "_")
+        .slice(-80);
+      const ext = safeName.includes(".") ? safeName.split(".").pop() : "bin";
+      const folder = type === "agreementImage"
+        ? "agreements"
+        : type === "paymentProof"
+        ? "payment-proofs"
+        : "stove-images";
+      const path = `${folder}/${user.id}/${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}.${ext}`;
 
-      const data = await response.json();
+      const { error: uploadError } = await this.supabase.storage
+        .from("images")
+        .upload(path, file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type || undefined,
+        });
+      if (uploadError) throw new Error(uploadError.message);
+
+      const { data: pub } = this.supabase.storage
+        .from("images")
+        .getPublicUrl(path);
+      const publicUrl = pub?.publicUrl || path;
+
+      const { data: uploadRow, error: insertError } = await this.supabase
+        .from("uploads")
+        .insert({
+          public_id: path,
+          url: publicUrl,
+          type,
+          created_by: user.id,
+        })
+        .select("id, public_id, url, type")
+        .single();
+      if (insertError) throw new Error(insertError.message);
+
       return {
         success: true,
-        data: data,
+        data: { upload: uploadRow, ...uploadRow },
         error: null,
       };
     } catch (error) {

@@ -25,6 +25,7 @@ import {
   Wrench,
   ShieldCheck,
   FileText,
+  BarChart3,
 } from "lucide-react";
 import { usePermissions } from "../hooks/usePermissions";
 import Link from "@/compat/Link";
@@ -43,24 +44,21 @@ const allNavItems = [
     ],
   },
   {
-    name: "Manage Partners",
+    name: "Partner Management",
     icon: UserCheck,
-    route: "partners",
-    children: [
-      { name: "Partner Profiles", route: "partners-profiles", href: "/partners/profiles" },
-      { name: "Track Performance", route: "partners", href: "/partners" },
-    ],
+    route: "partners-profiles",
+    href: "/partners/profiles",
   },
   {
-    name: "Manage Agents",
+    name: "Agent Management",
     icon: Users,
     route: "agents",
     children: [
       { name: "ACSL Agents Profile", route: "agents-profiles", href: "/agents/profiles" },
       { name: "Partner Agents Profile", route: "partner-agents-profiles", href: "/agents/partner-agents-profiles" },
-      { name: "Performance Report", route: "agents", href: "/agents" },
     ],
   },
+  { name: "Performance Report", icon: BarChart3, route: "performance-report", href: "/agents" },
   {
     name: "Manage Sales",
     icon: ShoppingCart,
