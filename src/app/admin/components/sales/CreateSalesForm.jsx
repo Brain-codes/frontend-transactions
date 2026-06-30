@@ -916,13 +916,13 @@ const CreateSalesForm = ({
 
       <form
         onSubmit={handleSubmit}
-        className="space-y-6 [&_input]:shadow-none [&_textarea]:shadow-none [&_[role=combobox]]:shadow-none"
+        className="space-y-4 [&_input]:shadow-none [&_textarea]:shadow-none [&_[role=combobox]]:shadow-none"
       >
 
         {/* Transaction Information */}
-        <div>
-          <Label className="text-base font-semibold">Transaction Information</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
+        <div className="bg-[#fafafa] rounded-xl border border-gray-100 p-5">
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Transaction Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-4 mt-2">
             {/* Transaction ID is auto-generated and hidden from the UI */}
 
             <FormField label="Sales Date *" error={errors.salesDate} htmlFor="salesDate">
@@ -937,7 +937,7 @@ const CreateSalesForm = ({
                   handleInputChange("salesDate", value);
                 }}
                 max={new Date().toISOString().split("T")[0]}
-                className={errors.salesDate ? "border-red-500" : ""}
+                className={`w-48 ${errors.salesDate ? "border-red-500" : ""}`}
               />
             </FormField>
             {!isEditMode ? (
@@ -1063,9 +1063,9 @@ const CreateSalesForm = ({
 
 
         {/* Buyer & End User */}
-        <div>
-          <Label className="text-base font-semibold">Buyer &amp; End User</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
+        <div className="bg-[#fafafa] rounded-xl border border-gray-100 p-5">
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Buyer &amp; End User</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4">
             <FormField label="Contact Person / Buyer *" error={errors.contactPerson} htmlFor="contactPerson">
               <Input
                 id="contactPerson"
@@ -1125,9 +1125,9 @@ const CreateSalesForm = ({
         </div>
 
         {/* Sale & Payment */}
-        <div>
-          <Label className="text-base font-semibold">Sale &amp; Payment</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
+        <div className="bg-[#fafafa] rounded-xl border border-gray-100 p-5">
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Sale &amp; Payment</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4">
             {/* Stove serial */}
             <FormField label={`Stove Serial No *${isEditMode ? " (locked)" : ""}`} error={errors.stoveSerialNo} htmlFor="stoveSerialNo">
               {isEditMode ? (
@@ -1297,9 +1297,9 @@ const CreateSalesForm = ({
         </div>
 
         {/* Location */}
-        <div>
-          <Label className="text-base font-semibold">Location</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
+        <div className="bg-[#fafafa] rounded-xl border border-gray-100 p-5">
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Location</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4">
             <FormField label="State *" error={errors.stateBackup} htmlFor="stateBackup">
               <Select value={formData.stateBackup} onValueChange={handleStateChange}>
                 <SelectTrigger className={errors.stateBackup ? "border-red-500" : ""}>
@@ -1350,9 +1350,9 @@ const CreateSalesForm = ({
         </div>
 
         {/* Stove Set */}
-        <div>
-          <Label className="text-base font-semibold">Stove Set</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
+        <div className="bg-[#fafafa] rounded-xl border border-gray-100 p-5">
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Stove Set</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4">
             <FormField label="Pots Quantity" htmlFor="potQuantity">
               <Select value={formData.potQuantity.toString()} onValueChange={(v) => handleInputChange("potQuantity", v)}>
                 <SelectTrigger>
@@ -1381,9 +1381,9 @@ const CreateSalesForm = ({
         </div>
 
         {/* Cooking Habits */}
-        <div>
-          <Label className="text-base font-semibold">Cooking Habits</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4 mt-2">
+        <div className="bg-[#fafafa] rounded-xl border border-gray-100 p-5">
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Cooking Habits</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4">
             <div className="md:col-span-2 lg:col-span-3">
               <Label>Previous Stove Type</Label>
               <div className="flex flex-wrap gap-4 mt-2">
@@ -1427,8 +1427,8 @@ const CreateSalesForm = ({
         </div>
 
         {/* Terms & Conditions */}
-        <div className={errors.termsAccepted ? "border border-red-400 rounded-lg p-4" : ""}>
-          <Label className="text-base font-semibold">Terms &amp; Conditions *</Label>
+        <div className={`bg-[#fafafa] rounded-xl p-5 ${errors.termsAccepted ? "border border-red-400" : "border border-gray-100"}`}>
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Terms &amp; Conditions *</h3>
           <p className="text-sm text-muted-foreground mt-1 mb-3">All items below must be acknowledged before submitting.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
             {[
@@ -1454,7 +1454,7 @@ const CreateSalesForm = ({
         </div>
 
         {/* Images & Signature */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-4 bg-[#fafafa] rounded-xl border border-gray-100 p-5">
           <div>
             <Label className="text-base font-semibold">Images &amp; Documents</Label>
             <div className="space-y-4 mt-2">
