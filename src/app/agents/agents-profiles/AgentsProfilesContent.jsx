@@ -323,8 +323,12 @@ const AgentsProfilesContent = () => {
               updates.assigned_organizations_count = r.__count;
             } else {
               const list = r?.data || r?.organizations || r || [];
-              if (Array.isArray(list)) updates.assigned_organizations_count = list.length;
+              if (Array.isArray(list)) {
+                const direct = list.filter((o) => !o?.source || o.source === "direct");
+                updates.assigned_organizations_count = direct.length;
+              }
             }
+
           }
           return { id: a.id, updates };
         })
