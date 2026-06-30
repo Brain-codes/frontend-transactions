@@ -122,6 +122,12 @@ const CreateSalesForm = ({
   const [showPartnerDropdown, setShowPartnerDropdown] = useState(false);
   const [partnersLoading, setPartnersLoading] = useState(false);
 
+  // Partner → State → Branch cascade
+  const [selectedPartnerName, setSelectedPartnerName] = useState("");
+  const [partnerBranches, setPartnerBranches] = useState([]); // org rows for picked partner
+  const [selectedState, setSelectedState] = useState("");
+  const [branchesLoading, setBranchesLoading] = useState(false);
+
   // Determine if this is edit mode
   const isEditMode = mode === "edit" && initialData;
 
