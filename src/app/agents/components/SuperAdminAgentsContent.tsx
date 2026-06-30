@@ -1685,7 +1685,21 @@ export default function SuperAdminAgentsContent() {
             for (const oid of orgs) received += stoveTotalByOrg[oid] || 0;
             const sold = soldByAgent[a.id] || 0;
             const available = Math.max(0, received - sold);
-            return { ...a, stove_summary: { received, sold, available } };
+            // For ACSL roles, prefer the hydrated org count so managers also
+            // see their assigned partners (backend list may not populate it).
+            const isAcslRole = a.role === "acsl_agent" || a.role === "acsl_agent_manager";
+            const assigned_organizations_count = isAcslRole
+              ? orgs.length
+              : a.assigned_organizations_count;
+            const total_partners_count = isAcslRole
+              ? orgs.length
+              : a.total_partners_count;
+            return {
+              ...a,
+              assigned_organizations_count,
+              total_partners_count,
+              stove_summary: { received, sold, available },
+            };
           })
         );
 
@@ -2202,9 +2216,15 @@ export default function SuperAdminAgentsContent() {
                         {agent.phone || ""}
                       </TableCell>
                       <TableCell className="text-center">
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                        <button
+                          type="button"
+                          onClick={() => setPartnersModalAgent(agent)}
+                          disabled={(agent.assigned_organizations_count ?? 0) === 0}
+                          className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          title="View assigned partners"
+                        >
                           {(agent.assigned_organizations_count ?? 0).toLocaleString()}
-                        </span>
+                        </button>
                       </TableCell>
                       {/* Stoves split into 3 columns */}
                       <TableCell className="text-center">
