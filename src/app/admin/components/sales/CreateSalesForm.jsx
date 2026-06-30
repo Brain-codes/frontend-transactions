@@ -705,6 +705,106 @@ const CreateSalesForm = ({
     );
   }
 
+  // Distinct partners (by partner_name) shown in the cascade dropdown
+  const distinctPartners = useMemo(() => {
+    const seen = new Map();
+    for (const p of partners) {
+      const key = p.partner_name || "";
+      if (key && !seen.has(key)) seen.set(key, p);
+    }
+    return Array.from(seen.values());
+  }, [partners]);
+
+  const availableStates = useMemo(() => {
+    const set = new Set(partnerBranches.map((b) => b.state).filter(Boolean));
+    return Array.from(set).sort();
+  }, [partnerBranches]);
+
+  const availableBranches = useMemo(
+    () => partnerBranches.filter((b) => b.state === selectedState),
+    [partnerBranches, selectedState],
+  );
+
+  const finalizeBranchPick = (org) => {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem("saa_selected_org_id", org.id);
+      sessionStorage.setItem("saa_selected_org_name", org.partner_name || "");
+    }
+    handleInputChange("partnerName", org.partner_name || "");
+    handleInputChange("retailerBranch", org.branch || "");
+    setErrors((prev) => ({ ...prev, partnerName: null, state: null, branch: null }));
+    fetchAvailableStoves();
+    fetchPaymentModels(org.id);
+  };
+
+  const handlePartnerPick = async (partnerName) => {
+    setSelectedPartnerName(partnerName);
+    setSelectedState("");
+    setPartnerBranches([]);
+    setPartnerSearch(partnerName);
+    setShowPartnerDropdown(false);
+    handleInputChange("partnerName", partnerName);
+    handleInputChange("retailerBranch", "");
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.removeItem("saa_selected_org_id");
+    }
+
+    setBranchesLoading(true);
+    try {
+      let rows = [];
+      const isSaaAgent = isSuperAdmin && userRole !== "super_admin";
+      if (isSaaAgent) {
+        const result = await superAdminAgentService.getAgentOrganizations(userId);
+        rows = (result.data || []).filter((o) => o.partner_name === partnerName);
+      } else {
+        const { data: { session } } = await supabase.auth.getSession();
+        const params = new URLSearchParams({
+          limit: "500",
+          offset: "0",
+          search: partnerName,
+        });
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
+          { headers: { Authorization: `Bearer ${session.access_token}` } },
+        );
+        const result = await res.json();
+        if (res.ok) {
+          rows = (result.data || []).filter((o) => o.partner_name === partnerName);
+        }
+      }
+      setPartnerBranches(rows);
+
+      // Auto-select when only one option
+      const states = Array.from(new Set(rows.map((r) => r.state).filter(Boolean)));
+      if (states.length === 1) {
+        setSelectedState(states[0]);
+        const branches = rows.filter((r) => r.state === states[0]);
+        if (branches.length === 1) finalizeBranchPick(branches[0]);
+      }
+    } catch (err) {
+      console.error("Error loading partner branches:", err);
+    } finally {
+      setBranchesLoading(false);
+    }
+  };
+
+  const handleStatePick = (stateValue) => {
+    setSelectedState(stateValue);
+    handleInputChange("retailerBranch", "");
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.removeItem("saa_selected_org_id");
+    }
+    const branches = partnerBranches.filter((r) => r.state === stateValue);
+    if (branches.length === 1) finalizeBranchPick(branches[0]);
+  };
+
+  const handleBranchPick = (orgId) => {
+    const org = partnerBranches.find((r) => r.id === orgId);
+    if (org) finalizeBranchPick(org);
+  };
+
+
+
   return (
     <div className="max-w-5xl mx-auto p-5">
       {/* Sales Form Header */}
