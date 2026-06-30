@@ -258,12 +258,20 @@ const CreateSalesForm = ({
             return result;
           };
 
+          // Super admins always pick a partner explicitly on each new sale
+          if (userRole === "super_admin" && typeof sessionStorage !== "undefined") {
+            sessionStorage.removeItem("saa_selected_org_id");
+            sessionStorage.removeItem("saa_selected_org_name");
+          }
+
           // Determine whether we have an org context yet
           const knownOrgId =
-            profileService.getOrganizationId() ||
-            (typeof sessionStorage !== "undefined"
-              ? sessionStorage.getItem("saa_selected_org_id")
-              : null);
+            userRole === "super_admin"
+              ? null
+              : profileService.getOrganizationId() ||
+                (typeof sessionStorage !== "undefined"
+                  ? sessionStorage.getItem("saa_selected_org_id")
+                  : null);
           const mustPickPartner = !knownOrgId;
           setNeedsPartnerSelection(mustPickPartner);
 
