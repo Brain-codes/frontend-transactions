@@ -36,6 +36,8 @@ import {
   Users,
   Mail,
   Phone,
+  Package,
+  Search,
 } from "lucide-react";
 import {
   Dialog,
@@ -52,6 +54,10 @@ import ViewCredentialModal from "../../admin/components/credentials/ViewCredenti
 import adminCredentialsService from "../../services/adminCredentialsService";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import adminAgentService from "../../services/adminAgentService.jsx";
+import { createClientComponentClient } from "@/lib/supabaseClient";
+
+const supabase = createClientComponentClient();
+
 
 const ROLE_LABELS = {
   acsl_agent: "ACSL Agent",
@@ -103,6 +109,11 @@ const PartnerProfilesContent = () => {
   const [agentsModalPartner, setAgentsModalPartner] = useState(null);
   const [agentsModalList, setAgentsModalList] = useState([]);
   const [agentsModalLoading, setAgentsModalLoading] = useState(false);
+  const [stoveCounts, setStoveCounts] = useState({}); // orgId -> total received
+  const [stovesModalPartner, setStovesModalPartner] = useState(null);
+  const [stovesModalList, setStovesModalList] = useState([]);
+  const [stovesModalLoading, setStovesModalLoading] = useState(false);
+  const [stovesModalSearch, setStovesModalSearch] = useState("");
 
   const openAgentsModal = async (partner) => {
     setAgentsModalPartner(partner);
@@ -118,6 +129,30 @@ const PartnerProfilesContent = () => {
       setAgentsModalLoading(false);
     }
   };
+
+  const openStovesModal = async (partner) => {
+    setStovesModalPartner(partner);
+    setStovesModalLoading(true);
+    setStovesModalList([]);
+    setStovesModalSearch("");
+    try {
+      const { data, error } = await supabase
+        .from("stove_ids")
+        .select("id, stove_id, status, created_at")
+        .eq("organization_id", partner.id)
+        .eq("is_archived", false)
+        .order("stove_id", { ascending: true });
+      if (error) throw error;
+      const list = data || [];
+      setStovesModalList(list);
+      setStoveCounts((prev) => ({ ...prev, [partner.id]: list.length }));
+    } catch (err) {
+      toast({ variant: "error", title: "Failed to load stoves", description: err.message });
+    } finally {
+      setStovesModalLoading(false);
+    }
+  };
+
 
 
   const loadPartners = async () => {
@@ -200,6 +235,43 @@ const PartnerProfilesContent = () => {
     })();
     return () => { cancelled = true; };
   }, [pageRows, agentCounts]);
+
+  // Lazy fetch stove totals per visible partner
+  useEffect(() => {
+    const missing = pageRows.filter((p) => stoveCounts[p.id] === undefined);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const ids = missing.map((p) => p.id);
+      try {
+        const counts = {};
+        ids.forEach((id) => { counts[id] = 0; });
+        const BATCH = 50;
+        for (let i = 0; i < ids.length; i += BATCH) {
+          const slice = ids.slice(i, i + BATCH);
+          const { data } = await supabase
+            .from("stove_ids")
+            .select("organization_id")
+            .in("organization_id", slice)
+            .eq("is_archived", false);
+          (data || []).forEach((r) => {
+            counts[r.organization_id] = (counts[r.organization_id] || 0) + 1;
+          });
+        }
+        if (cancelled) return;
+        setStoveCounts((prev) => ({ ...prev, ...counts }));
+      } catch {
+        if (!cancelled) {
+          setStoveCounts((prev) => {
+            const next = { ...prev };
+            ids.forEach((id) => { if (next[id] === undefined) next[id] = 0; });
+            return next;
+          });
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [pageRows, stoveCounts]);
 
   const hasActiveFilters = filters.search !== "" || filters.state !== "";
 
@@ -290,13 +362,14 @@ const PartnerProfilesContent = () => {
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
                 <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Assigned Agents</TableHead>
+                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Total Stoves Purchased</TableHead>
                 <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className={loading ? "opacity-40" : ""}>
               {pageRows.length === 0 && !loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-10 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-10 text-gray-500">
                     No partners found
                   </TableCell>
                 </TableRow>
@@ -325,6 +398,26 @@ const PartnerProfilesContent = () => {
                           title="View assigned agents"
                         >
                           {agentCounts[p.id]}
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-full text-xs font-semibold bg-rose-100 text-rose-700 border border-rose-200">
+                          0
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {stoveCounts[p.id] === undefined ? (
+                        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-full text-xs font-medium bg-gray-100 text-gray-400">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        </span>
+                      ) : stoveCounts[p.id] > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => openStovesModal(p)}
+                          className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 border border-purple-200 hover:bg-purple-200 transition cursor-pointer"
+                          title="View all stove IDs"
+                        >
+                          {stoveCounts[p.id].toLocaleString()}
                         </button>
                       ) : (
                         <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-full text-xs font-semibold bg-rose-100 text-rose-700 border border-rose-200">
@@ -517,6 +610,89 @@ const PartnerProfilesContent = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!stovesModalPartner} onOpenChange={(o) => !o && setStovesModalPartner(null)}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4" style={{ backgroundColor: "#4a5d0f" }}>
+            <DialogTitle className="text-white flex items-center gap-2 text-base">
+              <Package className="h-5 w-5" />
+              Stove IDs
+            </DialogTitle>
+            {stovesModalPartner && (
+              <p className="text-white/80 text-xs mt-1">
+                {stovesModalPartner.partner_name}
+                {stovesModalPartner.branch ? ` — ${stovesModalPartner.branch}` : ""}
+              </p>
+            )}
+          </DialogHeader>
+          <div className="px-6 py-4 max-h-[65vh] overflow-y-auto">
+            {stovesModalLoading ? (
+              <div className="flex items-center justify-center py-10 text-gray-500">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading stoves...
+              </div>
+            ) : stovesModalList.length === 0 ? (
+              <div className="text-center py-10 text-gray-500 text-sm">No stoves assigned to this partner.</div>
+            ) : (
+              <>
+                <div className="relative mb-3">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search stove ID or status..."
+                    value={stovesModalSearch}
+                    onChange={(e) => setStovesModalSearch(e.target.value)}
+                    className="pl-8 h-9 text-xs bg-white border-gray-200"
+                  />
+                </div>
+                {(() => {
+                  const q = stovesModalSearch.trim().toLowerCase();
+                  const filteredStoves = q
+                    ? stovesModalList.filter(
+                        (s) =>
+                          (s.stove_id || "").toLowerCase().includes(q) ||
+                          (s.status || "").toLowerCase().includes(q)
+                      )
+                    : stovesModalList;
+                  return (
+                    <>
+                      <p className="text-xs text-gray-600 mb-2">
+                        <span className="font-semibold text-gray-900">{filteredStoves.length}</span> of{" "}
+                        <span className="font-semibold text-gray-900">{stovesModalList.length}</span> stove{stovesModalList.length === 1 ? "" : "s"}
+                      </p>
+                      {filteredStoves.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500 text-sm">No matching stoves.</div>
+                      ) : (
+                        <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+                          {filteredStoves.map((s, i) => (
+                            <li
+                              key={s.id || s.stove_id || i}
+                              className="px-4 py-2.5 flex items-center justify-between gap-3 text-xs"
+                              style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
+                            >
+                              <span className="font-mono text-gray-900 truncate">{s.stove_id || "—"}</span>
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                  s.status === "sold"
+                                    ? "bg-blue-100 text-blue-700"
+                                    : s.status === "available"
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : "bg-gray-100 text-gray-700"
+                                }`}
+                              >
+                                {s.status || "—"}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  );
+                })()}
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
