@@ -413,6 +413,13 @@ const AgentsProfilesContent = () => {
     })();
   }, []);
 
+  useEffect(() => {
+    const handler = () => { loadAgents(); };
+    window.addEventListener("acsl:user-updated", handler);
+    return () => window.removeEventListener("acsl:user-updated", handler);
+  }, []);
+
+
   // Run supervisor hydration once agents have been loaded.
   useEffect(() => {
     if (agents.length === 0) return;
