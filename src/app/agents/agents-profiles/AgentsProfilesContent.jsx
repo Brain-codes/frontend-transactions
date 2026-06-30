@@ -298,18 +298,19 @@ const AgentsProfilesContent = () => {
       const batch = targets.slice(i, i + BATCH);
       const results = await Promise.allSettled(
         batch.map(async (a) => {
-          const orgsPromise =
-            a.role === "acsl_agent"
-              ? fetchDirectPartnerCount(supabaseRef.current, a.id).then((n) =>
-                  n === null
-                    ? superAdminAgentService.getAgentOrganizations(a.id)
-                    : { __count: n }
-                )
-              : superAdminAgentService.getAgentOrganizations(a.id);
+          // Both ACSL Agents and ACSL Agent Managers count direct partner
+          // assignments only — state-derived partners must not inflate the
+          // badge (it must match the User Manager).
+          const orgsPromise = fetchDirectPartnerCount(supabaseRef.current, a.id).then((n) =>
+            n === null
+              ? superAdminAgentService.getAgentOrganizations(a.id)
+              : { __count: n }
+          );
           const [statesRes, orgsRes] = await Promise.allSettled([
             superAdminAgentService.getAgentStates(a.id),
             orgsPromise,
           ]);
+
           const updates = {};
           if (statesRes.status === "fulfilled") {
             const r = statesRes.value;
