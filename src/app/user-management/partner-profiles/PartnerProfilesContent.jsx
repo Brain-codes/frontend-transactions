@@ -36,6 +36,8 @@ import {
   Users,
   Mail,
   Phone,
+  Package,
+  Search,
 } from "lucide-react";
 import {
   Dialog,
@@ -52,6 +54,10 @@ import ViewCredentialModal from "../../admin/components/credentials/ViewCredenti
 import adminCredentialsService from "../../services/adminCredentialsService";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import adminAgentService from "../../services/adminAgentService.jsx";
+import { createClientComponentClient } from "@/lib/supabaseClient";
+
+const supabase = createClientComponentClient();
+
 
 const ROLE_LABELS = {
   acsl_agent: "ACSL Agent",
