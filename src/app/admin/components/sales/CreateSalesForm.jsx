@@ -116,6 +116,12 @@ const CreateSalesForm = ({
   const [stoveSearchTerm, setStoveSearchTerm] = useState("");
   const [showStoveDropdown, setShowStoveDropdown] = useState(false);
   const [filteredStoves, setFilteredStoves] = useState([]);
+  const [stoveSearching, setStoveSearching] = useState(false);
+  // Validation status for the typed/selected stove ID:
+  //  "idle" | "checking" | "valid" | "invalid"
+  const [stoveValidity, setStoveValidity] = useState("idle");
+  const [stoveValidityMessage, setStoveValidityMessage] = useState("");
+
 
   // Partner search state (super admin only)
   const [partners, setPartners] = useState([]);
