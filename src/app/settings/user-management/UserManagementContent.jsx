@@ -129,6 +129,18 @@ const getRoleLabel = (role) => {
   return role;
 };
 
+const HIDDEN_USER_MANAGEMENT_ROLES = new Set(["partner", "admin"]);
+const USER_MANAGEMENT_QUERY_ROLES = [
+  "super_admin",
+  "acsl_agent_manager",
+  "acsl_agent",
+  "partner_agent",
+  "agent",
+  "super_admin_agent",
+];
+
+const isVisibleUserManagementRole = (role) => !HIDDEN_USER_MANAGEMENT_ROLES.has(role);
+
 const getRoleBadgeClasses = (role) => {
   switch (role) {
     case "super_admin":
@@ -233,22 +245,71 @@ const UserManagementPage = () => {
       if (currentFilters.status) params.append("status", currentFilters.status);
       if (currentFilters.role) params.append("role", currentFilters.role);
 
-      const res = await fetch(
-        `${supabaseFunctionsUrl}/manage-users?${params}`,
-        { headers: { Authorization: `Bearer ${session.access_token}` } },
-      );
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Failed to fetch users");
+      const fetchRolePage = async (role, rolePage = 1) => {
+        const roleParams = new URLSearchParams(params);
+        roleParams.set("page", rolePage.toString());
+        roleParams.set("limit", "100");
+        roleParams.set("role", role);
+        const res = await fetch(
+          `${supabaseFunctionsUrl}/manage-users?${roleParams}`,
+          { headers: { Authorization: `Bearer ${session.access_token}` } },
+        );
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Failed to fetch users");
+        return result;
+      };
 
-      setUsers(result.data || []);
-      if (result.pagination) {
+      const visibleRoles = currentFilters.role
+        ? [currentFilters.role].filter(isVisibleUserManagementRole)
+        : USER_MANAGEMENT_QUERY_ROLES;
+
+      if (visibleRoles.length === 0) {
+        setUsers([]);
         setPagination({
-          page: result.pagination.currentPage || 1,
-          page_size: result.pagination.itemsPerPage || 10,
-          total_count: result.pagination.totalItems || 0,
-          total_pages: result.pagination.totalPages || 0,
+          page,
+          page_size: pageSize,
+          total_count: 0,
+          total_pages: 0,
         });
+        return;
       }
+
+      const firstResults = await Promise.all(visibleRoles.map((role) => fetchRolePage(role, 1)));
+      const remainingRequests = [];
+      firstResults.forEach((result, index) => {
+        const role = visibleRoles[index];
+        const totalPages = result.pagination?.totalPages || 1;
+        for (let rolePage = 2; rolePage <= totalPages; rolePage += 1) {
+          remainingRequests.push(fetchRolePage(role, rolePage));
+        }
+      });
+
+      const remainingResults = remainingRequests.length > 0 ? await Promise.all(remainingRequests) : [];
+      const allVisibleUsers = [...firstResults, ...remainingResults]
+        .flatMap((result) => result.data || [])
+        .filter((user) => isVisibleUserManagementRole(user.role));
+
+      const sortedUsers = allVisibleUsers.sort((a, b) => {
+        const aValue = a?.[currentSortBy] ?? "";
+        const bValue = b?.[currentSortBy] ?? "";
+        const direction = currentSortOrder.toLowerCase() === "asc" ? 1 : -1;
+        if (currentSortBy === "created_at" || currentSortBy === "last_login") {
+          return direction * (new Date(aValue || 0).getTime() - new Date(bValue || 0).getTime());
+        }
+        return direction * String(aValue).localeCompare(String(bValue));
+      });
+
+      const totalCount = sortedUsers.length;
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const safePage = totalPages > 0 ? Math.min(page, totalPages) : 1;
+      const pageStart = (safePage - 1) * pageSize;
+      setUsers(sortedUsers.slice(pageStart, pageStart + pageSize));
+      setPagination({
+        page: safePage,
+        page_size: pageSize,
+        total_count: totalCount,
+        total_pages: totalPages,
+      });
     } catch (err) {
       toast({ variant: "error", title: "Failed to fetch users", description: err.message });
       setUsers([]);
@@ -737,12 +798,17 @@ const UserManagementPage = () => {
         ? (acslManagers.length > 0 ? Promise.resolve(acslManagers) : loadAcslManagers())
         : Promise.resolve(acslManagers);
 
-      // Hydrate states & partners from existing assignments
+      // Hydrate states & partners from existing assignments.
+      // Only acsl_agent / acsl_agent_manager users live in the super-admin-agents
+      // tables — calling those endpoints for partner / partner_agent / agent
+      // returns 404 ("Agent not found"). Skip the lookups for those roles.
+      const isAcslLike = role === "acsl_agent" || role === "acsl_agent_manager";
       const [statesRes, orgsRes, assignmentRowsRes] = await Promise.allSettled([
-        superAdminAgentService.getAgentStates(user.id),
-        superAdminAgentService.getAgentOrganizations(user.id),
+        isAcslLike ? superAdminAgentService.getAgentStates(user.id) : Promise.resolve({ data: [] }),
+        isAcslLike ? superAdminAgentService.getAgentOrganizations(user.id) : Promise.resolve({ data: [] }),
         needsAcslAgentCascade(role) ? fetchDirectAgentAssignmentRows(user.id) : Promise.resolve([]),
       ]);
+
       const statesList = statesRes.status === "fulfilled"
         ? (statesRes.value?.data || statesRes.value?.states || statesRes.value || [])
         : [];
@@ -817,70 +883,16 @@ const UserManagementPage = () => {
         return { ok: res.ok, status: res.status, result };
       };
 
-      let result;
-      let newUserId;
-      let generatedPassword;
+      const attempt = await postUser(targetRole, { organization_id: partnerId });
+      if (!attempt.ok) throw new Error(attempt.result?.error || attempt.result?.message || "Failed to create user");
+      const result = attempt.result;
+      const newUserId = extractCreatedUserId(result);
+      const generatedPassword = result.generated_password || result.data?.password;
 
       if (needsOrgBinding) {
-        // The edge function only accepts acsl_agent / acsl_agent_manager / super_admin
-        // and rejects partner_agent / agent. Create the auth user as acsl_agent,
-        // then bypass the edge function and update profiles directly with the
-        // real target role + organization_id. This avoids the "Role must be ..."
-        // and "Phone number is required" 400s and keeps the role as selected.
-        let attempt = await postUser("acsl_agent");
-        if (!attempt.ok) {
-          const errMsg = String(attempt.result?.error || attempt.result?.message || "").toLowerCase();
-          const emailAlreadyExists = errMsg.includes("email") && (errMsg.includes("use") || errMsg.includes("exist"));
-          if (!emailAlreadyExists) {
-            throw new Error(attempt.result?.error || attempt.result?.message || "Failed to create user");
-          }
-          const { data: existing } = await supabase
-            .from("profiles")
-            .select("id")
-            .eq("email", userForm.email.trim().toLowerCase())
-            .maybeSingle();
-          newUserId = existing?.id || null;
-        } else {
-          result = attempt.result;
-          newUserId = extractCreatedUserId(result);
-          generatedPassword = result.generated_password;
-        }
-
-        if (!newUserId) {
-          const { data: lookup } = await supabase
-            .from("profiles").select("id")
-            .eq("email", userForm.email.trim().toLowerCase()).maybeSingle();
-          newUserId = lookup?.id || null;
-        }
-        if (!newUserId) throw new Error("User created but ID could not be resolved");
-
-        // Direct profile patch — assigns the real role + binds partner.
-        const { error: profileErr } = await supabase
-          .from("profiles")
-          .update({
-            full_name: userForm.full_name.trim(),
-            phone: userForm.phone.trim() || null,
-            role: targetRole,
-            organization_id: partnerId,
-          })
-          .eq("id", newUserId);
-        if (profileErr) {
-          throw new Error(
-            `User created but role could not be set to ${getRoleLabel(userForm.role)}: ${profileErr.message}`
-          );
-        }
-
-        // Keep organization-bound agents clean: they should only be linked by
-        // profiles.organization_id, not ACSL manager/state assignment tables.
-        try { await superAdminAgentService.setAgentStates(newUserId, []); } catch { /* non-fatal */ }
-        try { await superAdminAgentService.setAgentOrganizations(newUserId, []); } catch { /* non-fatal */ }
+        // Organization-bound roles (partner, partner_agent, agent) are bound via profiles.organization_id only.
+        // Skip super-admin-agents assignment endpoints — they only exist for acsl_agent / acsl_agent_manager.
       } else {
-        const attempt = await postUser(userForm.role);
-        if (!attempt.ok) throw new Error(attempt.result?.error || "Failed to create user");
-        result = attempt.result;
-        newUserId = extractCreatedUserId(result);
-        generatedPassword = result.generated_password;
-
         if (
           newUserId &&
           (userForm.role === "acsl_agent_manager" || userForm.role === "acsl_agent") &&
@@ -930,40 +942,26 @@ const UserManagementPage = () => {
 
       const { data: { session } } = await supabase.auth.getSession();
 
-      if (isOrgBound) {
-        // Edge function rejects partner_agent/agent roles. Patch profile directly.
-        const { error: profileErr } = await supabase
-          .from("profiles")
-          .update({
-            full_name: userForm.full_name.trim(),
-            phone: userForm.phone.trim() || null,
-            role,
-            organization_id: partnerId,
-          })
-          .eq("id", selectedUser.id);
-        if (profileErr) throw new Error(profileErr.message);
-      } else {
-        const putBody = {
-          full_name: userForm.full_name.trim(),
-          phone: userForm.phone.trim() || "",
-          role,
-        };
-        const res = await fetch(
-          `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
-          {
-            method: "PUT",
-            headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-            body: JSON.stringify(putBody),
-          },
-        );
-        const result = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(result?.error || "Failed to update user");
-      }
+      const putBody = {
+        full_name: userForm.full_name.trim(),
+        phone: userForm.phone.trim() || "",
+        role,
+        organization_id: isOrgBound ? partnerId : null,
+      };
+      const res = await fetch(
+        `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify(putBody),
+        },
+      );
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result?.error || "Failed to update user");
 
       if (isOrgBound) {
-        // Clear ACSL-style assignments so this user no longer appears under prior managers/states.
-        try { await superAdminAgentService.setAgentStates(selectedUser.id, []); } catch { /* non-fatal */ }
-        try { await superAdminAgentService.setAgentOrganizations(selectedUser.id, []); } catch { /* non-fatal */ }
+        // Organization-bound roles bind via profiles.organization_id only.
+        // Skip super-admin-agents endpoints — they 404 for non-ACSL roles.
       } else {
         // Persist assignment updates (overwrites prior assignments). If the user
         // group changes to one without these assignments, clear stale links so
@@ -1096,8 +1094,10 @@ const UserManagementPage = () => {
               <SelectContent className="text-xs">
                 <SelectItem value="all" className="text-xs">All Roles</SelectItem>
                 <SelectItem value="super_admin" className="text-xs">Super Admin</SelectItem>
+                <SelectItem value="acsl_agent_manager" className="text-xs">ACSL Agent Manager</SelectItem>
                 <SelectItem value="acsl_agent" className="text-xs">ACSL Agent</SelectItem>
-                <SelectItem value="partner" className="text-xs">Partner Admin</SelectItem>
+                
+                
                 <SelectItem value="partner_agent" className="text-xs">Partner Agent</SelectItem>
                 <SelectItem value="agent" className="text-xs">Agent</SelectItem>
               </SelectContent>
@@ -1138,16 +1138,14 @@ const UserManagementPage = () => {
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Name</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Email</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone</TableHead>
-                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Role</TableHead>
                     <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
-                    
                     <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className={loading ? "opacity-40" : ""}>
                   {users.length === 0 && !loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-10 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-10 text-gray-500">
                         No users found
                       </TableCell>
                     </TableRow>
@@ -1157,16 +1155,24 @@ const UserManagementPage = () => {
                         key={u.id}
                         className={`${idx % 2 === 0 ? "bg-white" : "bg-[#f4f7e3]"} hover:bg-[#eef3c4] text-gray-700`}
                       >
-                        <TableCell className="text-sm font-medium text-gray-900">{u.full_name || "N/A"}</TableCell>
+                        <TableCell className="text-sm font-medium text-gray-900">
+                          <span className="align-baseline">{u.full_name || "N/A"}</span>
+                      {u.role && isVisibleUserManagementRole(u.role) && (
+                            <sup className={`ml-1 text-[9px] font-medium ${
+                              u.role === "super_admin" ? "text-red-600" :
+                              u.role === "acsl_agent_manager" ? "text-purple-600" :
+                              u.role === "acsl_agent" ? "text-green-700" :
+                              u.role === "partner_agent" ? "text-amber-600" :
+                              u.role === "agent" || u.role === "agent_user" ? "text-cyan-700" :
+                              "text-gray-500"
+                            }`}>
+                              {getRoleLabel(u.role)}
+                            </sup>
+                          )}
+                        </TableCell>
                         <TableCell className="text-sm max-w-[180px] truncate">{u.email}</TableCell>
                         <TableCell className="text-sm text-gray-600">{u.phone || ""}</TableCell>
 
-                        {/* Role — colored badge per role */}
-                        <TableCell>
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${getRoleBadgeClasses(u.role)}`}>
-                            {getRoleLabel(u.role)}
-                          </span>
-                        </TableCell>
 
                         {/* Status */}
                         <TableCell>
@@ -1435,7 +1441,6 @@ const UserManagementPage = () => {
                       <SelectItem value="super_admin">Super Admin</SelectItem>
                       <SelectItem value="acsl_agent_manager">ACSL Agent Manager</SelectItem>
                       <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
-                      <SelectItem value="partner">Partner</SelectItem>
                       <SelectItem value="partner_agent">Partner Agent</SelectItem>
                       <SelectItem value="agent">Agent</SelectItem>
                     </SelectContent>

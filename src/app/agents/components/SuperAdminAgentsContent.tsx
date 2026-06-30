@@ -111,6 +111,12 @@ interface PartnerOrg {
 }
 
 const ALL_STATES = Object.keys(lgaAndStates).sort();
+const AGENTS_PERFORMANCE_ROLES = ["acsl_agent", "acsl_agent_manager"] as const;
+const AGENTS_PERFORMANCE_ROLE_SET = new Set<string>(AGENTS_PERFORMANCE_ROLES);
+const AGENTS_PERFORMANCE_ROLE_LABELS: Record<string, string> = {
+  acsl_agent: "ACSL Agent",
+  acsl_agent_manager: "ACSL Manager",
+};
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -1443,6 +1449,8 @@ export default function SuperAdminAgentsContent() {
   const [stoveSort, setStoveSort] = useState<{ key: string | null; direction: "asc" | "desc" | null }>({ key: null, direction: null });
   // Deduped totals across unique partner organizations (avoids double-counting shared orgs).
   const [stoveTotals, setStoveTotals] = useState<{ assigned: number; sold: number; unsold: number } | null>(null);
+  // Per-role totals across all matching users (not just current page), used by KPI breakdown.
+  const [roleTotals, setRoleTotals] = useState<Record<string, number>>({});
   const cycleStoveSort = (key: string) => {
     setStoveSort((prev) => {
       if (prev.key !== key) return { key, direction: "asc" };
@@ -1466,63 +1474,111 @@ export default function SuperAdminAgentsContent() {
     setLoading(true);
     setError(null);
     try {
-      // Display ALL users regardless of role on the Agents Performance Report.
-      // Switched from the agents-only endpoint to manage-users.
       const { supabaseFunctionsUrl } = await import("@/lib/supabaseConfig");
       const token = await tokenManager.getValidToken();
-      const qs = new URLSearchParams({
-        page: String(page),
-        limit: String(pageSize),
-        sortBy: "created_at",
-        sortOrder: "desc",
-      });
-      if (search.trim()) qs.append("search", search.trim());
-      if (statusFilter !== "all") qs.append("status", statusFilter);
-      if (selectedRoles.length > 0) qs.append("role", selectedRoles.join(","));
-      if (dateFrom) qs.append("date_from", dateFrom);
-      if (dateTo) qs.append("date_to", dateTo);
+      const rolesToFetch = selectedRoles.length > 0
+        ? selectedRoles.filter((role) => AGENTS_PERFORMANCE_ROLE_SET.has(role))
+        : [...AGENTS_PERFORMANCE_ROLES];
 
-      const res = await fetch(`${supabaseFunctionsUrl}/manage-users?${qs.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        const text = await res.text();
-        throw new Error(`Unexpected response (${res.status}): ${text.slice(0, 120)}`);
+      if (rolesToFetch.length === 0) {
+        setAgents([]);
+        setRoleTotals({});
+        setPagination({
+          currentPage: 1,
+          itemsPerPage: pageSize,
+          totalItems: 0,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPrevPage: false,
+        });
+        setStoveTotals({ assigned: 0, sold: 0, unsold: 0 });
+        return;
       }
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || json.message || "Failed to load users");
 
-      const rows = (json.data || []).map((u: any) => ({
-        id: u.id,
-        full_name: u.full_name || u.name || u.email || "—",
-        email: u.email,
-        phone: u.phone ?? null,
-        role: u.role,
-        status: u.status || "active",
-        created_at: u.created_at,
-        last_login: u.last_login ?? null,
-        updated_at: u.updated_at ?? null,
-        updated_by: u.updated_by ?? null,
-        updated_by_name: u.updated_by_name ?? null,
-        assigned_organizations_count: u.assigned_organizations_count ?? 0,
-        assigned_states_count: u.assigned_states_count ?? 0,
-      }));
+      const fetchRoleUsers = async (role: string) => {
+        const roleUsers: any[] = [];
+        let nextPage = 1;
+        let totalPagesForRole = 1;
+
+        do {
+          const qs = new URLSearchParams({
+            page: String(nextPage),
+            limit: "100",
+            sortBy: "created_at",
+            sortOrder: "desc",
+            role,
+          });
+          if (search.trim()) qs.append("search", search.trim());
+          if (statusFilter !== "all") qs.append("status", statusFilter);
+
+          const res = await fetch(`${supabaseFunctionsUrl}/manage-users?${qs.toString()}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const contentType = res.headers.get("content-type") || "";
+          if (!contentType.includes("application/json")) {
+            const text = await res.text();
+            throw new Error(`Unexpected response (${res.status}): ${text.slice(0, 120)}`);
+          }
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || json.message || "Failed to load users");
+
+          roleUsers.push(...(json.data || []));
+          totalPagesForRole = json.pagination?.totalPages ?? 1;
+          nextPage += 1;
+        } while (nextPage <= totalPagesForRole);
+
+        return roleUsers;
+      };
+
+      const allUsers = (await Promise.all(rolesToFetch.map(fetchRoleUsers))).flat();
+      const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+      const toTime = dateTo ? new Date(`${dateTo}T23:59:59`).getTime() : null;
+
+      const rows = allUsers
+        .filter((u: any) => AGENTS_PERFORMANCE_ROLE_SET.has(u.role))
+        .filter((u: any) => {
+          if (!fromTime && !toTime) return true;
+          const createdTime = new Date(u.created_at).getTime();
+          if (Number.isNaN(createdTime)) return false;
+          if (fromTime && createdTime < fromTime) return false;
+          if (toTime && createdTime > toTime) return false;
+          return true;
+        })
+        .map((u: any) => ({
+          id: u.id,
+          full_name: u.full_name || u.name || u.email || "—",
+          email: u.email,
+          phone: u.phone ?? null,
+          role: u.role,
+          status: u.status || "active",
+          created_at: u.created_at,
+          last_login: u.last_login ?? null,
+          updated_at: u.updated_at ?? null,
+          updated_by: u.updated_by ?? null,
+          updated_by_name: u.updated_by_name ?? null,
+          assigned_organizations_count: u.assigned_organizations_count ?? 0,
+          assigned_states_count: u.assigned_states_count ?? 0,
+          total_partners_count: u.total_partners_count ?? u.assigned_organizations_count ?? 0,
+        }))
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
       setAgents(rows);
-
-      const p = json.pagination;
-      setPagination(
-        p
-          ? {
-              currentPage: p.currentPage ?? p.page ?? page,
-              itemsPerPage: p.itemsPerPage ?? p.limit ?? pageSize,
-              totalItems: p.totalItems ?? p.total ?? rows.length,
-              totalPages: p.totalPages ?? 1,
-              hasNextPage: p.hasNextPage ?? false,
-              hasPrevPage: p.hasPrevPage ?? false,
-            }
-          : null,
+      setRoleTotals(
+        rows.reduce<Record<string, number>>((acc, row) => {
+          acc[row.role] = (acc[row.role] || 0) + 1;
+          return acc;
+        }, {})
       );
+
+      const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+      setPagination({
+        currentPage: Math.min(page, totalPages),
+        itemsPerPage: pageSize,
+        totalItems: rows.length,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      });
     } catch (err: any) {
       setError(err.message || "Failed to load users");
     } finally {
@@ -1546,12 +1602,18 @@ export default function SuperAdminAgentsContent() {
 
         // 1. Orgs per agent (direct + via state assignments).
         const orgListResults = await Promise.all(
-          agents.map((a) =>
-            superAdminAgentService
+          agents.map((a) => {
+            // The super-admin-agents edge function only knows about ACSL roles
+            // (acsl_agent / acsl_agent_manager). Calling it for partner /
+            // partner_agent / agent roles 404s ("Agent not found"). Skip them.
+            if (a.role !== "acsl_agent" && a.role !== "acsl_agent_manager") {
+              return Promise.resolve({ id: a.id, orgs: [] as any[] });
+            }
+            return superAdminAgentService
               .getAgentOrganizations(a.id)
               .then((res: any) => ({ id: a.id, orgs: (res?.data || []) as any[] }))
-              .catch(() => ({ id: a.id, orgs: [] as any[] }))
-          )
+              .catch(() => ({ id: a.id, orgs: [] as any[] }));
+          })
         );
         if (cancelled) return;
 
@@ -1598,17 +1660,21 @@ export default function SuperAdminAgentsContent() {
         );
         if (cancelled) return;
 
-        // 4. Global deduped totals — each org counted once regardless of how many agents share it.
+        // 4. Global totals — sum per-agent values so KPI cards match the
+        //    per-row "Sold" column shown in the table/chart. Using the
+        //    deduped org-level stove_ids.status='sold' count diverged from
+        //    the actual sales records each agent created.
         let globalAssigned = 0;
-        let globalSoldOrg = 0;
-        for (const oid of orgIds) {
-          globalAssigned += stoveTotalByOrg[oid] || 0;
-          globalSoldOrg += stoveSoldByOrg[oid] || 0;
+        let globalSold = 0;
+        for (const a of agents) {
+          const orgs = agentToOrgIds[a.id] || [];
+          for (const oid of orgs) globalAssigned += stoveTotalByOrg[oid] || 0;
+          globalSold += soldByAgent[a.id] || 0;
         }
         setStoveTotals({
           assigned: globalAssigned,
-          sold: globalSoldOrg,
-          unsold: Math.max(0, globalAssigned - globalSoldOrg),
+          sold: globalSold,
+          unsold: Math.max(0, globalAssigned - globalSold),
         });
 
         // 5. Merge per-agent stove_summary (row badges still reflect each agent's view).
@@ -1622,6 +1688,7 @@ export default function SuperAdminAgentsContent() {
             return { ...a, stove_summary: { received, sold, available } };
           })
         );
+
       } catch {
         // silent: columns fall back to em-dash
       }
@@ -1776,16 +1843,6 @@ export default function SuperAdminAgentsContent() {
         <PageHeader
           icon={Users}
           title="Agents Performance Report"
-          right={
-            <Button
-              size="sm"
-              className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
-              onClick={() => setAgentFormMode("create")}
-            >
-              <Plus className="h-4 w-4" />
-              Create User
-            </Button>
-          }
         />
 
         {/* Filters */}
@@ -1954,13 +2011,15 @@ export default function SuperAdminAgentsContent() {
             partner: "Partner",
             partner_agent: "Partner Agent",
           };
-          const roleCounts: Record<string, number> = {};
-          agents.forEach((a) => {
-            const r = a.role || "other";
-            roleCounts[r] = (roleCounts[r] || 0) + 1;
-          });
-          const roleEntries = Object.entries(roleCounts).sort((a, b) => b[1] - a[1]);
-          const totalAgents = pagination?.totalItems ?? agents.length;
+          const roleCounts: Record<string, number> = { ...roleTotals };
+          delete roleCounts.partner;
+          delete roleCounts.admin;
+          delete roleCounts.super_admin;
+          const roleEntries = Object.entries(roleCounts)
+            .filter(([, c]) => c > 0)
+            .sort((a, b) => b[1] - a[1]);
+          const totalsSum = roleEntries.reduce((acc, [, c]) => acc + c, 0);
+          const totalAgents = totalsSum > 0 ? totalsSum : agents.length;
           const totalAssigned = stoveTotals?.assigned ?? 0;
           const totalSold = stoveTotals?.sold ?? 0;
           const totalUnsold = stoveTotals?.unsold ?? 0;

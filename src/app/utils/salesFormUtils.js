@@ -17,6 +17,7 @@ export const createInitialFormData = () => ({
   contactPerson: "",
   contactPhone: "",
   endUserName: "",
+  endUserSurname: "",
   aka: "",
   stateBackup: "",
   lgaBackup: "",
@@ -74,7 +75,20 @@ export const populateFormDataForEdit = (saleData) => {
       new Date().toISOString().split("T")[0],
     contactPerson: saleData.contactPerson || saleData.contact_person || "",
     contactPhone: saleData.contactPhone || saleData.contact_phone || "",
-    endUserName: saleData.endUserName || saleData.end_user_name || "",
+    endUserName: (() => {
+      if (saleData.endUserName) return saleData.endUserName;
+      const full = (saleData.end_user_name || "").trim();
+      if (!full) return "";
+      const parts = full.split(/\s+/);
+      return parts[0] || "";
+    })(),
+    endUserSurname: (() => {
+      if (saleData.endUserSurname) return saleData.endUserSurname;
+      const full = (saleData.end_user_name || "").trim();
+      if (!full) return "";
+      const parts = full.split(/\s+/);
+      return parts.slice(1).join(" ");
+    })(),
     aka: saleData.aka || "",
     stateBackup: saleData.stateBackup || saleData.state_backup || "",
     lgaBackup: saleData.lgaBackup || saleData.lga_backup || "",
@@ -172,7 +186,10 @@ export const transformFormDataForAPI = (formData, isEdit = false) => {
     salesDate: formData.salesDate,
     contactPerson: formData.contactPerson,
     contactPhone: formData.contactPhone,
-    endUserName: formData.endUserName,
+    endUserName: [formData.endUserName, formData.endUserSurname]
+      .map((s) => (s || "").trim())
+      .filter(Boolean)
+      .join(" "),
     aka: formData.aka,
     phone: formData.phone,
     otherPhone: formData.otherPhone,
@@ -233,6 +250,7 @@ export const hasFormDataChanged = (currentData, originalData) => {
     "contactPerson",
     "contactPhone",
     "endUserName",
+    "endUserSurname",
     "aka",
     "phone",
     "otherPhone",

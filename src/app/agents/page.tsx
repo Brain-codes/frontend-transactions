@@ -1,44 +1,82 @@
 import { useState, useMemo, useEffect } from "react";
 import ProtectedRoute from "../components/ProtectedRoute";
 import { usePermissions } from "../hooks/usePermissions";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import SuperAdminAgentsContent from "./components/SuperAdminAgentsContent";
 import PartnerAgentsContent from "./components/PartnerAgentsContent";
+import PartnersContent from "../partners/components/PartnersContent";
+import { Users, Building2 } from "lucide-react";
 
-type TabKey = "acsl" | "partner";
+type TabKey = "agents" | "partners";
 
-function AgentsRouter() {
+function PerformanceTabs() {
   const { can } = usePermissions();
   const canAcsl = can("manage-acsl-agents") || can("manage-acsl-agents-scoped");
   const canPartner = can("manage-agents");
+  const showAgents = canAcsl || canPartner;
 
-  const availableTabs = useMemo(() => {
-    const tabs: { key: TabKey; label: string }[] = [];
-    if (canAcsl) tabs.push({ key: "acsl", label: "ACSL Agents" });
-    if (canPartner) tabs.push({ key: "partner", label: "Partner Agents" });
-    return tabs;
-  }, [canAcsl, canPartner]);
+  const tabs = useMemo(() => {
+    const list: { key: TabKey; label: string; icon: typeof Users }[] = [];
+    if (showAgents) list.push({ key: "agents", label: "Agents Performance Report", icon: Users });
+    list.push({ key: "partners", label: "Partners Performance Report", icon: Building2 });
+    return list;
+  }, [showAgents]);
 
-  const [active, setActive] = useState<TabKey>(() => availableTabs[0]?.key ?? "acsl");
+  const [active, setActive] = useState<TabKey>(() => tabs[0]?.key ?? "agents");
 
   useEffect(() => {
-    if (availableTabs.length && !availableTabs.find((t) => t.key === active)) {
-      setActive(availableTabs[0].key);
+    if (tabs.length && !tabs.find((t) => t.key === active)) {
+      setActive(tabs[0].key);
     }
-  }, [availableTabs, active]);
+  }, [tabs, active]);
 
-  if (availableTabs.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      {/* Beautiful segmented tab control */}
+      <div className="px-6 pt-6">
+        <div
+          role="tablist"
+          aria-label="Performance Report"
+          className="flex w-full items-center gap-1 rounded-xl border border-[#e5e7eb] bg-white p-1 shadow-sm"
+        >
+          {tabs.map((t) => {
+            const isActive = active === t.key;
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActive(t.key)}
+                className={[
+                  "relative flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
+                  isActive
+                    ? "bg-[#4a5d0f] text-white shadow-[0_2px_8px_rgba(74,93,15,0.35)]"
+                    : "text-[#4a5d0f] hover:bg-[#eef3c4]",
+                ].join(" ")}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-  // Tabs hidden per product decision: default to ACSL Agents when available,
-  // otherwise fall back to Partner Agents.
-  if (canAcsl) return <SuperAdminAgentsContent />;
-  return <PartnerAgentsContent />;
+      <div role="tabpanel">
+        {active === "agents" && showAgents ? (
+          canAcsl ? <SuperAdminAgentsContent /> : <PartnerAgentsContent />
+        ) : (
+          <PartnersContent />
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function AgentsPage() {
   return (
     <ProtectedRoute requireAdminAccess>
-      <AgentsRouter />
+      <PerformanceTabs />
     </ProtectedRoute>
   );
 }

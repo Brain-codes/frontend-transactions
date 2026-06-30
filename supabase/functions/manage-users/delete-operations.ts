@@ -13,17 +13,24 @@ export async function deleteUser(
       throw new Error("Cannot delete your own account");
     }
 
-    // Check if the user exists and is acsl_agent (formerly super_admin_agent)
+    // Check if the user exists and is a manageable role
     const { data: existingUser, error: checkError } = await supabase
       .from("profiles")
       .select("id, role, full_name, email")
       .eq("id", userId)
-      .in("role", ["acsl_agent", "acsl_agent_manager", "super_admin_agent"])
+      .in("role", [
+        "acsl_agent",
+        "acsl_agent_manager",
+        "super_admin_agent",
+        "partner",
+        "partner_agent",
+        "agent",
+      ])
       .single();
 
     if (checkError) {
       if (checkError.code === "PGRST116") {
-        throw new Error("User not found or not an acsl_agent");
+        throw new Error("User not found or not a manageable user");
       }
       console.error("❌ Error checking user:", checkError);
       throw new Error(`Database error: ${checkError.message}`);

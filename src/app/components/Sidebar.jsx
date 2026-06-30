@@ -56,7 +56,8 @@ const allNavItems = [
     icon: Users,
     route: "agents",
     children: [
-      { name: "Agents Profile", route: "agents-profiles", href: "/agents/profiles" },
+      { name: "ACSL Agents Profile", route: "agents-profiles", href: "/agents/profiles" },
+      { name: "Partner Agents Profile", route: "partner-agents-profiles", href: "/agents/partner-agents-profiles" },
       { name: "Performance Report", route: "agents", href: "/agents" },
     ],
   },
@@ -73,7 +74,7 @@ const allNavItems = [
     ],
   },
 
-  { name: "End User Records", icon: FileText, route: "end-user-records", href: "/end-user-records" },
+  { name: "Stove Users Data", icon: FileText, route: "end-user-records", href: "/end-user-records" },
 
   { name: "Track Stoves", icon: Tag, route: "stove-management", href: "/stove-management" },
   {

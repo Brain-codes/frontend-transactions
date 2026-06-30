@@ -79,35 +79,30 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
   return (
     <div className="space-y-0">
       {/* Pagination header */}
-      <div className="bg-[#eef3c4] rounded-t-lg px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <p className="text-sm text-gray-600">
-            Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
-            <span className="font-medium">{totalRecords}</span> records
-          </p>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">per page:</span>
-            <Select value={pageSize.toString()} onValueChange={(val) => onPageSizeChange(Number(val))}>
-              <SelectTrigger className="w-[65px] h-7 bg-white text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="25">25</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-                <SelectItem value="100">100</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <p className="text-sm font-bold text-green-500">
-          Total Sales: <span className="text-[#4a5d0f]">{totalRecords}</span>
+      <div className="rounded-t-lg px-4 py-2 flex items-center justify-end gap-3">
+        <p className="text-sm text-gray-600">
+          Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
+          <span className="font-medium">{totalRecords}</span> records
         </p>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">per page:</span>
+          <Select value={pageSize.toString()} onValueChange={(val) => onPageSizeChange(Number(val))}>
+            <SelectTrigger className="w-[65px] h-7 bg-white text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white border-x border-gray-200 overflow-x-auto mt-5">
-        <Table className="text-xs">
+      <div className="bg-white border-x border-gray-200 overflow-x-auto mt-1">
+        <Table className="text-sm">
           <TableHeader className="bg-[#4a5d0f]">
             <TableRow className="hover:bg-[#4a5d0f]">
               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Trans #</TableHead>
@@ -119,13 +114,11 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                   Date <ArrowUpDown className="h-3 w-3" />
                 </div>
               </TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">End User</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Phone #</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">State</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Stove ID</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Payment Model</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Partner</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Expected</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">End User</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">State</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Stove ID</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Payment Model</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Expected</TableHead>
               <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Paid</TableHead>
               <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Balance</TableHead>
               <TableHead className="text-white font-semibold py-2 px-1 text-center whitespace-nowrap"> </TableHead>
@@ -140,16 +133,12 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                 <TableCell className="py-1 px-1 font-medium whitespace-nowrap">{sale.transaction_id || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{formatDate(sale.sales_date || sale.created_at)}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{sale.end_user_name || "N/A"}</TableCell>
-                <TableCell className="py-1 px-1 whitespace-nowrap">{sale.phone || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{sale.state_backup || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{sale.stove_serial_no || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">
                   {sale.is_installment
                     ? (sale.payment_model?.name || "Installment")
                     : "Full Payment"}
-                </TableCell>
-                <TableCell className="py-1 px-1 whitespace-nowrap">
-                  {sale.organizations?.name || sale.organizations?.partner_name || sale.partner_name || "N/A"}
                 </TableCell>
                 <TableCell className="py-1 px-1 text-right font-bold whitespace-nowrap">
                   {formatCurrency(sale.amount ?? 0)}

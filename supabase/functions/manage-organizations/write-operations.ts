@@ -14,6 +14,9 @@ export async function updatePartnerDetails(
   supabase: any,
   organizationId: string,
   data: {
+    partner_type?: string;
+    contact_person?: string;
+    address?: string;
     contact_phone?: string;
     alternative_phone?: string;
     email?: string;
@@ -110,6 +113,9 @@ export async function updatePartnerDetails(
     updated_at: new Date().toISOString(),
   };
 
+  if (data.partner_type !== undefined) orgUpdate.partner_type = data.partner_type;
+  if (data.contact_person !== undefined) orgUpdate.contact_person = data.contact_person;
+  if (data.address !== undefined) orgUpdate.address = data.address;
   if (data.contact_phone !== undefined) orgUpdate.contact_phone = data.contact_phone;
   if (data.alternative_phone !== undefined) orgUpdate.alternative_phone = data.alternative_phone;
   if (data.email) orgUpdate.email = data.email;

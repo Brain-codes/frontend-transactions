@@ -26,20 +26,31 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
       sortOrder,
     });
 
-    // Build base query — when no role specified, return both super_admin and acsl_agent (formerly super_admin_agent)
+    // Build base query. Partner organization profiles are managed in Partner
+    // views, not User Management, so keep partner/admin rows out here.
     let query = supabase
       .from("profiles")
-      .select("id, full_name, email, phone, role, status, created_at, last_login", {
+      .select("id, full_name, email, phone, role, status, created_at, last_login, organization_id", {
         count: "exact",
       });
 
-    if (role && ["acsl_agent", "acsl_agent_manager", "super_admin_agent", "super_admin"].includes(role)) {
+    const ALL_ROLES = [
+      "super_admin",
+      "acsl_agent_manager",
+      "acsl_agent",
+      "partner_agent",
+      "agent",
+      "super_admin_agent",
+    ];
+    if (role && ALL_ROLES.includes(role)) {
       query = query.eq("role", role);
       console.log("🔍 Showing users with role:", role);
     } else {
-      query = query.in("role", ["acsl_agent", "acsl_agent_manager", "super_admin_agent", "super_admin"]);
-      console.log("🔍 Showing all super admin and ACSL agent users");
+      query = query.in("role", ALL_ROLES);
+      console.log("🔍 Showing all manageable users");
     }
+
+    query = query.not("role", "eq", "partner").not("role", "eq", "admin");
 
     // Apply status filter
     if (status && ["active", "disabled"].includes(status)) {
@@ -68,6 +79,25 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
       throw new Error(`Database error: ${usersError.message}`);
     }
 
+    // Batch-fetch organizations for partner_agent/agent rows
+    const orgIds = Array.from(
+      new Set(
+        (users || [])
+          .filter((u: any) =>
+            ["partner_agent", "agent"].includes(u.role) && u.organization_id
+          )
+          .map((u: any) => u.organization_id)
+      )
+    );
+    let orgMap = new Map<string, any>();
+    if (orgIds.length > 0) {
+      const { data: orgs } = await supabase
+        .from("organizations")
+        .select("id, partner_name, state, branch")
+        .in("id", orgIds);
+      (orgs || []).forEach((o: any) => orgMap.set(o.id, o));
+    }
+
     // Fetch assigned_organizations_count + assigned_states_count for each SAA user
     const usersWithCounts = await Promise.all(
       (users || []).map(async (user: any) => {
@@ -86,6 +116,15 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
             ...user,
             assigned_organizations_count: orgCount || 0,
             assigned_states_count: stateCount || 0,
+          };
+        }
+        if (["partner_agent", "agent"].includes(user.role)) {
+          const org = user.organization_id ? orgMap.get(user.organization_id) : null;
+          return {
+            ...user,
+            organization: org || null,
+            assigned_organizations_count: org ? 1 : 0,
+            assigned_states_count: org && org.state ? 1 : 0,
           };
         }
         return { ...user, assigned_organizations_count: 0, assigned_states_count: 0 };
