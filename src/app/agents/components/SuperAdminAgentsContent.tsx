@@ -1677,10 +1677,16 @@ export default function SuperAdminAgentsContent() {
         }
 
 
-        // 2. Stove counts per org — total + sold (status-based, deduped at org level).
-        const orgIds = Array.from(allOrgIds);
+        // 2. Stove counts per org — count AVAILABLE (unsold, non-archived) stoves
+        //    per organization. "Records to collect" must reflect stoves still
+        //    available at the agent's directly-assigned partners.
+        const directOrgIdSet = new Set<string>();
+        Object.values(agentToDirectOrgIds).forEach((ids) =>
+          ids.forEach((id) => directOrgIdSet.add(id))
+        );
+        const orgIds = Array.from(directOrgIdSet);
         const BATCH = 200;
-        const stoveTotalByOrg: Record<string, number> = {};
+        const stoveAvailableByOrg: Record<string, number> = {};
         const stoveSoldByOrg: Record<string, number> = {};
         for (let i = 0; i < orgIds.length; i += BATCH) {
           const slice = orgIds.slice(i, i + BATCH);
@@ -1691,9 +1697,11 @@ export default function SuperAdminAgentsContent() {
             .eq("is_archived", false);
           (data || []).forEach((s: any) => {
             const oid = s.organization_id;
-            stoveTotalByOrg[oid] = (stoveTotalByOrg[oid] || 0) + 1;
-            if (String(s.status || "").toLowerCase() === "sold") {
+            const status = String(s.status || "").toLowerCase();
+            if (status === "sold") {
               stoveSoldByOrg[oid] = (stoveSoldByOrg[oid] || 0) + 1;
+            } else {
+              stoveAvailableByOrg[oid] = (stoveAvailableByOrg[oid] || 0) + 1;
             }
           });
         }
@@ -1712,15 +1720,13 @@ export default function SuperAdminAgentsContent() {
         );
         if (cancelled) return;
 
-        // 4. Global totals — sum per-agent values so KPI cards match the
-        //    per-row "Sold" column shown in the table/chart. Using the
-        //    deduped org-level stove_ids.status='sold' count diverged from
-        //    the actual sales records each agent created.
+        // 4. Global totals — sum per-agent "to-collect" (available stoves at
+        //    each agent's directly-assigned partners) and per-agent collected.
         let globalAssigned = 0;
         let globalSold = 0;
         for (const a of agents) {
-          const orgs = agentToOrgIds[a.id] || [];
-          for (const oid of orgs) globalAssigned += stoveTotalByOrg[oid] || 0;
+          const orgs = agentToDirectOrgIds[a.id] || [];
+          for (const oid of orgs) globalAssigned += stoveAvailableByOrg[oid] || 0;
           globalSold += soldByAgent[a.id] || 0;
         }
         setStoveTotals({
@@ -1729,12 +1735,14 @@ export default function SuperAdminAgentsContent() {
           unsold: Math.max(0, globalAssigned - globalSold),
         });
 
-        // 5. Merge per-agent stove_summary (row badges still reflect each agent's view).
+        // 5. Merge per-agent stove_summary. received = available stoves at
+        //    direct partners (true "to collect"); sold = agent's own sales;
+        //    available = remaining after the agent's collections.
         setAgents((prev) =>
           prev.map((a) => {
-            const orgs = agentToOrgIds[a.id] || [];
+            const orgs = agentToDirectOrgIds[a.id] || [];
             let received = 0;
-            for (const oid of orgs) received += stoveTotalByOrg[oid] || 0;
+            for (const oid of orgs) received += stoveAvailableByOrg[oid] || 0;
             const sold = soldByAgent[a.id] || 0;
             const available = Math.max(0, received - sold);
             // For ACSL roles, prefer the hydrated org count so managers also
