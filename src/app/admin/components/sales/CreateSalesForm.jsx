@@ -892,10 +892,11 @@ const CreateSalesForm = ({
                         }
                       }}
                       onFocus={() => setShowPartnerDropdown(true)}
-                      placeholder={partnersLoading ? "Searching..." : "Type to search partner..."}
+                      placeholder={partnersLoading ? "Loading partners..." : "Click to select or type to search..."}
                       className={errors.partnerName ? "border-red-500" : ""}
                     />
-                    {showPartnerDropdown && (userRole === "super_admin" || partnerSearch.trim()) && (
+                    {showPartnerDropdown && (
+
                       <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-52 overflow-auto">
                         {partnersLoading ? (
                           <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
