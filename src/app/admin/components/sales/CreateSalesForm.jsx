@@ -812,11 +812,14 @@ const CreateSalesForm = ({
     setFilteredStoves([]);
     setStoveSearchTerm("");
     setShowStoveDropdown(false);
+    setStoveValidity("idle");
+    setStoveValidityMessage("");
     setFormData((prev) => ({ ...prev, stoveSerialNo: "" }));
     if (errors.stoveSerialNo) {
       setErrors((prev) => ({ ...prev, stoveSerialNo: null }));
     }
   };
+
 
   const handlePartnerPick = async (partnerName) => {
     setSelectedPartnerName(partnerName);
