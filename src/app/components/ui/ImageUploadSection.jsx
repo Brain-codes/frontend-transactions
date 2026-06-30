@@ -12,6 +12,8 @@ const ImageUploadSection = ({
   placeholder,
   error,
   uploadIcon: UploadIcon = Upload,
+  accept = "image/*",
+  buttonText = "Upload Image",
 }) => {
   const fileInputRef = useRef(null);
 
