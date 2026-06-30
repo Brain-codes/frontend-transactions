@@ -66,7 +66,7 @@ class PaymentModelService {
                 .maybeSingle()
             ).data?.name ||
             "Unknown";
-          top_model = { name, use_count: useCount };
+          top_model = { name, use_count: Number(useCount) };
         }
       }
     } catch (_) {
