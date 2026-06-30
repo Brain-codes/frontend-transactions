@@ -863,70 +863,124 @@ const CreateSalesForm = ({
               />
             </FormField>
             {needsPartnerSelection && !isEditMode ? (
-              <div>
-                <Label htmlFor="partnerSearch">Partner *</Label>
-                <div className="relative partner-search-container">
-                  <Input
-                    id="partnerSearch"
-                    value={partnerSearch}
-                    onChange={(e) => {
-                      setPartnerSearch(e.target.value);
-                      setShowPartnerDropdown(true);
-                      // Clear previously selected partner when user edits the field
-                      if (formData.partnerName) handleInputChange("partnerName", "");
-                    }}
-                    onFocus={() => setShowPartnerDropdown(true)}
-                    placeholder={partnersLoading ? "Searching..." : "Type to search partner..."}
-                    className={errors.partnerName ? "border-red-500" : ""}
-                  />
-                  {showPartnerDropdown && (userRole === "super_admin" || partnerSearch.trim()) && (
-                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-52 overflow-auto">
-                      {partnersLoading ? (
-                        <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching...
-                        </div>
-                      ) : partners.length === 0 ? (
-                        <p className="px-3 py-2 text-sm text-muted-foreground">No partners found</p>
-                      ) : (
-                        partners.map((p) => (
-                          <div
-                            key={p.id}
-                            className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
-                            onClick={() => {
-                              sessionStorage.setItem("saa_selected_org_id", p.id);
-                              sessionStorage.setItem("saa_selected_org_name", p.partner_name || "");
-                              handleInputChange("partnerName", p.partner_name || "");
-                              setPartnerSearch(`${p.partner_name}${p.branch ? ` (${p.branch})` : ""}`);
-                              setShowPartnerDropdown(false);
-                              if (errors.partnerName) setErrors((prev) => ({ ...prev, partnerName: null }));
-                              // Now that an org is selected, fetch stoves and payment models
-                              fetchAvailableStoves();
-                              fetchPaymentModels(p.id);
-                            }}
-                          >
-                            {p.partner_name}
-                            {p.branch && <span className="text-muted-foreground"> ({p.branch})</span>}
+              <>
+                <div>
+                  <Label htmlFor="partnerSearch">Partner *</Label>
+                  <div className="relative partner-search-container">
+                    <Input
+                      id="partnerSearch"
+                      value={partnerSearch}
+                      onChange={(e) => {
+                        setPartnerSearch(e.target.value);
+                        setShowPartnerDropdown(true);
+                        // Clear previously selected partner & cascade when user edits
+                        if (formData.partnerName) handleInputChange("partnerName", "");
+                        if (selectedPartnerName) {
+                          setSelectedPartnerName("");
+                          setSelectedState("");
+                          setPartnerBranches([]);
+                          handleInputChange("retailerBranch", "");
+                        }
+                      }}
+                      onFocus={() => setShowPartnerDropdown(true)}
+                      placeholder={partnersLoading ? "Searching..." : "Type to search partner..."}
+                      className={errors.partnerName ? "border-red-500" : ""}
+                    />
+                    {showPartnerDropdown && (userRole === "super_admin" || partnerSearch.trim()) && (
+                      <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-52 overflow-auto">
+                        {partnersLoading ? (
+                          <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching...
                           </div>
-                        ))
-                      )}
-                    </div>
-                  )}
+                        ) : distinctPartners.length === 0 ? (
+                          <p className="px-3 py-2 text-sm text-muted-foreground">No partners found</p>
+                        ) : (
+                          distinctPartners.map((p) => (
+                            <div
+                              key={p.partner_name}
+                              className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+                              onClick={() => handlePartnerPick(p.partner_name)}
+                            >
+                              {p.partner_name}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {errors.partnerName && <p className="text-sm text-red-500 mt-1">{errors.partnerName}</p>}
                 </div>
-                {errors.partnerName && <p className="text-sm text-red-500 mt-1">{errors.partnerName}</p>}
-              </div>
+
+                <div>
+                  <Label htmlFor="partnerState">State *</Label>
+                  <Select
+                    value={selectedState}
+                    onValueChange={handleStatePick}
+                    disabled={!selectedPartnerName || branchesLoading || availableStates.length === 0}
+                  >
+                    <SelectTrigger id="partnerState">
+                      <SelectValue
+                        placeholder={
+                          !selectedPartnerName
+                            ? "Select a partner first"
+                            : branchesLoading
+                              ? "Loading..."
+                              : availableStates.length === 0
+                                ? "No states available"
+                                : "Select state"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableStates.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="partnerBranch">Branch *</Label>
+                  <Select
+                    value={
+                      formData.retailerBranch
+                        ? partnerBranches.find(
+                            (b) => b.state === selectedState && b.branch === formData.retailerBranch,
+                          )?.id || ""
+                        : ""
+                    }
+                    onValueChange={handleBranchPick}
+                    disabled={!selectedState || availableBranches.length === 0}
+                  >
+                    <SelectTrigger id="partnerBranch">
+                      <SelectValue
+                        placeholder={
+                          !selectedState
+                            ? "Select a state first"
+                            : availableBranches.length === 0
+                              ? "No branches available"
+                              : "Select branch"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableBranches.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>{b.branch}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
             ) : (
-              <ReadOnlyTile label="Partner" value={formData.partnerName} />
+              <>
+                <ReadOnlyTile label="Partner" value={formData.partnerName} />
+                <ReadOnlyTile label="Branch" value={formData.retailerBranch} />
+              </>
             )}
-            <FormField label="Retailer / Branch / CSO" htmlFor="retailerBranch">
-              <Input
-                id="retailerBranch"
-                value={formData.retailerBranch}
-                onChange={(e) => handleInputChange("retailerBranch", e.target.value)}
-                placeholder="Branch or agency"
-              />
-            </FormField>
           </div>
         </div>
+
+
 
         {/* Buyer & End User */}
         <div>
