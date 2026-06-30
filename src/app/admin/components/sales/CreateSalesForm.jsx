@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "@/compat/navigation";
 import Link from "@/compat/Link";
 import { Button } from "@/components/ui/button";
@@ -121,6 +121,12 @@ const CreateSalesForm = ({
   const [partnerSearch, setPartnerSearch] = useState("");
   const [showPartnerDropdown, setShowPartnerDropdown] = useState(false);
   const [partnersLoading, setPartnersLoading] = useState(false);
+
+  // Partner → State → Branch cascade
+  const [selectedPartnerName, setSelectedPartnerName] = useState("");
+  const [partnerBranches, setPartnerBranches] = useState([]); // org rows for picked partner
+  const [selectedState, setSelectedState] = useState("");
+  const [branchesLoading, setBranchesLoading] = useState(false);
 
   // Determine if this is edit mode
   const isEditMode = mode === "edit" && initialData;
@@ -699,6 +705,106 @@ const CreateSalesForm = ({
     );
   }
 
+  // Distinct partners (by partner_name) shown in the cascade dropdown
+  const distinctPartners = useMemo(() => {
+    const seen = new Map();
+    for (const p of partners) {
+      const key = p.partner_name || "";
+      if (key && !seen.has(key)) seen.set(key, p);
+    }
+    return Array.from(seen.values());
+  }, [partners]);
+
+  const availableStates = useMemo(() => {
+    const set = new Set(partnerBranches.map((b) => b.state).filter(Boolean));
+    return Array.from(set).sort();
+  }, [partnerBranches]);
+
+  const availableBranches = useMemo(
+    () => partnerBranches.filter((b) => b.state === selectedState),
+    [partnerBranches, selectedState],
+  );
+
+  const finalizeBranchPick = (org) => {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem("saa_selected_org_id", org.id);
+      sessionStorage.setItem("saa_selected_org_name", org.partner_name || "");
+    }
+    handleInputChange("partnerName", org.partner_name || "");
+    handleInputChange("retailerBranch", org.branch || "");
+    setErrors((prev) => ({ ...prev, partnerName: null, state: null, branch: null }));
+    fetchAvailableStoves();
+    fetchPaymentModels(org.id);
+  };
+
+  const handlePartnerPick = async (partnerName) => {
+    setSelectedPartnerName(partnerName);
+    setSelectedState("");
+    setPartnerBranches([]);
+    setPartnerSearch(partnerName);
+    setShowPartnerDropdown(false);
+    handleInputChange("partnerName", partnerName);
+    handleInputChange("retailerBranch", "");
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.removeItem("saa_selected_org_id");
+    }
+
+    setBranchesLoading(true);
+    try {
+      let rows = [];
+      const isSaaAgent = isSuperAdmin && userRole !== "super_admin";
+      if (isSaaAgent) {
+        const result = await superAdminAgentService.getAgentOrganizations(userId);
+        rows = (result.data || []).filter((o) => o.partner_name === partnerName);
+      } else {
+        const { data: { session } } = await supabase.auth.getSession();
+        const params = new URLSearchParams({
+          limit: "500",
+          offset: "0",
+          search: partnerName,
+        });
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
+          { headers: { Authorization: `Bearer ${session.access_token}` } },
+        );
+        const result = await res.json();
+        if (res.ok) {
+          rows = (result.data || []).filter((o) => o.partner_name === partnerName);
+        }
+      }
+      setPartnerBranches(rows);
+
+      // Auto-select when only one option
+      const states = Array.from(new Set(rows.map((r) => r.state).filter(Boolean)));
+      if (states.length === 1) {
+        setSelectedState(states[0]);
+        const branches = rows.filter((r) => r.state === states[0]);
+        if (branches.length === 1) finalizeBranchPick(branches[0]);
+      }
+    } catch (err) {
+      console.error("Error loading partner branches:", err);
+    } finally {
+      setBranchesLoading(false);
+    }
+  };
+
+  const handleStatePick = (stateValue) => {
+    setSelectedState(stateValue);
+    handleInputChange("retailerBranch", "");
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.removeItem("saa_selected_org_id");
+    }
+    const branches = partnerBranches.filter((r) => r.state === stateValue);
+    if (branches.length === 1) finalizeBranchPick(branches[0]);
+  };
+
+  const handleBranchPick = (orgId) => {
+    const org = partnerBranches.find((r) => r.id === orgId);
+    if (org) finalizeBranchPick(org);
+  };
+
+
+
   return (
     <div className="max-w-5xl mx-auto p-5">
       {/* Sales Form Header */}
@@ -757,70 +863,124 @@ const CreateSalesForm = ({
               />
             </FormField>
             {needsPartnerSelection && !isEditMode ? (
-              <div>
-                <Label htmlFor="partnerSearch">Partner *</Label>
-                <div className="relative partner-search-container">
-                  <Input
-                    id="partnerSearch"
-                    value={partnerSearch}
-                    onChange={(e) => {
-                      setPartnerSearch(e.target.value);
-                      setShowPartnerDropdown(true);
-                      // Clear previously selected partner when user edits the field
-                      if (formData.partnerName) handleInputChange("partnerName", "");
-                    }}
-                    onFocus={() => setShowPartnerDropdown(true)}
-                    placeholder={partnersLoading ? "Searching..." : "Type to search partner..."}
-                    className={errors.partnerName ? "border-red-500" : ""}
-                  />
-                  {showPartnerDropdown && (userRole === "super_admin" || partnerSearch.trim()) && (
-                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-52 overflow-auto">
-                      {partnersLoading ? (
-                        <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching...
-                        </div>
-                      ) : partners.length === 0 ? (
-                        <p className="px-3 py-2 text-sm text-muted-foreground">No partners found</p>
-                      ) : (
-                        partners.map((p) => (
-                          <div
-                            key={p.id}
-                            className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
-                            onClick={() => {
-                              sessionStorage.setItem("saa_selected_org_id", p.id);
-                              sessionStorage.setItem("saa_selected_org_name", p.partner_name || "");
-                              handleInputChange("partnerName", p.partner_name || "");
-                              setPartnerSearch(`${p.partner_name}${p.branch ? ` (${p.branch})` : ""}`);
-                              setShowPartnerDropdown(false);
-                              if (errors.partnerName) setErrors((prev) => ({ ...prev, partnerName: null }));
-                              // Now that an org is selected, fetch stoves and payment models
-                              fetchAvailableStoves();
-                              fetchPaymentModels(p.id);
-                            }}
-                          >
-                            {p.partner_name}
-                            {p.branch && <span className="text-muted-foreground"> ({p.branch})</span>}
+              <>
+                <div>
+                  <Label htmlFor="partnerSearch">Partner *</Label>
+                  <div className="relative partner-search-container">
+                    <Input
+                      id="partnerSearch"
+                      value={partnerSearch}
+                      onChange={(e) => {
+                        setPartnerSearch(e.target.value);
+                        setShowPartnerDropdown(true);
+                        // Clear previously selected partner & cascade when user edits
+                        if (formData.partnerName) handleInputChange("partnerName", "");
+                        if (selectedPartnerName) {
+                          setSelectedPartnerName("");
+                          setSelectedState("");
+                          setPartnerBranches([]);
+                          handleInputChange("retailerBranch", "");
+                        }
+                      }}
+                      onFocus={() => setShowPartnerDropdown(true)}
+                      placeholder={partnersLoading ? "Searching..." : "Type to search partner..."}
+                      className={errors.partnerName ? "border-red-500" : ""}
+                    />
+                    {showPartnerDropdown && (userRole === "super_admin" || partnerSearch.trim()) && (
+                      <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-52 overflow-auto">
+                        {partnersLoading ? (
+                          <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching...
                           </div>
-                        ))
-                      )}
-                    </div>
-                  )}
+                        ) : distinctPartners.length === 0 ? (
+                          <p className="px-3 py-2 text-sm text-muted-foreground">No partners found</p>
+                        ) : (
+                          distinctPartners.map((p) => (
+                            <div
+                              key={p.partner_name}
+                              className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+                              onClick={() => handlePartnerPick(p.partner_name)}
+                            >
+                              {p.partner_name}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {errors.partnerName && <p className="text-sm text-red-500 mt-1">{errors.partnerName}</p>}
                 </div>
-                {errors.partnerName && <p className="text-sm text-red-500 mt-1">{errors.partnerName}</p>}
-              </div>
+
+                <div>
+                  <Label htmlFor="partnerState">State *</Label>
+                  <Select
+                    value={selectedState}
+                    onValueChange={handleStatePick}
+                    disabled={!selectedPartnerName || branchesLoading || availableStates.length === 0}
+                  >
+                    <SelectTrigger id="partnerState">
+                      <SelectValue
+                        placeholder={
+                          !selectedPartnerName
+                            ? "Select a partner first"
+                            : branchesLoading
+                              ? "Loading..."
+                              : availableStates.length === 0
+                                ? "No states available"
+                                : "Select state"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableStates.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="partnerBranch">Branch *</Label>
+                  <Select
+                    value={
+                      formData.retailerBranch
+                        ? partnerBranches.find(
+                            (b) => b.state === selectedState && b.branch === formData.retailerBranch,
+                          )?.id || ""
+                        : ""
+                    }
+                    onValueChange={handleBranchPick}
+                    disabled={!selectedState || availableBranches.length === 0}
+                  >
+                    <SelectTrigger id="partnerBranch">
+                      <SelectValue
+                        placeholder={
+                          !selectedState
+                            ? "Select a state first"
+                            : availableBranches.length === 0
+                              ? "No branches available"
+                              : "Select branch"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableBranches.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>{b.branch}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
             ) : (
-              <ReadOnlyTile label="Partner" value={formData.partnerName} />
+              <>
+                <ReadOnlyTile label="Partner" value={formData.partnerName} />
+                <ReadOnlyTile label="Branch" value={formData.retailerBranch} />
+              </>
             )}
-            <FormField label="Retailer / Branch / CSO" htmlFor="retailerBranch">
-              <Input
-                id="retailerBranch"
-                value={formData.retailerBranch}
-                onChange={(e) => handleInputChange("retailerBranch", e.target.value)}
-                placeholder="Branch or agency"
-              />
-            </FormField>
           </div>
         </div>
+
+
 
         {/* Buyer & End User */}
         <div>
