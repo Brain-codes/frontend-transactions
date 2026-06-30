@@ -1,137 +1,328 @@
 // Payment Model Service
-// Handles API calls for payment models, org assignments, and installment payments
-import tokenManager from "../../utils/tokenManager";
+// Direct Supabase client implementation (no edge functions required).
+import { getSupabase } from "@/lib/supabaseClient";
 
-const API_BASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const API_FUNCTIONS_URL = `${API_BASE_URL}/functions/v1`;
+const supabase = getSupabase();
+
+async function currentUserId() {
+  const { data } = await supabase.auth.getUser();
+  return data?.user?.id || null;
+}
 
 class PaymentModelService {
-  async getToken() {
-    try {
-      return await tokenManager.getValidToken();
-    } catch (error) {
-      console.error("[PaymentModelService] Token error:", error);
-      return null;
-    }
-  }
-
-  async getHeaders() {
-    const token = await this.getToken();
-    const headers = { "Content-Type": "application/json" };
-    if (token) headers.Authorization = `Bearer ${token}`;
-    return headers;
-  }
-
-  async request(url, options = {}) {
-    let response;
-    try {
-      response = await fetch(url, {
-        ...options,
-        headers: await this.getHeaders(),
-      });
-    } catch (err) {
-      // Network error — treat as feature unavailable so UI can degrade gracefully
-      return { success: true, data: [], total: 0, unavailable: true };
-    }
-
-    // Gracefully handle missing edge function (feature not deployed on this project)
-    if (response.status === 404) {
-      return { success: true, data: [], total: 0, unavailable: true };
-    }
-
-    const result = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(result.message || `HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    if (!result.success) {
-      throw new Error(result.message || "Request failed");
-    }
-
-    return result;
-  }
-
-  // ─── Payment Models CRUD ─────────────────────────────────────────────────
+  // ─── Payment Models CRUD ────────────────────────────────────────────────
 
   async getPaymentModels(params = {}) {
-    const qs = new URLSearchParams();
-    Object.entries(params).forEach(([k, v]) => {
-      if (v !== null && v !== undefined && v !== "") qs.append(k, v);
-    });
-    const url = `${API_FUNCTIONS_URL}/payment-models${qs.toString() ? "?" + qs.toString() : ""}`;
-    return await this.request(url, { method: "GET" });
+    const { show_all, status, search } = params;
+
+    let query = supabase
+      .from("payment_models")
+      .select("*, creator:profiles!created_by(id, full_name, email)", {
+        count: "exact",
+      });
+
+    if (show_all === "true" || show_all === true) {
+      if (status === "active") query = query.eq("is_active", true);
+      else if (status === "inactive") query = query.eq("is_active", false);
+    } else {
+      query = query.eq("is_active", true);
+    }
+
+    if (search && String(search).trim()) {
+      query = query.ilike("name", `%${String(search).trim()}%`);
+    }
+
+    query = query.order("created_at", { ascending: false });
+
+    const { data, error, count } = await query;
+    if (error) throw new Error(error.message);
+
+    // Compute top used model from sales
+    let top_model = null;
+    try {
+      const { data: salesData } = await supabase
+        .from("sales")
+        .select("payment_model_id")
+        .not("payment_model_id", "is", null);
+
+      if (salesData && salesData.length > 0) {
+        const counts = {};
+        for (const row of salesData) {
+          const id = row.payment_model_id;
+          if (!id) continue;
+          counts[id] = (counts[id] || 0) + 1;
+        }
+        const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        if (entries.length > 0) {
+          const [topId, useCount] = entries[0];
+          const model = (data || []).find((m) => m.id === topId);
+          const name =
+            model?.name ||
+            (
+              await supabase
+                .from("payment_models")
+                .select("name")
+                .eq("id", topId)
+                .maybeSingle()
+            ).data?.name ||
+            "Unknown";
+          top_model = { name, use_count: useCount };
+        }
+      }
+    } catch (_) {
+      // non-critical
+    }
+
+    return {
+      success: true,
+      message: `Found ${count || 0} payment models`,
+      data: data || [],
+      total: count || 0,
+      top_model,
+    };
   }
 
   async getPaymentModel(id) {
-    return await this.request(`${API_FUNCTIONS_URL}/payment-models/${id}`, {
-      method: "GET",
-    });
+    const { data, error } = await supabase
+      .from("payment_models")
+      .select("*, creator:profiles!created_by(id, full_name, email)")
+      .eq("id", id)
+      .single();
+    if (error) throw new Error(error.message);
+
+    const { count } = await supabase
+      .from("organization_payment_models")
+      .select("*", { count: "exact", head: true })
+      .eq("payment_model_id", id);
+
+    return {
+      success: true,
+      message: "Payment model retrieved successfully",
+      data: { ...data, assigned_organizations_count: count || 0 },
+    };
   }
 
-  async createPaymentModel(data) {
-    return await this.request(`${API_FUNCTIONS_URL}/payment-models`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
+  async createPaymentModel(payload) {
+    const {
+      name,
+      description,
+      duration_months,
+      fixed_price,
+      min_down_payment,
+    } = payload || {};
+
+    if (!name || !String(name).trim()) throw new Error("Name is required");
+    if (!duration_months || Number(duration_months) < 1)
+      throw new Error("Duration must be at least 1 month");
+    if (!fixed_price || Number(fixed_price) <= 0)
+      throw new Error("Fixed price must be greater than 0");
+    const minDown = Number(min_down_payment) || 0;
+    if (minDown < 0) throw new Error("Minimum down payment cannot be negative");
+    if (minDown > Number(fixed_price))
+      throw new Error("Minimum down payment cannot exceed fixed price");
+
+    const userId = await currentUserId();
+    if (!userId) throw new Error("Not authenticated");
+
+    const { data, error } = await supabase
+      .from("payment_models")
+      .insert({
+        name: String(name).trim(),
+        description: description ? String(description).trim() : null,
+        duration_months: Number(duration_months),
+        fixed_price: Number(fixed_price),
+        min_down_payment: minDown,
+        created_by: userId,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    return {
+      success: true,
+      message: "Payment model created successfully",
+      data,
+    };
   }
 
-  async updatePaymentModel(id, data) {
-    return await this.request(`${API_FUNCTIONS_URL}/payment-models/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    });
+  async updatePaymentModel(id, patch) {
+    const updates = {};
+    if (patch.name !== undefined) updates.name = String(patch.name).trim();
+    if (patch.description !== undefined)
+      updates.description = patch.description
+        ? String(patch.description).trim()
+        : null;
+    if (patch.duration_months !== undefined) {
+      if (Number(patch.duration_months) < 1)
+        throw new Error("Duration must be at least 1 month");
+      updates.duration_months = Number(patch.duration_months);
+    }
+    if (patch.fixed_price !== undefined) {
+      if (Number(patch.fixed_price) <= 0)
+        throw new Error("Fixed price must be greater than 0");
+      updates.fixed_price = Number(patch.fixed_price);
+    }
+    if (patch.min_down_payment !== undefined)
+      updates.min_down_payment = Number(patch.min_down_payment) || 0;
+    if (patch.is_active !== undefined) updates.is_active = !!patch.is_active;
+
+    if (Object.keys(updates).length === 0)
+      throw new Error("No fields to update");
+
+    const { data, error } = await supabase
+      .from("payment_models")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+
+    return {
+      success: true,
+      message: "Payment model updated successfully",
+      data,
+    };
   }
 
   async deletePaymentModel(id) {
-    return await this.request(`${API_FUNCTIONS_URL}/payment-models/${id}`, {
-      method: "DELETE",
-    });
+    // Check if any sales reference this model
+    const { count: salesCount } = await supabase
+      .from("sales")
+      .select("*", { count: "exact", head: true })
+      .eq("payment_model_id", id);
+
+    if (salesCount && salesCount > 0) {
+      const { data, error } = await supabase
+        .from("payment_models")
+        .update({ is_active: false })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      return {
+        success: true,
+        message:
+          "Payment model deactivated (has associated sales, cannot hard delete)",
+        data,
+      };
+    }
+
+    await supabase
+      .from("organization_payment_models")
+      .delete()
+      .eq("payment_model_id", id);
+
+    const { error } = await supabase
+      .from("payment_models")
+      .delete()
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+
+    return { success: true, message: "Payment model deleted successfully" };
   }
 
   // ─── Organization Payment Model Assignments ──────────────────────────────
 
   async getOrgPaymentModels(orgId) {
-    return await this.request(
-      `${API_FUNCTIONS_URL}/organization-payment-models/${orgId}`,
-      { method: "GET" }
-    );
+    const { data, error } = await supabase
+      .from("organization_payment_models")
+      .select("*, payment_model:payment_models(*)")
+      .eq("organization_id", orgId);
+    if (error) throw new Error(error.message);
+    return { success: true, data: data || [] };
   }
 
   async setOrgPaymentModels(orgId, paymentModelIds) {
-    return await this.request(
-      `${API_FUNCTIONS_URL}/organization-payment-models/${orgId}`,
-      {
-        method: "POST",
-        body: JSON.stringify({ payment_model_ids: paymentModelIds }),
-      }
-    );
+    const ids = Array.isArray(paymentModelIds) ? paymentModelIds : [];
+    const userId = await currentUserId();
+    if (!userId) throw new Error("Not authenticated");
+
+    const { data: existing, error: exErr } = await supabase
+      .from("organization_payment_models")
+      .select("payment_model_id")
+      .eq("organization_id", orgId);
+    if (exErr) throw new Error(exErr.message);
+
+    const existingIds = new Set((existing || []).map((r) => r.payment_model_id));
+    const nextIds = new Set(ids);
+
+    const toRemove = [...existingIds].filter((x) => !nextIds.has(x));
+    const toAdd = [...nextIds].filter((x) => !existingIds.has(x));
+
+    if (toRemove.length > 0) {
+      const { error: delErr } = await supabase
+        .from("organization_payment_models")
+        .delete()
+        .eq("organization_id", orgId)
+        .in("payment_model_id", toRemove);
+      if (delErr) throw new Error(delErr.message);
+    }
+
+    if (toAdd.length > 0) {
+      const rows = toAdd.map((pmId) => ({
+        organization_id: orgId,
+        payment_model_id: pmId,
+        assigned_by: userId,
+      }));
+      const { error: insErr } = await supabase
+        .from("organization_payment_models")
+        .insert(rows);
+      if (insErr) throw new Error(insErr.message);
+    }
+
+    return {
+      success: true,
+      message: "Assignments updated",
+      data: { added: toAdd.length, removed: toRemove.length },
+    };
   }
 
   async removeOrgPaymentModel(orgId, modelId) {
-    return await this.request(
-      `${API_FUNCTIONS_URL}/organization-payment-models/${orgId}/${modelId}`,
-      { method: "DELETE" }
-    );
+    const { error } = await supabase
+      .from("organization_payment_models")
+      .delete()
+      .eq("organization_id", orgId)
+      .eq("payment_model_id", modelId);
+    if (error) throw new Error(error.message);
+    return { success: true, message: "Assignment removed" };
   }
 
   // ─── Installment Payments ────────────────────────────────────────────────
 
   async getInstallmentPayments(saleId) {
-    return await this.request(
-      `${API_FUNCTIONS_URL}/installment-payments/${saleId}`,
-      { method: "GET" }
-    );
+    const { data, error } = await supabase
+      .from("installment_payments")
+      .select("*")
+      .eq("sale_id", saleId)
+      .order("payment_date", { ascending: false });
+    if (error) throw new Error(error.message);
+    return { success: true, data: data || [] };
   }
 
-  async recordInstallmentPayment(saleId, data) {
-    return await this.request(
-      `${API_FUNCTIONS_URL}/installment-payments/${saleId}`,
-      {
-        method: "POST",
-        body: JSON.stringify(data),
-      }
-    );
+  async recordInstallmentPayment(saleId, payload) {
+    const userId = await currentUserId();
+    if (!userId) throw new Error("Not authenticated");
+
+    const insertRow = {
+      sale_id: saleId,
+      amount: Number(payload.amount),
+      payment_method: payload.payment_method,
+      proof_image_url: payload.proof_image_url || null,
+      proof_image_id: payload.proof_image_id || null,
+      notes: payload.notes || null,
+      recorded_by: userId,
+      payment_date:
+        payload.payment_date || new Date().toISOString().slice(0, 10),
+    };
+
+    const { data, error } = await supabase
+      .from("installment_payments")
+      .insert(insertRow)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return { success: true, message: "Payment recorded", data };
   }
 }
 
