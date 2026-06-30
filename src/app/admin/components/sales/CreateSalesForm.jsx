@@ -663,20 +663,6 @@ const CreateSalesForm = ({
         setError("Please select a payment model for installment payment");
         return;
       }
-      if (
-        initialPaymentAmount &&
-        selectedModel?.min_down_payment > 0 &&
-        parseFloat(initialPaymentAmount) < parseFloat(selectedModel.min_down_payment)
-      ) {
-        setError(
-          `Initial payment must be at least ${formatCurrency(selectedModel.min_down_payment)}`
-        );
-        return;
-      }
-      if (initialPaymentAmount && parseFloat(initialPaymentAmount) > 0 && !initialPaymentMethod) {
-        setError("Please select a payment method for the initial payment");
-        return;
-      }
     }
 
     // For edit mode, check if any changes were made
