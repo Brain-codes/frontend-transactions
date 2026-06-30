@@ -1698,12 +1698,14 @@ export default function SuperAdminAgentsContent() {
             // For ACSL roles, prefer the hydrated org count so managers also
             // see their assigned partners (backend list may not populate it).
             const isAcslRole = a.role === "acsl_agent" || a.role === "acsl_agent_manager";
+            const directOrgs = agentToDirectOrgIds[a.id] || [];
             const assigned_organizations_count = isAcslRole
-              ? orgs.length
+              ? directOrgs.length
               : a.assigned_organizations_count;
             const total_partners_count = isAcslRole
-              ? orgs.length
+              ? directOrgs.length
               : a.total_partners_count;
+
             return {
               ...a,
               assigned_organizations_count,
