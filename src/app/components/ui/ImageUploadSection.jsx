@@ -12,6 +12,8 @@ const ImageUploadSection = ({
   placeholder,
   error,
   uploadIcon: UploadIcon = Upload,
+  accept = "image/*",
+  buttonText = "Upload Image",
 }) => {
   const fileInputRef = useRef(null);
 
@@ -28,12 +30,35 @@ const ImageUploadSection = ({
       <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
         {preview ? (
           <div className="space-y-4">
-            <img
-              src={preview}
-              alt="Preview"
-              className="max-w-xs mx-auto rounded-lg"
-              style={{ maxHeight: "200px", objectFit: "contain" }}
-            />
+            {(() => {
+              const isPdf =
+                typeof preview === "string" &&
+                (preview.startsWith("data:application/pdf") ||
+                  /\.pdf(\?|$)/i.test(preview));
+              if (isPdf) {
+                return (
+                  <div className="flex flex-col items-center gap-2 text-gray-600">
+                    <FileText className="h-12 w-12" />
+                    <a
+                      href={preview}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm text-blue-600 underline"
+                    >
+                      View uploaded document
+                    </a>
+                  </div>
+                );
+              }
+              return (
+                <img
+                  src={preview}
+                  alt="Preview"
+                  className="max-w-xs mx-auto rounded-lg"
+                  style={{ maxHeight: "200px", objectFit: "contain" }}
+                />
+              );
+            })()}
             <Button
               type="button"
               variant="outline"
@@ -45,7 +70,7 @@ const ImageUploadSection = ({
               ) : (
                 <Upload className="h-4 w-4 mr-2" />
               )}
-              Change Image
+              Change
             </Button>
           </div>
         ) : (
@@ -63,7 +88,7 @@ const ImageUploadSection = ({
                 ) : (
                   <Upload className="h-4 w-4 mr-2" />
                 )}
-                Upload Image
+                {buttonText}
               </Button>
               {placeholder && (
                 <p className="text-sm text-gray-500 mt-2">{placeholder}</p>
@@ -74,7 +99,7 @@ const ImageUploadSection = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept={accept}
           className="hidden"
           onChange={handleFileSelect}
         />
