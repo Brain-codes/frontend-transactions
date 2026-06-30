@@ -129,34 +129,89 @@ class AdminSalesService {
   // Upload image for sales (stove images, agreement documents) - Updated to match Flutter
   async uploadImage(file, type) {
     try {
+      if (!file) throw new Error("No file provided");
+
+      // Try the edge function first (legacy path). If it isn't deployed or
+      // fails for any reason, fall back to a direct Supabase Storage upload
+      // so the form keeps working without infrastructure dependencies.
       const token = await this.getToken();
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("type", type);
+        const headers = {};
+        if (token) headers.Authorization = `Bearer ${token}`;
 
-      // Create FormData to match Flutter implementation
-      // FormData is a standard Web API available in browsers
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("type", type);
+        const response = await fetch(`${API_FUNCTIONS_URL}/upload-image`, {
+          method: "POST",
+          headers,
+          body: formData,
+        });
 
-      const headers = {};
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
+        if (response.ok) {
+          const data = await response.json();
+          return { success: true, data, error: null };
+        }
+        // fallthrough to direct upload on any non-OK response
+        console.warn(
+          `[uploadImage] edge function returned ${response.status}; falling back to direct storage upload`
+        );
+      } catch (edgeErr) {
+        console.warn(
+          "[uploadImage] edge function unavailable; falling back to direct storage upload",
+          edgeErr?.message || edgeErr
+        );
       }
-      // Don't set Content-Type for FormData, let browser set it with boundary
 
-      const response = await fetch(`${API_FUNCTIONS_URL}/upload-image`, {
-        method: "POST",
-        headers,
-        body: formData,
-      });
+      // ── Direct upload to Supabase Storage ───────────────────────────────
+      const {
+        data: { user },
+        error: userError,
+      } = await this.supabase.auth.getUser();
+      if (userError || !user) throw new Error("Not authenticated");
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      const safeName = (file.name || "upload")
+        .replace(/[^a-zA-Z0-9._-]/g, "_")
+        .slice(-80);
+      const ext = safeName.includes(".") ? safeName.split(".").pop() : "bin";
+      const folder = type === "agreementImage"
+        ? "agreements"
+        : type === "paymentProof"
+        ? "payment-proofs"
+        : "stove-images";
+      const path = `${folder}/${user.id}/${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}.${ext}`;
 
-      const data = await response.json();
+      const { error: uploadError } = await this.supabase.storage
+        .from("images")
+        .upload(path, file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type || undefined,
+        });
+      if (uploadError) throw new Error(uploadError.message);
+
+      const { data: pub } = this.supabase.storage
+        .from("images")
+        .getPublicUrl(path);
+      const publicUrl = pub?.publicUrl || path;
+
+      const { data: uploadRow, error: insertError } = await this.supabase
+        .from("uploads")
+        .insert({
+          public_id: path,
+          url: publicUrl,
+          type,
+          created_by: user.id,
+        })
+        .select("id, public_id, url, type")
+        .single();
+      if (insertError) throw new Error(insertError.message);
+
       return {
         success: true,
-        data: data,
+        data: { upload: uploadRow, ...uploadRow },
         error: null,
       };
     } catch (error) {
