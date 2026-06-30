@@ -290,11 +290,17 @@ const CreateSalesForm = ({
               ? sessionStorage.getItem("saa_selected_org_name")
               : null;
 
+          const preselectedPartnerName = saaPartnerName || profileData?.partnerName || "";
           setFormData((prev) => ({
             ...prev,
             transactionId: generateTransactionId(),
-            partnerName: saaPartnerName || profileData?.partnerName || "",
+            partnerName: preselectedPartnerName,
           }));
+          if (preselectedPartnerName) {
+            setPartnerSearch(preselectedPartnerName);
+            setSelectedPartnerName(preselectedPartnerName);
+          }
+
 
           // Auto-load stoves only if we already have an org; otherwise wait for partner pick
           if (!mustPickPartner) {
