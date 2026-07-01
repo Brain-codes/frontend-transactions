@@ -118,6 +118,13 @@ const AGENTS_PERFORMANCE_ROLE_LABELS: Record<string, string> = {
   acsl_agent: "ACSL Agent",
   acsl_agent_manager: "ACSL Manager",
 };
+const ROLE_LABELS: Record<string, string> = {
+  acsl_agent: "ACSL Agent",
+  acsl_agent_manager: "ACSL Manager",
+  super_admin: "Super Admin",
+  partner: "Partner",
+  partner_agent: "Partner Agent",
+};
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
