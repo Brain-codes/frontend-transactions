@@ -3197,6 +3197,7 @@ export default function SuperAdminAgentsContent() {
         title="Stoves Sold / Retrieved — Stove IDs"
         filenamePrefix="sold-stoves"
         showExport={true}
+        agents={agents}
       />
 
       <StovesStatusModal
