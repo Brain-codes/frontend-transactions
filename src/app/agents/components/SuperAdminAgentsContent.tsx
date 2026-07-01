@@ -2881,7 +2881,7 @@ export default function SuperAdminAgentsContent() {
         )}
 
         {/* Monthly Records Collection Chart */}
-        <MonthlySalesChart title="Records Collected" tooltipLabel="Collected" />
+        <AgentRecordsChart title="Records Collected" tooltipLabel="Collected" />
 
         {/* Active filter banner */}
         {sortMode !== "default" && (
