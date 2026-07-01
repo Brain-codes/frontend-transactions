@@ -653,122 +653,140 @@ const DashboardContent = ({
                   </CardHeader>
 
                   <CardContent className="pt-5 pb-5 px-5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                      {/* Sales Overview */}
-                      <div className="space-y-4">
-                        <div className="relative">
-                          <ResponsiveContainer width="100%" height={240}>
-                            <PieChart>
-                              <Pie
-                                data={doughnutData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={65}
-                                outerRadius={95}
-                                paddingAngle={2}
-                                dataKey="value"
-                                nameKey="name"
-                                stroke="none"
-                              >
-                                {doughnutData.map((d, i) => (
-                                  <Cell key={i} fill={d.color} />
-                                ))}
-                              </Pie>
-                              <Tooltip
-                                formatter={(v, n) => [Number(v).toLocaleString(), n]}
-                                contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
-                              />
-                            </PieChart>
-                          </ResponsiveContainer>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-2xl font-bold text-gray-900 tracking-tight">
-                              {received.toLocaleString()}
-                            </span>
-                            <span className="text-[11px] font-semibold tracking-wider text-gray-500 mt-0.5">
-                              STOVES RECEIVED
-                            </span>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 gap-2">
-                          {items.map((it) => (
-                            <div key={it.label} className="flex items-center justify-between bg-[#fafafa] rounded-lg px-4 py-3">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ background: it.color }} />
-                                <span className="text-sm font-medium text-gray-700 truncate">{it.label}</span>
-                              </div>
-                              <div className="flex items-baseline gap-2 shrink-0">
-                                <span className="text-lg font-bold text-gray-900">{it.value.toLocaleString()}</span>
-                                {it.pct !== null && (
-                                  <span className="text-xs text-gray-400">{it.pct}%</span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                    {(() => {
+                      // Shared custom label with connector line + colored % text
+                      const renderOutsideLabel = (total) => (props) => {
+                        const { cx, cy, midAngle, outerRadius, value, fill } = props;
+                        if (!value) return null;
+                        const RAD = Math.PI / 180;
+                        const sin = Math.sin(-midAngle * RAD);
+                        const cos = Math.cos(-midAngle * RAD);
+                        const sx = cx + (outerRadius + 2) * cos;
+                        const sy = cy + (outerRadius + 2) * sin;
+                        const mx = cx + (outerRadius + 14) * cos;
+                        const my = cy + (outerRadius + 14) * sin;
+                        const ex = mx + (cos >= 0 ? 1 : -1) * 18;
+                        const ey = my;
+                        const textAnchor = cos >= 0 ? "start" : "end";
+                        const pct = ((value / (total || 1)) * 100).toFixed(1);
+                        return (
+                          <g>
+                            <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" strokeWidth={1} />
+                            <circle cx={ex} cy={ey} r={1.5} fill={fill} stroke="none" />
+                            <text
+                              x={ex + (cos >= 0 ? 4 : -4)}
+                              y={ey}
+                              textAnchor={textAnchor}
+                              dominantBaseline="central"
+                              fill={fill}
+                              style={{ fontSize: 12, fontWeight: 600, fontFamily: "Arial, sans-serif" }}
+                            >
+                              {pct}%
+                            </text>
+                          </g>
+                        );
+                      };
 
-                      {/* Sales by Models */}
-                      <div className="space-y-4">
-                        <div className="relative">
-                          <ResponsiveContainer width="100%" height={240}>
-                            <PieChart>
-                              <Pie
-                                data={modelChartData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={65}
-                                outerRadius={95}
-                                paddingAngle={2}
-                                dataKey="value"
-                                nameKey="name"
-                                stroke="none"
-                              >
-                                {modelChartData.map((d, i) => (
-                                  <Cell key={i} fill={d.color} />
-                                ))}
-                              </Pie>
-                              <Tooltip
-                                formatter={(v, n) => [Number(v).toLocaleString(), n]}
-                                contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
-                              />
-                            </PieChart>
-                          </ResponsiveContainer>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-2xl font-bold text-gray-900 tracking-tight">
-                              {totalModelSales.toLocaleString()}
-                            </span>
-                            <span className="text-[11px] font-semibold tracking-wider text-gray-500 mt-0.5">
-                              TOTAL SALES
-                            </span>
+                      const Legend = ({ entries, total }) => (
+                        <div className="flex flex-wrap justify-center gap-x-5 gap-y-1.5 mt-2">
+                          {entries.map((e) => {
+                            const pct = ((e.value / (total || 1)) * 100).toFixed(1);
+                            return (
+                              <div key={e.name} className="flex items-center gap-1.5 text-[12px]" style={{ fontFamily: "Arial, sans-serif" }}>
+                                <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: e.color }} />
+                                <span className="text-gray-800">
+                                  {e.name}{" "}
+                                  <span className="text-gray-500">({e.value.toLocaleString()} • {pct}%)</span>
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+
+                      const Donut = ({ title, data, total, centerValue, centerLabel }) => (
+                        <div>
+                          <h3 className="text-center text-[15px] font-semibold text-gray-800 mb-1" style={{ fontFamily: "Arial, sans-serif" }}>
+                            {title}
+                          </h3>
+                          <div className="relative">
+                            <ResponsiveContainer width="100%" height={260}>
+                              <PieChart margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
+                                <Pie
+                                  data={data}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={60}
+                                  outerRadius={88}
+                                  paddingAngle={1}
+                                  dataKey="value"
+                                  nameKey="name"
+                                  stroke="none"
+                                  labelLine={false}
+                                  label={renderOutsideLabel(total)}
+                                  isAnimationActive={false}
+                                >
+                                  {data.map((d, i) => (
+                                    <Cell key={i} fill={d.color} />
+                                  ))}
+                                </Pie>
+                                <Tooltip
+                                  formatter={(v, n) => [Number(v).toLocaleString(), n]}
+                                  contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
+                                />
+                              </PieChart>
+                            </ResponsiveContainer>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                              <span className="text-2xl font-bold text-gray-900 tracking-tight">
+                                {centerValue.toLocaleString()}
+                              </span>
+                              <span className="text-[10px] font-semibold tracking-wider text-gray-500 mt-0.5">
+                                {centerLabel}
+                              </span>
+                            </div>
+                          </div>
+                          <Legend entries={data} total={total} />
+                        </div>
+                      );
+
+                      const inventoryTotal = (doughnutData[0]?.value || 0) + (doughnutData[1]?.value || 0);
+
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                          <Donut
+                            title="Stove Inventory"
+                            data={doughnutData}
+                            total={inventoryTotal}
+                            centerValue={received}
+                            centerLabel="STOVES RECEIVED"
+                          />
+                          <Donut
+                            title="Sales by Models"
+                            data={modelChartData}
+                            total={totalModelSales}
+                            centerValue={totalModelSales}
+                            centerLabel="TOTAL SALES"
+                          />
+                        </div>
+                      );
+                    })()}
+
+                    {/* Inventory metrics row */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                      {items.map((it) => (
+                        <div key={it.label} className="flex items-center justify-between bg-[#fafafa] rounded-lg px-4 py-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ background: it.color }} />
+                            <span className="text-sm font-medium text-gray-700 truncate">{it.label}</span>
+                          </div>
+                          <div className="flex items-baseline gap-2 shrink-0">
+                            <span className="text-lg font-bold text-gray-900">{it.value.toLocaleString()}</span>
+                            {it.pct !== null && (
+                              <span className="text-xs text-gray-400">{it.pct}%</span>
+                            )}
                           </div>
                         </div>
-                        {(() => {
-                          const totalForPct = totalModelSales || 1;
-                          return (
-                            <div className="space-y-2">
-                              {modelChartData.length === 0 ? (
-                                <p className="text-center text-gray-400 py-4 text-xs">No sales model data</p>
-                              ) : (
-                                modelChartData.map((m) => {
-                                  const pct = ((m.value / totalForPct) * 100).toFixed(1);
-                                  return (
-                                    <div key={m.name} className="flex items-center justify-between bg-[#fafafa] rounded-lg px-4 py-3">
-                                      <div className="flex items-center gap-2 min-w-0">
-                                        <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ background: m.color }} />
-                                        <span className="text-sm font-medium text-gray-700 truncate">{m.name}</span>
-                                      </div>
-                                      <div className="flex items-baseline gap-2 shrink-0">
-                                        <span className="text-lg font-bold text-gray-900">{m.value.toLocaleString()}</span>
-                                        <span className="text-xs text-gray-400">{pct}%</span>
-                                      </div>
-                                    </div>
-                                  );
-                                })
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </div>
+                      ))}
                     </div>
 
                     {/* Divider */}
