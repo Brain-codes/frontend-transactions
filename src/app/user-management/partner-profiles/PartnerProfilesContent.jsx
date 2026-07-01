@@ -55,6 +55,7 @@ import adminCredentialsService from "../../services/adminCredentialsService";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import adminAgentService from "../../services/adminAgentService.jsx";
 import { createClientComponentClient } from "@/lib/supabaseClient";
+import { getAgentIdsForPartner } from "../../services/agentAssignmentQueries";
 
 const supabase = createClientComponentClient();
 
@@ -73,46 +74,12 @@ const ROLE_BADGE = {
 };
 const formatRole = (r) => ROLE_LABELS[r] || (r ? r.replace(/_/g, " ") : "—");
 
-// Resolve the agent-id column on an assignment table (schemas differ between
-// legacy `acsl_agent_organizations` and newer `super_admin_agent_organizations`).
-const AGENT_COLUMN_CANDIDATES = ["agent_id", "super_admin_agent_id", "user_id"];
-const _resolvedAgentCol = {}; // table -> column
-async function resolveAgentCol(table) {
-  if (_resolvedAgentCol[table]) return _resolvedAgentCol[table];
-  for (const col of AGENT_COLUMN_CANDIDATES) {
-    const { error } = await supabase
-      .from(table)
-      .select(col, { count: "exact", head: true })
-      .limit(1);
-    if (!error) {
-      _resolvedAgentCol[table] = col;
-      return col;
-    }
-  }
-  return null;
-}
-
-async function fetchAssignedAgentIdsFromTable(table, orgId) {
-  const col = await resolveAgentCol(table);
-  if (!col) return [];
-  const { data, error } = await supabase
-    .from(table)
-    .select(col)
-    .eq("organization_id", orgId);
-  if (error) return [];
-  return (data || []).map((r) => r[col]).filter(Boolean);
-}
-
-// Count ONLY agents explicitly assigned to this partner. Harmonised with the
-// Agents Profile view which uses `super_admin_agent_organizations`. We union
-// both assignment tables so historical rows in the legacy table are still
-// counted. Partner agents (org membership) are also included.
+// Fetch every agent (ACSL + partner agent) associated with an organization.
+// ACSL agents come from the shared assignment-query helper so the count and
+// list always match the Agents Profile view. Partner agents come from the
+// profiles table via org membership.
 async function fetchAllAgentsForOrg(orgId) {
-  const [legacy, current] = await Promise.all([
-    fetchAssignedAgentIdsFromTable("acsl_agent_organizations", orgId),
-    fetchAssignedAgentIdsFromTable("super_admin_agent_organizations", orgId),
-  ]);
-  const acslIds = [...new Set([...legacy, ...current])];
+  const acslIds = await getAgentIdsForPartner(orgId);
 
   let acslList = [];
   if (acslIds.length > 0) {
@@ -216,6 +183,21 @@ const PartnerProfilesContent = () => {
 
   useEffect(() => {
     loadPartners();
+  }, []);
+
+  // Refresh agent counts when an assignment is added / changed elsewhere in
+  // the app (e.g. the ACSL Agents assign-partners modal). Clearing the cache
+  // triggers the lazy-fetch effect for the visible page.
+  useEffect(() => {
+    const handler = () => {
+      setAgentCounts({});
+    };
+    window.addEventListener("acsl:user-updated", handler);
+    window.addEventListener("acsl:assignment-updated", handler);
+    return () => {
+      window.removeEventListener("acsl:user-updated", handler);
+      window.removeEventListener("acsl:assignment-updated", handler);
+    };
   }, []);
 
   const handleViewCredentials = async (org) => {
