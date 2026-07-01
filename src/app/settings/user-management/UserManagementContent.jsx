@@ -1,6 +1,8 @@
 
 import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "@tanstack/react-router";
+
 import DashboardLayout from "../../components/DashboardLayout";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
@@ -330,6 +332,44 @@ const UserManagementPage = () => {
   };
 
   useEffect(() => { fetchUsers(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-open the Edit view when navigated in with ?edit=<userId> (e.g. from Agents Profile "Manage Agent")
+  const router = useRouter();
+  const editedFromParamRef = useRef(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get("edit");
+    if (!editId || editedFromParamRef.current === editId) return;
+    editedFromParamRef.current = editId;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, full_name, email, phone, role")
+          .eq("id", editId)
+          .maybeSingle();
+        if (error) throw error;
+        if (data) {
+          await openEditView(data);
+        } else {
+          toast({ variant: "error", title: "User not found" });
+        }
+      } catch (err) {
+        toast({ variant: "error", title: "Failed to open user", description: err.message });
+      } finally {
+        // Clear the query param so a refresh doesn't reopen the modal
+        try {
+          router.navigate({ to: "/user-management/users", search: {}, replace: true });
+        } catch {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("edit");
+          window.history.replaceState({}, "", url.toString());
+        }
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase]);
+
 
   // ── Sort ───────────────────────────────────────────────────────────────────
 
