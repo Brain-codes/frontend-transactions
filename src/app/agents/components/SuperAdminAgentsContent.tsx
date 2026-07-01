@@ -876,7 +876,7 @@ function StovesStatusModal({
           }
 
           // 1. Fetch sales rows created by these agents, scoped to relevant orgs.
-          type SaleRow = { id: string; stove_id: string | null; organization_id: string | null; created_by: string };
+          type SaleRow = { id: string; organization_id: string | null; created_by: string };
           const salesRows: SaleRow[] = [];
           const ABATCH = 100;
           for (let i = 0; i < agentIds.length; i += ABATCH) {
@@ -888,7 +888,7 @@ function StovesStatusModal({
               while (true) {
                 const { data, error: err } = await supabase
                   .from("sales")
-                  .select("id,stove_id,organization_id,created_by,is_archived")
+                  .select("id,organization_id,created_by,is_archived")
                   .in("created_by", aSlice)
                   .in("organization_id", oSlice)
                   .eq("is_archived", false)
@@ -897,7 +897,6 @@ function StovesStatusModal({
                 const chunk = data || [];
                 chunk.forEach((s: any) => salesRows.push({
                   id: s.id,
-                  stove_id: s.stove_id,
                   organization_id: s.organization_id,
                   created_by: s.created_by,
                 }));
@@ -912,7 +911,6 @@ function StovesStatusModal({
 
           // 2. Fetch stove_ids linked to those sales (authoritative stove list).
           const saleIds = Array.from(new Set(salesRows.map((s) => s.id)));
-          const stoveIdToAgent: Record<string, string> = {};
           const seen = new Set<string>();
           const SIBATCH = 200;
           for (let i = 0; i < saleIds.length; i += SIBATCH) {
@@ -935,27 +933,8 @@ function StovesStatusModal({
                 branch: meta.branch,
                 agent_name: saleIdToAgent[s.sale_id] || "—",
               });
-              if (s.sale_id) stoveIdToAgent[s.stove_id] = saleIdToAgent[s.sale_id] || "—";
             });
           }
-
-          // 3. Fallback for sales that store stove_id inline but have no
-          //    matching row in stove_ids (legacy records).
-          salesRows.forEach((s) => {
-            if (!s.stove_id || !s.organization_id) return;
-            const key = `${s.stove_id}::${s.organization_id}`;
-            if (seen.has(key)) return;
-            seen.add(key);
-            const meta = orgMap[s.organization_id] || { name: "—", state: "—", branch: "—" };
-            collected.push({
-              stove_id: s.stove_id,
-              partner_name: meta.name,
-              state: meta.state,
-              branch: meta.branch,
-              agent_name: agentNameById[s.created_by] || "—",
-            });
-          });
-        } else {
           // Unsold: unchanged — available stoves at agent-assigned partners.
           const BATCH = 100;
           for (let i = 0; i < orgIds.length; i += BATCH) {
