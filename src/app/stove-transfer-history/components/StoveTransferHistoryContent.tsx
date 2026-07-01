@@ -516,6 +516,14 @@ export default function StoveTransferHistoryContent() {
                                   <Eye className="h-3.5 w-3.5" />
                                   View Stove IDs
                                 </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onSelect={() => { setCancelRecord(record); setCancelOpen(true); }}
+                                  className="cursor-pointer gap-2 text-red-600 focus:text-red-700"
+                                >
+                                  <Ban className="h-3.5 w-3.5" />
+                                  Cancel Purchase
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
