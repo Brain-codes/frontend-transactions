@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabaseUrl as SUPABASE_URL } from "@/lib/supabaseConfig";
 import DashboardLayout from "../../components/DashboardLayout";
 import OrganizationFormModal from "../../components/OrganizationFormModal";
@@ -840,6 +840,305 @@ const PartnerDetailModal = ({ organization, isOpen, onClose, onEdit }) => {
   );
 };
 
+// ── System-Wide Stoves KPI Modal (Purchased / Sold / Unsold) ─────────────────
+
+const ROLE_SHORT = {
+  super_admin: "SA",
+  acsl_agent_manager: "AGM",
+  acsl_agent: "AGENT",
+  partner: "PARTNER",
+  partner_agent: "PAGENT",
+};
+
+const toSuperscript = (label) => {
+  const map = {
+    A: "ᴬ", B: "ᴮ", C: "ᶜ", D: "ᴰ", E: "ᴱ", F: "ᶠ", G: "ᴳ", H: "ᴴ",
+    I: "ᴵ", J: "ᴶ", K: "ᴷ", L: "ᴸ", M: "ᴹ", N: "ᴺ", O: "ᴼ", P: "ᴾ",
+    R: "ᴿ", S: "ˢ", T: "ᵀ", U: "ᵁ", V: "ⱽ", W: "ᵂ", X: "ˣ", Y: "ʸ", Z: "ᶻ",
+  };
+  return label.split("").map((c) => map[c] || c).join("");
+};
+
+const SystemStovesModal = ({ isOpen, onClose, mode }) => {
+  const { supabase } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [rows, setRows] = useState([]);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 25;
+
+  const title =
+    mode === "purchased" ? "Stoves Purchased from ACSL" :
+    mode === "sold"      ? "Total Stoves Sold" :
+                           "Total Unsold Stoves";
+
+  const filenamePrefix =
+    mode === "purchased" ? "stoves-purchased" :
+    mode === "sold"      ? "stoves-sold" :
+                           "stoves-unsold";
+
+  const showSoldCols = mode === "sold";
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setSearch("");
+    setPage(1);
+    setRows([]);
+    setError(null);
+    if (!supabase) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        // 1. Fetch stove_ids across the whole system, matching the KPI filter.
+        const stoveRows = [];
+        const PAGE_FETCH = 1000;
+        const HARD_CAP = 50000;
+        let from = 0;
+        while (from < HARD_CAP) {
+          let q = supabase
+            .from("stove_ids")
+            .select("stove_id,organization_id,status,created_at,sale_id")
+            .eq("is_archived", false);
+          if (mode === "sold")   q = q.eq("status", "sold");
+          if (mode === "unsold") q = q.eq("status", "available");
+          const { data, error: err } = await q.range(from, from + PAGE_FETCH - 1);
+          if (err) throw err;
+          const chunk = data || [];
+          stoveRows.push(...chunk);
+          if (chunk.length < PAGE_FETCH) break;
+          from += PAGE_FETCH;
+        }
+
+        // 2. Resolve organizations (partner name / state / branch) in batches.
+        const orgIds = Array.from(new Set(stoveRows.map((s) => s.organization_id).filter(Boolean)));
+        const orgMap = {};
+        const OBATCH = 200;
+        for (let i = 0; i < orgIds.length; i += OBATCH) {
+          const slice = orgIds.slice(i, i + OBATCH);
+          const { data: orgs, error: oErr } = await supabase
+            .from("organizations")
+            .select("id,partner_name,state,branch")
+            .in("id", slice);
+          if (oErr) throw oErr;
+          (orgs || []).forEach((o) => {
+            orgMap[o.id] = { name: o.partner_name || "—", state: o.state || "—", branch: o.branch || "—" };
+          });
+        }
+
+        // 3. For sold mode, resolve sale_date + seller (name + role).
+        const saleMap = {};        // sale_id -> { sales_date, created_by }
+        const sellerMap = {};      // user_id -> { name, role }
+        if (mode === "sold") {
+          const saleIds = Array.from(new Set(stoveRows.map((s) => s.sale_id).filter(Boolean)));
+          const SBATCH = 200;
+          for (let i = 0; i < saleIds.length; i += SBATCH) {
+            const slice = saleIds.slice(i, i + SBATCH);
+            const { data: sales, error: sErr } = await supabase
+              .from("sales")
+              .select("id,sales_date,created_at,created_by")
+              .in("id", slice);
+            if (sErr) throw sErr;
+            (sales || []).forEach((s) => {
+              saleMap[s.id] = { sales_date: s.sales_date || s.created_at || null, created_by: s.created_by };
+            });
+          }
+          const userIds = Array.from(new Set(Object.values(saleMap).map((s) => s.created_by).filter(Boolean)));
+          const UBATCH = 200;
+          for (let i = 0; i < userIds.length; i += UBATCH) {
+            const slice = userIds.slice(i, i + UBATCH);
+            const { data: profs, error: pErr } = await supabase
+              .from("profiles")
+              .select("id,full_name,first_name,last_name,role")
+              .in("id", slice);
+            if (pErr) throw pErr;
+            (profs || []).forEach((p) => {
+              const name = p.full_name || [p.first_name, p.last_name].filter(Boolean).join(" ").trim() || "—";
+              sellerMap[p.id] = { name, role: p.role || "" };
+            });
+          }
+        }
+
+        // 4. Build rows.
+        const collected = stoveRows.map((s) => {
+          const meta = orgMap[s.organization_id] || { name: "—", state: "—", branch: "—" };
+          const base = {
+            stove_id: s.stove_id,
+            partner_name: meta.name,
+            state: meta.state,
+            branch: meta.branch,
+            status: s.status,
+            created_at: s.created_at,
+          };
+          if (mode === "sold") {
+            const sale = saleMap[s.sale_id];
+            const seller = sale ? sellerMap[sale.created_by] : null;
+            base.sales_date = sale?.sales_date || null;
+            base.seller_name = seller?.name || "—";
+            base.seller_role = seller?.role || "";
+          }
+          return base;
+        });
+        collected.sort((a, b) => String(a.stove_id).localeCompare(String(b.stove_id)));
+        if (!cancelled) setRows(collected);
+      } catch (e) {
+        if (!cancelled) setError(e.message || "Failed to load stoves");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, mode, supabase]);
+
+  useEffect(() => { setPage(1); }, [search]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) =>
+      String(r.stove_id).toLowerCase().includes(q) ||
+      (r.partner_name || "").toLowerCase().includes(q) ||
+      (r.state || "").toLowerCase().includes(q) ||
+      (r.branch || "").toLowerCase().includes(q) ||
+      (r.status || "").toLowerCase().includes(q) ||
+      (r.seller_name || "").toLowerCase().includes(q)
+    );
+  }, [rows, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const fmtDate = (d) => {
+    if (!d) return "—";
+    try { return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }); }
+    catch { return "—"; }
+  };
+
+  const exportCsv = () => {
+    const esc = (v) => {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = showSoldCols
+      ? ["Stove ID", "Partner Name", "State", "Branch", "Sales Date", "Sold By", "Role"]
+      : ["Stove ID", "Partner Name", "State", "Branch", "Status", "Date Received"];
+    const body = filtered.map((r) => showSoldCols
+      ? [r.stove_id, r.partner_name, r.state, r.branch, fmtDate(r.sales_date), r.seller_name, ROLE_SHORT[r.seller_role] || r.seller_role || ""].map(esc).join(",")
+      : [r.stove_id, r.partner_name, r.state, r.branch, r.status || "", fmtDate(r.created_at)].map(esc).join(",")
+    );
+    const csv = [header.join(","), ...body].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${filenamePrefix}-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const colCount = showSoldCols ? 6 : 6;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center gap-2 mt-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={showSoldCols
+                ? "Search stove ID, partner, state, branch or seller..."
+                : "Search stove ID, partner, state, branch or status..."}
+              className="pl-8"
+            />
+          </div>
+          <Button onClick={exportCsv} disabled={filtered.length === 0} className="bg-black text-white hover:bg-black/80 shadow-none">
+            <Download className="h-4 w-4 mr-2" />Export
+          </Button>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          {loading ? "Loading..." : `${filtered.length.toLocaleString()} stove${filtered.length === 1 ? "" : "s"}`}
+        </p>
+        {error && <div className="text-sm text-red-600 mt-2">{error}</div>}
+        <div className="flex-1 overflow-auto border rounded mt-2">
+          <Table>
+            <TableHeader className="bg-gray-50 sticky top-0">
+              <TableRow>
+                <TableHead>Stove ID</TableHead>
+                <TableHead>Partner Name</TableHead>
+                <TableHead>State</TableHead>
+                <TableHead>Branch</TableHead>
+                {showSoldCols ? (
+                  <>
+                    <TableHead>Sales Date</TableHead>
+                    <TableHead>Sold By</TableHead>
+                  </>
+                ) : (
+                  <>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date Received</TableHead>
+                  </>
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow><TableCell colSpan={colCount} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+              ) : paginated.length === 0 ? (
+                <TableRow><TableCell colSpan={colCount} className="text-center py-8 text-gray-500">No stoves found</TableCell></TableRow>
+              ) : (
+                paginated.map((r, i) => (
+                  <TableRow key={`${r.stove_id}-${i}`}>
+                    <TableCell className="font-mono text-sm">{r.stove_id}</TableCell>
+                    <TableCell>{r.partner_name}</TableCell>
+                    <TableCell>{r.state}</TableCell>
+                    <TableCell>{r.branch}</TableCell>
+                    {showSoldCols ? (
+                      <>
+                        <TableCell>{fmtDate(r.sales_date)}</TableCell>
+                        <TableCell>
+                          {r.seller_name}
+                          {r.seller_role && (
+                            <sup className="ml-0.5 text-[10px] text-gray-500 font-semibold">
+                              {toSuperscript(ROLE_SHORT[r.seller_role] || r.seller_role.toUpperCase())}
+                            </sup>
+                          )}
+                        </TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell className="capitalize">{r.status || "—"}</TableCell>
+                        <TableCell>{fmtDate(r.created_at)}</TableCell>
+                      </>
+                    )}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-3 text-sm">
+            <span className="text-gray-600">Page {safePage} of {totalPages}</span>
+            <div className="flex gap-1">
+              <Button variant="outline" size="sm" disabled={safePage === 1} onClick={() => setPage(safePage - 1)}>Prev</Button>
+              <Button variant="outline" size="sm" disabled={safePage === totalPages} onClick={() => setPage(safePage + 1)}>Next</Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // ── Main Content ──────────────────────────────────────────────────────────────
 
 export default function PartnersContent() {
@@ -903,6 +1202,7 @@ export default function PartnersContent() {
   const [editingPartnerOrg, setEditingPartnerOrg] = useState(null);
   const [loadingCredentialOrgId, setLoadingCredentialOrgId] = useState(null);
   const [transferHistoryOrg, setTransferHistoryOrg] = useState(null);
+  const [kpiModalMode, setKpiModalMode] = useState(null); // "purchased" | "sold" | "unsold" | null
 
   const [expandedOrgId, setExpandedOrgId] = useState(null);
   const [orgGroupedData, setOrgGroupedData] = useState({});
@@ -1399,33 +1699,35 @@ export default function PartnersContent() {
                 active: sortMode === "default" && filters.partner_type === "all",
               },
               {
-                gradient: "from-[#047857] to-[#10B981]",
-                Icon: TrendingUp,
-                value: loadingStats ? "—" : stats.performing_partners.toLocaleString(),
-                label: "Stoves Sold to End Users",
-                onClick: () => setSortMode("active"),
-                active: sortMode === "active",
-              },
-              {
                 gradient: "from-[#B45309] to-[#F59E0B]",
                 Icon: Package,
                 value: loadingStats ? "—" : stats.total_received.toLocaleString(),
                 label: "Stoves Purchased from ACSL",
-                onClick: () => setSortMode("stoves_desc"),
-                active: sortMode === "stoves_desc",
+                onClick: () => setKpiModalMode("purchased"),
+                active: false,
+              },
+              {
+                gradient: "from-[#047857] to-[#10B981]",
+                Icon: TrendingUp,
+                value: loadingStats ? "—" : stats.total_sold.toLocaleString(),
+                label: "Total Stoves Sold",
+                onClick: () => setKpiModalMode("sold"),
+                active: false,
               },
               {
                 gradient: "from-[#7C3AED] to-[#A78BFA]",
                 Icon: Boxes,
                 value: loadingStats ? "—" : stats.total_available.toLocaleString(),
-                label: "Unsold Stoves with Partners",
-                onClick: () => setSortMode("available_desc"),
-                active: sortMode === "available_desc",
+                label: "Total Unsold Stoves",
+                onClick: () => setKpiModalMode("unsold"),
+                active: false,
               },
-            ].map(({ gradient, Icon, value, label, sub, subBadge }) => (
-              <div
+            ].map(({ gradient, Icon, value, label, sub, subBadge, onClick }) => (
+              <button
+                type="button"
                 key={label}
-                className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md transition-all bg-gradient-to-br ${gradient}`}
+                onClick={onClick}
+                className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md transition-all bg-gradient-to-br ${gradient} text-left hover:brightness-110 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/60 cursor-pointer`}
               >
                 <div className="flex items-start justify-between">
                   <div className="min-w-0 flex-1 pr-3">
@@ -1444,7 +1746,7 @@ export default function PartnersContent() {
                     )}
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
 
           </div>
@@ -1685,6 +1987,7 @@ export default function PartnersContent() {
         <ViewCredentialModal isOpen={!!viewingCredential} onClose={() => setViewingCredential(null)} credential={viewingCredential} />
         <AssignedAgentsModal organization={agentsModalOrg} agents={agentsModalOrg ? (orgAgentsData[agentsModalOrg.id] || []) : []} isOpen={!!agentsModalOrg} onClose={() => setAgentsModalOrg(null)} />
         <StoveTransferHistoryModal organization={transferHistoryOrg} isOpen={!!transferHistoryOrg} onClose={() => setTransferHistoryOrg(null)} />
+        <SystemStovesModal isOpen={!!kpiModalMode} mode={kpiModalMode} onClose={() => setKpiModalMode(null)} />
         <ToastContainer toasts={toasts} onRemove={removeToast} />
       </DashboardLayout>
     </>
