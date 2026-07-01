@@ -46,6 +46,7 @@ export default function UnifiedSalesContent() {
   const [editSale, setEditSale] = useState<AdminSales | null>(null);
   const [editLoading, setEditLoading] = useState(false);
   const [approveSale, setApproveSale] = useState<AdminSales | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<AdminSales | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const initialPartnerFilter = searchParams.get("partner") ?? "";
