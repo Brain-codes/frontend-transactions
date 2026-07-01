@@ -191,6 +191,7 @@ serve(async (req) => {
         .from("sales")
         .select("*", { count: "exact", head: true })
         .eq("organization_id", organizationId)
+        .eq("is_archived", false)
         .eq("status", "completed");
 
     if (completedCountError) {
