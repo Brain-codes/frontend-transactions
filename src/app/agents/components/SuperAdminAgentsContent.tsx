@@ -100,6 +100,7 @@ interface AcslAgent {
   total_partners_count: number;
   assigned_states?: string[];
   stove_summary?: { received: number; sold: number; available: number };
+  direct_org_ids?: string[];
 }
 
 interface PartnerOrg {
@@ -2183,6 +2184,7 @@ export default function SuperAdminAgentsContent() {
   const [showAssignedStovesModal, setShowAssignedStovesModal] = useState(false);
   const [showSoldStovesModal, setShowSoldStovesModal] = useState(false);
   const [showUnsoldStovesModal, setShowUnsoldStovesModal] = useState(false);
+  const [rowStoveModal, setRowStoveModal] = useState<{ agent: AcslAgent; mode: "assigned" | "sold" | "unsold" } | null>(null);
   const [showAgentsListModal, setShowAgentsListModal] = useState(false);
   // Per-role totals across all matching users (not just current page), used by KPI breakdown.
   const [roleTotals, setRoleTotals] = useState<Record<string, number>>({});
@@ -2463,6 +2465,7 @@ export default function SuperAdminAgentsContent() {
               assigned_organizations_count,
               total_partners_count,
               stove_summary: { received, sold, available },
+              direct_org_ids: directOrgs,
             };
           })
         );
@@ -2997,30 +3000,48 @@ export default function SuperAdminAgentsContent() {
                           {(agent.assigned_organizations_count ?? 0).toLocaleString()}
                         </button>
                       </TableCell>
-                      {/* Stoves split into 3 columns */}
+                      {/* Stoves split into 3 columns — clickable pills like Partners Performance report */}
                       <TableCell className="text-center">
                         {agent.stove_summary ? (
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                          <button
+                            type="button"
+                            onClick={() => setRowStoveModal({ agent, mode: "assigned" })}
+                            disabled={agent.stove_summary.received === 0 || !(agent.direct_org_ids && agent.direct_org_ids.length)}
+                            className="inline-flex items-center justify-center min-w-[40px] px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            title="Records to collect"
+                          >
                             {agent.stove_summary.received.toLocaleString()}
-                          </span>
+                          </button>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
                       </TableCell>
                       <TableCell className="text-center">
                         {agent.stove_summary ? (
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                          <button
+                            type="button"
+                            onClick={() => setRowStoveModal({ agent, mode: "sold" })}
+                            disabled={agent.stove_summary.sold === 0 || !(agent.direct_org_ids && agent.direct_org_ids.length)}
+                            className="inline-flex items-center justify-center min-w-[40px] px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            title="Records collected"
+                          >
                             {agent.stove_summary.sold.toLocaleString()}
-                          </span>
+                          </button>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
                       </TableCell>
                       <TableCell className="text-center">
                         {agent.stove_summary ? (
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                          <button
+                            type="button"
+                            onClick={() => setRowStoveModal({ agent, mode: "unsold" })}
+                            disabled={agent.stove_summary.available === 0 || !(agent.direct_org_ids && agent.direct_org_ids.length)}
+                            className="inline-flex items-center justify-center min-w-[40px] px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            title="Records not collected"
+                          >
                             {agent.stove_summary.available.toLocaleString()}
-                          </span>
+                          </button>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
@@ -3214,6 +3235,39 @@ export default function SuperAdminAgentsContent() {
         showExport={true}
         agents={agents}
       />
+
+      {/* Row-level per-agent modals for Records to collect / collected / not collected */}
+      {rowStoveModal && rowStoveModal.mode === "assigned" && (
+        <AssignedStovesModal
+          isOpen={true}
+          onClose={() => setRowStoveModal(null)}
+          orgIds={rowStoveModal.agent.direct_org_ids || []}
+        />
+      )}
+      {rowStoveModal && rowStoveModal.mode === "sold" && (
+        <StovesStatusModal
+          isOpen={true}
+          onClose={() => setRowStoveModal(null)}
+          orgIds={rowStoveModal.agent.direct_org_ids || []}
+          mode="sold"
+          title={`Records collected — ${rowStoveModal.agent.full_name}`}
+          filenamePrefix={`records-collected-${rowStoveModal.agent.full_name.replace(/\s+/g, "_")}`}
+          showExport={true}
+          agents={[{ id: rowStoveModal.agent.id, full_name: rowStoveModal.agent.full_name }]}
+        />
+      )}
+      {rowStoveModal && rowStoveModal.mode === "unsold" && (
+        <StovesStatusModal
+          isOpen={true}
+          onClose={() => setRowStoveModal(null)}
+          orgIds={rowStoveModal.agent.direct_org_ids || []}
+          mode="unsold"
+          title={`Records not collected — ${rowStoveModal.agent.full_name}`}
+          filenamePrefix={`records-not-collected-${rowStoveModal.agent.full_name.replace(/\s+/g, "_")}`}
+          showExport={true}
+          agents={[{ id: rowStoveModal.agent.id, full_name: rowStoveModal.agent.full_name }]}
+        />
+      )}
 
 
       <AgentsListModal
