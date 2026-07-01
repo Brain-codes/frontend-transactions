@@ -1191,6 +1191,10 @@ const UserManagementPage = () => {
 
                         </TableCell>
 
+                        {/* Last Seen */}
+                        <TableCell className="text-sm text-gray-600 whitespace-nowrap">
+                          {formatRelativeTime(u.last_login)}
+                        </TableCell>
 
                         {/* Actions — kebab menu */}
                         <TableCell className="text-center">
