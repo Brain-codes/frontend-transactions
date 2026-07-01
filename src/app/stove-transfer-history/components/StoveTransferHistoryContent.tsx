@@ -47,8 +47,10 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Ban,
 } from "lucide-react";
 import transferHistoryService, { TransferRecord } from "../../services/transferHistoryService";
+import CancelPurchaseModal from "./CancelPurchaseModal";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const DEFAULT_PAGE_SIZE = 20;
