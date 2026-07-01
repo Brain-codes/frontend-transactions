@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
-import DashboardLayout from "../components/DashboardLayout";
-import PageHeader from "../components/PageHeader";
+import DashboardLayout from "../../components/DashboardLayout";
+import PageHeader from "../../components/PageHeader";
 import { Ban, Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
