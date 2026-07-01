@@ -1,29 +1,55 @@
-## Problem
+## Goal
 
-The **Unsold / Unretrieved Stoves** KPI on the ACSL Agents Performance report shows 145, but the modal shows 144. The two use different definitions:
+Make the Partners Performance KPI row behave like the ACSL Agents Performance Report: clickable KPI cards that open searchable, exportable modals with accurate underlying values.
 
-- **KPI** = `globalAssigned − globalSold`
-  - `globalAssigned` = every non-archived stove at the agents' directly-assigned partners (regardless of `status`)
-  - `globalSold` = stoves recorded on sales **created by these agents**
-- **Modal** query (in `StovesStatusModal`, `mode === "unsold"` branch):
-  - Fetches `stove_ids` where `is_archived = false` **AND `status != 'sold'`**, then excludes any IDs in `soldStoveIds`.
+## Fixes to the KPI values themselves
 
-The extra `status != 'sold'` filter in the modal is the source of the discrepancy. If a stove at one of the agents' partners has `status = 'sold'` but was **not** sold by these agents (e.g. sold historically by another user, or the sale was cancelled/reassigned but the status flag wasn't reset), the KPI treats it as unsold, but the modal hides it. That accounts for the 1‑stove gap (145 vs 144).
+Current bug: the "Stoves Sold to End Users" card is bound to `stats.performing_partners` (a count of partners, not stoves). It will display a wrong number.
 
-## Fix
+- Bind "Total Stoves Sold" to `stats.total_sold` (already fetched by `fetchStats`).
+- Keep "Stoves Purchased from ACSL" → `stats.total_received`.
+- Keep "Unsold Stoves" → `stats.total_available` and rename to "Total Unsold Stoves" (system-wide, matching what the aggregate already returns).
+- Keep "Total Partners" as-is (not required to be clickable per the request, but we'll still make it clickable for consistency — opens a partners list modal already effectively achieved by the current sort behavior; we'll keep the existing sort behavior for that one card only).
 
-Align the modal query with the KPI definition so both reflect the same "Assigned − Sold-by-these-agents" rule.
+## Clickable KPI cards + modals
 
-In `src/app/agents/components/SuperAdminAgentsContent.tsx`, inside `StovesStatusModal` (unsold branch, ~lines 994–1015):
+Wrap each of the three stove-related cards in a `<button>` (cursor-pointer, focus ring, keeps the existing gradient look). Clicking opens a dedicated modal.
 
-1. Remove the `.neq("status", "sold")` filter from the `stove_ids` fetch so it returns every non-archived stove at the agents' orgs — matching `globalAssigned`.
-2. Keep the existing exclusion step that drops any stove ID present in `soldStoveIds` (sales attributed to the reporting agents).
-3. Leave the "sold" branch untouched — it's already attribution-based via sales rows.
+Three new modals live inside `PartnersContent.jsx` (same file, matching the pattern used for `StoveIdsModal` / `AssignedAgentsModal` already there). Each modal follows the shape used in `SuperAdminAgentsContent.tsx` (`AssignedStovesModal` / `StovesStatusModal`): search box, paginated table, CSV export button, loading/error states, close button.
 
-Result: the modal list length equals `Assigned − Sold-by-agents`, matching the KPI (e.g. 145 rows when the KPI reads 145). Rows that are `status = 'sold'` but not attributable to these agents will appear in the unsold list — which is consistent with how the KPI already counts them; if that surfaces confusing rows, that's a data-hygiene signal about historical sales at those partners that we can address separately (e.g. re-running status reconciliation).
+1. **Purchased Stoves Modal** — opened by "Stoves Purchased from ACSL"
+   - Rows: every non-archived `stove_ids` row across all partner orgs.
+   - Columns: Stove ID, Partner, State, Branch, Status, Date Received (`created_at`).
+   - Search across Stove ID / Partner / State / Status.
+   - CSV export of the currently filtered rows.
+   - Total in the modal header MUST equal the KPI value.
 
-## Verification
+2. **Sold Stoves Modal** — opened by "Total Stoves Sold"
+   - Rows: every stove with `status = 'sold'` (or joined via `sales`) across all partner orgs. This inherently includes stoves sold directly by partners and stoves sold by ACSL agents attributed to a partner — matching the "all sold stoves associated with the partner" requirement.
+   - Columns: Stove ID, Partner, State, Branch, **Sales Date**, **Sold By** (seller full name with role as a superscript, e.g. `Jane Doe⁽ᴬᴳᴱᴺᵀ⁾` — mirrors the role-superscript style already used in `AgentsProfilesContent.jsx`).
+   - Roles rendered: `super_admin`, `acsl_agent_manager`, `acsl_agent`, `partner`, `partner_agent` — short labels (SA / AGM / AGENT / PARTNER / PAGENT).
+   - Data source: join `sales` → `stove_ids` on `sale_id`, pull `sales.sales_date` and `sales.created_by`, then resolve seller name+role via `profiles` (batched `.in()` lookups, same pattern as `StovesStatusModal`).
+   - Search across Stove ID / Partner / State / Seller name.
+   - CSV export (includes Sales Date and Sold By columns).
+   - Total in header MUST equal the KPI value.
 
-- Reload the Agents Performance report; confirm the Unsold KPI value equals the row count shown in the Unsold modal (both should read 145).
-- Confirm `Assigned − Sold = Unsold` invariant still holds across the three KPI cards.
-- Spot-check the Sold modal count is unchanged.
+3. **Unsold Stoves Modal** — opened by "Total Unsold Stoves"
+   - Rows: every `stove_ids` row with `is_archived=false` and status != 'sold' across all partner orgs.
+   - Columns: Stove ID, Partner, State, Branch, Status, Date Received.
+   - Search + CSV export as above.
+   - Total in header MUST equal `total_received − total_sold` and match the KPI.
+
+## Truthfulness guarantee
+
+To avoid the current KPI-vs-modal drift (the same class of bug we just fixed in the Agents tab), each modal fetches its rows using the exact same filter it uses to display the count in its header, and the KPI card reads from `stats` produced by the shared `fetchStats` aggregate. We'll add a small assertion-style log in dev only if header count ≠ KPI count, so future regressions are caught. No new server function needed — reuse the existing `stove_ids` / `sales` / `profiles` tables with batched `.in()` queries like the Agents modals already do.
+
+## Files touched
+
+- `src/app/partners/components/PartnersContent.jsx`
+  - Fix `stats.performing_partners` → `stats.total_sold` on the "Stoves Sold" card and update the label to "Total Stoves Sold".
+  - Rename "Unsold Stoves with Partners" → "Total Unsold Stoves".
+  - Wrap the three stove KPI cards in buttons with click handlers opening the new modals.
+  - Add three new local modal components (`PurchasedStovesModal`, `SoldStovesModal`, `UnsoldStovesModal`) using the search + pagination + CSV export pattern already established by `StoveIdsModal` in the same file and `AssignedStovesModal` / `StovesStatusModal` in `SuperAdminAgentsContent.tsx`.
+  - Add three `useState` open-flags and render the modals at the bottom of the component.
+
+No backend / edge-function / schema changes. UI + client-side data-fetch only.
