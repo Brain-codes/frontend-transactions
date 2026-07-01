@@ -1,9 +1,10 @@
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter } from "@/compat/navigation";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import DashboardLayout from "../../components/DashboardLayout";
 import { useAuth } from "../../contexts/useAuth";
 import CreateSalesForm from "../../admin/components/sales/CreateSalesForm";
+
 
 function CreateSaleView() {
   const router = useRouter();
