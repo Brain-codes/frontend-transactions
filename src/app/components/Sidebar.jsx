@@ -67,6 +67,7 @@ const allNavItems = [
       { name: "Sell Stove", route: "sales-create", href: "/sales/create" },
       { name: "Sales Records", route: "sales", href: "/sales" },
       { name: "Cancelled Transactions", route: "sales-cancelled", href: "/sales/cancelled" },
+      { name: "Cancelled Purchases", route: "sales-cancelled-purchases", href: "/sales/cancelled-purchases" },
       { name: "Purchases from ACSL", route: "stove-transfer-history", href: "/stove-transfer-history" },
       { name: "Agreement Images", route: "agreement-images", href: "/agreement-images" },
       { name: "Map", route: "map", href: "/map" },

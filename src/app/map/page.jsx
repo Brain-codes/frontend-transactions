@@ -78,6 +78,11 @@ export default function HeatmapPage() {
         includeAddress: true,
         includeCreator: true,
         includeImages: false, // Don't need images for heatmap
+        // Request the raw DB format (format2). The API defaults to "format1"
+        // (a flat shape) which drops the nested `addresses` object and the
+        // coordinate/amount fields this page maps over, causing every record
+        // to be filtered out as "no valid coordinates".
+        responseFormat: "format2",
         sortBy: "created_at",
         sortOrder: "desc",
         ...filters,
@@ -384,111 +389,171 @@ export default function HeatmapPage() {
             }
           />
         </div>
-        <div className="h-full flex flex-col bg-gray-50">
+        <div className="p-3 lg:p-6 pt-0 space-y-4 lg:space-y-6 bg-gray-50">
+          {/* Filters Bar */}
+          <Card>
+            <CardContent className="p-3 lg:p-4">
+              <div className="flex flex-col lg:flex-row lg:items-end gap-3">
+                <div className="flex-1 min-w-0">
+                  <Label className="text-xs font-medium text-gray-700">
+                    Search
+                  </Label>
+                  <div className="relative mt-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search locations, IDs, products..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="w-full lg:w-44">
+                  <Label className="text-xs font-medium text-gray-700">
+                    State
+                  </Label>
+                  <Select value={selectedState} onValueChange={setSelectedState}>
+                    <SelectTrigger className="mt-1 w-full text-gray-600 h-9">
+                      <SelectValue placeholder="All States" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All States</SelectItem>
+                      {uniqueStates.map((state) => (
+                        <SelectItem key={state} value={state}>
+                          {state}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="w-full lg:w-40">
+                  <Label className="text-xs font-medium text-gray-700">
+                    Time Range
+                  </Label>
+                  <Select
+                    value={selectedTimeRange}
+                    onValueChange={setSelectedTimeRange}
+                  >
+                    <SelectTrigger className="mt-1 w-full text-gray-600 h-9">
+                      <SelectValue placeholder="All Time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Time</SelectItem>
+                      <SelectItem value="7d">Last 7 Days</SelectItem>
+                      <SelectItem value="30d">Last 30 Days</SelectItem>
+                      <SelectItem value="90d">Last 90 Days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="w-full lg:w-44">
+                  <Label className="text-xs font-medium text-gray-700">
+                    Customer Type
+                  </Label>
+                  <Select
+                    value={selectedCustomerType}
+                    onValueChange={setSelectedCustomerType}
+                  >
+                    <SelectTrigger className="mt-1 w-full text-gray-600 h-9">
+                      <SelectValue placeholder="All Types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      {uniqueCustomerTypes.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="w-full lg:w-44">
+                  <Label className="text-xs font-medium text-gray-700">
+                    Map Visualization
+                  </Label>
+                  <Select value={mapType} onValueChange={setMapType}>
+                    <SelectTrigger className="mt-1 w-full text-gray-600 h-9">
+                      <SelectValue placeholder="Heatmap" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="heatmap">Heatmap</SelectItem>
+                      <SelectItem value="markers">Individual Markers</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Statistics Cards */}
-          <div className="p-3 lg:p-6 bg-white border-b border-gray-200">
+          <div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4">
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-3 lg:p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs lg:text-sm font-medium text-gray-600 truncate">
-                        Total Locations
+              {[
+                {
+                  gradient: "from-[#194977] to-[#2563EB]",
+                  Icon: MapPin,
+                  value: stats.totalLocations.toLocaleString(),
+                  label: "Total Locations",
+                },
+                {
+                  gradient: "from-[#047857] to-[#10B981]",
+                  Icon: TrendingUp,
+                  value: stats.totalSales.toLocaleString(),
+                  label: "Total Sales",
+                },
+                {
+                  gradient: "from-[#7C3AED] to-[#A78BFA]",
+                  Icon: Banknote,
+                  value: formatCurrency(stats.totalAmount),
+                  label: "Total Revenue",
+                },
+                {
+                  gradient: "from-[#B45309] to-[#F59E0B]",
+                  Icon: Globe,
+                  value: stats.states.toLocaleString(),
+                  label: "States Covered",
+                },
+                {
+                  gradient: "from-[#BE123C] to-[#F43F5E]",
+                  Icon: Target,
+                  value: formatCurrency(stats.avgSaleValue),
+                  label: "Avg Sale Value",
+                },
+                {
+                  gradient: "from-[#4338CA] to-[#818CF8]",
+                  Icon: Activity,
+                  value: stats.topState,
+                  label: "Top State",
+                },
+              ].map(({ gradient, Icon, value, label }) => (
+                <div
+                  key={label}
+                  className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md transition-all bg-gradient-to-br ${gradient}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0 flex-1 pr-3">
+                      <p className="text-lg lg:text-2xl font-bold text-white tracking-tight leading-tight truncate">
+                        {value}
                       </p>
-                      <p className="text-lg lg:text-2xl font-bold text-gray-900">
-                        {stats.totalLocations.toLocaleString()}
-                      </p>
-                    </div>
-                    <MapPin className="h-6 w-6 lg:h-8 lg:w-8 text-brand-700 flex-shrink-0" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-3 lg:p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs lg:text-sm font-medium text-gray-600 truncate">
-                        Total Sales
-                      </p>
-                      <p className="text-lg lg:text-2xl font-bold text-gray-900">
-                        {stats.totalSales.toLocaleString()}
-                      </p>
-                    </div>
-                    <TrendingUp className="h-6 w-6 lg:h-8 lg:w-8 text-green-600 flex-shrink-0" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-3 lg:p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs lg:text-sm font-medium text-gray-600 truncate">
-                        Total Revenue
-                      </p>
-                      <p className="text-sm lg:text-xl font-bold text-gray-900">
-                        {formatCurrency(stats.totalAmount)}
-                      </p>
-                    </div>
-                    <Banknote className="h-6 w-6 lg:h-8 lg:w-8 text-purple-600 flex-shrink-0" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-3 lg:p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs lg:text-sm font-medium text-gray-600 truncate">
-                        States Covered
-                      </p>
-                      <p className="text-lg lg:text-2xl font-bold text-gray-900">
-                        {stats.states}
+                      <p className="text-xs lg:text-sm font-semibold text-white/90 mt-1">
+                        {label}
                       </p>
                     </div>
-                    <Globe className="h-6 w-6 lg:h-8 lg:w-8 text-orange-600 flex-shrink-0" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-3 lg:p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs lg:text-sm font-medium text-gray-600 truncate">
-                        Avg Sale Value
-                      </p>
-                      <p className="text-sm lg:text-lg font-bold text-gray-900">
-                        {formatCurrency(stats.avgSaleValue)}
-                      </p>
+                    <div className="rounded-lg p-2 bg-white/20 text-white shadow-sm w-fit shrink-0">
+                      <Icon className="h-4 w-4" />
                     </div>
-                    <Target className="h-6 w-6 lg:h-8 lg:w-8 text-red-600 flex-shrink-0" />
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-3 lg:p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs lg:text-sm font-medium text-gray-600 truncate">
-                        Top State
-                      </p>
-                      <p className="text-sm lg:text-lg font-bold text-gray-900 truncate">
-                        {stats.topState}
-                      </p>
-                    </div>
-                    <Activity className="h-6 w-6 lg:h-8 lg:w-8 text-indigo-600 flex-shrink-0" />
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Error Display */}
           {error && (
-            <div className="mx-3 lg:mx-6 mt-4 p-3 lg:p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="p-3 lg:p-4 bg-red-50 border border-red-200 rounded-lg">
               <div className="flex items-start">
                 <AlertCircle className="h-5 w-5 text-red-600 mr-2 flex-shrink-0 mt-0.5" />
                 <div className="min-w-0 flex-1">
@@ -514,7 +579,7 @@ export default function HeatmapPage() {
 
           {/* Loading State */}
           {loading && (
-            <div className="mx-3 lg:mx-6 mt-4 p-4 lg:p-6 bg-brand-50 border border-brand-200 rounded-lg">
+            <div className="p-4 lg:p-6 bg-brand-50 border border-brand-200 rounded-lg">
               <div className="flex items-center justify-center">
                 <Loader2 className="h-6 w-6 text-brand-700 mr-3 animate-spin flex-shrink-0" />
                 <div className="min-w-0">
@@ -531,7 +596,7 @@ export default function HeatmapPage() {
 
           {/* Data Summary */}
           {!loading && !error && mapData.length > 0 && (
-            <div className="mx-3 lg:mx-6 mt-4 p-3 lg:p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="p-3 lg:p-4 bg-green-50 border border-green-200 rounded-lg">
               <div className="flex items-start">
                 <Activity className="h-5 w-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
                 <div className="min-w-0 flex-1">
@@ -549,356 +614,76 @@ export default function HeatmapPage() {
             </div>
           )}
 
-          {/* Mobile Sidebar Toggle */}
-          {!isFullscreen && (
-            <div className="md:hidden p-3 bg-white border-b border-gray-200 flex justify-between items-center">
+          {/* Map Container */}
+          <div
+            className={`relative overflow-hidden border border-gray-200 bg-white ${
+              isFullscreen
+                ? "fixed inset-0 z-50 rounded-none"
+                : "rounded-lg h-[520px] lg:h-[70vh]"
+            }`}
+          >
+            {loading && (
+              <div className="absolute inset-0 bg-white/90 flex items-center justify-center z-20">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-brand-700 mx-auto"></div>
+                  <p className="mt-4 text-gray-600 font-medium">
+                    Loading heatmap data...
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Analyzing {mapData.length || "..."} sales locations
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <MapPage
+              apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+              locations={filteredData}
+              isFullscreen={isFullscreen}
+              mapType={mapType}
+              intensity={heatmapIntensity}
+            />
+
+            {/* Fullscreen Toggle Button */}
+            <div className="absolute top-2 lg:top-4 right-2 lg:right-4 z-20">
               <Button
-                onClick={() => setShowSidebar(!showSidebar)}
+                onClick={() => setIsFullscreen(!isFullscreen)}
                 variant="outline"
                 size="sm"
-                className="flex items-center gap-2 text-gray-500"
+                className="bg-white shadow-lg text-gray-500 text-xs lg:text-sm"
               >
-                <Filter className="h-4 w-4 " />
-                {showSidebar ? "Hide Filters" : "Show Filters"}
-              </Button>
-              <div className="text-sm text-gray-600">
-                {filteredData.length} locations
-              </div>
-            </div>
-          )}
-
-          {/* Main Content Area */}
-          <div
-            className={`flex-1 flex ${
-              isFullscreen ? "fixed inset-0 z-50 bg-white" : ""
-            } ${showSidebar && !isFullscreen ? "flex-col md:flex-row" : ""}`}
-          >
-            {/* Enhanced Sidebar */}
-            {!isFullscreen && showSidebar && (
-              <div className="w-full md:w-80 lg:w-96 bg-white md:border-r border-gray-200 flex flex-col shadow-sm md:shadow-none border-b md:border-b-0">
-                {/* Sidebar Header */}
-                <div className="p-3 lg:p-4 border-b border-gray-200 bg-gray-50">
-                  <div className="flex items-center justify-between mb-3 lg:mb-4">
-                    <h3 className="text-base lg:text-lg font-semibold text-gray-900 flex items-center">
-                      <Filter className="h-4 w-4 lg:h-5 lg:w-5 mr-2 text-brand-700" />
-                      Filters & Controls
-                    </h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowSidebar(false)}
-                      className="h-8 w-8 lg:h-10 lg:w-10"
-                    >
-                      <EyeOff className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  {/* Search */}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Search locations, IDs, products..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* Filters */}
-                <div className="p-3 lg:p-4 border-b border-gray-200 space-y-3 lg:space-y-4">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs lg:text-sm font-medium text-gray-700">
-                        State
-                      </Label>
-                      <Select
-                        value={selectedState}
-                        onValueChange={setSelectedState}
-                      >
-                        <SelectTrigger className="w-full text-gray-600 h-9">
-                          <SelectValue placeholder="All States" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All States</SelectItem>
-                          {uniqueStates.map((state) => (
-                            <SelectItem key={state} value={state}>
-                              {state}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label className="text-xs lg:text-sm font-medium text-gray-700">
-                        Time Range
-                      </Label>
-                      <Select
-                        value={selectedTimeRange}
-                        onValueChange={setSelectedTimeRange}
-                      >
-                        <SelectTrigger className="w-full text-gray-600 h-9">
-                          <SelectValue placeholder="All Time" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Time</SelectItem>
-                          <SelectItem value="7d">Last 7 Days</SelectItem>
-                          <SelectItem value="30d">Last 30 Days</SelectItem>
-                          <SelectItem value="90d">Last 90 Days</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-xs lg:text-sm font-medium text-gray-700">
-                      Customer Type
-                    </Label>
-                    <Select
-                      value={selectedCustomerType}
-                      onValueChange={setSelectedCustomerType}
-                    >
-                      <SelectTrigger className="w-full text-gray-600 h-9">
-                        <SelectValue placeholder="All Types" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        {uniqueCustomerTypes.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label className="text-xs lg:text-sm font-medium text-gray-700">
-                      Map Visualization
-                    </Label>
-                    <Select value={mapType} onValueChange={setMapType}>
-                      <SelectTrigger className="w-full text-gray-600 h-9">
-                        <SelectValue placeholder="Heatmap" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="heatmap">Heatmap</SelectItem>
-                        <SelectItem value="markers">
-                          Individual Markers
-                        </SelectItem>
-                        <SelectItem value="clusters">Clustered View</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Location List */}
-                <div className="flex-1 overflow-y-auto">
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-sm font-semibold text-gray-900">
-                        Sales Locations
-                      </h4>
-                      <Badge variant="secondary" className="text-xs">
-                        {filteredData.length} locations
-                      </Badge>
-                    </div>
-
-                    {loading ? (
-                      <div className="space-y-3">
-                        {[...Array(8)].map((_, i) => (
-                          <Card key={i} className="animate-pulse">
-                            <CardContent className="p-3">
-                              <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                              <div className="h-3 bg-gray-200 rounded w-3/4 mb-2"></div>
-                              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="space-y-2 max-h-96 overflow-y-auto">
-                        {filteredData.slice(0, 100).map((location) => (
-                          <Card
-                            key={location.id}
-                            className="hover:shadow-sm transition-shadow cursor-pointer group"
-                          >
-                            <CardContent className="p-3">
-                              <div className="flex justify-between items-start mb-2">
-                                <div className="flex-1 min-w-0">
-                                  <h5 className="font-medium text-sm text-gray-900 truncate">
-                                    {location.city}, {location.state}
-                                  </h5>
-                                  <p className="text-xs text-gray-500 font-mono">
-                                    {location.id}
-                                  </p>
-                                  <p className="text-xs text-gray-600 truncate">
-                                    {location.customerName}
-                                  </p>
-                                </div>
-                                <Badge
-                                  variant={
-                                    location.customerType === "Enterprise"
-                                      ? "default"
-                                      : location.customerType === "Premium"
-                                      ? "secondary"
-                                      : "outline"
-                                  }
-                                  className="text-xs ml-2"
-                                >
-                                  {location.customerType}
-                                </Badge>
-                              </div>
-
-                              <div className="space-y-1">
-                                <div className="flex justify-between text-xs">
-                                  <span className="text-gray-500">Amount:</span>
-                                  <span className="font-medium text-green-600">
-                                    {formatCurrency(location.amount)}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between text-xs">
-                                  <span className="text-gray-500">
-                                    Product:
-                                  </span>
-                                  <span
-                                    className="font-medium truncate max-w-24"
-                                    title={location.productCategory}
-                                  >
-                                    {location.productCategory}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between text-xs">
-                                  <span className="text-gray-500">
-                                    Sales Rep:
-                                  </span>
-                                  <span
-                                    className="font-medium truncate max-w-24"
-                                    title={location.salesRep}
-                                  >
-                                    {location.salesRep}
-                                  </span>
-                                </div>
-                                {location.serialNumber && (
-                                  <div className="flex justify-between text-xs">
-                                    <span className="text-gray-500">
-                                      Serial:
-                                    </span>
-                                    <span
-                                      className="font-mono text-xs truncate max-w-20"
-                                      title={location.serialNumber}
-                                    >
-                                      {location.serialNumber}
-                                    </span>
-                                  </div>
-                                )}
-                                <div className="text-xs text-gray-400 pt-1 border-t border-gray-100">
-                                  {location.lat.toFixed(4)},{" "}
-                                  {location.lng.toFixed(4)}
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-
-                        {filteredData.length > 100 && (
-                          <div className="text-center p-4">
-                            <p className="text-sm text-gray-500">
-                              Showing first 100 of {filteredData.length}{" "}
-                              locations
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Toggle Sidebar Button */}
-            {!isFullscreen && !showSidebar && (
-              <div className="absolute left-2 lg:left-4 top-2 lg:top-4 z-10">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowSidebar(true)}
-                  className="bg-white shadow-lg text-xs lg:text-sm"
-                >
-                  <Eye className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
-                  <span className="hidden sm:inline">Show Filters</span>
-                  <span className="sm:hidden">Filters</span>
-                </Button>
-              </div>
-            )}
-
-            {/* Map Container */}
-            <div className="flex-1 relative">
-              {loading && (
-                <div className="absolute inset-0 bg-white/90 flex items-center justify-center z-20">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-brand-700 mx-auto"></div>
-                    <p className="mt-4 text-gray-600 font-medium">
-                      Loading heatmap data...
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Analyzing {mapData.length || "..."} sales locations
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <MapPage
-                apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
-                locations={filteredData}
-                isFullscreen={isFullscreen}
-                mapType={mapType}
-                intensity={heatmapIntensity}
-              />
-
-              {/* Fullscreen Exit Button */}
-              {isFullscreen && (
-                <div className="absolute top-2 lg:top-4 right-2 lg:right-4 z-20 flex gap-1 lg:gap-2">
-                  <Button
-                    onClick={() => setShowSidebar(!showSidebar)}
-                    variant="outline"
-                    size="sm"
-                    className="bg-white shadow-lg text-gray-400 text-xs lg:text-sm"
-                  >
-                    <Settings className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
-                    <span className="hidden sm:inline">Controls</span>
-                  </Button>
-                  <Button
-                    onClick={() => setIsFullscreen(false)}
-                    variant="outline"
-                    size="sm"
-                    className="bg-white shadow-lg text-gray-400 text-xs lg:text-sm"
-                  >
+                {isFullscreen ? (
+                  <>
                     <Minimize2 className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
                     <span className="hidden sm:inline">Exit Fullscreen</span>
                     <span className="sm:hidden">Exit</span>
-                  </Button>
-                </div>
-              )}
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
+                    <span className="hidden sm:inline">Fullscreen</span>
+                  </>
+                )}
+              </Button>
+            </div>
 
-              {/* Map Info Overlay */}
-              <div className="absolute bottom-2 lg:bottom-4 left-2 lg:left-4 z-10">
-                <Card className="bg-white/95 backdrop-blur-sm shadow-lg border-0">
-                  <CardContent className="p-2 lg:p-3">
-                    <div className="flex items-center space-x-1 lg:space-x-2 text-xs lg:text-sm">
-                      <Info className="h-3 w-3 lg:h-4 lg:w-4 text-brand-700 flex-shrink-0" />
-                      <span className="text-gray-700 truncate">
-                        {filteredData.length} locations
-                      </span>
-                      {filteredData.length !== mapData.length && (
-                        <Badge variant="secondary" className="text-xs">
-                          Filtered
-                        </Badge>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+            {/* Map Info Overlay */}
+            <div className="absolute bottom-2 lg:bottom-4 left-2 lg:left-4 z-10">
+              <Card className="bg-white/95 backdrop-blur-sm shadow-lg border-0">
+                <CardContent className="p-2 lg:p-3">
+                  <div className="flex items-center space-x-1 lg:space-x-2 text-xs lg:text-sm">
+                    <Info className="h-3 w-3 lg:h-4 lg:w-4 text-brand-700 flex-shrink-0" />
+                    <span className="text-gray-700 truncate">
+                      {filteredData.length} locations
+                    </span>
+                    {filteredData.length !== mapData.length && (
+                      <Badge variant="secondary" className="text-xs">
+                        Filtered
+                      </Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>

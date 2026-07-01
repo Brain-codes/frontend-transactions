@@ -38,6 +38,9 @@ import {
   Phone,
   Package,
   Search,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import {
   Dialog,
@@ -55,6 +58,7 @@ import adminCredentialsService from "../../services/adminCredentialsService";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import adminAgentService from "../../services/adminAgentService.jsx";
 import { createClientComponentClient } from "@/lib/supabaseClient";
+import { getAgentIdsForPartner } from "../../services/agentAssignmentQueries";
 
 const supabase = createClientComponentClient();
 
@@ -73,19 +77,75 @@ const ROLE_BADGE = {
 };
 const formatRole = (r) => ROLE_LABELS[r] || (r ? r.replace(/_/g, " ") : "—");
 
+// Fetch every agent (ACSL + partner agent) associated with an organization.
+// ACSL agents come from the shared assignment-query helper so the count and
+// list always match the Agents Profile view. Partner agents come from the
+// profiles table via org membership.
 async function fetchAllAgentsForOrg(orgId) {
-  const [acslRes, partnerRes] = await Promise.all([
-    superAdminAgentService.getAgentsByOrganization(orgId).catch(() => null),
-    adminAgentService.getSalesAgents({ organization_id: orgId, limit: 100 }).catch(() => null),
-  ]);
-  const acslList = acslRes?.data?.agents || acslRes?.data || [];
-  const partnerList = partnerRes?.data?.agents || partnerRes?.data || [];
-  const tagged = [
-    ...(Array.isArray(acslList) ? acslList : []).map((a) => ({ ...a, role: a.role || "acsl_agent" })),
-    ...(Array.isArray(partnerList) ? partnerList : []).map((a) => ({ ...a, role: a.role || "partner_agent" })),
-  ];
+  const acslIds = await getAgentIdsForPartner(orgId);
+
+  let acslList = [];
+  if (acslIds.length > 0) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, phone, role")
+      .in("id", acslIds);
+    const byId = new Map((data || []).map((a) => [a.id, a]));
+
+    // For any ids the profiles query couldn't return (typically blocked by
+    // RLS for non-admin viewers), fall back to the manage-users edge
+    // function which runs with elevated privileges.
+    const missing = acslIds.filter((id) => !byId.has(id));
+    if (missing.length > 0) {
+      try {
+        const [{ supabaseFunctionsUrl }, tokenModule] = await Promise.all([
+          import("@/lib/supabaseConfig"),
+          import("@/utils/tokenManager"),
+        ]);
+        const token = await tokenModule.default.getValidToken();
+        const qs = new URLSearchParams({ page: "1", limit: "5000" });
+        const res = await fetch(`${supabaseFunctionsUrl}/manage-users?${qs.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          for (const u of json.data || []) {
+            if (missing.includes(u.id) && !byId.has(u.id)) {
+              byId.set(u.id, {
+                id: u.id,
+                full_name: u.full_name || u.name || u.email || "Unknown agent",
+                email: u.email || "",
+                phone: u.phone ?? "",
+                role: u.role || "acsl_agent",
+              });
+            }
+          }
+        }
+      } catch (_e) {
+        // Silent fallback — keep placeholder rows below
+      }
+    }
+
+    acslList = acslIds.map((id) => {
+      const p = byId.get(id);
+      return p
+        ? { ...p, role: p.role || "acsl_agent" }
+        : { id, full_name: "Unknown agent", email: "", phone: "", role: "acsl_agent" };
+    });
+  }
+
+
+  // Partner agents belonging to this organization
+  const { data: partnerAgents } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, phone, role")
+    .eq("organization_id", orgId)
+    .in("role", ["partner_agent", "agent"]);
+  const partnerList = (partnerAgents || []).map((a) => ({ ...a, role: a.role || "partner_agent" }));
+
+  const merged = [...acslList, ...partnerList];
   const seen = new Set();
-  return tagged.filter((a) => {
+  return merged.filter((a) => {
     const k = a.id || a.email;
     if (!k || seen.has(k)) return false;
     seen.add(k);
@@ -93,14 +153,27 @@ async function fetchAllAgentsForOrg(orgId) {
   });
 }
 
+
 const PAGE_SIZE = 10;
 
 const PartnerProfilesContent = () => {
   const { toast, toasts, removeToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [partners, setPartners] = useState([]);
-  const [filters, setFilters] = useState({ search: "", state: "" });
+  const [filters, setFilters] = useState({ search: "", state: "", agentFilter: "" });
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [page, setPage] = useState(1);
+
+  const handleSort = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "asc" };
+    });
+    setPage(1);
+  };
+
   const [detailsPartner, setDetailsPartner] = useState(null);
   const [editingPartner, setEditingPartner] = useState(null);
   const [viewingCredential, setViewingCredential] = useState(null);
@@ -137,7 +210,7 @@ const PartnerProfilesContent = () => {
     setStovesModalSearch("");
     try {
       const { data, error } = await supabase
-        .from("stove_ids")
+        .from("stove_ids_base")
         .select("id, stove_id, status, created_at")
         .eq("organization_id", partner.id)
         .eq("is_archived", false)
@@ -170,6 +243,21 @@ const PartnerProfilesContent = () => {
     loadPartners();
   }, []);
 
+  // Refresh agent counts when an assignment is added / changed elsewhere in
+  // the app (e.g. the ACSL Agents assign-partners modal). Clearing the cache
+  // triggers the lazy-fetch effect for the visible page.
+  useEffect(() => {
+    const handler = () => {
+      setAgentCounts({});
+    };
+    window.addEventListener("acsl:user-updated", handler);
+    window.addEventListener("acsl:assignment-updated", handler);
+    return () => {
+      window.removeEventListener("acsl:user-updated", handler);
+      window.removeEventListener("acsl:assignment-updated", handler);
+    };
+  }, []);
+
   const handleViewCredentials = async (org) => {
     setLoadingCredentialOrgId(org.id);
     try {
@@ -193,16 +281,44 @@ const PartnerProfilesContent = () => {
   }, [partners]);
 
   const filtered = useMemo(() => {
-    return partners.filter((p) => {
+    const list = partners.filter((p) => {
       if (filters.state && p.state !== filters.state) return false;
       if (filters.search) {
         const q = filters.search.toLowerCase();
         const hay = `${p.partner_name ?? ""} ${p.branch ?? ""} ${p.contact_phone ?? ""} ${p.email ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
+      if (filters.agentFilter) {
+        const count = agentCounts[p.id];
+        if (count === undefined) return false;
+        if (filters.agentFilter === "assigned" && count === 0) return false;
+        if (filters.agentFilter === "unassigned" && count > 0) return false;
+      }
       return true;
     });
-  }, [partners, filters]);
+
+    if (!sortConfig.key) return list;
+
+    const dir = sortConfig.direction === "asc" ? 1 : -1;
+    return [...list].sort((a, b) => {
+      if (sortConfig.key === "partner") {
+        const av = (a.partner_name || "").toLowerCase();
+        const bv = (b.partner_name || "").toLowerCase();
+        return av.localeCompare(bv) * dir;
+      }
+      if (sortConfig.key === "assigned_agents") {
+        const av = agentCounts[a.id] ?? -1;
+        const bv = agentCounts[b.id] ?? -1;
+        return (av - bv) * dir;
+      }
+      if (sortConfig.key === "total_stoves") {
+        const av = stoveCounts[a.id] ?? -1;
+        const bv = stoveCounts[b.id] ?? -1;
+        return (av - bv) * dir;
+      }
+      return 0;
+    });
+  }, [partners, filters, agentCounts, stoveCounts, sortConfig]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -250,7 +366,7 @@ const PartnerProfilesContent = () => {
         for (let i = 0; i < ids.length; i += BATCH) {
           const slice = ids.slice(i, i + BATCH);
           const { data } = await supabase
-            .from("stove_ids")
+            .from("stove_ids_base")
             .select("organization_id")
             .in("organization_id", slice)
             .eq("is_archived", false);
@@ -273,7 +389,39 @@ const PartnerProfilesContent = () => {
     return () => { cancelled = true; };
   }, [pageRows, stoveCounts]);
 
-  const hasActiveFilters = filters.search !== "" || filters.state !== "";
+  // Eagerly fetch agent counts for all partners when filtering by agent status
+  useEffect(() => {
+    if (!filters.agentFilter || partners.length === 0) return;
+    const missing = partners.filter((p) => agentCounts[p.id] === undefined);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const BATCH = 20;
+      for (let i = 0; i < missing.length; i += BATCH) {
+        if (cancelled) return;
+        const slice = missing.slice(i, i + BATCH);
+        const results = await Promise.all(
+          slice.map(async (p) => {
+            try {
+              const list = await fetchAllAgentsForOrg(p.id);
+              return [p.id, list.length];
+            } catch {
+              return [p.id, 0];
+            }
+          })
+        );
+        if (cancelled) return;
+        setAgentCounts((prev) => {
+          const next = { ...prev };
+          results.forEach(([id, c]) => { next[id] = c; });
+          return next;
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [filters.agentFilter, partners, agentCounts]);
+
+  const hasActiveFilters = filters.search !== "" || filters.state !== "" || filters.agentFilter !== "";
 
 
   const handleFilterChange = (field, value) => {
@@ -282,7 +430,7 @@ const PartnerProfilesContent = () => {
   };
 
   const handleClearFilters = () => {
-    setFilters({ search: "", state: "" });
+    setFilters({ search: "", state: "", agentFilter: "" });
     setPage(1);
   };
 
@@ -328,6 +476,20 @@ const PartnerProfilesContent = () => {
           </SelectContent>
         </Select>
 
+        <Select
+          value={filters.agentFilter || "all"}
+          onValueChange={(v) => handleFilterChange("agentFilter", v === "all" ? "" : v)}
+        >
+          <SelectTrigger className="w-[200px] h-9 bg-white text-xs shadow-none border-gray-200 text-gray-400 data-[placeholder]:text-gray-400">
+            <SelectValue placeholder="All Partners" />
+          </SelectTrigger>
+          <SelectContent className="text-xs">
+            <SelectItem value="all" className="text-xs">All Partners</SelectItem>
+            <SelectItem value="assigned" className="text-xs">With Assigned Agents</SelectItem>
+            <SelectItem value="unassigned" className="text-xs">With No Agents</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Button
           onClick={handleClearFilters}
           size="sm"
@@ -357,12 +519,39 @@ const PartnerProfilesContent = () => {
           <Table>
             <TableHeader>
               <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
-                <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Partner</TableHead>
+                <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg cursor-pointer select-none" onClick={() => handleSort("partner")}>
+                  <span className="inline-flex items-center gap-1">
+                    Partner
+                    {sortConfig.key === "partner" ? (
+                      sortConfig.direction === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />
+                    )}
+                  </span>
+                </TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">State</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
-                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Assigned Agents</TableHead>
-                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Total Stoves Purchased</TableHead>
+                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("assigned_agents")}>
+                  <span className="inline-flex items-center justify-center gap-1">
+                    Assigned Agents
+                    {sortConfig.key === "assigned_agents" ? (
+                      sortConfig.direction === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />
+                    )}
+                  </span>
+                </TableHead>
+                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("total_stoves")}>
+                  <span className="inline-flex items-center justify-center gap-1">
+                    Total Stoves Purchased
+                    {sortConfig.key === "total_stoves" ? (
+                      sortConfig.direction === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />
+                    )}
+                  </span>
+                </TableHead>
                 <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
               </TableRow>
             </TableHeader>
