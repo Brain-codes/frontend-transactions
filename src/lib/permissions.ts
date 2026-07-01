@@ -13,6 +13,7 @@ export type RouteKey =
   | "dashboard"
   | "sales"
   | "sales-create"
+  | "sales-cancelled"
   | "sales-financial-reports"
   | "partners"
   | "partners-profiles"
@@ -78,6 +79,7 @@ const ALL_ROUTES: RouteKey[] = [
   "dashboard",
   "sales",
   "sales-create",
+  "sales-cancelled",
   "sales-financial-reports",
   "partners",
   "partners-profiles",
@@ -140,6 +142,7 @@ export const PERMISSIONS: Record<string, RolePermissions> = {
       "dashboard",
       "sales",
       "sales-create",
+      "sales-cancelled",
       "partners",
       "agents",
       "stove-management",
@@ -159,6 +162,7 @@ export const PERMISSIONS: Record<string, RolePermissions> = {
       "dashboard",
       "sales",
       "sales-create",
+      "sales-cancelled",
       "partners",
       "stove-management",
       "stove-manager",
@@ -172,6 +176,7 @@ export const PERMISSIONS: Record<string, RolePermissions> = {
       "dashboard",
       "sales",
       "sales-create",
+      "sales-cancelled",
       "agents",
       "stove-management",
       "stove-manager",

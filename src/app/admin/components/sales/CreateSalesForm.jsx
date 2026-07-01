@@ -447,26 +447,13 @@ const CreateSalesForm = ({
     }
   };
 
-  const fetchPaymentModels = async (orgId) => {
-    const organizationId = orgId ||
-      profileService.getOrganizationId() ||
-      (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("saa_selected_org_id") : null);
+  const fetchPaymentModels = async () => {
+    // Payment models are decoupled from partners — always list every active
+    // model so any user can pick any payment type freely regardless of partner.
     try {
       setModelsLoading(true);
-      let models = [];
-      if (organizationId) {
-        const result = await paymentModelService.getOrgPaymentModels(organizationId);
-        if (result?.data?.length > 0) {
-          models = result.data
-            .map((a) => a.payment_model)
-            .filter((m) => m && m.is_active !== false);
-        }
-      }
-      // Fallback: list all active payment models if none assigned to org
-      if (models.length === 0) {
-        const all = await paymentModelService.getPaymentModels({ status: "active" });
-        models = (all?.data || []).filter((m) => m && m.is_active !== false);
-      }
+      const all = await paymentModelService.getPaymentModels({ status: "active" });
+      const models = (all?.data || []).filter((m) => m && m.is_active !== false);
       setPaymentModels(models);
     } catch (err) {
       console.error("Error fetching payment models:", err);
@@ -798,7 +785,7 @@ const CreateSalesForm = ({
     handleInputChange("retailerBranch", org.branch || "");
     setErrors((prev) => ({ ...prev, partnerName: null, state: null, branch: null }));
     fetchAvailableStoves();
-    fetchPaymentModels(org.id);
+    // Payment models are global — no need to refetch per partner.
   };
 
   const resetStoveSelection = () => {
@@ -1262,38 +1249,20 @@ const CreateSalesForm = ({
                 readOnly={isEditMode}
               />
             </FormField>
+
+            {/* Amount received */}
+            <FormField label="Amount Received (₦)" error={errors.amountReceived} htmlFor="amountReceived">
+              <Input
+                id="amountReceived"
+                type="text"
+                inputMode="numeric"
+                value={formatAmountInput(formData.amountReceived)}
+                onChange={(e) => handleInputChange("amountReceived", parseAmountInput(e.target.value))}
+                placeholder="Enter amount received"
+                className={errors.amountReceived ? "border-red-500" : ""}
+              />
+            </FormField>
           </div>
-
-          {/* Installment model summary */}
-          {isInstallment && selectedModel && (
-            <div className="mt-4 space-y-3">
-              <div className="bg-blue-50/60 border border-blue-200/60 rounded-lg p-4">
-                <Label className="text-base font-semibold">{selectedModel.name}</Label>
-                {selectedModel.description && <p className="text-sm text-muted-foreground mt-1 mb-3">{selectedModel.description}</p>}
-                <div className="grid grid-cols-3 gap-4 mt-2">
-                  <div>
-                    <Label>Price</Label>
-                    <p className="text-sm font-semibold mt-1">{formatCurrency(selectedModel.fixed_price)}</p>
-                  </div>
-                  <div>
-                    <Label>Duration</Label>
-                    <p className="text-sm font-semibold mt-1">{selectedModel.duration_months} months</p>
-                  </div>
-                  <div>
-                    <Label>Monthly ~</Label>
-                    <p className="text-sm font-semibold mt-1">{formatCurrency((selectedModel.fixed_price / selectedModel.duration_months).toFixed(0))}</p>
-                  </div>
-                </div>
-                {selectedModel.min_down_payment > 0 && (
-                  <p className="text-sm text-amber-700 mt-2 flex items-center gap-1">
-                    <Info className="h-3.5 w-3.5" />
-                    Suggested down payment (guide only): {formatCurrency(selectedModel.min_down_payment)}
-                  </p>
-                )}
-              </div>
-
-            </div>
-          )}
         </div>
 
         {/* Location */}

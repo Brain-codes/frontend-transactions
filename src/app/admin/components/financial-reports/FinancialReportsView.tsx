@@ -85,6 +85,7 @@ interface FinancialReportsViewProps {
   loadSales: () => Promise<{ success: boolean; data?: AdminSales[]; error?: string }>;
   onEditSale?: (sale: AdminSales) => void;
   onDeleteSale?: (sale: AdminSales) => void;
+  onCancelSale?: (sale: AdminSales) => void;
   onApproveSale?: (sale: AdminSales) => void;
   viewFrom?: "admin" | "superAdmin" | "agent" | "acsl_agent";
   selectedYear?: number;
@@ -102,7 +103,7 @@ const getAmountPaid = (sale: AdminSales): number =>
 const getAmountOwed = (sale: AdminSales): number =>
   sale.is_installment ? sale.amount - (sale.total_paid ?? 0) : 0;
 
-const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, onEditSale, onDeleteSale, onApproveSale, viewFrom = "admin", selectedYear: externalSelectedYear, onYearChange: externalOnYearChange, availableYears: externalAvailableYears, onExportReady, onSelectionChange, initialSearchTerm, initialPaymentStatus }) => {
+const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, onEditSale, onDeleteSale, onCancelSale, onApproveSale, viewFrom = "admin", selectedYear: externalSelectedYear, onYearChange: externalOnYearChange, availableYears: externalAvailableYears, onExportReady, onSelectionChange, initialSearchTerm, initialPaymentStatus }) => {
   const [allSales, setAllSales] = useState<AdminSales[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -403,6 +404,7 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
             onApproveSale={onApproveSale}
             onEditSale={onEditSale}
             onDeleteSale={onDeleteSale}
+            onCancelSale={onCancelSale}
             sortOrder={sortOrder}
             onToggleSort={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
             viewFrom={viewFrom === "acsl_agent" ? "agent" : viewFrom}

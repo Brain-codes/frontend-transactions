@@ -5,7 +5,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, History, Plus, Pencil, Trash2, Calendar, CheckCircle2, Clock, Eye } from "lucide-react";
+import { MoreVertical, History, Plus, Pencil, Trash2, Calendar, CheckCircle2, Clock, Eye, Ban } from "lucide-react";
 import { AdminSales } from "@/types/adminSales";
 
 interface FinancialReportRowActionsProps {
@@ -16,11 +16,12 @@ interface FinancialReportRowActionsProps {
   onApproveSale?: (sale: AdminSales) => void;
   onEditSale?: (sale: AdminSales) => void;
   onDeleteSale?: (sale: AdminSales) => void;
+  onCancelSale?: (sale: AdminSales) => void;
   viewFrom?: "admin" | "superAdmin" | "agent" | "partner";
 }
 
 const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
-  sale, onViewDetails, onViewHistory, onRecordPayment, onApproveSale, onEditSale, onDeleteSale, viewFrom = "admin",
+  sale, onViewDetails, onViewHistory, onRecordPayment, onApproveSale, onEditSale, onDeleteSale, onCancelSale, viewFrom = "admin",
 }) => {
   const isInstallment = sale.is_installment === true;
   const isFullyPaid = sale.payment_status === "fully_paid";
@@ -117,6 +118,17 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete Sale
+            </DropdownMenuItem>
+          )}
+
+          {/* Cancel Sale - available for admin/partner/superAdmin */}
+          {onCancelSale && viewFrom !== "agent" && (
+            <DropdownMenuItem
+              onClick={() => onCancelSale(sale)}
+              className="py-2 px-3 rounded-md hover:!bg-red-600 hover:!text-white cursor-pointer text-red-600"
+            >
+              <Ban className="mr-2 h-4 w-4" />
+              Cancel Sale
             </DropdownMenuItem>
           )}
 
