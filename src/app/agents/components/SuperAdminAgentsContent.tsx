@@ -2110,6 +2110,7 @@ export default function SuperAdminAgentsContent() {
             value: string;
             label: string;
             sub?: React.ReactNode;
+            onClick?: () => void;
           }> = [
             {
               gradient: "from-[#194977] to-[#2563EB]",
@@ -2134,7 +2135,8 @@ export default function SuperAdminAgentsContent() {
               Icon: Package,
               value: totalsReady ? totalAssigned.toLocaleString() : "—",
               label: "Assigned for Sale / Retrieval",
-              sub: "Unique stoves across all partners",
+              sub: "Click to view stove IDs",
+              onClick: () => setShowAssignedStovesModal(true),
             },
             {
               gradient: "from-[#047857] to-[#10B981]",
@@ -2154,10 +2156,14 @@ export default function SuperAdminAgentsContent() {
 
           return (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {cards.map(({ gradient, Icon, value, label, sub }) => (
+              {cards.map(({ gradient, Icon, value, label, sub, onClick }) => (
                 <div
                   key={label}
-                  className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md transition-all bg-gradient-to-br ${gradient}`}
+                  onClick={onClick}
+                  role={onClick ? "button" : undefined}
+                  tabIndex={onClick ? 0 : undefined}
+                  onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
+                  className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md transition-all bg-gradient-to-br ${gradient} ${onClick ? "cursor-pointer hover:shadow-lg hover:-translate-y-0.5" : ""}`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1 pr-3">
