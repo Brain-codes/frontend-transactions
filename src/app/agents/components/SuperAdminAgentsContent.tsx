@@ -3246,6 +3246,7 @@ export default function SuperAdminAgentsContent() {
         title="Unsold / Unretrieved Stoves — Stove IDs"
         filenamePrefix="unsold-stoves"
         showExport={true}
+        agents={agents}
       />
 
 
