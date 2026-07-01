@@ -519,12 +519,39 @@ const PartnerProfilesContent = () => {
           <Table>
             <TableHeader>
               <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
-                <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Partner</TableHead>
+                <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg cursor-pointer select-none" onClick={() => handleSort("partner")}>
+                  <span className="inline-flex items-center gap-1">
+                    Partner
+                    {sortConfig.key === "partner" ? (
+                      sortConfig.direction === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />
+                    )}
+                  </span>
+                </TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">State</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
-                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Assigned Agents</TableHead>
-                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Total Stoves Purchased</TableHead>
+                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("assigned_agents")}>
+                  <span className="inline-flex items-center justify-center gap-1">
+                    Assigned Agents
+                    {sortConfig.key === "assigned_agents" ? (
+                      sortConfig.direction === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />
+                    )}
+                  </span>
+                </TableHead>
+                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("total_stoves")}>
+                  <span className="inline-flex items-center justify-center gap-1">
+                    Total Stoves Purchased
+                    {sortConfig.key === "total_stoves" ? (
+                      sortConfig.direction === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />
+                    )}
+                  </span>
+                </TableHead>
                 <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
               </TableRow>
             </TableHeader>
