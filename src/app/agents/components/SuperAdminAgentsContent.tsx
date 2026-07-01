@@ -836,7 +836,7 @@ function StovesStatusModal({
   const { supabase } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<Array<{ stove_id: string; partner_name: string; state: string; branch: string; agent_name?: string }>>([]);
+  const [rows, setRows] = useState<Array<{ stove_id: string; partner_name: string; state: string; branch: string; agent_name?: string; sales_date?: string }>>([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
@@ -866,7 +866,7 @@ function StovesStatusModal({
           });
         }
 
-        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string; agent_name?: string }> = [];
+        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string; agent_name?: string; sales_date?: string }> = [];
 
         if (mode === "sold") {
           // Attribution-based: only stoves sold by the agents in this report.
@@ -881,7 +881,7 @@ function StovesStatusModal({
           }
 
           // 1. Fetch sales rows created by these agents, scoped to relevant orgs.
-          type SaleRow = { id: string; organization_id: string | null; created_by: string };
+          type SaleRow = { id: string; organization_id: string | null; created_by: string; sales_date?: string | null };
           const salesRows: SaleRow[] = [];
           const ABATCH = 100;
           for (let i = 0; i < agentIds.length; i += ABATCH) {
@@ -893,7 +893,7 @@ function StovesStatusModal({
               while (true) {
                 const { data, error: err } = await supabase
                   .from("sales")
-                  .select("id,organization_id,created_by,is_archived")
+                  .select("id,organization_id,created_by,is_archived,sales_date")
                   .in("created_by", aSlice)
                   .in("organization_id", oSlice)
                   .eq("is_archived", false)
@@ -904,6 +904,7 @@ function StovesStatusModal({
                   id: s.id,
                   organization_id: s.organization_id,
                   created_by: s.created_by,
+                  sales_date: s.sales_date || null,
                 }));
                 if (chunk.length < PAGE) break;
                 from += PAGE;
@@ -912,7 +913,11 @@ function StovesStatusModal({
           }
 
           const saleIdToAgent: Record<string, string> = {};
-          salesRows.forEach((s) => { saleIdToAgent[s.id] = agentNameById[s.created_by] || "—"; });
+          const saleIdToDate: Record<string, string> = {};
+          salesRows.forEach((s) => {
+            saleIdToAgent[s.id] = agentNameById[s.created_by] || "—";
+            saleIdToDate[s.id] = s.sales_date || "";
+          });
 
           // 2. Fetch stove_ids linked to those sales (authoritative stove list).
           const saleIds = Array.from(new Set(salesRows.map((s) => s.id)));
@@ -937,6 +942,7 @@ function StovesStatusModal({
                 state: meta.state,
                 branch: meta.branch,
                 agent_name: saleIdToAgent[s.sale_id] || "—",
+                sales_date: saleIdToDate[s.sale_id] || "",
               });
             });
           }
@@ -1014,6 +1020,7 @@ function StovesStatusModal({
                   partner_name: meta.name,
                   state: meta.state,
                   branch: meta.branch,
+                  sales_date: "",
                 });
               });
               if (chunk.length < PAGE) break;
@@ -1058,11 +1065,14 @@ function StovesStatusModal({
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const header = showAgentCol
-      ? ["Stove ID", "Partner Name", "State", "Branch", "Agent"]
+      ? ["Stove ID", "Partner Name", "State", "Branch", "Agent", "Sales Date"]
       : ["Stove ID", "Partner Name", "State", "Branch"];
     const body = filtered.map((r) => {
       const base = [esc(r.stove_id), esc(r.partner_name), esc(r.state), esc(r.branch)];
-      if (showAgentCol) base.push(esc(r.agent_name || "—"));
+      if (showAgentCol) {
+        base.push(esc(r.agent_name || "—"));
+        base.push(esc(r.sales_date ? format(new Date(r.sales_date), "dd MMM yyyy") : "—"));
+      }
       return base.join(",");
     });
     const csv = [header.join(","), ...body].join("\n");
@@ -1077,7 +1087,7 @@ function StovesStatusModal({
     URL.revokeObjectURL(url);
   };
 
-  const colCount = showAgentCol ? 5 : 4;
+  const colCount = showAgentCol ? 6 : 4;
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
@@ -1114,6 +1124,7 @@ function StovesStatusModal({
                 <TableHead>State</TableHead>
                 <TableHead>Branch</TableHead>
                 {showAgentCol && <TableHead>Agent</TableHead>}
+                {showAgentCol && <TableHead>Sales Date</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1129,6 +1140,7 @@ function StovesStatusModal({
                     <TableCell>{r.state}</TableCell>
                     <TableCell>{r.branch}</TableCell>
                     {showAgentCol && <TableCell>{r.agent_name || "—"}</TableCell>}
+                    {showAgentCol && <TableCell>{r.sales_date ? format(new Date(r.sales_date), "dd MMM yyyy") : "—"}</TableCell>}
                   </TableRow>
                 ))
               )}
