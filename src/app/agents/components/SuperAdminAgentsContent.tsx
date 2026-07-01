@@ -2878,6 +2878,12 @@ export default function SuperAdminAgentsContent() {
         orgIds={kpiAssignedOrgIds}
       />
 
+      <AgentsListModal
+        isOpen={showAgentsListModal}
+        onClose={() => setShowAgentsListModal(false)}
+        agents={agents}
+      />
+
 
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
