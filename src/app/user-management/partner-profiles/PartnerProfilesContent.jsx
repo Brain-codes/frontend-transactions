@@ -163,6 +163,8 @@ const PartnerProfilesContent = () => {
   const [filters, setFilters] = useState({ search: "", state: "", agentFilter: "" });
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
 
   const handleSort = (key) => {
     setSortConfig((prev) => {
