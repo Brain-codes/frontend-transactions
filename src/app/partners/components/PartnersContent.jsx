@@ -1202,6 +1202,7 @@ export default function PartnersContent() {
   const [editingPartnerOrg, setEditingPartnerOrg] = useState(null);
   const [loadingCredentialOrgId, setLoadingCredentialOrgId] = useState(null);
   const [transferHistoryOrg, setTransferHistoryOrg] = useState(null);
+  const [kpiModalMode, setKpiModalMode] = useState(null); // "purchased" | "sold" | "unsold" | null
 
   const [expandedOrgId, setExpandedOrgId] = useState(null);
   const [orgGroupedData, setOrgGroupedData] = useState({});
