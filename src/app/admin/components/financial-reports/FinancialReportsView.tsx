@@ -426,15 +426,15 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
       {paymentModalSale && (
         <RecordPaymentModal
           saleId={paymentModalSale.id}
-          remainingBalance={paymentModalSale.amount - (paymentModalSale.total_paid ?? 0)}
+          remainingBalance={getAmountOwed(paymentModalSale)}
           onClose={() => setPaymentModalSale(null)}
           onSuccess={handlePaymentSuccess}
           saleSummary={{
             transactionId: paymentModalSale.transaction_id,
             customerName: paymentModalSale.end_user_name,
             totalAmount: paymentModalSale.amount,
-            amountPaid: paymentModalSale.total_paid ?? 0,
-            amountOwed: paymentModalSale.amount - (paymentModalSale.total_paid ?? 0),
+            amountPaid: getAmountPaid(paymentModalSale),
+            amountOwed: getAmountOwed(paymentModalSale),
           }}
         />
       )}
