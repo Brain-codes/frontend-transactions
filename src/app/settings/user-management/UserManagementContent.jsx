@@ -1954,80 +1954,138 @@ const UserManagementPage = () => {
               })()}
 
               {/* Partner Assignment — shown for Partner and Partner Agent */}
-              {needsPartnerAssignment(userForm.role) && (
-                <div className="space-y-2 border border-[#eef3c4] rounded-md p-3 bg-[#f9fbed]">
-                  <Label className="text-sm font-semibold text-[#4a5d0f]">
-                    Assign Partners <span className="text-gray-400 font-normal text-xs">(optional)</span>
-                  </Label>
+              {needsPartnerAssignment(userForm.role) && (() => {
+                const isSingleSelect = userForm.role === "partner" || isOrganizationBoundAgentRole(userForm.role);
+                const isPartnerAgentRole = userForm.role === "partner_agent";
+                const selectedPartnerOrgs = allOrgs.filter((o) => selectedPartnerIds.has(o.id));
+                const query = partnerSearch.trim().toLowerCase();
+                // For partner_agent: only show results when the user has typed something.
+                const searchResults = isPartnerAgentRole
+                  ? (query
+                      ? allOrgs.filter(
+                          (o) =>
+                            !selectedPartnerIds.has(o.id) &&
+                            ((o.partner_name || "").toLowerCase().includes(query) ||
+                              (o.state || "").toLowerCase().includes(query))
+                        ).slice(0, 25)
+                      : [])
+                  : allOrgs.filter(
+                      (o) =>
+                        !query ||
+                        (o.partner_name || "").toLowerCase().includes(query) ||
+                        (o.state || "").toLowerCase().includes(query)
+                    );
 
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                    <Input
-                      placeholder="Search partners..."
-                      value={partnerSearch}
-                      onChange={(e) => setPartnerSearch(e.target.value)}
-                      className="pl-8 h-8 text-sm bg-white shadow-none border-gray-300"
-                    />
-                  </div>
+                return (
+                  <div className="space-y-2 border border-[#eef3c4] rounded-md p-3 bg-[#f9fbed]">
+                    <Label className="text-sm font-semibold text-[#4a5d0f]">
+                      {isPartnerAgentRole ? "Assign Partner" : "Assign Partners"}{" "}
+                      <span className="text-gray-400 font-normal text-xs">(optional)</span>
+                    </Label>
 
-                  {orgsLoading ? (
-                    <div className="flex items-center gap-2 text-xs text-gray-500 py-2">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />Loading partners...
-                    </div>
-                  ) : (
-                    <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
-                      {allOrgs
-                        .filter((o) =>
-                          !partnerSearch ||
-                          (o.partner_name || "").toLowerCase().includes(partnerSearch.toLowerCase()) ||
-                          (o.state || "").toLowerCase().includes(partnerSearch.toLowerCase())
-                        )
-                        .map((org) => {
-                          const checked = selectedPartnerIds.has(org.id);
-                          const isSingleSelect = userForm.role === "partner" || isOrganizationBoundAgentRole(userForm.role);
-                          return (
-                            <label
-                              key={org.id}
-                              className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-xs transition-colors ${checked ? "bg-[#eef3c4] text-[#4a5d0f]" : "hover:bg-white text-gray-700"}`}
+                    {/* Selected partner chip(s) — always visible when something is selected */}
+                    {selectedPartnerOrgs.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedPartnerOrgs.map((org) => (
+                          <span
+                            key={org.id}
+                            className="inline-flex items-center gap-1.5 bg-[#eef3c4] text-[#4a5d0f] rounded px-2 py-1 text-xs font-medium"
+                          >
+                            <span className="truncate max-w-[220px]">{org.partner_name}</span>
+                            {org.state && <span className="text-[#4a5d0f]/60">· {org.state}</span>}
+                            <button
+                              type="button"
                               onClick={() => {
-                                if (isSingleSelect) {
-                                  setSelectedPartnerIds(new Set([org.id]));
-                                }
+                                setSelectedPartnerIds((prev) => {
+                                  const next = new Set(prev);
+                                  next.delete(org.id);
+                                  return next;
+                                });
                               }}
+                              className="ml-0.5 text-[#4a5d0f]/70 hover:text-[#4a5d0f]"
+                              aria-label="Remove partner"
                             >
-                              {!isSingleSelect && (
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={() => {
-                                    setSelectedPartnerIds((prev) => {
-                                      const next = new Set(prev);
-                                      if (next.has(org.id)) next.delete(org.id);
-                                      else next.add(org.id);
-                                      return next;
-                                    });
-                                  }}
-                                  className="rounded accent-[#4a5d0f]"
-                                />
-                              )}
-                              <span className="flex-1 truncate font-medium">{org.partner_name}</span>
-                              {org.state && <span className="text-gray-400 shrink-0">{org.state}</span>}
-                            </label>
-                          );
-                        })}
-                      {allOrgs.length === 0 && (
-                        <p className="text-xs text-gray-400 py-2 text-center">No partners available</p>
-                      )}
-                    </div>
-                  )}
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
-                  {selectedPartnerIds.size > 0 && (
-                    <p className="text-xs text-[#4a5d0f] font-medium">
-                      {(userForm.role === "partner" || isOrganizationBoundAgentRole(userForm.role)) ? "1 partner selected" : `${selectedPartnerIds.size} partner${selectedPartnerIds.size > 1 ? "s" : ""} selected`}
-                    </p>
-                  )}
-                </div>
-              )}
+                    {/* Hide search for partner_agent once a partner is selected */}
+                    {(!isPartnerAgentRole || selectedPartnerOrgs.length === 0) && (
+                      <>
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                          <Input
+                            placeholder={isPartnerAgentRole ? "Type to search for a partner..." : "Search partners..."}
+                            value={partnerSearch}
+                            onChange={(e) => setPartnerSearch(e.target.value)}
+                            className="pl-8 h-8 text-sm bg-white shadow-none border-gray-300"
+                          />
+                        </div>
+
+                        {orgsLoading ? (
+                          <div className="flex items-center gap-2 text-xs text-gray-500 py-2">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />Loading partners...
+                          </div>
+                        ) : isPartnerAgentRole && !query ? (
+                          <p className="text-xs text-gray-400 py-2 text-center">
+                            Start typing to find a partner.
+                          </p>
+                        ) : (
+                          <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
+                            {searchResults.map((org) => {
+                              const checked = selectedPartnerIds.has(org.id);
+                              return (
+                                <label
+                                  key={org.id}
+                                  className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-xs transition-colors ${checked ? "bg-[#eef3c4] text-[#4a5d0f]" : "hover:bg-white text-gray-700"}`}
+                                  onClick={() => {
+                                    if (isSingleSelect) {
+                                      setSelectedPartnerIds(new Set([org.id]));
+                                      if (isPartnerAgentRole) setPartnerSearch("");
+                                    }
+                                  }}
+                                >
+                                  {!isSingleSelect && (
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => {
+                                        setSelectedPartnerIds((prev) => {
+                                          const next = new Set(prev);
+                                          if (next.has(org.id)) next.delete(org.id);
+                                          else next.add(org.id);
+                                          return next;
+                                        });
+                                      }}
+                                      className="rounded accent-[#4a5d0f]"
+                                    />
+                                  )}
+                                  <span className="flex-1 truncate font-medium">{org.partner_name}</span>
+                                  {org.state && <span className="text-gray-400 shrink-0">{org.state}</span>}
+                                </label>
+                              );
+                            })}
+                            {searchResults.length === 0 && (
+                              <p className="text-xs text-gray-400 py-2 text-center">
+                                {allOrgs.length === 0 ? "No partners available" : "No partners match your search."}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {selectedPartnerIds.size > 0 && !isPartnerAgentRole && (
+                      <p className="text-xs text-[#4a5d0f] font-medium">
+                        {isSingleSelect ? "1 partner selected" : `${selectedPartnerIds.size} partner${selectedPartnerIds.size > 1 ? "s" : ""} selected`}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Password Options — create only */}
               {formMode === "create" && (
