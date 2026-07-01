@@ -216,6 +216,8 @@ export default function StoveTransferHistoryContent() {
   const [totalCount, setTotalCount] = useState(0);
   const [selectedRecord, setSelectedRecord] = useState<TransferRecord | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [cancelRecord, setCancelRecord] = useState<TransferRecord | null>(null);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const startRecord = records.length > 0 ? (page - 1) * pageSize + 1 : 0;
