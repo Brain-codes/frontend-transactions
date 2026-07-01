@@ -2305,6 +2305,7 @@ export default function SuperAdminAgentsContent() {
               Icon: Users,
               value: totalAgents.toLocaleString(),
               label: "Total Agents",
+              onClick: () => setShowAgentsListModal(true),
               sub: (
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   {roleEntries.map(([r, c]) => (
