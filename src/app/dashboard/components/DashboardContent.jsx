@@ -491,12 +491,6 @@ const DashboardContent = ({
                 { name: "Sold", value: sold, color: "#4a5d0f" },
                 { name: "Available", value: available, color: "#a8c34a" },
               ];
-              const items = [
-                { label: "STOVES SOLD TO PARTNERS", value: received, color: "#1f2937", pct: null },
-                { label: "STOVES BOUGHT BY END USERS", value: sold, color: "#4a5d0f", pct: soldPct },
-                { label: "UNSOLD STOVES WITH PARTNERS", value: available, color: "#a8c34a", pct: availPct },
-
-              ];
               const modelChartData = salesModelData.map((m, i) => ({
                 name: m.model,
                 value: m.count,
