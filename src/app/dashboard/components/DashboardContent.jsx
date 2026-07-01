@@ -765,23 +765,6 @@ const DashboardContent = ({
                       );
                     })()}
 
-                    {/* Inventory metrics row */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                      {items.map((it) => (
-                        <div key={it.label} className="flex items-center justify-between bg-[#fafafa] rounded-lg px-4 py-3">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ background: it.color }} />
-                            <span className="text-sm font-medium text-gray-700 truncate">{it.label}</span>
-                          </div>
-                          <div className="flex items-baseline gap-2 shrink-0">
-                            <span className="text-lg font-bold text-gray-900">{it.value.toLocaleString()}</span>
-                            {it.pct !== null && (
-                              <span className="text-xs text-gray-400">{it.pct}%</span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
 
                     {/* Divider */}
                     <div className="my-5 flex items-center gap-3">
