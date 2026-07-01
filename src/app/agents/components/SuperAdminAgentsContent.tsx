@@ -802,6 +802,152 @@ function AssignedStovesModal({
   );
 }
 
+function AgentsListModal({
+  isOpen,
+  onClose,
+  agents,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  agents: AcslAgent[];
+}) {
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 15;
+
+  useEffect(() => { if (isOpen) { setSearch(""); setRoleFilter("all"); setPage(1); } }, [isOpen]);
+  useEffect(() => { setPage(1); }, [search, roleFilter]);
+
+  const roleOptions = useMemo(() => {
+    const s = new Set<string>();
+    agents.forEach((a) => s.add(a.role));
+    return Array.from(s).sort();
+  }, [agents]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return agents.filter((a) => {
+      if (roleFilter !== "all" && a.role !== roleFilter) return false;
+      if (!q) return true;
+      return (
+        (a.full_name || "").toLowerCase().includes(q) ||
+        (a.email || "").toLowerCase().includes(q) ||
+        (a.phone || "").toLowerCase().includes(q) ||
+        (a.role || "").toLowerCase().includes(q)
+      );
+    });
+  }, [agents, search, roleFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const exportCsv = () => {
+    const esc = (v: any) => {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ["Full Name", "Role", "Email", "Phone", "Status", "Assigned Partners", "Assigned States", "Created"];
+    const body = filtered.map((a) => [
+      esc(a.full_name), esc(ROLE_LABELS[a.role] || a.role), esc(a.email), esc(a.phone || ""),
+      esc(a.status), esc(a.total_partners_count ?? a.assigned_organizations_count ?? 0),
+      esc(a.assigned_states_count ?? 0),
+      esc(a.created_at ? new Date(a.created_at).toISOString().split("T")[0] : ""),
+    ].join(","));
+    const csv = [header.join(","), ...body].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `agents-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Total Agents — Details</DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center gap-2 mt-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, email, phone or role..."
+              className="pl-8"
+            />
+          </div>
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="border rounded px-2 py-2 text-sm bg-white"
+          >
+            <option value="all">All Roles</option>
+            {roleOptions.map((r) => (
+              <option key={r} value={r}>{ROLE_LABELS[r] || r}</option>
+            ))}
+          </select>
+          <Button onClick={exportCsv} disabled={filtered.length === 0} className="bg-black text-white hover:bg-black/80 shadow-none">
+            <Download className="h-4 w-4 mr-2" />Export
+          </Button>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          {`${filtered.length.toLocaleString()} agent${filtered.length === 1 ? "" : "s"}`}
+        </p>
+        <div className="flex-1 overflow-auto border rounded mt-2">
+          <Table>
+            <TableHeader className="bg-gray-50 sticky top-0">
+              <TableRow>
+                <TableHead>Full Name</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Partners</TableHead>
+                <TableHead className="text-right">States</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginated.length === 0 ? (
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500">No agents found</TableCell></TableRow>
+              ) : (
+                paginated.map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell className="font-medium">{a.full_name}</TableCell>
+                    <TableCell className="text-xs">{ROLE_LABELS[a.role] || a.role}</TableCell>
+                    <TableCell className="text-sm">{a.email}</TableCell>
+                    <TableCell className="text-sm">{a.phone || "—"}</TableCell>
+                    <TableCell className="text-xs capitalize">{a.status}</TableCell>
+                    <TableCell className="text-right">{a.total_partners_count ?? a.assigned_organizations_count ?? 0}</TableCell>
+                    <TableCell className="text-right">{a.assigned_states_count ?? 0}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-3 text-sm">
+            <span className="text-gray-600">Page {safePage} of {totalPages}</span>
+            <div className="flex gap-1">
+              <Button variant="outline" size="sm" disabled={safePage === 1} onClick={() => setPage(safePage - 1)}>Prev</Button>
+              <Button variant="outline" size="sm" disabled={safePage === totalPages} onClick={() => setPage(safePage + 1)}>Next</Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+
 function AgentPartnersModal({
   agent,
   isOpen,
