@@ -644,21 +644,21 @@ function AssignedStovesModal({
       setLoading(true);
       try {
         // Fetch org name/state map
-        const orgMap: Record<string, { name: string; state: string }> = {};
+        const orgMap: Record<string, { name: string; state: string; branch: string }> = {};
         const OBATCH = 100;
         for (let i = 0; i < orgIds.length; i += OBATCH) {
           const slice = orgIds.slice(i, i + OBATCH);
           const { data: orgs } = await supabase
             .from("organizations")
-            .select("id,partner_name,state")
+            .select("id,partner_name,state,branch")
             .in("id", slice);
           (orgs || []).forEach((o: any) => {
-            orgMap[o.id] = { name: o.partner_name || "—", state: o.state || "—" };
+            orgMap[o.id] = { name: o.partner_name || "—", state: o.state || "—", branch: o.branch || "—" };
           });
         }
 
         // Fetch stove IDs (available/unsold) across orgs
-        const collected: Array<{ stove_id: string; partner_name: string; state: string }> = [];
+        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string }> = [];
         const BATCH = 100;
         for (let i = 0; i < orgIds.length; i += BATCH) {
           const slice = orgIds.slice(i, i + BATCH);
@@ -675,11 +675,12 @@ function AssignedStovesModal({
             if (err) throw err;
             const chunk = data || [];
             chunk.forEach((s: any) => {
-              const meta = orgMap[s.organization_id] || { name: "—", state: "—" };
+              const meta = orgMap[s.organization_id] || { name: "—", state: "—", branch: "—" };
               collected.push({
                 stove_id: s.stove_id,
                 partner_name: meta.name,
                 state: meta.state,
+                branch: meta.branch,
               });
             });
             if (chunk.length < PAGE) break;
