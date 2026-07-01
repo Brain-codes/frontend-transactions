@@ -1,6 +1,8 @@
 
 import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "@tanstack/react-router";
+
 import DashboardLayout from "../../components/DashboardLayout";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
