@@ -881,7 +881,7 @@ function StovesStatusModal({
           }
 
           // 1. Fetch sales rows created by these agents, scoped to relevant orgs.
-          type SaleRow = { id: string; organization_id: string | null; created_by: string };
+          type SaleRow = { id: string; organization_id: string | null; created_by: string; sales_date?: string | null };
           const salesRows: SaleRow[] = [];
           const ABATCH = 100;
           for (let i = 0; i < agentIds.length; i += ABATCH) {
@@ -893,7 +893,7 @@ function StovesStatusModal({
               while (true) {
                 const { data, error: err } = await supabase
                   .from("sales")
-                  .select("id,organization_id,created_by,is_archived")
+                  .select("id,organization_id,created_by,is_archived,sales_date")
                   .in("created_by", aSlice)
                   .in("organization_id", oSlice)
                   .eq("is_archived", false)
@@ -904,6 +904,7 @@ function StovesStatusModal({
                   id: s.id,
                   organization_id: s.organization_id,
                   created_by: s.created_by,
+                  sales_date: s.sales_date || null,
                 }));
                 if (chunk.length < PAGE) break;
                 from += PAGE;
@@ -912,7 +913,11 @@ function StovesStatusModal({
           }
 
           const saleIdToAgent: Record<string, string> = {};
-          salesRows.forEach((s) => { saleIdToAgent[s.id] = agentNameById[s.created_by] || "—"; });
+          const saleIdToDate: Record<string, string> = {};
+          salesRows.forEach((s) => {
+            saleIdToAgent[s.id] = agentNameById[s.created_by] || "—";
+            saleIdToDate[s.id] = s.sales_date || "";
+          });
 
           // 2. Fetch stove_ids linked to those sales (authoritative stove list).
           const saleIds = Array.from(new Set(salesRows.map((s) => s.id)));
