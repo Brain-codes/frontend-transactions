@@ -47,6 +47,28 @@ if (linkError || !orgModelLink) {
 Keep everything else (fetch the model, check `is_active`, use `fixed_price`, validate
 `min_down_payment`). The net effect: any active payment model is accepted for any org.
 
+## Installment request contract — `create-sale`
+
+When creating an installment sale, the request body **must** use these exact field
+names. `create-sale` reads only these; any other name (e.g. `downPayment`,
+`initialPayment`, `firstPayment`, `downPaymentAmount`, `amountReceived`) is ignored
+and the down payment is treated as `0`.
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `isInstallment` | boolean | yes | Must be `true` to enter the installment path. |
+| `paymentModelId` | uuid | yes | Must reference an **active** payment model. |
+| `initialPaymentAmount` | number | yes | The down payment. Must be `> 0` and `>= min_down_payment`, and `<= fixed_price`. |
+| `initialPaymentMethod` | string | no | Defaults to `"cash"`. |
+| `initialPaymentProofImageId` | uuid | no | Empty string is normalized to `null`. |
+
+Notes:
+- For installment sales the sale `amount` is taken from the model's `fixed_price`;
+  the client-supplied `amount` is ignored.
+- A missing/zero/non-numeric `initialPaymentAmount` returns
+  `"A down payment (initialPaymentAmount) is required for installment sales"` (400),
+  **not** the minimum-down-payment message.
+
 ## Required web UI changes (informational)
 
 - **Point of sale:** list **all active** payment models (`GET payment-models`) instead of
