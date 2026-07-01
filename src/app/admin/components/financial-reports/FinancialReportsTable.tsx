@@ -129,7 +129,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
             {data.map((sale, idx) => (
               <TableRow
                 key={sale.id}
-                className={`${idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]"} hover:bg-gray-50`}
+                className={`${idx % 2 === 0 ? "bg-white" : "bg-[#f9fafb]"} hover:bg-gray-100`}
               >
                 <TableCell className="py-1 px-1 font-medium whitespace-nowrap">{sale.transaction_id || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{formatDate(sale.sales_date || sale.created_at)}</TableCell>
