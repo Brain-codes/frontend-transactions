@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolveAssignedOrgIds } from "../_shared/resolveAssignedOrgIds.ts";
 
@@ -18,7 +17,7 @@ function jsonError(message: string, status = 400): Response {
   );
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   console.log("➡️ Incoming request:", req.method, req.url);
 
   if (req.method === "OPTIONS") {
@@ -55,6 +54,7 @@ serve(async (req) => {
       partnerName,
       retailerBranch,
       amount,
+      amountReceived,
       signature,
       addressData,
       stoveImageId,
@@ -145,6 +145,111 @@ serve(async (req) => {
 
     console.log("🏢 Resolved organization ID:", organizationId);
 
+    // ── Required-field validation ─────────────────────────────────────────────
+    // Reject with a field-specific message rather than silently writing a row.
+    const isBlank = (v: unknown) =>
+      v === null || v === undefined || String(v).trim() === "";
+
+    const requiredFieldChecks: Array<[unknown, string]> = [
+      [transactionId, "Transaction ID is required"],
+      [salesDate, "Sales date is required"],
+      [contactPerson, "Contact person is required"],
+      [contactPhone, "Contact phone is required"],
+      [endUserName, "End user name is required"],
+      [phone, "Phone number is required"],
+      [partnerName, "Partner name is required"],
+      [stoveSerialNo, "Stove serial number is required"],
+    ];
+    for (const [value, message] of requiredFieldChecks) {
+      if (isBlank(value)) {
+        return jsonError(message, 400);
+      }
+    }
+
+    // ── Amount validation ─────────────────────────────────────────────────────
+    // Installment sales derive their amount from the payment model below, so the
+    // client-supplied `amount` is only validated for the direct-payment path.
+    const AMOUNT_CEILING = 900_000_000; // ₦900,000,000 upper bound
+    if (!isInstallment) {
+      const parsedAmount = Number(amount);
+      if (amount === null || amount === undefined || Number.isNaN(parsedAmount)) {
+        return jsonError("Amount is required and must be a number", 400);
+      }
+      if (parsedAmount <= 0) {
+        return jsonError("Amount must be greater than zero", 400);
+      }
+      if (parsedAmount > AMOUNT_CEILING) {
+        return jsonError(
+          `Amount exceeds the maximum allowed of ₦${AMOUNT_CEILING.toLocaleString()}`,
+          400
+        );
+      }
+    }
+
+    // ── Terms & conditions consent ────────────────────────────────────────────
+    const requiredConsents = [
+      "poaGoverned",
+      "monitoring",
+      "noResell",
+      "emissionReductions",
+      "noExport",
+      "demonstration",
+    ];
+    if (!termsAccepted || typeof termsAccepted !== "object") {
+      return jsonError("Terms & conditions must be accepted", 400);
+    }
+    const missingConsents = requiredConsents.filter(
+      (key) => termsAccepted[key] !== true
+    );
+    if (missingConsents.length > 0) {
+      return jsonError(
+        `All terms & conditions must be accepted (missing: ${missingConsents.join(", ")})`,
+        400
+      );
+    }
+
+    // ── Duplicate transaction ID ──────────────────────────────────────────────
+    const { data: existingTxn, error: txnLookupError } = await supabase
+      .from("sales")
+      .select("id")
+      .eq("transaction_id", transactionId)
+      .maybeSingle();
+    if (txnLookupError) {
+      console.error("❌ Transaction ID lookup failed:", txnLookupError.message);
+      return jsonError("Could not verify transaction ID uniqueness", 500);
+    }
+    if (existingTxn) {
+      return jsonError(
+        `A sale with transaction ID "${transactionId}" already exists`,
+        409
+      );
+    }
+
+    // ── Stove availability ────────────────────────────────────────────────────
+    // The stove must belong to this org and must not already be sold.
+    const { data: stoveRecord, error: stoveLookupError } = await supabase
+      .from("stove_ids")
+      .select("stove_id, status")
+      .eq("stove_id", stoveSerialNo)
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+    if (stoveLookupError) {
+      console.error("❌ Stove lookup failed:", stoveLookupError.message);
+      return jsonError("Could not verify stove availability", 500);
+    }
+    if (!stoveRecord) {
+      return jsonError(
+        `Stove serial number "${stoveSerialNo}" is not registered to this organization`,
+        400
+      );
+    }
+    if (stoveRecord.status === "sold") {
+      return jsonError(
+        `Stove serial number "${stoveSerialNo}" has already been sold`,
+        409
+      );
+    }
+
     // Normalize optional proof image empty string to null
     const safeInitialPaymentProofImageId =
       initialPaymentProofImageId && String(initialPaymentProofImageId).trim() !== ""
@@ -180,16 +285,14 @@ serve(async (req) => {
       // Use model's fixed price as the sale amount
       saleAmount = paymentModel.fixed_price;
 
-      // Validate initial payment
-      const initialAmt = parseFloat(initialPaymentAmount) || 0;
-      if (paymentModel.min_down_payment && initialAmt < paymentModel.min_down_payment) {
-        return jsonError(
-          `Minimum down payment is ₦${paymentModel.min_down_payment}`
-        );
-      }
-      if (initialAmt > saleAmount) {
-        return jsonError("Initial payment cannot exceed the total price");
-      }
+      // Open-ended, optional down payment. The initial payment is whatever the
+      // customer actually pays — taken from `initialPaymentAmount`, falling back
+      // to `amountReceived`. No down payment is required (defaults to 0), there is
+      // no minimum, and it may exceed the model's fixed price.
+      const rawInitial =
+        initialPaymentAmount ?? amountReceived;
+      const parsedInitial = parseFloat(rawInitial);
+      const initialAmt = Number.isNaN(parsedInitial) ? 0 : Math.max(0, parsedInitial);
 
       installmentData = {
         modelId: paymentModelId,
@@ -203,6 +306,20 @@ serve(async (req) => {
       console.log("✅ Installment validated:", paymentModel.name, "Price:", saleAmount);
     }
 
+    // ── Amount received validation ────────────────────────────────────────────
+    // Sales amount is the model's fixed price (the floor). Amount received is what
+    // the customer actually pays and is open-ended — it may be above the sales
+    // amount. Only reject clearly invalid values (non-numeric / negative).
+    if (amountReceived !== null && amountReceived !== undefined && String(amountReceived).trim() !== "") {
+      const parsedReceived = Number(amountReceived);
+      if (Number.isNaN(parsedReceived)) {
+        return jsonError("Amount received must be a number", 400);
+      }
+      if (parsedReceived < 0) {
+        return jsonError("Amount received cannot be negative", 400);
+      }
+    }
+
     // Validate required image IDs — reject empty strings (Flutter must upload before submitting)
     if (!stoveImageId || String(stoveImageId).trim() === "") {
       return jsonError("Stove image is required", 400);
@@ -211,6 +328,12 @@ serve(async (req) => {
     // if (!agreementImageId || String(agreementImageId).trim() === "") {
     //   return jsonError("Agreement image is required", 400);
     // }
+    // Agreement image is optional — normalize empty string to null so the
+    // uuid column doesn't reject "" with a 22P02 error.
+    const safeAgreementImageId =
+      agreementImageId && String(agreementImageId).trim() !== ""
+        ? agreementImageId
+        : null;
     // ── Insert address ────────────────────────────────────────────────────────
     console.log("📍 Inserting address:", addressData);
     const { data: address, error: addressError } = await supabase
@@ -345,7 +468,7 @@ console.log("📋 Sale status evaluation:", {
           organization_id: organizationId,
           address_id: address.id,
           stove_image_id: stoveImageId,
-          agreement_image_id: agreementImageId,
+          agreement_image_id: safeAgreementImageId,
           is_installment: !!installmentData,
           payment_model_id: installmentData?.modelId || null,
           total_paid: installmentData?.totalPaid || 0,

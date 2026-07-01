@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withCors } from "./cors.ts";
 import { authenticateUser } from "./authenticate.ts";
@@ -8,7 +7,7 @@ import { fetchRelatedData } from "./fetch-related.ts";
 import { convertToCSV, prepareExportData } from "./export.ts";
 import { transformResponse } from "./format-transformer.ts";
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   console.log("🚀 Sales API started");
   console.log("📥 Request:", req.method, req.url);
 
@@ -137,8 +136,9 @@ async function executeMainLogic(req: Request) {
     );
     console.log(`✅ Found ${sales?.length || 0} sales records`);
 
-    // Only fetch additional related data if specifically requested and not already included
-    if (sales && sales.length > 0 && needsAdditionalFetching(filters)) {
+    // Always run related-data fetching when we have rows: the creator/agent name
+    // is fetched unconditionally, and other joins remain gated by their flags.
+    if (sales && sales.length > 0) {
       console.log("🔗 Fetching additional related data...");
       await fetchRelatedData(adminSupabase, sales, filters);
       console.log("✅ Additional data attached");

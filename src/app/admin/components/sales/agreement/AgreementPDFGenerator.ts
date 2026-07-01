@@ -103,11 +103,8 @@ export const generateAgreementPDF = async (sale: any): Promise<jsPDF> => {
   const terms = sale?.terms_accepted || {};
   const isCredit = sale?.is_installment === true;
   const potQty = Number(sale?.pot_quantity ?? -1);
-  const creatorName = sale?.creator
-    ? sale.creator.role === "agent"
-      ? sale.creator.full_name
-      : "Admin"
-    : sale?.agent_name || "";
+  const creatorName =
+    sale?.creator?.full_name || sale?.agent_name || "";
 
   let y = 8;
 

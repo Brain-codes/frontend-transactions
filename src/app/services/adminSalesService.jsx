@@ -1,9 +1,12 @@
 // Admin Sales Service for sales management operations
 import { createClientComponentClient } from "@/lib/supabaseClient";
 import tokenManager from "../../utils/tokenManager";
+import { supabaseUrl, supabaseFunctionsUrl } from "@/lib/supabaseConfig";
 
-const API_BASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const API_FUNCTIONS_URL = `${API_BASE_URL}/functions/v1`;
+// Use the central config helper — it resolves VITE_/NEXT_PUBLIC_/REACT_APP_ env
+// prefixes and falls back safely, so the base URL is never `undefined`.
+const API_BASE_URL = supabaseUrl;
+const API_FUNCTIONS_URL = supabaseFunctionsUrl;
 
 class AdminSalesService {
   constructor() {
