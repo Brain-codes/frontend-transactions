@@ -3000,30 +3000,48 @@ export default function SuperAdminAgentsContent() {
                           {(agent.assigned_organizations_count ?? 0).toLocaleString()}
                         </button>
                       </TableCell>
-                      {/* Stoves split into 3 columns */}
+                      {/* Stoves split into 3 columns — clickable pills like Partners Performance report */}
                       <TableCell className="text-center">
                         {agent.stove_summary ? (
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                          <button
+                            type="button"
+                            onClick={() => setRowStoveModal({ agent, mode: "assigned" })}
+                            disabled={agent.stove_summary.received === 0 || !(agent.direct_org_ids && agent.direct_org_ids.length)}
+                            className="inline-flex items-center justify-center min-w-[40px] px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            title="Records to collect"
+                          >
                             {agent.stove_summary.received.toLocaleString()}
-                          </span>
+                          </button>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
                       </TableCell>
                       <TableCell className="text-center">
                         {agent.stove_summary ? (
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                          <button
+                            type="button"
+                            onClick={() => setRowStoveModal({ agent, mode: "sold" })}
+                            disabled={agent.stove_summary.sold === 0 || !(agent.direct_org_ids && agent.direct_org_ids.length)}
+                            className="inline-flex items-center justify-center min-w-[40px] px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            title="Records collected"
+                          >
                             {agent.stove_summary.sold.toLocaleString()}
-                          </span>
+                          </button>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
                       </TableCell>
                       <TableCell className="text-center">
                         {agent.stove_summary ? (
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                          <button
+                            type="button"
+                            onClick={() => setRowStoveModal({ agent, mode: "unsold" })}
+                            disabled={agent.stove_summary.available === 0 || !(agent.direct_org_ids && agent.direct_org_ids.length)}
+                            className="inline-flex items-center justify-center min-w-[40px] px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            title="Records not collected"
+                          >
                             {agent.stove_summary.available.toLocaleString()}
-                          </span>
+                          </button>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
