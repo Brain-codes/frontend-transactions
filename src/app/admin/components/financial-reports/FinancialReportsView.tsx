@@ -103,7 +103,7 @@ const getAmountPaid = (sale: AdminSales): number =>
 const getAmountOwed = (sale: AdminSales): number =>
   sale.is_installment ? sale.amount - (sale.total_paid ?? 0) : 0;
 
-const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, onEditSale, onDeleteSale, onApproveSale, viewFrom = "admin", selectedYear: externalSelectedYear, onYearChange: externalOnYearChange, availableYears: externalAvailableYears, onExportReady, onSelectionChange, initialSearchTerm, initialPaymentStatus }) => {
+const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, onEditSale, onDeleteSale, onCancelSale, onApproveSale, viewFrom = "admin", selectedYear: externalSelectedYear, onYearChange: externalOnYearChange, availableYears: externalAvailableYears, onExportReady, onSelectionChange, initialSearchTerm, initialPaymentStatus }) => {
   const [allSales, setAllSales] = useState<AdminSales[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
