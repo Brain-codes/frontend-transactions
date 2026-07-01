@@ -158,18 +158,7 @@ serve(async (req) => {
     if (isInstallment && paymentModelId) {
       console.log("💳 Installment mode: validating payment model", paymentModelId);
 
-      // Verify org has access to this model
-      const { data: orgModelLink, error: linkError } = await supabase
-        .from("organization_payment_models")
-        .select("id")
-        .eq("organization_id", organizationId)
-        .eq("payment_model_id", paymentModelId)
-        .maybeSingle();
-
-      if (linkError || !orgModelLink) {
-        return jsonError("This organization does not have access to the selected payment model", 403);
-      }
-
+      // Any active payment model is available to any org — no per-org gating.
       // Fetch model details
       const { data: paymentModel, error: modelError } = await supabase
         .from("payment_models")
