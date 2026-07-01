@@ -748,7 +748,7 @@ function AssignedStovesModal({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search stove ID, partner or state..."
+              placeholder="Search stove ID, partner, state or branch..."
               className="pl-8"
             />
           </div>
