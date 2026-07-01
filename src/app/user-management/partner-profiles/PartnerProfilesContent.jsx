@@ -156,7 +156,7 @@ const PartnerProfilesContent = () => {
     setStovesModalSearch("");
     try {
       const { data, error } = await supabase
-        .from("stove_ids")
+        .from("stove_ids_base")
         .select("id, stove_id, status, created_at")
         .eq("organization_id", partner.id)
         .eq("is_archived", false)
