@@ -240,11 +240,12 @@ serve(async (req) => {
       console.error("Error fetching pending sales count:", pendingCountError);
     }
 
-    // Get financial + chart data (year-filtered)
+    // Get financial + chart data (year-filtered, exclude cancelled)
     let salesQuery = supabase
       .from("sales")
       .select("amount, total_paid, is_installment, payment_status, state_backup, payment_model_id")
       .eq("organization_id", organizationId)
+      .eq("is_archived", false)
       .not("amount", "is", null);
 
     if (dateFrom) salesQuery = salesQuery.gte("sales_date", dateFrom);
