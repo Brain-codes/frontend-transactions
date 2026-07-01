@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
-import MonthlySalesChart from "../../partners/components/MonthlySalesChart";
+import AgentRecordsChart from "./AgentRecordsChart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -2881,7 +2881,7 @@ export default function SuperAdminAgentsContent() {
         )}
 
         {/* Monthly Records Collection Chart */}
-        <MonthlySalesChart title="Records Collected" tooltipLabel="Collected" />
+        <AgentRecordsChart title="Records Collected" tooltipLabel="Collected" />
 
         {/* Active filter banner */}
         {sortMode !== "default" && (
