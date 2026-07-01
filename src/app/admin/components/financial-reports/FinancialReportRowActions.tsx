@@ -36,16 +36,16 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
 
   return (
     <div className="flex items-center justify-center gap-1">
-      {/* Pay button */}
+      {/* Record Payment button */}
       {showPayButton && (
         <Button
           variant="outline"
           size="sm"
-          className="h-7 text-xs flex items-center gap-1"
+          className="h-7 text-xs flex items-center gap-1 border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4]"
           onClick={() => onRecordPayment(sale)}
         >
           <Plus className="h-3 w-3" />
-          Pay
+          Record Payment
         </Button>
       )}
 
