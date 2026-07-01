@@ -685,7 +685,17 @@ const AgentsProfilesContent = () => {
                         );
                       })()}
                     </TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      <Button
+                        size="sm"
+                        className="h-8 rounded-none bg-[#4a5d0f] hover:bg-[#3d4d0c] text-white text-xs font-medium px-3"
+                        onClick={() => navigate({ to: "/user-management/users", search: { edit: a.id } })}
+                      >
+                        Manage Agent
+                      </Button>
+                    </TableCell>
                   </TableRow>
+
                 ))
               )}
             </TableBody>
