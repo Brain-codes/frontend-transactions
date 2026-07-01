@@ -1,70 +1,37 @@
 ## Problem
 
-On **Agents Profile**, the ACSL Agent shows 3 assigned partners (ABUBAKAR ISYAKU AHMED (DCS), Adamu Muhammad Garki, Abdullahi Said). On **Partner Profiles** those same 3 partners show 0 assigned agents. Both views read from the same two assignment tables (`super_admin_agent_organizations` and `acsl_agent_organizations`), so the mismatch is a query/lookup asymmetry — not missing data.
+On the ACSL Agents Performance report, the "Assigned for sale / Retrieval" KPI and the "Unsold / Unretrieved Stoves" KPI both show the same value (144), even after 1 stove has been sold. Expected: Assigned = 144, Sold = 1, Unsold = 143.
 
-## Likely root causes (to confirm during implementation)
+**Root cause:** the "Assigned" KPI is currently computed from `stove_ids.status != 'sold'` (i.e. only *available* stoves), so it already excludes sold stoves. Then Unsold reuses that same available count. The sold stove is never counted into the assigned pool, so subtracting sold has no visible effect.
 
-1. **Column-resolution asymmetry.** `resolveAgentCol()` in `PartnerProfilesContent.jsx` picks the first candidate column that doesn't error. If both `agent_id` and `user_id` exist on a table but only one is actually populated, the wrong column can be picked and every `.eq(col, agentId)` returns 0 rows. The Agent view resolves the column against `super_admin_agent_organizations` only, so it can succeed while the Partner view silently picks the wrong column on the sibling table.
-2. **Partner-side query direction.** Partner view filters assignment rows by `organization_id`; agent view filters by `agent_id`. Any soft-delete / active flag (e.g. `is_active`, `deleted_at`, `unassigned_at`) on the assignment row would be invisible from one side but not the other. Need to inspect the actual row for one of those 3 partners.
-3. **Cache staleness.** `agentCounts` is populated lazily per visible page and never invalidated after an assignment is made in the ACSL Agents modal, so a freshly-assigned partner keeps its stale 0.
+## Fix (frontend only, `src/app/agents/components/SuperAdminAgentsContent.tsx`)
 
-## Fix
+Redefine the three KPIs so they behave as the user expects:
 
-### 1. Diagnose against live data (before code changes)
+1. **Assigned for sale / Retrieval** = every non-archived stove at the agents' directly-assigned partner orgs, regardless of status (`available` + `sold` + any other). This is the fixed pool of stoves handed to the agent group to sell.
+2. **Stoves Sold / Retrieved** = unchanged (attribution-based: sales `created_by` these agents at these orgs, non-archived).
+3. **Unsold / Unretrieved Stoves** = `Assigned − Sold`.
 
-Run against Supabase for one of the 3 partners (e.g. Abdullahi Said) and the ACSL Agent's id:
+### KPI computation changes
 
-```sql
--- Confirm the assignment rows exist and see every column
-select * from public.super_admin_agent_organizations
- where organization_id = '<partner_id>';
-select * from public.acsl_agent_organizations
- where organization_id = '<partner_id>';
+- Replace the current "count available stoves per org" query with a "count all non-archived stoves per org" query used to build `globalAssigned`.
+- Keep a parallel map of *available* stove IDs per org (needed for the Unsold modal and for the per-agent `stove_summary.available` column already shown in the table).
+- Set `stoveTotals.assigned = globalAssigned` (all stoves) and `stoveTotals.unsold = max(0, globalAssigned − globalSold)`.
+- Per-agent row `stove_summary`: keep `received` = all stoves at that agent's orgs, `sold` = attribution sold, `available` = received − sold (already the pattern used in the table).
 
--- Confirm which columns actually hold the agent id
-select column_name, data_type
-  from information_schema.columns
- where table_schema='public'
-   and table_name in ('super_admin_agent_organizations','acsl_agent_organizations')
- order by table_name, ordinal_position;
-```
+### Modal changes
 
-This tells us definitively (a) which column stores the agent id per table, and (b) whether there's an `is_active`/`deleted_at` column the Partner view is ignoring.
+- **Assigned modal** (`mode="assigned"` — new mode, or reuse existing): list every non-archived stove at the org set, showing status. Columns: Stove ID, Partner, State, Branch, Status. Include export + search.
+- **Unsold modal** (`mode="unsold"`): fetch all non-archived stoves at the org set, then exclude any stove IDs that appear as sold-by-these-agents (compute the sold ID set the same way the Sold modal does, then filter). Result count matches `Assigned − Sold`.
+- **Sold modal**: unchanged.
 
-### 2. Rewrite the Partner-side agent lookup so it mirrors the Agent view exactly
+### Wiring
 
-In `src/app/user-management/partner-profiles/PartnerProfilesContent.jsx`:
+- The "Assigned for sale / Retrieval" KPI card currently opens `AssignedStovesModal`. Point it at the new all-status query so its total matches the KPI (currently it shows 144 because that modal also queried available-only). After the change both the card and the modal show the full assigned pool.
+- No schema changes, no service changes, no changes to sidebar/routing.
 
-- Replace `resolveAgentCol()` with a **fixed, per-table column map** derived from the SQL check above (no more "first column that doesn't error" heuristic).
-- In `fetchAssignedAgentIdsFromTable`, honour any active/deleted flag the schema uses (e.g. `.is('deleted_at', null)`) so partner-side counts match agent-side counts.
-- After building the merged agent list, log a one-line diagnostic when both tables return 0 for an org id that the Agents Profile view says has an assigned agent — this catches future drift early.
+## Verification
 
-### 3. Add a bidirectional consistency guarantee
-
-Reuse the exact same helper the Agent Profile view uses (`fetchDirectPartnerList` in `AgentsProfilesContent.jsx`) by extracting it into a shared module `src/app/services/agentAssignmentQueries.js` with two symmetric functions:
-
-- `getPartnerIdsForAgent(agentId)` — used by Agents Profile.
-- `getAgentIdsForPartner(orgId)` — used by Partner Profiles.
-
-Both call the same underlying assignment-table query (same columns, same filters), so the two views can never disagree again.
-
-### 4. Invalidate the partner-side cache on assignment events
-
-- Listen for the existing `acsl:user-updated` event in `PartnerProfilesContent.jsx` and clear `agentCounts` for the affected org ids (or all, when unknown) so newly-assigned partners refresh their badge immediately.
-- Trigger `acsl:user-updated` from `AssignOrganizationsModal` after a successful save (if not already), so both views react.
-
-### 5. Verify
-
-- Reload Partner Profiles: the 3 partners now show a count ≥ 1.
-- Open the Assigned Agents modal on each: the ACSL Agent appears.
-- Open the ACSL Agent's Partners modal on Agents Profile: same 3 partners.
-- Re-assign / un-assign via the modal and confirm both views update without a manual refresh.
-
-### Files to touch
-
-- `src/app/user-management/partner-profiles/PartnerProfilesContent.jsx` — fixed column map, active-flag filter, shared helper, cache invalidation on event.
-- `src/app/agents/agents-profiles/AgentsProfilesContent.jsx` — swap local `fetchDirectPartner*` for the shared helper.
-- `src/app/services/agentAssignmentQueries.js` — new shared module (single source of truth).
-- `src/app/super-admin-agents/components/AssignOrganizationsModal.tsx` — emit `acsl:user-updated` on success if missing.
-
-No schema changes, no migrations, no backend/edge-function changes.
+After the change, with the current data (144 available + 1 sold by an agent):
+- Assigned KPI = 145, Sold = 1, Unsold = 144 — **OR** if the user's 144 already includes the sold one (data-dependent), Assigned = 144, Sold = 1, Unsold = 143.
+Either way the invariant `Assigned − Sold = Unsold` holds and clicking each KPI opens a modal whose row count matches the KPI number.

@@ -634,7 +634,7 @@ function AssignedStovesModal({
   const { supabase } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<Array<{ stove_id: string; partner_name: string; state: string; branch: string }>>([]);
+  const [rows, setRows] = useState<Array<{ stove_id: string; partner_name: string; state: string; branch: string; status: string }>>([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
@@ -664,8 +664,10 @@ function AssignedStovesModal({
           });
         }
 
-        // Fetch stove IDs (available/unsold) across orgs
-        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string }> = [];
+        // Fetch ALL stove IDs (regardless of status) across orgs — the full
+        // assigned pool. Status is shown per row so users can distinguish
+        // sold vs available.
+        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string; status: string }> = [];
         const BATCH = 100;
         for (let i = 0; i < orgIds.length; i += BATCH) {
           const slice = orgIds.slice(i, i + BATCH);
@@ -674,10 +676,9 @@ function AssignedStovesModal({
           while (true) {
             const { data, error: err } = await supabase
               .from("stove_ids")
-              .select("stove_id,organization_id")
+              .select("stove_id,organization_id,status")
               .in("organization_id", slice)
               .eq("is_archived", false)
-              .neq("status", "sold")
               .range(from, from + PAGE - 1);
             if (err) throw err;
             const chunk = data || [];
@@ -688,6 +689,7 @@ function AssignedStovesModal({
                 partner_name: meta.name,
                 state: meta.state,
                 branch: meta.branch,
+                status: String(s.status || "—"),
               });
             });
             if (chunk.length < PAGE) break;
@@ -716,7 +718,8 @@ function AssignedStovesModal({
         r.stove_id.toLowerCase().includes(q) ||
         r.partner_name.toLowerCase().includes(q) ||
         r.state.toLowerCase().includes(q) ||
-        r.branch.toLowerCase().includes(q)
+        r.branch.toLowerCase().includes(q) ||
+        r.status.toLowerCase().includes(q)
     );
   }, [rows, search]);
 
@@ -729,8 +732,8 @@ function AssignedStovesModal({
       const s = String(v ?? "");
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = ["Stove ID", "Partner Name", "State", "Branch"];
-    const body = filtered.map((r) => [esc(r.stove_id), esc(r.partner_name), esc(r.state), esc(r.branch)].join(","));
+    const header = ["Stove ID", "Partner Name", "State", "Branch", "Status"];
+    const body = filtered.map((r) => [esc(r.stove_id), esc(r.partner_name), esc(r.state), esc(r.branch), esc(r.status)].join(","));
     const csv = [header.join(","), ...body].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -775,13 +778,14 @@ function AssignedStovesModal({
                 <TableHead>Partner Name</TableHead>
                 <TableHead>State</TableHead>
                 <TableHead>Branch</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
               ) : paginated.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-8 text-gray-500">No stoves found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-8 text-gray-500">No stoves found</TableCell></TableRow>
               ) : (
                 paginated.map((r, i) => (
                   <TableRow key={`${r.stove_id}-${i}`}>
@@ -789,6 +793,7 @@ function AssignedStovesModal({
                     <TableCell>{r.partner_name}</TableCell>
                     <TableCell>{r.state}</TableCell>
                     <TableCell>{r.branch}</TableCell>
+                    <TableCell className="capitalize">{r.status}</TableCell>
                   </TableRow>
                 ))
               )}
@@ -817,6 +822,7 @@ function StovesStatusModal({
   title,
   filenamePrefix,
   showExport,
+  agents,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -825,14 +831,16 @@ function StovesStatusModal({
   title: string;
   filenamePrefix: string;
   showExport: boolean;
+  agents?: Array<{ id: string; full_name?: string | null }>;
 }) {
   const { supabase } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<Array<{ stove_id: string; partner_name: string; state: string; branch: string }>>([]);
+  const [rows, setRows] = useState<Array<{ stove_id: string; partner_name: string; state: string; branch: string; agent_name?: string }>>([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
+  const showAgentCol = mode === "sold";
 
   useEffect(() => {
     if (!isOpen) return;
@@ -858,33 +866,160 @@ function StovesStatusModal({
           });
         }
 
-        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string }> = [];
-        const BATCH = 100;
-        for (let i = 0; i < orgIds.length; i += BATCH) {
-          const slice = orgIds.slice(i, i + BATCH);
-          let from = 0;
-          const PAGE = 1000;
-          while (true) {
-            let q = supabase
+        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string; agent_name?: string }> = [];
+
+        if (mode === "sold") {
+          // Attribution-based: only stoves sold by the agents in this report.
+          const agentList = agents || [];
+          const agentIds = agentList.map((a) => a.id).filter(Boolean);
+          const agentNameById: Record<string, string> = {};
+          agentList.forEach((a) => { agentNameById[a.id] = a.full_name || "—"; });
+
+          if (agentIds.length === 0) {
+            setRows([]);
+            return;
+          }
+
+          // 1. Fetch sales rows created by these agents, scoped to relevant orgs.
+          type SaleRow = { id: string; organization_id: string | null; created_by: string };
+          const salesRows: SaleRow[] = [];
+          const ABATCH = 100;
+          for (let i = 0; i < agentIds.length; i += ABATCH) {
+            const aSlice = agentIds.slice(i, i + ABATCH);
+            for (let j = 0; j < orgIds.length; j += OBATCH) {
+              const oSlice = orgIds.slice(j, j + OBATCH);
+              let from = 0;
+              const PAGE = 1000;
+              while (true) {
+                const { data, error: err } = await supabase
+                  .from("sales")
+                  .select("id,organization_id,created_by,is_archived")
+                  .in("created_by", aSlice)
+                  .in("organization_id", oSlice)
+                  .eq("is_archived", false)
+                  .range(from, from + PAGE - 1);
+                if (err) throw err;
+                const chunk = data || [];
+                chunk.forEach((s: any) => salesRows.push({
+                  id: s.id,
+                  organization_id: s.organization_id,
+                  created_by: s.created_by,
+                }));
+                if (chunk.length < PAGE) break;
+                from += PAGE;
+              }
+            }
+          }
+
+          const saleIdToAgent: Record<string, string> = {};
+          salesRows.forEach((s) => { saleIdToAgent[s.id] = agentNameById[s.created_by] || "—"; });
+
+          // 2. Fetch stove_ids linked to those sales (authoritative stove list).
+          const saleIds = Array.from(new Set(salesRows.map((s) => s.id)));
+          const seen = new Set<string>();
+          const SIBATCH = 200;
+          for (let i = 0; i < saleIds.length; i += SIBATCH) {
+            const slice = saleIds.slice(i, i + SIBATCH);
+            const { data, error: err } = await supabase
               .from("stove_ids")
-              .select("stove_id,organization_id,status")
-              .in("organization_id", slice)
-              .eq("is_archived", false);
-            q = mode === "sold" ? q.eq("status", "sold") : q.neq("status", "sold");
-            const { data, error: err } = await q.range(from, from + PAGE - 1);
+              .select("stove_id,organization_id,sale_id,is_archived")
+              .in("sale_id", slice);
             if (err) throw err;
-            const chunk = data || [];
-            chunk.forEach((s: any) => {
+            (data || []).forEach((s: any) => {
+              if (s.is_archived) return;
+              const key = `${s.stove_id}::${s.organization_id}`;
+              if (seen.has(key)) return;
+              seen.add(key);
               const meta = orgMap[s.organization_id] || { name: "—", state: "—", branch: "—" };
               collected.push({
                 stove_id: s.stove_id,
                 partner_name: meta.name,
                 state: meta.state,
                 branch: meta.branch,
+                agent_name: saleIdToAgent[s.sale_id] || "—",
               });
             });
-            if (chunk.length < PAGE) break;
-            from += PAGE;
+          }
+        } else {
+          // Unsold = every non-archived stove in the agents' orgs, MINUS the
+          // stove IDs already recorded as sold by these agents. Result matches
+          // the "Assigned − Sold" KPI.
+          const agentList = agents || [];
+          const agentIds = agentList.map((a) => a.id).filter(Boolean);
+
+          // Collect stove IDs sold by these agents at these orgs so we can
+          // exclude them from the unsold list.
+          const soldStoveIds = new Set<string>();
+          if (agentIds.length > 0) {
+            type SaleRow = { id: string };
+            const saleIds: string[] = [];
+            const ABATCH = 100;
+            for (let i = 0; i < agentIds.length; i += ABATCH) {
+              const aSlice = agentIds.slice(i, i + ABATCH);
+              for (let j = 0; j < orgIds.length; j += OBATCH) {
+                const oSlice = orgIds.slice(j, j + OBATCH);
+                let from = 0;
+                const PAGE = 1000;
+                while (true) {
+                  const { data, error: err } = await supabase
+                    .from("sales")
+                    .select("id")
+                    .in("created_by", aSlice)
+                    .in("organization_id", oSlice)
+                    .eq("is_archived", false)
+                    .range(from, from + PAGE - 1);
+                  if (err) throw err;
+                  const chunk = (data as SaleRow[] | null) || [];
+                  chunk.forEach((s) => saleIds.push(s.id));
+                  if (chunk.length < PAGE) break;
+                  from += PAGE;
+                }
+              }
+            }
+            const uniqSaleIds = Array.from(new Set(saleIds));
+            const SIBATCH = 200;
+            for (let i = 0; i < uniqSaleIds.length; i += SIBATCH) {
+              const slice = uniqSaleIds.slice(i, i + SIBATCH);
+              const { data, error: err } = await supabase
+                .from("stove_ids")
+                .select("stove_id,organization_id")
+                .in("sale_id", slice);
+              if (err) throw err;
+              (data || []).forEach((s: any) => {
+                soldStoveIds.add(`${s.stove_id}::${s.organization_id}`);
+              });
+            }
+          }
+
+          const BATCH = 100;
+          for (let i = 0; i < orgIds.length; i += BATCH) {
+            const slice = orgIds.slice(i, i + BATCH);
+            let from = 0;
+            const PAGE = 1000;
+            while (true) {
+              const { data, error: err } = await supabase
+                .from("stove_ids")
+                .select("stove_id,organization_id,status")
+                .in("organization_id", slice)
+                .eq("is_archived", false)
+                .neq("status", "sold")
+                .range(from, from + PAGE - 1);
+              if (err) throw err;
+              const chunk = data || [];
+              chunk.forEach((s: any) => {
+                const key = `${s.stove_id}::${s.organization_id}`;
+                if (soldStoveIds.has(key)) return;
+                const meta = orgMap[s.organization_id] || { name: "—", state: "—", branch: "—" };
+                collected.push({
+                  stove_id: s.stove_id,
+                  partner_name: meta.name,
+                  state: meta.state,
+                  branch: meta.branch,
+                });
+              });
+              if (chunk.length < PAGE) break;
+              from += PAGE;
+            }
           }
         }
         if (cancelled) return;
@@ -897,7 +1032,7 @@ function StovesStatusModal({
       }
     })();
     return () => { cancelled = true; };
-  }, [isOpen, orgIds, supabase, mode]);
+  }, [isOpen, orgIds, supabase, mode, agents]);
 
   useEffect(() => { setPage(1); }, [search]);
 
@@ -909,7 +1044,8 @@ function StovesStatusModal({
         r.stove_id.toLowerCase().includes(q) ||
         r.partner_name.toLowerCase().includes(q) ||
         r.state.toLowerCase().includes(q) ||
-        r.branch.toLowerCase().includes(q)
+        r.branch.toLowerCase().includes(q) ||
+        (r.agent_name || "").toLowerCase().includes(q)
     );
   }, [rows, search]);
 
@@ -922,8 +1058,14 @@ function StovesStatusModal({
       const s = String(v ?? "");
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = ["Stove ID", "Partner Name", "State", "Branch"];
-    const body = filtered.map((r) => [esc(r.stove_id), esc(r.partner_name), esc(r.state), esc(r.branch)].join(","));
+    const header = showAgentCol
+      ? ["Stove ID", "Partner Name", "State", "Branch", "Agent"]
+      : ["Stove ID", "Partner Name", "State", "Branch"];
+    const body = filtered.map((r) => {
+      const base = [esc(r.stove_id), esc(r.partner_name), esc(r.state), esc(r.branch)];
+      if (showAgentCol) base.push(esc(r.agent_name || "—"));
+      return base.join(",");
+    });
     const csv = [header.join(","), ...body].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -935,6 +1077,8 @@ function StovesStatusModal({
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  const colCount = showAgentCol ? 5 : 4;
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
@@ -948,7 +1092,7 @@ function StovesStatusModal({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search stove ID, partner, state or branch..."
+              placeholder={showAgentCol ? "Search stove ID, partner, state, branch or agent..." : "Search stove ID, partner, state or branch..."}
               className="pl-8"
             />
           </div>
@@ -970,13 +1114,14 @@ function StovesStatusModal({
                 <TableHead>Partner Name</TableHead>
                 <TableHead>State</TableHead>
                 <TableHead>Branch</TableHead>
+                {showAgentCol && <TableHead>Agent</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={colCount} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
               ) : paginated.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-8 text-gray-500">No stoves found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={colCount} className="text-center py-8 text-gray-500">No stoves found</TableCell></TableRow>
               ) : (
                 paginated.map((r, i) => (
                   <TableRow key={`${r.stove_id}-${i}`}>
@@ -984,6 +1129,7 @@ function StovesStatusModal({
                     <TableCell>{r.partner_name}</TableCell>
                     <TableCell>{r.state}</TableCell>
                     <TableCell>{r.branch}</TableCell>
+                    {showAgentCol && <TableCell>{r.agent_name || "—"}</TableCell>}
                   </TableRow>
                 ))
               )}
@@ -2219,15 +2365,16 @@ export default function SuperAdminAgentsContent() {
         }
 
 
-        // 2. Stove counts per org — count AVAILABLE (unsold, non-archived) stoves
-        //    per organization. "Records to collect" must reflect stoves still
-        //    available at the agent's directly-assigned partners.
+        // 2. Stove counts per org — count TOTAL non-archived stoves per org
+        //    (the fixed pool assigned to sell), and separately track how many
+        //    are still available and how many are already marked sold.
         const directOrgIdSet = new Set<string>();
         Object.values(agentToDirectOrgIds).forEach((ids) =>
           ids.forEach((id) => directOrgIdSet.add(id))
         );
         const orgIds = Array.from(directOrgIdSet);
         const BATCH = 200;
+        const stoveTotalByOrg: Record<string, number> = {};
         const stoveAvailableByOrg: Record<string, number> = {};
         const stoveSoldByOrg: Record<string, number> = {};
         for (let i = 0; i < orgIds.length; i += BATCH) {
@@ -2240,6 +2387,7 @@ export default function SuperAdminAgentsContent() {
           (data || []).forEach((s: any) => {
             const oid = s.organization_id;
             const status = String(s.status || "").toLowerCase();
+            stoveTotalByOrg[oid] = (stoveTotalByOrg[oid] || 0) + 1;
             if (status === "sold") {
               stoveSoldByOrg[oid] = (stoveSoldByOrg[oid] || 0) + 1;
             } else {
@@ -2262,15 +2410,15 @@ export default function SuperAdminAgentsContent() {
         );
         if (cancelled) return;
 
-        // 4. Global totals — sum per-agent "to-collect" (available stoves at
-        //    each agent's directly-assigned partners) and per-agent collected.
+        // 4. Global totals.
+        //    Assigned = total stoves across the unique set of directly-assigned
+        //                partners (deduped so shared partners aren't counted twice).
+        //    Sold     = per-agent sales attributed via created_by.
+        //    Unsold   = Assigned − Sold (never negative).
         let globalAssigned = 0;
         let globalSold = 0;
-        for (const a of agents) {
-          const orgs = agentToDirectOrgIds[a.id] || [];
-          for (const oid of orgs) globalAssigned += stoveAvailableByOrg[oid] || 0;
-          globalSold += soldByAgent[a.id] || 0;
-        }
+        for (const oid of orgIds) globalAssigned += stoveTotalByOrg[oid] || 0;
+        for (const a of agents) globalSold += soldByAgent[a.id] || 0;
         setStoveTotals({
           assigned: globalAssigned,
           sold: globalSold,
@@ -2278,14 +2426,14 @@ export default function SuperAdminAgentsContent() {
         });
         setKpiAssignedOrgIds(orgIds);
 
-        // 5. Merge per-agent stove_summary. received = available stoves at
-        //    direct partners (true "to collect"); sold = agent's own sales;
-        //    available = remaining after the agent's collections.
+        // 5. Merge per-agent stove_summary. received = total stoves at the
+        //    agent's directly-assigned partners; sold = agent's own sales;
+        //    available = received − sold.
         setAgents((prev) =>
           prev.map((a) => {
             const orgs = agentToDirectOrgIds[a.id] || [];
             let received = 0;
-            for (const oid of orgs) received += stoveAvailableByOrg[oid] || 0;
+            for (const oid of orgs) received += stoveTotalByOrg[oid] || 0;
             const sold = soldByAgent[a.id] || 0;
             const available = Math.max(0, received - sold);
             // For ACSL roles, prefer the hydrated org count so managers also
@@ -3087,6 +3235,7 @@ export default function SuperAdminAgentsContent() {
         title="Stoves Sold / Retrieved — Stove IDs"
         filenamePrefix="sold-stoves"
         showExport={true}
+        agents={agents}
       />
 
       <StovesStatusModal
@@ -3097,6 +3246,7 @@ export default function SuperAdminAgentsContent() {
         title="Unsold / Unretrieved Stoves — Stove IDs"
         filenamePrefix="unsold-stoves"
         showExport={true}
+        agents={agents}
       />
 
 
