@@ -233,6 +233,7 @@ serve(async (req) => {
         .from("sales")
         .select("*", { count: "exact", head: true })
         .eq("organization_id", organizationId)
+        .eq("is_archived", false)
         .in("status", ["incomplete", "pending"]);
 
     if (pendingCountError) {
