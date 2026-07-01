@@ -159,6 +159,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                     onApproveSale={onApproveSale}
                     onEditSale={onEditSale}
                     onDeleteSale={onDeleteSale}
+                    onCancelSale={onCancelSale}
                     viewFrom={viewFrom}
                   />
                 </TableCell>
