@@ -2679,14 +2679,16 @@ export default function SuperAdminAgentsContent() {
               Icon: TrendingUp,
               value: totalsReady ? totalSold.toLocaleString() : "—",
               label: "Stoves Sold / Retrieved",
-              sub: "Total completed",
+              sub: "Click to view stove IDs",
+              onClick: () => setShowSoldStovesModal(true),
             },
             {
               gradient: "from-[#7C3AED] to-[#A78BFA]",
               Icon: Boxes,
               value: totalsReady ? totalUnsold.toLocaleString() : "—",
               label: "Unsold / Unretrieved Stoves",
-              sub: "Remaining in stock",
+              sub: "Click to view stove IDs",
+              onClick: () => setShowUnsoldStovesModal(true),
             },
           ];
 
