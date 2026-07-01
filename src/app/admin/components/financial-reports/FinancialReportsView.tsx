@@ -404,6 +404,7 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
             onApproveSale={onApproveSale}
             onEditSale={onEditSale}
             onDeleteSale={onDeleteSale}
+            onCancelSale={onCancelSale}
             sortOrder={sortOrder}
             onToggleSort={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
             viewFrom={viewFrom === "acsl_agent" ? "agent" : viewFrom}
