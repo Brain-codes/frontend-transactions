@@ -2417,13 +2417,8 @@ export default function SuperAdminAgentsContent() {
 
         {/* KPI Stat Cards — 4-card grid (Track Performance style) */}
         {(() => {
-          const ROLE_LABELS: Record<string, string> = {
-            acsl_agent: "ACSL Agent",
-            acsl_agent_manager: "ACSL Manager",
-            super_admin: "Super Admin",
-            partner: "Partner",
-            partner_agent: "Partner Agent",
-          };
+          
+
           const roleCounts: Record<string, number> = { ...roleTotals };
           delete roleCounts.partner;
           delete roleCounts.admin;
