@@ -813,8 +813,13 @@ const UserManagementPage = () => {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email)) errors.email = "Invalid email format";
     if (!userForm.role) errors.role = "User Group is required";
     if (isOrganizationBoundAgentRole(userForm.role) && selectedPartnerIds.size !== 1) errors.partner = "Select exactly one Partner for this agent";
-    if (!userForm.auto_generate_password && !userForm.password) errors.password = "Password is required";
-    else if (!userForm.auto_generate_password && userForm.password.length < 8) errors.password = "Password must be at least 8 characters";
+    if (formMode === "create") {
+      if (!userForm.auto_generate_password && !userForm.password) errors.password = "Password is required";
+      else if (!userForm.auto_generate_password && userForm.password.length < 8) errors.password = "Password must be at least 8 characters";
+    } else if (userForm.password && userForm.password.length < 8) {
+      errors.password = "Password must be at least 8 characters";
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -1004,6 +1009,12 @@ const UserManagementPage = () => {
         role,
         organization_id: isOrgBound ? partnerId : null,
       };
+      const newPassword = (userForm.password || "").trim();
+      if (newPassword) {
+        if (newPassword.length < 8) throw new Error("Password must be at least 8 characters");
+        putBody.password = newPassword;
+      }
+
       const res = await fetch(
         `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
         {
@@ -2191,6 +2202,39 @@ const UserManagementPage = () => {
                 )}
               </div>
               )}
+
+              {/* Change Password — edit only */}
+              {formMode === "edit" && (
+              <div className="space-y-3 border border-gray-200 rounded-md p-3 bg-[#fafcfc]">
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit_password" className="text-sm font-medium text-gray-700">Change Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="edit_password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Leave blank to keep current password"
+                      value={userForm.password}
+                      onChange={(e) => setUserForm((prev) => ({ ...prev, password: e.target.value }))}
+                      className={`shadow-none pr-9 ${formErrors.password ? "border-red-500" : "border-gray-300"}`}
+                      autoComplete="new-password"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0.5 top-1/2 -translate-y-1/2 h-7 w-7 p-0 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4 text-gray-500" /> : <Eye className="h-4 w-4 text-gray-500" />}
+                    </Button>
+                  </div>
+                  {formErrors.password
+                    ? <p className="text-xs text-red-600">{formErrors.password}</p>
+                    : <p className="text-xs text-gray-500">Minimum 8 characters. Leave blank to keep the user's current password.</p>}
+                </div>
+              </div>
+              )}
+
 
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => { setShowCreateModal(false); resetForm(); }} disabled={actionLoading === "create"} className="shadow-none border-gray-300">
