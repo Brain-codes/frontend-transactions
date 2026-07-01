@@ -298,6 +298,38 @@ const PartnerProfilesContent = () => {
     return () => { cancelled = true; };
   }, [pageRows, stoveCounts]);
 
+  // Eagerly fetch agent counts for all partners when filtering by agent status
+  useEffect(() => {
+    if (!filters.agentFilter || partners.length === 0) return;
+    const missing = partners.filter((p) => agentCounts[p.id] === undefined);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const BATCH = 20;
+      for (let i = 0; i < missing.length; i += BATCH) {
+        if (cancelled) return;
+        const slice = missing.slice(i, i + BATCH);
+        const results = await Promise.all(
+          slice.map(async (p) => {
+            try {
+              const list = await fetchAllAgentsForOrg(p.id);
+              return [p.id, list.length];
+            } catch {
+              return [p.id, 0];
+            }
+          })
+        );
+        if (cancelled) return;
+        setAgentCounts((prev) => {
+          const next = { ...prev };
+          results.forEach(([id, c]) => { next[id] = c; });
+          return next;
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [filters.agentFilter, partners, agentCounts]);
+
   const hasActiveFilters = filters.search !== "" || filters.state !== "" || filters.agentFilter !== "";
 
 
