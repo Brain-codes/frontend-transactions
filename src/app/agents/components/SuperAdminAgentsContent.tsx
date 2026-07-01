@@ -2184,6 +2184,7 @@ export default function SuperAdminAgentsContent() {
   const [showAssignedStovesModal, setShowAssignedStovesModal] = useState(false);
   const [showSoldStovesModal, setShowSoldStovesModal] = useState(false);
   const [showUnsoldStovesModal, setShowUnsoldStovesModal] = useState(false);
+  const [rowStoveModal, setRowStoveModal] = useState<{ agent: AcslAgent; mode: "assigned" | "sold" | "unsold" } | null>(null);
   const [showAgentsListModal, setShowAgentsListModal] = useState(false);
   // Per-role totals across all matching users (not just current page), used by KPI breakdown.
   const [roleTotals, setRoleTotals] = useState<Record<string, number>>({});
