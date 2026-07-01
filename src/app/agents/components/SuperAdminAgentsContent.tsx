@@ -767,19 +767,21 @@ function AssignedStovesModal({
                 <TableHead>Stove ID</TableHead>
                 <TableHead>Partner Name</TableHead>
                 <TableHead>State</TableHead>
+                <TableHead>Branch</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={3} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
               ) : paginated.length === 0 ? (
-                <TableRow><TableCell colSpan={3} className="text-center py-8 text-gray-500">No stoves found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="text-center py-8 text-gray-500">No stoves found</TableCell></TableRow>
               ) : (
                 paginated.map((r, i) => (
                   <TableRow key={`${r.stove_id}-${i}`}>
                     <TableCell className="font-mono text-sm">{r.stove_id}</TableCell>
                     <TableCell>{r.partner_name}</TableCell>
                     <TableCell>{r.state}</TableCell>
+                    <TableCell>{r.branch}</TableCell>
                   </TableRow>
                 ))
               )}
