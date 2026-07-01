@@ -73,17 +73,46 @@ const ROLE_BADGE = {
 };
 const formatRole = (r) => ROLE_LABELS[r] || (r ? r.replace(/_/g, " ") : "—");
 
-// Count ONLY agents explicitly assigned to this partner:
-//   - ACSL agents via direct `acsl_agent_organizations` row (state-based
-//     coverage is intentionally excluded — the user considers those unassigned)
-//   - Partner agents whose profile.organization_id matches
-async function fetchAllAgentsForOrg(orgId) {
-  // 1. ACSL agents with a direct assignment row
-  const { data: directRows } = await supabase
-    .from("acsl_agent_organizations")
-    .select("agent_id")
+// Resolve the agent-id column on an assignment table (schemas differ between
+// legacy `acsl_agent_organizations` and newer `super_admin_agent_organizations`).
+const AGENT_COLUMN_CANDIDATES = ["agent_id", "super_admin_agent_id", "user_id"];
+const _resolvedAgentCol = {}; // table -> column
+async function resolveAgentCol(table) {
+  if (_resolvedAgentCol[table]) return _resolvedAgentCol[table];
+  for (const col of AGENT_COLUMN_CANDIDATES) {
+    const { error } = await supabase
+      .from(table)
+      .select(col, { count: "exact", head: true })
+      .limit(1);
+    if (!error) {
+      _resolvedAgentCol[table] = col;
+      return col;
+    }
+  }
+  return null;
+}
+
+async function fetchAssignedAgentIdsFromTable(table, orgId) {
+  const col = await resolveAgentCol(table);
+  if (!col) return [];
+  const { data, error } = await supabase
+    .from(table)
+    .select(col)
     .eq("organization_id", orgId);
-  const acslIds = [...new Set((directRows || []).map((r) => r.agent_id))];
+  if (error) return [];
+  return (data || []).map((r) => r[col]).filter(Boolean);
+}
+
+// Count ONLY agents explicitly assigned to this partner. Harmonised with the
+// Agents Profile view which uses `super_admin_agent_organizations`. We union
+// both assignment tables so historical rows in the legacy table are still
+// counted. Partner agents (org membership) are also included.
+async function fetchAllAgentsForOrg(orgId) {
+  const [legacy, current] = await Promise.all([
+    fetchAssignedAgentIdsFromTable("acsl_agent_organizations", orgId),
+    fetchAssignedAgentIdsFromTable("super_admin_agent_organizations", orgId),
+  ]);
+  const acslIds = [...new Set([...legacy, ...current])];
 
   let acslList = [];
   if (acslIds.length > 0) {
@@ -94,7 +123,7 @@ async function fetchAllAgentsForOrg(orgId) {
     acslList = (data || []).map((a) => ({ ...a, role: a.role || "acsl_agent" }));
   }
 
-  // 2. Partner agents belonging to this organization
+  // Partner agents belonging to this organization
   const { data: partnerAgents } = await supabase
     .from("profiles")
     .select("id, full_name, email, phone, role")
