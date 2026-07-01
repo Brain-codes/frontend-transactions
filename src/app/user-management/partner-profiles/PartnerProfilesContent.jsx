@@ -163,6 +163,17 @@ const PartnerProfilesContent = () => {
   const [filters, setFilters] = useState({ search: "", state: "", agentFilter: "" });
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [page, setPage] = useState(1);
+
+  const handleSort = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "asc" };
+    });
+    setPage(1);
+  };
+
   const [detailsPartner, setDetailsPartner] = useState(null);
   const [editingPartner, setEditingPartner] = useState(null);
   const [viewingCredential, setViewingCredential] = useState(null);
