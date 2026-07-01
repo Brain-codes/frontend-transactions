@@ -1674,6 +1674,7 @@ export default function SuperAdminAgentsContent() {
   const [stoveTotals, setStoveTotals] = useState<{ assigned: number; sold: number; unsold: number } | null>(null);
   const [kpiAssignedOrgIds, setKpiAssignedOrgIds] = useState<string[]>([]);
   const [showAssignedStovesModal, setShowAssignedStovesModal] = useState(false);
+  const [showAgentsListModal, setShowAgentsListModal] = useState(false);
   // Per-role totals across all matching users (not just current page), used by KPI breakdown.
   const [roleTotals, setRoleTotals] = useState<Record<string, number>>({});
   const cycleStoveSort = (key: string) => {
