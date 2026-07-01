@@ -627,7 +627,7 @@ function AssignedStovesModal({
   const { supabase } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<Array<{ stove_id: string; partner_name: string; state: string }>>([]);
+  const [rows, setRows] = useState<Array<{ stove_id: string; partner_name: string; state: string; branch: string }>>([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
@@ -644,21 +644,21 @@ function AssignedStovesModal({
       setLoading(true);
       try {
         // Fetch org name/state map
-        const orgMap: Record<string, { name: string; state: string }> = {};
+        const orgMap: Record<string, { name: string; state: string; branch: string }> = {};
         const OBATCH = 100;
         for (let i = 0; i < orgIds.length; i += OBATCH) {
           const slice = orgIds.slice(i, i + OBATCH);
           const { data: orgs } = await supabase
             .from("organizations")
-            .select("id,partner_name,state")
+            .select("id,partner_name,state,branch")
             .in("id", slice);
           (orgs || []).forEach((o: any) => {
-            orgMap[o.id] = { name: o.partner_name || "—", state: o.state || "—" };
+            orgMap[o.id] = { name: o.partner_name || "—", state: o.state || "—", branch: o.branch || "—" };
           });
         }
 
         // Fetch stove IDs (available/unsold) across orgs
-        const collected: Array<{ stove_id: string; partner_name: string; state: string }> = [];
+        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string }> = [];
         const BATCH = 100;
         for (let i = 0; i < orgIds.length; i += BATCH) {
           const slice = orgIds.slice(i, i + BATCH);
@@ -675,11 +675,12 @@ function AssignedStovesModal({
             if (err) throw err;
             const chunk = data || [];
             chunk.forEach((s: any) => {
-              const meta = orgMap[s.organization_id] || { name: "—", state: "—" };
+              const meta = orgMap[s.organization_id] || { name: "—", state: "—", branch: "—" };
               collected.push({
                 stove_id: s.stove_id,
                 partner_name: meta.name,
                 state: meta.state,
+                branch: meta.branch,
               });
             });
             if (chunk.length < PAGE) break;
@@ -707,7 +708,8 @@ function AssignedStovesModal({
       (r) =>
         r.stove_id.toLowerCase().includes(q) ||
         r.partner_name.toLowerCase().includes(q) ||
-        r.state.toLowerCase().includes(q)
+        r.state.toLowerCase().includes(q) ||
+        r.branch.toLowerCase().includes(q)
     );
   }, [rows, search]);
 
@@ -720,8 +722,8 @@ function AssignedStovesModal({
       const s = String(v ?? "");
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = ["Stove ID", "Partner Name", "State"];
-    const body = filtered.map((r) => [esc(r.stove_id), esc(r.partner_name), esc(r.state)].join(","));
+    const header = ["Stove ID", "Partner Name", "State", "Branch"];
+    const body = filtered.map((r) => [esc(r.stove_id), esc(r.partner_name), esc(r.state), esc(r.branch)].join(","));
     const csv = [header.join(","), ...body].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -746,7 +748,7 @@ function AssignedStovesModal({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search stove ID, partner or state..."
+              placeholder="Search stove ID, partner, state or branch..."
               className="pl-8"
             />
           </div>
@@ -765,19 +767,21 @@ function AssignedStovesModal({
                 <TableHead>Stove ID</TableHead>
                 <TableHead>Partner Name</TableHead>
                 <TableHead>State</TableHead>
+                <TableHead>Branch</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={3} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
               ) : paginated.length === 0 ? (
-                <TableRow><TableCell colSpan={3} className="text-center py-8 text-gray-500">No stoves found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="text-center py-8 text-gray-500">No stoves found</TableCell></TableRow>
               ) : (
                 paginated.map((r, i) => (
                   <TableRow key={`${r.stove_id}-${i}`}>
                     <TableCell className="font-mono text-sm">{r.stove_id}</TableCell>
                     <TableCell>{r.partner_name}</TableCell>
                     <TableCell>{r.state}</TableCell>
+                    <TableCell>{r.branch}</TableCell>
                   </TableRow>
                 ))
               )}
