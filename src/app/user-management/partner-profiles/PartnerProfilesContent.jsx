@@ -87,8 +87,50 @@ async function fetchAllAgentsForOrg(orgId) {
       .from("profiles")
       .select("id, full_name, email, phone, role")
       .in("id", acslIds);
-    acslList = (data || []).map((a) => ({ ...a, role: a.role || "acsl_agent" }));
+    const byId = new Map((data || []).map((a) => [a.id, a]));
+
+    // For any ids the profiles query couldn't return (typically blocked by
+    // RLS for non-admin viewers), fall back to the manage-users edge
+    // function which runs with elevated privileges.
+    const missing = acslIds.filter((id) => !byId.has(id));
+    if (missing.length > 0) {
+      try {
+        const [{ supabaseFunctionsUrl }, tokenModule] = await Promise.all([
+          import("@/lib/supabaseConfig"),
+          import("@/utils/tokenManager"),
+        ]);
+        const token = await tokenModule.default.getValidToken();
+        const qs = new URLSearchParams({ page: "1", limit: "5000" });
+        const res = await fetch(`${supabaseFunctionsUrl}/manage-users?${qs.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          for (const u of json.data || []) {
+            if (missing.includes(u.id) && !byId.has(u.id)) {
+              byId.set(u.id, {
+                id: u.id,
+                full_name: u.full_name || u.name || u.email || "Unknown agent",
+                email: u.email || "",
+                phone: u.phone ?? "",
+                role: u.role || "acsl_agent",
+              });
+            }
+          }
+        }
+      } catch (_e) {
+        // Silent fallback — keep placeholder rows below
+      }
+    }
+
+    acslList = acslIds.map((id) => {
+      const p = byId.get(id);
+      return p
+        ? { ...p, role: p.role || "acsl_agent" }
+        : { id, full_name: "Unknown agent", email: "", phone: "", role: "acsl_agent" };
+    });
   }
+
 
   // Partner agents belonging to this organization
   const { data: partnerAgents } = await supabase
@@ -107,6 +149,7 @@ async function fetchAllAgentsForOrg(orgId) {
     return true;
   });
 }
+
 
 const PAGE_SIZE = 10;
 
