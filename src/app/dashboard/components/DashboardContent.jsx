@@ -870,6 +870,60 @@ const DashboardContent = ({
                         </ResponsiveContainer>
                       );
                     })()}
+
+                    {/* Divider — Sales by States */}
+                    <div className="mt-6 mb-4 flex items-center gap-3">
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                      <span className="text-[10px] font-semibold tracking-[0.15em] text-gray-400 uppercase">
+                        Sales by States
+                      </span>
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                    </div>
+
+                    {(() => {
+                      const rawStates = [...(data?.byState ?? [])].sort((a, b) => (b.count || 0) - (a.count || 0));
+                      const chartData = rawStates.slice(0, 15).map((s) => ({
+                        state: s.state ?? "Unknown",
+                        sales: Number(s.count ?? 0),
+                      }));
+                      return (
+                        <ResponsiveContainer width="100%" height={340}>
+                          <BarChart data={chartData} margin={{ top: 24, right: 16, left: 8, bottom: 8 }}>
+                            <defs>
+                              <linearGradient id="stateBarFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#4a5d0f" />
+                                <stop offset="100%" stopColor="#8ba832" />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                            <XAxis
+                              dataKey="state"
+                              tick={{ fontSize: 10, fill: "#6b7280" }}
+                              axisLine={{ stroke: "#e5e7eb" }}
+                              tickLine={false}
+                              interval={0}
+                              angle={-35}
+                              textAnchor="end"
+                              height={60}
+                            />
+                            <YAxis
+                              tick={{ fontSize: 11, fill: "#6b7280" }}
+                              axisLine={false}
+                              tickLine={false}
+                              allowDecimals={false}
+                              domain={[0, (dataMax) => Math.max(1, Math.ceil(dataMax * 1.1))]}
+                            />
+                            <Tooltip
+                              formatter={(v) => [Number(v).toLocaleString(), "Sales"]}
+                              contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
+                            />
+                            <Bar dataKey="sales" fill="url(#stateBarFill)" barSize={28} radius={[4, 4, 0, 0]}>
+                              <LabelList dataKey="sales" position="top" fontSize={10} fill="#4a5d0f" formatter={(v) => Number(v).toLocaleString()} />
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
               );
