@@ -866,7 +866,7 @@ function StovesStatusModal({
           });
         }
 
-        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string; agent_name?: string }> = [];
+        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string; agent_name?: string; sales_date?: string }> = [];
 
         if (mode === "sold") {
           // Attribution-based: only stoves sold by the agents in this report.
