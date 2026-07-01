@@ -118,6 +118,13 @@ const AGENTS_PERFORMANCE_ROLE_LABELS: Record<string, string> = {
   acsl_agent: "ACSL Agent",
   acsl_agent_manager: "ACSL Manager",
 };
+const ROLE_LABELS: Record<string, string> = {
+  acsl_agent: "ACSL Agent",
+  acsl_agent_manager: "ACSL Manager",
+  super_admin: "Super Admin",
+  partner: "Partner",
+  partner_agent: "Partner Agent",
+};
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -614,6 +621,536 @@ function AssignPartnerModal({
 }
 
 // ── Agent Partners Modal ───────────────────────────────────────────────────────
+
+function AssignedStovesModal({
+  isOpen,
+  onClose,
+  orgIds,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  orgIds: string[];
+}) {
+  const { supabase } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [rows, setRows] = useState<Array<{ stove_id: string; partner_name: string; state: string; branch: string }>>([]);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 15;
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setSearch("");
+    setPage(1);
+    setRows([]);
+    setError(null);
+    if (!supabase || orgIds.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        // Fetch org name/state map
+        const orgMap: Record<string, { name: string; state: string; branch: string }> = {};
+        const OBATCH = 100;
+        for (let i = 0; i < orgIds.length; i += OBATCH) {
+          const slice = orgIds.slice(i, i + OBATCH);
+          const { data: orgs } = await supabase
+            .from("organizations")
+            .select("id,partner_name,state,branch")
+            .in("id", slice);
+          (orgs || []).forEach((o: any) => {
+            orgMap[o.id] = { name: o.partner_name || "—", state: o.state || "—", branch: o.branch || "—" };
+          });
+        }
+
+        // Fetch stove IDs (available/unsold) across orgs
+        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string }> = [];
+        const BATCH = 100;
+        for (let i = 0; i < orgIds.length; i += BATCH) {
+          const slice = orgIds.slice(i, i + BATCH);
+          let from = 0;
+          const PAGE = 1000;
+          while (true) {
+            const { data, error: err } = await supabase
+              .from("stove_ids")
+              .select("stove_id,organization_id")
+              .in("organization_id", slice)
+              .eq("is_archived", false)
+              .neq("status", "sold")
+              .range(from, from + PAGE - 1);
+            if (err) throw err;
+            const chunk = data || [];
+            chunk.forEach((s: any) => {
+              const meta = orgMap[s.organization_id] || { name: "—", state: "—", branch: "—" };
+              collected.push({
+                stove_id: s.stove_id,
+                partner_name: meta.name,
+                state: meta.state,
+                branch: meta.branch,
+              });
+            });
+            if (chunk.length < PAGE) break;
+            from += PAGE;
+          }
+        }
+        if (cancelled) return;
+        collected.sort((a, b) => a.stove_id.localeCompare(b.stove_id));
+        setRows(collected);
+      } catch (e: any) {
+        if (!cancelled) setError(e.message || "Failed to load stove IDs");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, orgIds, supabase]);
+
+  useEffect(() => { setPage(1); }, [search]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (r) =>
+        r.stove_id.toLowerCase().includes(q) ||
+        r.partner_name.toLowerCase().includes(q) ||
+        r.state.toLowerCase().includes(q) ||
+        r.branch.toLowerCase().includes(q)
+    );
+  }, [rows, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const exportCsv = () => {
+    const esc = (v: string) => {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ["Stove ID", "Partner Name", "State", "Branch"];
+    const body = filtered.map((r) => [esc(r.stove_id), esc(r.partner_name), esc(r.state), esc(r.branch)].join(","));
+    const csv = [header.join(","), ...body].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `assigned-stoves-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Assigned for Sale / Retrieval — Stove IDs</DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center gap-2 mt-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search stove ID, partner, state or branch..."
+              className="pl-8"
+            />
+          </div>
+          <Button onClick={exportCsv} disabled={filtered.length === 0} className="bg-black text-white hover:bg-black/80 shadow-none">
+            <Download className="h-4 w-4 mr-2" />Export
+          </Button>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          {loading ? "Loading..." : `${filtered.length.toLocaleString()} stove${filtered.length === 1 ? "" : "s"}`}
+        </p>
+        {error && <div className="text-sm text-red-600 mt-2">{error}</div>}
+        <div className="flex-1 overflow-auto border rounded mt-2">
+          <Table>
+            <TableHeader className="bg-gray-50 sticky top-0">
+              <TableRow>
+                <TableHead>Stove ID</TableHead>
+                <TableHead>Partner Name</TableHead>
+                <TableHead>State</TableHead>
+                <TableHead>Branch</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+              ) : paginated.length === 0 ? (
+                <TableRow><TableCell colSpan={4} className="text-center py-8 text-gray-500">No stoves found</TableCell></TableRow>
+              ) : (
+                paginated.map((r, i) => (
+                  <TableRow key={`${r.stove_id}-${i}`}>
+                    <TableCell className="font-mono text-sm">{r.stove_id}</TableCell>
+                    <TableCell>{r.partner_name}</TableCell>
+                    <TableCell>{r.state}</TableCell>
+                    <TableCell>{r.branch}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-3 text-sm">
+            <span className="text-gray-600">Page {safePage} of {totalPages}</span>
+            <div className="flex gap-1">
+              <Button variant="outline" size="sm" disabled={safePage === 1} onClick={() => setPage(safePage - 1)}>Prev</Button>
+              <Button variant="outline" size="sm" disabled={safePage === totalPages} onClick={() => setPage(safePage + 1)}>Next</Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function StovesStatusModal({
+  isOpen,
+  onClose,
+  orgIds,
+  mode,
+  title,
+  filenamePrefix,
+  showExport,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  orgIds: string[];
+  mode: "sold" | "unsold";
+  title: string;
+  filenamePrefix: string;
+  showExport: boolean;
+}) {
+  const { supabase } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [rows, setRows] = useState<Array<{ stove_id: string; partner_name: string; state: string; branch: string }>>([]);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 15;
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setSearch("");
+    setPage(1);
+    setRows([]);
+    setError(null);
+    if (!supabase || orgIds.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const orgMap: Record<string, { name: string; state: string; branch: string }> = {};
+        const OBATCH = 100;
+        for (let i = 0; i < orgIds.length; i += OBATCH) {
+          const slice = orgIds.slice(i, i + OBATCH);
+          const { data: orgs } = await supabase
+            .from("organizations")
+            .select("id,partner_name,state,branch")
+            .in("id", slice);
+          (orgs || []).forEach((o: any) => {
+            orgMap[o.id] = { name: o.partner_name || "—", state: o.state || "—", branch: o.branch || "—" };
+          });
+        }
+
+        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string }> = [];
+        const BATCH = 100;
+        for (let i = 0; i < orgIds.length; i += BATCH) {
+          const slice = orgIds.slice(i, i + BATCH);
+          let from = 0;
+          const PAGE = 1000;
+          while (true) {
+            let q = supabase
+              .from("stove_ids")
+              .select("stove_id,organization_id,status")
+              .in("organization_id", slice)
+              .eq("is_archived", false);
+            q = mode === "sold" ? q.eq("status", "sold") : q.neq("status", "sold");
+            const { data, error: err } = await q.range(from, from + PAGE - 1);
+            if (err) throw err;
+            const chunk = data || [];
+            chunk.forEach((s: any) => {
+              const meta = orgMap[s.organization_id] || { name: "—", state: "—", branch: "—" };
+              collected.push({
+                stove_id: s.stove_id,
+                partner_name: meta.name,
+                state: meta.state,
+                branch: meta.branch,
+              });
+            });
+            if (chunk.length < PAGE) break;
+            from += PAGE;
+          }
+        }
+        if (cancelled) return;
+        collected.sort((a, b) => a.stove_id.localeCompare(b.stove_id));
+        setRows(collected);
+      } catch (e: any) {
+        if (!cancelled) setError(e.message || "Failed to load stove IDs");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, orgIds, supabase, mode]);
+
+  useEffect(() => { setPage(1); }, [search]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (r) =>
+        r.stove_id.toLowerCase().includes(q) ||
+        r.partner_name.toLowerCase().includes(q) ||
+        r.state.toLowerCase().includes(q) ||
+        r.branch.toLowerCase().includes(q)
+    );
+  }, [rows, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const exportCsv = () => {
+    const esc = (v: string) => {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ["Stove ID", "Partner Name", "State", "Branch"];
+    const body = filtered.map((r) => [esc(r.stove_id), esc(r.partner_name), esc(r.state), esc(r.branch)].join(","));
+    const csv = [header.join(","), ...body].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${filenamePrefix}-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center gap-2 mt-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search stove ID, partner, state or branch..."
+              className="pl-8"
+            />
+          </div>
+          {showExport && (
+            <Button onClick={exportCsv} disabled={filtered.length === 0} className="bg-black text-white hover:bg-black/80 shadow-none">
+              <Download className="h-4 w-4 mr-2" />Export
+            </Button>
+          )}
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          {loading ? "Loading..." : `${filtered.length.toLocaleString()} stove${filtered.length === 1 ? "" : "s"}`}
+        </p>
+        {error && <div className="text-sm text-red-600 mt-2">{error}</div>}
+        <div className="flex-1 overflow-auto border rounded mt-2">
+          <Table>
+            <TableHeader className="bg-gray-50 sticky top-0">
+              <TableRow>
+                <TableHead>Stove ID</TableHead>
+                <TableHead>Partner Name</TableHead>
+                <TableHead>State</TableHead>
+                <TableHead>Branch</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+              ) : paginated.length === 0 ? (
+                <TableRow><TableCell colSpan={4} className="text-center py-8 text-gray-500">No stoves found</TableCell></TableRow>
+              ) : (
+                paginated.map((r, i) => (
+                  <TableRow key={`${r.stove_id}-${i}`}>
+                    <TableCell className="font-mono text-sm">{r.stove_id}</TableCell>
+                    <TableCell>{r.partner_name}</TableCell>
+                    <TableCell>{r.state}</TableCell>
+                    <TableCell>{r.branch}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-3 text-sm">
+            <span className="text-gray-600">Page {safePage} of {totalPages}</span>
+            <div className="flex gap-1">
+              <Button variant="outline" size="sm" disabled={safePage === 1} onClick={() => setPage(safePage - 1)}>Prev</Button>
+              <Button variant="outline" size="sm" disabled={safePage === totalPages} onClick={() => setPage(safePage + 1)}>Next</Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+
+function AgentsListModal({
+  isOpen,
+  onClose,
+  agents,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  agents: AcslAgent[];
+}) {
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 15;
+
+  useEffect(() => { if (isOpen) { setSearch(""); setRoleFilter("all"); setPage(1); } }, [isOpen]);
+  useEffect(() => { setPage(1); }, [search, roleFilter]);
+
+  const roleOptions = useMemo(() => {
+    const s = new Set<string>();
+    agents.forEach((a) => s.add(a.role));
+    return Array.from(s).sort();
+  }, [agents]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return agents.filter((a) => {
+      if (roleFilter !== "all" && a.role !== roleFilter) return false;
+      if (!q) return true;
+      return (
+        (a.full_name || "").toLowerCase().includes(q) ||
+        (a.email || "").toLowerCase().includes(q) ||
+        (a.phone || "").toLowerCase().includes(q) ||
+        (a.role || "").toLowerCase().includes(q)
+      );
+    });
+  }, [agents, search, roleFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const exportCsv = () => {
+    const esc = (v: any) => {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ["Full Name", "Role", "Email", "Phone", "Status", "Assigned Partners", "Assigned States", "Created"];
+    const body = filtered.map((a) => [
+      esc(a.full_name), esc(ROLE_LABELS[a.role] || a.role), esc(a.email), esc(a.phone || ""),
+      esc(a.status), esc(a.total_partners_count ?? a.assigned_organizations_count ?? 0),
+      esc(a.assigned_states_count ?? 0),
+      esc(a.created_at ? new Date(a.created_at).toISOString().split("T")[0] : ""),
+    ].join(","));
+    const csv = [header.join(","), ...body].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `agents-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Total Agents — Details</DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center gap-2 mt-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, email, phone or role..."
+              className="pl-8"
+            />
+          </div>
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="border rounded px-2 py-2 text-sm bg-white"
+          >
+            <option value="all">All Roles</option>
+            {roleOptions.map((r) => (
+              <option key={r} value={r}>{ROLE_LABELS[r] || r}</option>
+            ))}
+          </select>
+          <Button onClick={exportCsv} disabled={filtered.length === 0} className="bg-black text-white hover:bg-black/80 shadow-none">
+            <Download className="h-4 w-4 mr-2" />Export
+          </Button>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          {`${filtered.length.toLocaleString()} agent${filtered.length === 1 ? "" : "s"}`}
+        </p>
+        <div className="flex-1 overflow-auto border rounded mt-2">
+          <Table>
+            <TableHeader className="bg-gray-50 sticky top-0">
+              <TableRow>
+                <TableHead>Full Name</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Partners</TableHead>
+                <TableHead className="text-right">States</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginated.length === 0 ? (
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500">No agents found</TableCell></TableRow>
+              ) : (
+                paginated.map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell className="font-medium">{a.full_name}</TableCell>
+                    <TableCell className="text-xs">{ROLE_LABELS[a.role] || a.role}</TableCell>
+                    <TableCell className="text-sm">{a.email}</TableCell>
+                    <TableCell className="text-sm">{a.phone || "—"}</TableCell>
+                    <TableCell className="text-xs capitalize">{a.status}</TableCell>
+                    <TableCell className="text-right">{a.total_partners_count ?? a.assigned_organizations_count ?? 0}</TableCell>
+                    <TableCell className="text-right">{a.assigned_states_count ?? 0}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-3 text-sm">
+            <span className="text-gray-600">Page {safePage} of {totalPages}</span>
+            <div className="flex gap-1">
+              <Button variant="outline" size="sm" disabled={safePage === 1} onClick={() => setPage(safePage - 1)}>Prev</Button>
+              <Button variant="outline" size="sm" disabled={safePage === totalPages} onClick={() => setPage(safePage + 1)}>Next</Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 
 function AgentPartnersModal({
   agent,
@@ -1485,6 +2022,11 @@ export default function SuperAdminAgentsContent() {
   const [stoveSort, setStoveSort] = useState<{ key: string | null; direction: "asc" | "desc" | null }>({ key: null, direction: null });
   // Deduped totals across unique partner organizations (avoids double-counting shared orgs).
   const [stoveTotals, setStoveTotals] = useState<{ assigned: number; sold: number; unsold: number } | null>(null);
+  const [kpiAssignedOrgIds, setKpiAssignedOrgIds] = useState<string[]>([]);
+  const [showAssignedStovesModal, setShowAssignedStovesModal] = useState(false);
+  const [showSoldStovesModal, setShowSoldStovesModal] = useState(false);
+  const [showUnsoldStovesModal, setShowUnsoldStovesModal] = useState(false);
+  const [showAgentsListModal, setShowAgentsListModal] = useState(false);
   // Per-role totals across all matching users (not just current page), used by KPI breakdown.
   const [roleTotals, setRoleTotals] = useState<Record<string, number>>({});
   const cycleStoveSort = (key: string) => {
@@ -1734,6 +2276,7 @@ export default function SuperAdminAgentsContent() {
           sold: globalSold,
           unsold: Math.max(0, globalAssigned - globalSold),
         });
+        setKpiAssignedOrgIds(orgIds);
 
         // 5. Merge per-agent stove_summary. received = available stoves at
         //    direct partners (true "to collect"); sold = agent's own sales;
@@ -2080,13 +2623,8 @@ export default function SuperAdminAgentsContent() {
 
         {/* KPI Stat Cards — 4-card grid (Track Performance style) */}
         {(() => {
-          const ROLE_LABELS: Record<string, string> = {
-            acsl_agent: "ACSL Agent",
-            acsl_agent_manager: "ACSL Manager",
-            super_admin: "Super Admin",
-            partner: "Partner",
-            partner_agent: "Partner Agent",
-          };
+          
+
           const roleCounts: Record<string, number> = { ...roleTotals };
           delete roleCounts.partner;
           delete roleCounts.admin;
@@ -2107,12 +2645,14 @@ export default function SuperAdminAgentsContent() {
             value: string;
             label: string;
             sub?: React.ReactNode;
+            onClick?: () => void;
           }> = [
             {
               gradient: "from-[#194977] to-[#2563EB]",
               Icon: Users,
               value: totalAgents.toLocaleString(),
               label: "Total Agents",
+              onClick: () => setShowAgentsListModal(true),
               sub: (
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   {roleEntries.map(([r, c]) => (
@@ -2131,30 +2671,37 @@ export default function SuperAdminAgentsContent() {
               Icon: Package,
               value: totalsReady ? totalAssigned.toLocaleString() : "—",
               label: "Assigned for Sale / Retrieval",
-              sub: "Unique stoves across all partners",
+              sub: "Click to view stove IDs",
+              onClick: () => setShowAssignedStovesModal(true),
             },
             {
               gradient: "from-[#047857] to-[#10B981]",
               Icon: TrendingUp,
               value: totalsReady ? totalSold.toLocaleString() : "—",
               label: "Stoves Sold / Retrieved",
-              sub: "Total completed",
+              sub: "Click to view stove IDs",
+              onClick: () => setShowSoldStovesModal(true),
             },
             {
               gradient: "from-[#7C3AED] to-[#A78BFA]",
               Icon: Boxes,
               value: totalsReady ? totalUnsold.toLocaleString() : "—",
               label: "Unsold / Unretrieved Stoves",
-              sub: "Remaining in stock",
+              sub: "Click to view stove IDs",
+              onClick: () => setShowUnsoldStovesModal(true),
             },
           ];
 
           return (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {cards.map(({ gradient, Icon, value, label, sub }) => (
+              {cards.map(({ gradient, Icon, value, label, sub, onClick }) => (
                 <div
                   key={label}
-                  className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md transition-all bg-gradient-to-br ${gradient}`}
+                  onClick={onClick}
+                  role={onClick ? "button" : undefined}
+                  tabIndex={onClick ? 0 : undefined}
+                  onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
+                  className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md transition-all bg-gradient-to-br ${gradient} ${onClick ? "cursor-pointer hover:shadow-lg hover:-translate-y-0.5" : ""}`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1 pr-3">
@@ -2525,6 +3072,41 @@ export default function SuperAdminAgentsContent() {
         partnerIds={activePartnerIdsInRange}
         dateBadge={dateBadgeLabel}
       />
+
+      <AssignedStovesModal
+        isOpen={showAssignedStovesModal}
+        onClose={() => setShowAssignedStovesModal(false)}
+        orgIds={kpiAssignedOrgIds}
+      />
+
+      <StovesStatusModal
+        isOpen={showSoldStovesModal}
+        onClose={() => setShowSoldStovesModal(false)}
+        orgIds={kpiAssignedOrgIds}
+        mode="sold"
+        title="Stoves Sold / Retrieved — Stove IDs"
+        filenamePrefix="sold-stoves"
+        showExport={true}
+      />
+
+      <StovesStatusModal
+        isOpen={showUnsoldStovesModal}
+        onClose={() => setShowUnsoldStovesModal(false)}
+        orgIds={kpiAssignedOrgIds}
+        mode="unsold"
+        title="Unsold / Unretrieved Stoves — Stove IDs"
+        filenamePrefix="unsold-stoves"
+        showExport={true}
+      />
+
+
+      <AgentsListModal
+        isOpen={showAgentsListModal}
+        onClose={() => setShowAgentsListModal(false)}
+        agents={agents}
+      />
+
+
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </DashboardLayout>
