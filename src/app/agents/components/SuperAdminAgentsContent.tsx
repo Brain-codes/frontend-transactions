@@ -836,7 +836,7 @@ function StovesStatusModal({
   const { supabase } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<Array<{ stove_id: string; partner_name: string; state: string; branch: string; agent_name?: string }>>([]);
+  const [rows, setRows] = useState<Array<{ stove_id: string; partner_name: string; state: string; branch: string; agent_name?: string; sales_date?: string }>>([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
