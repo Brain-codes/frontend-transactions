@@ -236,6 +236,13 @@ export default function UnifiedSalesContent() {
         customerName={approveSale?.end_user_name || ""}
         onApproved={() => { setApproveSale(null); reload(); }}
       />
+
+      <CancelSaleModal
+        open={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={confirmCancelSale}
+        sale={cancelTarget}
+      />
     </DashboardLayout>
   );
 }
