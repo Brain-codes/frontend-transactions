@@ -154,7 +154,7 @@ async function fetchAllAgentsForOrg(orgId) {
 }
 
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const PartnerProfilesContent = () => {
   const { toast, toasts, removeToast } = useToast();
@@ -163,6 +163,8 @@ const PartnerProfilesContent = () => {
   const [filters, setFilters] = useState({ search: "", state: "", agentFilter: "" });
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
 
   const handleSort = (key) => {
     setSortConfig((prev) => {
@@ -329,11 +331,12 @@ const PartnerProfilesContent = () => {
     });
   }, [partners, filters, agentCounts, stoveCounts, sortConfig]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const startRecord = filtered.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
-  const endRecord = Math.min(currentPage * PAGE_SIZE, filtered.length);
+  const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const startRecord = filtered.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endRecord = Math.min(currentPage * pageSize, filtered.length);
+
 
   // Fetch agent counts for currently visible partners (lazy, cached)
   useEffect(() => {
@@ -722,11 +725,30 @@ const PartnerProfilesContent = () => {
         {/* Pagination footer */}
         {filtered.length > 0 && (
           <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-white">
-            <p className="text-sm text-gray-600">
-              Showing <span className="font-medium">{startRecord}</span> to{" "}
-              <span className="font-medium">{endRecord}</span> of{" "}
-              <span className="font-medium">{filtered.length}</span> partners
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-gray-600">
+                Showing <span className="font-medium">{startRecord}</span> to{" "}
+                <span className="font-medium">{endRecord}</span> of{" "}
+                <span className="font-medium">{filtered.length}</span> partners
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Rows per page</span>
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}
+                >
+                  <SelectTrigger className="h-8 w-[72px] text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <SelectItem key={n} value={String(n)} className="text-sm">{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             {totalPages > 1 && (
               <div className="flex items-center gap-1">
                 <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(1)} disabled={currentPage === 1}>
