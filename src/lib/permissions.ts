@@ -37,7 +37,10 @@ export type RouteKey =
   | "profile"
   | "docs"
   | "sales-monitoring-app"
-  | "end-user-records";
+  | "end-user-records"
+  | "performance-report"
+  | "sales-cancelled-purchases"
+  | "partner-agents-profiles";
 
 export type FeatureKey =
   | "global-filters"
