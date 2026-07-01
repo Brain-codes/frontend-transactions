@@ -164,8 +164,19 @@ const getRoleBadgeClasses = (role) => {
 };
 
 const UserManagementPage = () => {
-  const { supabase } = useAuth();
+  const { supabase, user, isSuperAdmin, isAcslAgentManager, isPartner } = useAuth();
   const { toast, toasts, removeToast } = useToast();
+
+  // Caller-role-based role catalog for the create form.
+  const callerCreatableRoles = isSuperAdmin
+    ? ["super_admin", "acsl_agent_manager", "acsl_agent", "partner", "partner_agent", "agent"]
+    : isAcslAgentManager
+    ? ["acsl_agent", "partner", "partner_agent"]
+    : isPartner
+    ? ["partner_agent"]
+    : [];
+  const callerOrgId = user?.user_metadata?.organization_id || user?.app_metadata?.organization_id || null;
+
 
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
@@ -510,11 +521,13 @@ const UserManagementPage = () => {
   // ── Form helpers ───────────────────────────────────────────────────────────
 
   const resetForm = () => {
-    setUserForm({ full_name: "", email: "", phone: "", role: undefined, password: "", auto_generate_password: true });
+    // Partners can only create partner_agent users under their own org — preseed both.
+    const defaultRole = isPartner ? "partner_agent" : undefined;
+    setUserForm({ full_name: "", email: "", phone: "", role: defaultRole, password: "", auto_generate_password: true });
     setFormErrors({});
     setShowPassword(false);
     setPartnerSearch("");
-    setSelectedPartnerIds(new Set());
+    setSelectedPartnerIds(isPartner && callerOrgId ? new Set([callerOrgId]) : new Set());
     setSelectedStates(new Set());
     setSelectedManagerIds(new Set());
     setManagerSearch("");
@@ -522,6 +535,7 @@ const UserManagementPage = () => {
     setFormMode("create");
     setSelectedUser(null);
   };
+
 
   // Role classifiers
   // - partner_agent: flat partner-only picker (legacy)
@@ -1442,21 +1456,30 @@ const UserManagementPage = () => {
                 {/* User Group */}
                 <div className="space-y-1.5">
                   <Label htmlFor="role" className="text-sm font-medium text-gray-700">User Group <span className="text-red-500">*</span></Label>
-                  <Select value={userForm.role} onValueChange={handleRoleChange}>
+                  <Select
+                    value={userForm.role}
+                    onValueChange={handleRoleChange}
+                    disabled={callerCreatableRoles.length <= 1 && formMode === "create"}
+                  >
                     <SelectTrigger id="role" className="shadow-none border-gray-300">
                       <SelectValue placeholder="Select user group" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="super_admin">Super Admin</SelectItem>
-                      <SelectItem value="acsl_agent_manager">ACSL Agent Manager</SelectItem>
-                      <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
-                      <SelectItem value="partner_agent">Partner Agent</SelectItem>
-                      <SelectItem value="agent">Agent</SelectItem>
+                      {callerCreatableRoles.includes("super_admin") && <SelectItem value="super_admin">Super Admin</SelectItem>}
+                      {callerCreatableRoles.includes("acsl_agent_manager") && <SelectItem value="acsl_agent_manager">ACSL Agent Manager</SelectItem>}
+                      {callerCreatableRoles.includes("acsl_agent") && <SelectItem value="acsl_agent">ACSL Agent</SelectItem>}
+                      {callerCreatableRoles.includes("partner") && <SelectItem value="partner">Partner</SelectItem>}
+                      {callerCreatableRoles.includes("partner_agent") && <SelectItem value="partner_agent">Partner Agent</SelectItem>}
+                      {callerCreatableRoles.includes("agent") && <SelectItem value="agent">Agent</SelectItem>}
                     </SelectContent>
                   </Select>
                   {formErrors.role && <p className="text-xs text-red-600">{formErrors.role}</p>}
                   {formMode === "edit" && <p className="text-xs text-gray-400">Changing the user group updates the assignment fields below.</p>}
+                  {isPartner && formMode === "create" && (
+                    <p className="text-xs text-gray-500">You can only create Partner Agent users under your partner organization.</p>
+                  )}
                 </div>
+
               </div>
 
               {formMode === "edit" && editAssignmentsLoading && (

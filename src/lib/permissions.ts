@@ -37,7 +37,10 @@ export type RouteKey =
   | "profile"
   | "docs"
   | "sales-monitoring-app"
-  | "end-user-records";
+  | "end-user-records"
+  | "performance-report"
+  | "sales-cancelled-purchases"
+  | "partner-agents-profiles";
 
 export type FeatureKey =
   | "global-filters"
@@ -143,10 +146,21 @@ export const PERMISSIONS: Record<string, RolePermissions> = {
       "sales",
       "sales-create",
       "sales-cancelled",
+      "sales-cancelled-purchases",
+      "sales-financial-reports",
       "partners",
+      "partners-profiles",
       "agents",
+      "agents-profiles",
+      "partner-agents-profiles",
+      "performance-report",
       "stove-management",
       "stove-manager",
+      "stove-transfer-history",
+      "agreement-images",
+      "user-management",
+      "user-management-users",
+      "end-user-records",
       "profile",
       "sales-monitoring-app",
     ],
@@ -155,6 +169,9 @@ export const PERMISSIONS: Record<string, RolePermissions> = {
       "stove-allocation",
       "create-sale",
       "manage-acsl-agents-scoped",
+      "manage-partner-agents",
+      "user-management",
+      "org-sales-view",
     ],
   },
   acsl_agent: {
@@ -163,34 +180,68 @@ export const PERMISSIONS: Record<string, RolePermissions> = {
       "sales",
       "sales-create",
       "sales-cancelled",
+      "sales-cancelled-purchases",
+      "sales-financial-reports",
       "partners",
+      "partners-profiles",
+      "agents",
+      "partner-agents-profiles",
       "stove-management",
       "stove-manager",
+      "stove-transfer-history",
+      "agreement-images",
+      "end-user-records",
       "profile",
       "sales-monitoring-app",
     ],
-    features: ["my-partners-filter", "stove-allocation", "create-sale"],
+    features: ["my-partners-filter", "stove-allocation", "create-sale", "org-sales-view"],
   },
   partner: {
+    // Partners: no Partner Management, no ACSL Agents Profile, no Performance Report (ACSL),
+    // no Map, no Settings, no User Groups.
     routes: [
       "dashboard",
       "sales",
       "sales-create",
       "sales-cancelled",
+      "sales-cancelled-purchases",
+      "sales-financial-reports",
       "agents",
+      "partner-agents-profiles",
       "stove-management",
       "stove-manager",
+      "stove-transfer-history",
+      "agreement-images",
+      "user-management",
+      "user-management-users",
+      "end-user-records",
       "profile",
       "sales-monitoring-app",
     ],
-    features: ["manage-agents", "org-sales-view", "create-sale"],
+    features: ["manage-agents", "manage-partner-agents", "org-sales-view", "create-sale", "user-management"],
   },
   partner_agent: {
-    routes: ["dashboard", "sales", "sales-create", "stove-manager", "profile", "sales-monitoring-app"],
+    routes: [
+      "dashboard",
+      "sales",
+      "sales-create",
+      "stove-manager",
+      "end-user-records",
+      "profile",
+      "sales-monitoring-app",
+    ],
     features: ["create-sale"],
   },
   agent: {
-    routes: ["dashboard", "sales", "sales-create", "stove-manager", "profile", "sales-monitoring-app"],
+    routes: [
+      "dashboard",
+      "sales",
+      "sales-create",
+      "stove-manager",
+      "end-user-records",
+      "profile",
+      "sales-monitoring-app",
+    ],
     features: ["create-sale"],
   },
 };
