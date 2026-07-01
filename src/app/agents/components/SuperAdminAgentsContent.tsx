@@ -809,6 +809,203 @@ function AssignedStovesModal({
   );
 }
 
+function StovesStatusModal({
+  isOpen,
+  onClose,
+  orgIds,
+  mode,
+  title,
+  filenamePrefix,
+  showExport,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  orgIds: string[];
+  mode: "sold" | "unsold";
+  title: string;
+  filenamePrefix: string;
+  showExport: boolean;
+}) {
+  const { supabase } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [rows, setRows] = useState<Array<{ stove_id: string; partner_name: string; state: string; branch: string }>>([]);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 15;
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setSearch("");
+    setPage(1);
+    setRows([]);
+    setError(null);
+    if (!supabase || orgIds.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const orgMap: Record<string, { name: string; state: string; branch: string }> = {};
+        const OBATCH = 100;
+        for (let i = 0; i < orgIds.length; i += OBATCH) {
+          const slice = orgIds.slice(i, i + OBATCH);
+          const { data: orgs } = await supabase
+            .from("organizations")
+            .select("id,partner_name,state,branch")
+            .in("id", slice);
+          (orgs || []).forEach((o: any) => {
+            orgMap[o.id] = { name: o.partner_name || "—", state: o.state || "—", branch: o.branch || "—" };
+          });
+        }
+
+        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string }> = [];
+        const BATCH = 100;
+        for (let i = 0; i < orgIds.length; i += BATCH) {
+          const slice = orgIds.slice(i, i + BATCH);
+          let from = 0;
+          const PAGE = 1000;
+          while (true) {
+            let q = supabase
+              .from("stove_ids")
+              .select("stove_id,organization_id,status")
+              .in("organization_id", slice)
+              .eq("is_archived", false);
+            q = mode === "sold" ? q.eq("status", "sold") : q.neq("status", "sold");
+            const { data, error: err } = await q.range(from, from + PAGE - 1);
+            if (err) throw err;
+            const chunk = data || [];
+            chunk.forEach((s: any) => {
+              const meta = orgMap[s.organization_id] || { name: "—", state: "—", branch: "—" };
+              collected.push({
+                stove_id: s.stove_id,
+                partner_name: meta.name,
+                state: meta.state,
+                branch: meta.branch,
+              });
+            });
+            if (chunk.length < PAGE) break;
+            from += PAGE;
+          }
+        }
+        if (cancelled) return;
+        collected.sort((a, b) => a.stove_id.localeCompare(b.stove_id));
+        setRows(collected);
+      } catch (e: any) {
+        if (!cancelled) setError(e.message || "Failed to load stove IDs");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, orgIds, supabase, mode]);
+
+  useEffect(() => { setPage(1); }, [search]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (r) =>
+        r.stove_id.toLowerCase().includes(q) ||
+        r.partner_name.toLowerCase().includes(q) ||
+        r.state.toLowerCase().includes(q) ||
+        r.branch.toLowerCase().includes(q)
+    );
+  }, [rows, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const exportCsv = () => {
+    const esc = (v: string) => {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ["Stove ID", "Partner Name", "State", "Branch"];
+    const body = filtered.map((r) => [esc(r.stove_id), esc(r.partner_name), esc(r.state), esc(r.branch)].join(","));
+    const csv = [header.join(","), ...body].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${filenamePrefix}-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center gap-2 mt-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search stove ID, partner, state or branch..."
+              className="pl-8"
+            />
+          </div>
+          {showExport && (
+            <Button onClick={exportCsv} disabled={filtered.length === 0} className="bg-black text-white hover:bg-black/80 shadow-none">
+              <Download className="h-4 w-4 mr-2" />Export
+            </Button>
+          )}
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          {loading ? "Loading..." : `${filtered.length.toLocaleString()} stove${filtered.length === 1 ? "" : "s"}`}
+        </p>
+        {error && <div className="text-sm text-red-600 mt-2">{error}</div>}
+        <div className="flex-1 overflow-auto border rounded mt-2">
+          <Table>
+            <TableHeader className="bg-gray-50 sticky top-0">
+              <TableRow>
+                <TableHead>Stove ID</TableHead>
+                <TableHead>Partner Name</TableHead>
+                <TableHead>State</TableHead>
+                <TableHead>Branch</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+              ) : paginated.length === 0 ? (
+                <TableRow><TableCell colSpan={4} className="text-center py-8 text-gray-500">No stoves found</TableCell></TableRow>
+              ) : (
+                paginated.map((r, i) => (
+                  <TableRow key={`${r.stove_id}-${i}`}>
+                    <TableCell className="font-mono text-sm">{r.stove_id}</TableCell>
+                    <TableCell>{r.partner_name}</TableCell>
+                    <TableCell>{r.state}</TableCell>
+                    <TableCell>{r.branch}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-3 text-sm">
+            <span className="text-gray-600">Page {safePage} of {totalPages}</span>
+            <div className="flex gap-1">
+              <Button variant="outline" size="sm" disabled={safePage === 1} onClick={() => setPage(safePage - 1)}>Prev</Button>
+              <Button variant="outline" size="sm" disabled={safePage === totalPages} onClick={() => setPage(safePage + 1)}>Next</Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+
 function AgentsListModal({
   isOpen,
   onClose,
