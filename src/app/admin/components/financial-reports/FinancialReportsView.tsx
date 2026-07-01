@@ -98,10 +98,10 @@ interface FinancialReportsViewProps {
 }
 
 const getAmountPaid = (sale: AdminSales): number =>
-  sale.is_installment ? (sale.total_paid ?? 0) : sale.amount;
+  sale.total_paid ?? (sale.is_installment ? 0 : (sale.amount ?? 0));
 
 const getAmountOwed = (sale: AdminSales): number =>
-  sale.is_installment ? sale.amount - (sale.total_paid ?? 0) : 0;
+  Math.max(0, (sale.amount ?? 0) - getAmountPaid(sale));
 
 const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, onEditSale, onDeleteSale, onCancelSale, onApproveSale, viewFrom = "admin", selectedYear: externalSelectedYear, onYearChange: externalOnYearChange, availableYears: externalAvailableYears, onExportReady, onSelectionChange, initialSearchTerm, initialPaymentStatus }) => {
   const [allSales, setAllSales] = useState<AdminSales[]>([]);
@@ -426,15 +426,15 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
       {paymentModalSale && (
         <RecordPaymentModal
           saleId={paymentModalSale.id}
-          remainingBalance={paymentModalSale.amount - (paymentModalSale.total_paid ?? 0)}
+          remainingBalance={getAmountOwed(paymentModalSale)}
           onClose={() => setPaymentModalSale(null)}
           onSuccess={handlePaymentSuccess}
           saleSummary={{
             transactionId: paymentModalSale.transaction_id,
             customerName: paymentModalSale.end_user_name,
             totalAmount: paymentModalSale.amount,
-            amountPaid: paymentModalSale.total_paid ?? 0,
-            amountOwed: paymentModalSale.amount - (paymentModalSale.total_paid ?? 0),
+            amountPaid: getAmountPaid(paymentModalSale),
+            amountOwed: getAmountOwed(paymentModalSale),
           }}
         />
       )}

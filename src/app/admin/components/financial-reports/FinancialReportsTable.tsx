@@ -44,10 +44,10 @@ const formatDate = (dateStr: string) => {
 };
 
 const getAmountPaid = (sale: AdminSales): number =>
-  sale.is_installment ? (sale.total_paid ?? 0) : sale.amount;
+  sale.total_paid ?? (sale.is_installment ? 0 : (sale.amount ?? 0));
 
 const getAmountOwed = (sale: AdminSales): number =>
-  sale.is_installment ? sale.amount - (sale.total_paid ?? 0) : 0;
+  Math.max(0, (sale.amount ?? 0) - getAmountPaid(sale));
 
 
 const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
