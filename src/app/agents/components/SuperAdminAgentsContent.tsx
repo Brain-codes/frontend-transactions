@@ -2946,7 +2946,7 @@ export default function SuperAdminAgentsContent() {
               <TableBody className={loading ? "opacity-40" : ""}>
                 {!loading && sortedAgents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12">
+                    <TableCell colSpan={6} className="text-center py-12">
                       <Users className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500 font-medium">
                         {sortMode !== "default" ? "No agents match the active filter" : "No agents found"}
