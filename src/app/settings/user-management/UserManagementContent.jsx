@@ -164,8 +164,19 @@ const getRoleBadgeClasses = (role) => {
 };
 
 const UserManagementPage = () => {
-  const { supabase } = useAuth();
+  const { supabase, user, isSuperAdmin, isAcslAgentManager, isPartner } = useAuth();
   const { toast, toasts, removeToast } = useToast();
+
+  // Caller-role-based role catalog for the create form.
+  const callerCreatableRoles = isSuperAdmin
+    ? ["super_admin", "acsl_agent_manager", "acsl_agent", "partner", "partner_agent", "agent"]
+    : isAcslAgentManager
+    ? ["acsl_agent", "partner", "partner_agent"]
+    : isPartner
+    ? ["partner_agent"]
+    : [];
+  const callerOrgId = user?.user_metadata?.organization_id || user?.app_metadata?.organization_id || null;
+
 
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
