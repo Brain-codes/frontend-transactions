@@ -1002,7 +1002,6 @@ function StovesStatusModal({
                 .select("stove_id,organization_id,status")
                 .in("organization_id", slice)
                 .eq("is_archived", false)
-                .neq("status", "sold")
                 .range(from, from + PAGE - 1);
               if (err) throw err;
               const chunk = data || [];
