@@ -1,11 +1,8 @@
 
 import React from "react";
-import {
-  GoogleMap,
-  HeatmapLayer,
-  Marker,
-  LoadScript,
-} from "@react-google-maps/api";
+import { GoogleMap, Marker, LoadScript } from "@react-google-maps/api";
+import { GoogleMapsOverlay } from "@deck.gl/google-maps";
+import { HeatmapLayer } from "@deck.gl/aggregation-layers";
 
 const MapPage = ({
   apiKey,
@@ -15,20 +12,8 @@ const MapPage = ({
   intensity = "medium",
 }) => {
   const [isLoading, setIsLoading] = React.useState(true);
-
-  // Convert locations to heatmap data
-  const heatmapData = React.useMemo(() => {
-    if (isLoading || !locations.length) return [];
-    return locations.map((location) => ({
-      location: new google.maps.LatLng(
-        parseFloat(location.lat),
-        parseFloat(location.lng)
-      ),
-      // Weight heatmap by sales amount (normalized to reasonable scale)
-      weight:
-        mapType === "heatmap" ? Math.max(1, (location.amount || 0) / 50000) : 1,
-    }));
-  }, [locations, isLoading, mapType]);
+  const [map, setMap] = React.useState(null);
+  const overlayRef = React.useRef(null);
 
   // Enhanced map styling options
   const mapContainerStyle = {
@@ -36,14 +21,26 @@ const MapPage = ({
     width: "100%",
   };
 
+  // Heatmap intensity → deck.gl HeatmapLayer radius (pixels) & weight scaling.
   const intensitySettings = {
-    low: { radius: 15, opacity: 0.5 },
-    medium: { radius: 25, opacity: 0.7 },
-    high: { radius: 35, opacity: 0.9 },
+    low: { radius: 40, intensity: 1 },
+    medium: { radius: 60, intensity: 1.5 },
+    high: { radius: 90, intensity: 2 },
   };
 
   const currentIntensity =
     intensitySettings[intensity] || intensitySettings.medium;
+
+  // Green → yellow → orange → red gradient (cool → hot), matching a classic
+  // density heatmap. Colors are [r, g, b] with increasing alpha.
+  const colorRange = [
+    [0, 255, 0, 25],
+    [120, 255, 0, 85],
+    [200, 255, 0, 135],
+    [255, 200, 0, 185],
+    [255, 120, 0, 220],
+    [255, 0, 0, 255],
+  ];
 
   // Custom map styles for better visualization
   const mapStyles = [
@@ -79,17 +76,51 @@ const MapPage = ({
     },
   ];
 
+  // Create/attach the deck.gl overlay once the map instance is ready.
+  React.useEffect(() => {
+    if (!map) return;
+    const overlay = new GoogleMapsOverlay({ layers: [] });
+    overlay.setMap(map);
+    overlayRef.current = overlay;
+    return () => {
+      overlay.setMap(null);
+      overlayRef.current = null;
+    };
+  }, [map]);
+
+  // Update the heatmap layer whenever data / settings change.
+  React.useEffect(() => {
+    const overlay = overlayRef.current;
+    if (!overlay) return;
+
+    if (mapType !== "heatmap" || !locations.length) {
+      overlay.setProps({ layers: [] });
+      return;
+    }
+
+    const layer = new HeatmapLayer({
+      id: "sales-heatmap",
+      data: locations,
+      getPosition: (d) => [parseFloat(d.lng), parseFloat(d.lat)],
+      getWeight: (d) => Math.max(1, (d.amount || 0) / 50000),
+      radiusPixels: currentIntensity.radius,
+      intensity: currentIntensity.intensity,
+      colorRange,
+      aggregation: "SUM",
+    });
+
+    overlay.setProps({ layers: [layer] });
+  }, [locations, mapType, currentIntensity.radius, currentIntensity.intensity]);
+
   return (
-    <LoadScript
-      googleMapsApiKey={apiKey}
-      libraries={["visualization"]}
-      onLoad={() => setIsLoading(false)}
-    >
+    <LoadScript googleMapsApiKey={apiKey} onLoad={() => setIsLoading(false)}>
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         center={{ lat: 9.082, lng: 8.6753 }}
         zoom={isFullscreen ? 6 : 6}
         mapTypeId="roadmap"
+        onLoad={(m) => setMap(m)}
+        onUnmount={() => setMap(null)}
         options={{
           disableDefaultUI: !isFullscreen,
           zoomControl: true,
@@ -102,32 +133,6 @@ const MapPage = ({
           gestureHandling: "greedy",
         }}
       >
-        {!isLoading && mapType === "heatmap" && heatmapData.length > 0 && (
-          <HeatmapLayer
-            data={heatmapData}
-            options={{
-              radius: currentIntensity.radius,
-              opacity: currentIntensity.opacity,
-              gradient: [
-                "rgba(0, 255, 255, 0)",
-                "rgba(0, 255, 255, 0.2)",
-                "rgba(0, 191, 255, 0.4)",
-                "rgba(0, 127, 255, 0.6)",
-                "rgba(0, 63, 255, 0.8)",
-                "rgba(0, 0, 255, 1)",
-                "rgba(0, 0, 223, 1)",
-                "rgba(0, 0, 191, 1)",
-                "rgba(0, 0, 159, 1)",
-                "rgba(0, 0, 127, 1)",
-                "rgba(63, 0, 91, 1)",
-                "rgba(127, 0, 63, 1)",
-                "rgba(191, 0, 31, 1)",
-                "rgba(255, 0, 0, 1)",
-              ],
-            }}
-          />
-        )}
-
         {!isLoading &&
           mapType === "markers" &&
           locations.slice(0, 200).map((location) => (

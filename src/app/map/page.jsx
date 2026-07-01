@@ -78,6 +78,11 @@ export default function HeatmapPage() {
         includeAddress: true,
         includeCreator: true,
         includeImages: false, // Don't need images for heatmap
+        // Request the raw DB format (format2). The API defaults to "format1"
+        // (a flat shape) which drops the nested `addresses` object and the
+        // coordinate/amount fields this page maps over, causing every record
+        // to be filtered out as "no valid coordinates".
+        responseFormat: "format2",
         sortBy: "created_at",
         sortOrder: "desc",
         ...filters,
@@ -388,101 +393,63 @@ export default function HeatmapPage() {
           {/* Statistics Cards */}
           <div className="p-3 lg:p-6 bg-white border-b border-gray-200">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4">
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-3 lg:p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs lg:text-sm font-medium text-gray-600 truncate">
-                        Total Locations
+              {[
+                {
+                  gradient: "from-[#194977] to-[#2563EB]",
+                  Icon: MapPin,
+                  value: stats.totalLocations.toLocaleString(),
+                  label: "Total Locations",
+                },
+                {
+                  gradient: "from-[#047857] to-[#10B981]",
+                  Icon: TrendingUp,
+                  value: stats.totalSales.toLocaleString(),
+                  label: "Total Sales",
+                },
+                {
+                  gradient: "from-[#7C3AED] to-[#A78BFA]",
+                  Icon: Banknote,
+                  value: formatCurrency(stats.totalAmount),
+                  label: "Total Revenue",
+                },
+                {
+                  gradient: "from-[#B45309] to-[#F59E0B]",
+                  Icon: Globe,
+                  value: stats.states.toLocaleString(),
+                  label: "States Covered",
+                },
+                {
+                  gradient: "from-[#BE123C] to-[#F43F5E]",
+                  Icon: Target,
+                  value: formatCurrency(stats.avgSaleValue),
+                  label: "Avg Sale Value",
+                },
+                {
+                  gradient: "from-[#4338CA] to-[#818CF8]",
+                  Icon: Activity,
+                  value: stats.topState,
+                  label: "Top State",
+                },
+              ].map(({ gradient, Icon, value, label }) => (
+                <div
+                  key={label}
+                  className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md transition-all bg-gradient-to-br ${gradient}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0 flex-1 pr-3">
+                      <p className="text-lg lg:text-2xl font-bold text-white tracking-tight leading-tight truncate">
+                        {value}
                       </p>
-                      <p className="text-lg lg:text-2xl font-bold text-gray-900">
-                        {stats.totalLocations.toLocaleString()}
-                      </p>
-                    </div>
-                    <MapPin className="h-6 w-6 lg:h-8 lg:w-8 text-brand-700 flex-shrink-0" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-3 lg:p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs lg:text-sm font-medium text-gray-600 truncate">
-                        Total Sales
-                      </p>
-                      <p className="text-lg lg:text-2xl font-bold text-gray-900">
-                        {stats.totalSales.toLocaleString()}
-                      </p>
-                    </div>
-                    <TrendingUp className="h-6 w-6 lg:h-8 lg:w-8 text-green-600 flex-shrink-0" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-3 lg:p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs lg:text-sm font-medium text-gray-600 truncate">
-                        Total Revenue
-                      </p>
-                      <p className="text-sm lg:text-xl font-bold text-gray-900">
-                        {formatCurrency(stats.totalAmount)}
-                      </p>
-                    </div>
-                    <Banknote className="h-6 w-6 lg:h-8 lg:w-8 text-purple-600 flex-shrink-0" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-3 lg:p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs lg:text-sm font-medium text-gray-600 truncate">
-                        States Covered
-                      </p>
-                      <p className="text-lg lg:text-2xl font-bold text-gray-900">
-                        {stats.states}
+                      <p className="text-xs lg:text-sm font-semibold text-white/90 mt-1">
+                        {label}
                       </p>
                     </div>
-                    <Globe className="h-6 w-6 lg:h-8 lg:w-8 text-orange-600 flex-shrink-0" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-3 lg:p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs lg:text-sm font-medium text-gray-600 truncate">
-                        Avg Sale Value
-                      </p>
-                      <p className="text-sm lg:text-lg font-bold text-gray-900">
-                        {formatCurrency(stats.avgSaleValue)}
-                      </p>
+                    <div className="rounded-lg p-2 bg-white/20 text-white shadow-sm w-fit shrink-0">
+                      <Icon className="h-4 w-4" />
                     </div>
-                    <Target className="h-6 w-6 lg:h-8 lg:w-8 text-red-600 flex-shrink-0" />
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-3 lg:p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs lg:text-sm font-medium text-gray-600 truncate">
-                        Top State
-                      </p>
-                      <p className="text-sm lg:text-lg font-bold text-gray-900 truncate">
-                        {stats.topState}
-                      </p>
-                    </div>
-                    <Activity className="h-6 w-6 lg:h-8 lg:w-8 text-indigo-600 flex-shrink-0" />
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              ))}
             </div>
           </div>
 
