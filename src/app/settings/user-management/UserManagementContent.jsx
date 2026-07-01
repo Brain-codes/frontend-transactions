@@ -813,8 +813,13 @@ const UserManagementPage = () => {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email)) errors.email = "Invalid email format";
     if (!userForm.role) errors.role = "User Group is required";
     if (isOrganizationBoundAgentRole(userForm.role) && selectedPartnerIds.size !== 1) errors.partner = "Select exactly one Partner for this agent";
-    if (!userForm.auto_generate_password && !userForm.password) errors.password = "Password is required";
-    else if (!userForm.auto_generate_password && userForm.password.length < 8) errors.password = "Password must be at least 8 characters";
+    if (formMode === "create") {
+      if (!userForm.auto_generate_password && !userForm.password) errors.password = "Password is required";
+      else if (!userForm.auto_generate_password && userForm.password.length < 8) errors.password = "Password must be at least 8 characters";
+    } else if (userForm.password && userForm.password.length < 8) {
+      errors.password = "Password must be at least 8 characters";
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
