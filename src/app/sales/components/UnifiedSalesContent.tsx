@@ -15,6 +15,7 @@ import PageHeader from "../../components/PageHeader";
 import { useAuth } from "../../contexts/useAuth";
 import { usePermissions } from "../../hooks/usePermissions";
 import ApproveSaleConfirmModal from "@/app/admin/components/sales/ApproveSaleConfirmModal";
+import CancelSaleModal from "@/app/admin/components/sales/CancelSaleModal";
 // import ApproveSaleConfirmModal from "../../admin/components/sales/ApproveSaleConfirmModal";
 
 export default function UnifiedSalesContent() {
