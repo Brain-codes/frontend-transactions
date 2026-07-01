@@ -24,10 +24,10 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
   sale, onViewDetails, onViewHistory, onRecordPayment, onApproveSale, onEditSale, onDeleteSale, onCancelSale, viewFrom = "admin",
 }) => {
   const isInstallment = sale.is_installment === true;
-  const isFullyPaid = sale.payment_status === "fully_paid";
-  const showPayButton = isInstallment && !isFullyPaid;
+  const totalPaid = sale.total_paid ?? (isInstallment ? 0 : sale.amount);
+  const balance = Math.max(0, (sale.amount || 0) - totalPaid);
+  const showPayButton = balance > 0;
 
-  const totalPaid = isInstallment ? (sale.total_paid ?? 0) : sale.amount;
   const durationMonths = sale.payment_model?.duration_months ?? 0;
   const paymentsMade = isInstallment
     ? Math.min(Math.ceil(totalPaid > 0 ? totalPaid / ((sale.amount || 1) / (durationMonths || 1)) : 0), durationMonths)
