@@ -118,7 +118,7 @@ const PartnerProfilesContent = () => {
   const { toast, toasts, removeToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [partners, setPartners] = useState([]);
-  const [filters, setFilters] = useState({ search: "", state: "" });
+  const [filters, setFilters] = useState({ search: "", state: "", agentFilter: "" });
   const [page, setPage] = useState(1);
   const [detailsPartner, setDetailsPartner] = useState(null);
   const [editingPartner, setEditingPartner] = useState(null);
@@ -219,9 +219,15 @@ const PartnerProfilesContent = () => {
         const hay = `${p.partner_name ?? ""} ${p.branch ?? ""} ${p.contact_phone ?? ""} ${p.email ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
+      if (filters.agentFilter) {
+        const count = agentCounts[p.id];
+        if (count === undefined) return false;
+        if (filters.agentFilter === "assigned" && count === 0) return false;
+        if (filters.agentFilter === "unassigned" && count > 0) return false;
+      }
       return true;
     });
-  }, [partners, filters]);
+  }, [partners, filters, agentCounts]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -292,7 +298,39 @@ const PartnerProfilesContent = () => {
     return () => { cancelled = true; };
   }, [pageRows, stoveCounts]);
 
-  const hasActiveFilters = filters.search !== "" || filters.state !== "";
+  // Eagerly fetch agent counts for all partners when filtering by agent status
+  useEffect(() => {
+    if (!filters.agentFilter || partners.length === 0) return;
+    const missing = partners.filter((p) => agentCounts[p.id] === undefined);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const BATCH = 20;
+      for (let i = 0; i < missing.length; i += BATCH) {
+        if (cancelled) return;
+        const slice = missing.slice(i, i + BATCH);
+        const results = await Promise.all(
+          slice.map(async (p) => {
+            try {
+              const list = await fetchAllAgentsForOrg(p.id);
+              return [p.id, list.length];
+            } catch {
+              return [p.id, 0];
+            }
+          })
+        );
+        if (cancelled) return;
+        setAgentCounts((prev) => {
+          const next = { ...prev };
+          results.forEach(([id, c]) => { next[id] = c; });
+          return next;
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [filters.agentFilter, partners, agentCounts]);
+
+  const hasActiveFilters = filters.search !== "" || filters.state !== "" || filters.agentFilter !== "";
 
 
   const handleFilterChange = (field, value) => {
@@ -301,7 +339,7 @@ const PartnerProfilesContent = () => {
   };
 
   const handleClearFilters = () => {
-    setFilters({ search: "", state: "" });
+    setFilters({ search: "", state: "", agentFilter: "" });
     setPage(1);
   };
 
@@ -344,6 +382,20 @@ const PartnerProfilesContent = () => {
             {states.map((s) => (
               <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filters.agentFilter || "all"}
+          onValueChange={(v) => handleFilterChange("agentFilter", v === "all" ? "" : v)}
+        >
+          <SelectTrigger className="w-[200px] h-9 bg-white text-xs shadow-none border-gray-200 text-gray-400 data-[placeholder]:text-gray-400">
+            <SelectValue placeholder="All Partners" />
+          </SelectTrigger>
+          <SelectContent className="text-xs">
+            <SelectItem value="all" className="text-xs">All Partners</SelectItem>
+            <SelectItem value="assigned" className="text-xs">With Assigned Agents</SelectItem>
+            <SelectItem value="unassigned" className="text-xs">With No Agents</SelectItem>
           </SelectContent>
         </Select>
 
