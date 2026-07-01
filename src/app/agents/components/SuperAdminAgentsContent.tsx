@@ -1140,6 +1140,7 @@ function StovesStatusModal({
                     <TableCell>{r.state}</TableCell>
                     <TableCell>{r.branch}</TableCell>
                     {showAgentCol && <TableCell>{r.agent_name || "—"}</TableCell>}
+                    {showAgentCol && <TableCell>{r.sales_date ? format(new Date(r.sales_date), "dd MMM yyyy") : "—"}</TableCell>}
                   </TableRow>
                 ))
               )}
