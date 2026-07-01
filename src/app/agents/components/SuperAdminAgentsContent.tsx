@@ -718,7 +718,8 @@ function AssignedStovesModal({
         r.stove_id.toLowerCase().includes(q) ||
         r.partner_name.toLowerCase().includes(q) ||
         r.state.toLowerCase().includes(q) ||
-        r.branch.toLowerCase().includes(q)
+        r.branch.toLowerCase().includes(q) ||
+        r.status.toLowerCase().includes(q)
     );
   }, [rows, search]);
 
