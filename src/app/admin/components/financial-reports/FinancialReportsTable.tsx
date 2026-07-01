@@ -26,6 +26,7 @@ interface FinancialReportsTableProps {
   onApproveSale?: (sale: AdminSales) => void;
   onEditSale?: (sale: AdminSales) => void;
   onDeleteSale?: (sale: AdminSales) => void;
+  onCancelSale?: (sale: AdminSales) => void;
   sortOrder: "asc" | "desc";
   onToggleSort: () => void;
   // "admin" shows Agent column, "superAdmin" shows Partner column, "agent" hides both
@@ -52,7 +53,7 @@ const getAmountOwed = (sale: AdminSales): number =>
 const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
   data, loading, currentPage, pageSize, totalRecords,
   onPageChange, onPageSizeChange, onViewDetails, onViewHistory, onRecordPayment,
-  onApproveSale, onEditSale, onDeleteSale, sortOrder, onToggleSort, viewFrom = "admin",
+  onApproveSale, onEditSale, onDeleteSale, onCancelSale, sortOrder, onToggleSort, viewFrom = "admin",
 }) => {
   const totalPages = Math.ceil(totalRecords / pageSize);
   const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
@@ -158,6 +159,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                     onApproveSale={onApproveSale}
                     onEditSale={onEditSale}
                     onDeleteSale={onDeleteSale}
+                    onCancelSale={onCancelSale}
                     viewFrom={viewFrom}
                   />
                 </TableCell>

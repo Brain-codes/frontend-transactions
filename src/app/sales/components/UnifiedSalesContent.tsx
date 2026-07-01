@@ -15,6 +15,7 @@ import PageHeader from "../../components/PageHeader";
 import { useAuth } from "../../contexts/useAuth";
 import { usePermissions } from "../../hooks/usePermissions";
 import ApproveSaleConfirmModal from "@/app/admin/components/sales/ApproveSaleConfirmModal";
+import CancelSaleModal from "@/app/admin/components/sales/CancelSaleModal";
 // import ApproveSaleConfirmModal from "../../admin/components/sales/ApproveSaleConfirmModal";
 
 export default function UnifiedSalesContent() {
@@ -45,6 +46,7 @@ export default function UnifiedSalesContent() {
   const [editSale, setEditSale] = useState<AdminSales | null>(null);
   const [editLoading, setEditLoading] = useState(false);
   const [approveSale, setApproveSale] = useState<AdminSales | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<AdminSales | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const initialPartnerFilter = searchParams.get("partner") ?? "";
@@ -113,6 +115,21 @@ export default function UnifiedSalesContent() {
     }
   }, []);
 
+  const handleCancelSale = useCallback((sale: AdminSales) => {
+    setCancelTarget(sale);
+  }, []);
+
+  const confirmCancelSale = useCallback(async (reason: string) => {
+    if (!cancelTarget) return;
+    const result = await (adminSalesService as any).cancelSale(cancelTarget.id, reason);
+    if (result?.success) {
+      setCancelTarget(null);
+      reload();
+    } else {
+      alert(result?.error || "Failed to cancel sale");
+    }
+  }, [cancelTarget]);
+
   return (
     <DashboardLayout currentRoute="sales" title="Sales Record">
       <div className="p-6 space-y-6">
@@ -172,6 +189,7 @@ export default function UnifiedSalesContent() {
           loadSales={loadSales}
           onEditSale={handleEditSale}
           onDeleteSale={handleDeleteSale}
+          onCancelSale={handleCancelSale}
           onApproveSale={(isAcslAgent || isAcslAgentManager) ? setApproveSale : undefined}
           viewFrom={viewFrom as any}
           selectedYear={isSuperAdmin ? selectedYear : undefined}
@@ -217,6 +235,13 @@ export default function UnifiedSalesContent() {
         saleId={approveSale?.id || ""}
         customerName={approveSale?.end_user_name || ""}
         onApproved={() => { setApproveSale(null); reload(); }}
+      />
+
+      <CancelSaleModal
+        open={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={confirmCancelSale}
+        sale={cancelTarget}
       />
     </DashboardLayout>
   );
