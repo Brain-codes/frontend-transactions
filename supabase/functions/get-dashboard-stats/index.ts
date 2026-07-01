@@ -130,7 +130,8 @@ serve(async (req) => {
     let stovesSoldQuery = supabase
       .from("sales")
       .select("*", { count: "exact", head: true })
-      .eq("organization_id", organizationId);
+      .eq("organization_id", organizationId)
+      .eq("is_archived", false);
     if (endOfYear) stovesSoldQuery = stovesSoldQuery.lt("sales_date", endOfYear);
 
     const [
