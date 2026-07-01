@@ -1020,6 +1020,7 @@ function StovesStatusModal({
                   partner_name: meta.name,
                   state: meta.state,
                   branch: meta.branch,
+                  sales_date: "",
                 });
               });
               if (chunk.length < PAGE) break;
