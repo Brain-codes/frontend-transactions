@@ -497,6 +497,13 @@ const DashboardContent = ({
                 { label: "UNSOLD STOVES WITH PARTNERS", value: available, color: "#a8c34a", pct: availPct },
 
               ];
+              const modelChartData = salesModelData.map((m, i) => ({
+                name: m.model,
+                value: m.count,
+                color: PIE_COLORS[i % PIE_COLORS.length],
+              }));
+              const totalModelSales = modelChartData.reduce((s, d) => s + (d.value || 0), 0);
+
               return (
                 <Card className="bg-white shadow-none">
                   <CardHeader className="rounded-t-lg text-white py-2 px-4 flex flex-row items-center justify-between gap-3 flex-wrap" style={{ backgroundColor: DARK_NAVY }}>
@@ -647,103 +654,121 @@ const DashboardContent = ({
 
                   <CardContent className="pt-5 pb-5 px-5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                      {/* Stove Inventory Doughnut */}
-                      <div className="relative">
-                        <ResponsiveContainer width="100%" height={240}>
-                          <PieChart>
-                            <Pie
-                              data={doughnutData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={65}
-                              outerRadius={95}
-                              paddingAngle={2}
-                              dataKey="value"
-                              nameKey="name"
-                              stroke="none"
-                            >
-                              {doughnutData.map((d, i) => (
-                                <Cell key={i} fill={d.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip
-                              formatter={(v, n) => [Number(v).toLocaleString(), n]}
-                              contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                          <span className="text-2xl font-bold text-gray-900 tracking-tight">
-                            {received.toLocaleString()}
-                          </span>
-                          <span className="text-[11px] font-semibold tracking-wider text-gray-500 mt-0.5">
-                            STOVES RECEIVED
-                          </span>
+                      {/* Sales Overview */}
+                      <div className="space-y-4">
+                        <div className="relative">
+                          <ResponsiveContainer width="100%" height={240}>
+                            <PieChart>
+                              <Pie
+                                data={doughnutData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={65}
+                                outerRadius={95}
+                                paddingAngle={2}
+                                dataKey="value"
+                                nameKey="name"
+                                stroke="none"
+                              >
+                                {doughnutData.map((d, i) => (
+                                  <Cell key={i} fill={d.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip
+                                formatter={(v, n) => [Number(v).toLocaleString(), n]}
+                                contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-2xl font-bold text-gray-900 tracking-tight">
+                              {received.toLocaleString()}
+                            </span>
+                            <span className="text-[11px] font-semibold tracking-wider text-gray-500 mt-0.5">
+                              STOVES RECEIVED
+                            </span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                          {items.map((it) => (
+                            <div key={it.label} className="flex items-center justify-between bg-[#fafafa] rounded-lg px-4 py-3">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ background: it.color }} />
+                                <span className="text-sm font-medium text-gray-700 truncate">{it.label}</span>
+                              </div>
+                              <div className="flex items-baseline gap-2 shrink-0">
+                                <span className="text-lg font-bold text-gray-900">{it.value.toLocaleString()}</span>
+                                {it.pct !== null && (
+                                  <span className="text-xs text-gray-400">{it.pct}%</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
 
-                      {/* Sales Models Doughnut */}
-                      {(() => {
-                        const modelChartData = salesModelData.map((m, i) => ({
-                          name: m.model,
-                          value: m.count,
-                          color: PIE_COLORS[i % PIE_COLORS.length],
-                        }));
-                        const totalModelSales = modelChartData.reduce((s, d) => s + (d.value || 0), 0);
-                        return (
-                          <div className="relative">
-                            <ResponsiveContainer width="100%" height={240}>
-                              <PieChart>
-                                <Pie
-                                  data={modelChartData}
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={65}
-                                  outerRadius={95}
-                                  paddingAngle={2}
-                                  dataKey="value"
-                                  nameKey="name"
-                                  stroke="none"
-                                >
-                                  {modelChartData.map((d, i) => (
-                                    <Cell key={i} fill={d.color} />
-                                  ))}
-                                </Pie>
-                                <Tooltip
-                                  formatter={(v, n) => [Number(v).toLocaleString(), n]}
-                                  contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
-                                />
-                              </PieChart>
-                            </ResponsiveContainer>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                              <span className="text-2xl font-bold text-gray-900 tracking-tight">
-                                {totalModelSales.toLocaleString()}
-                              </span>
-                              <span className="text-[11px] font-semibold tracking-wider text-gray-500 mt-0.5">
-                                TOTAL SALES
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    {/* Inventory metrics row */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                      {items.map((it) => (
-                        <div key={it.label} className="flex items-center justify-between bg-[#fafafa] rounded-lg px-4 py-3">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ background: it.color }} />
-                            <span className="text-sm font-medium text-gray-700 truncate">{it.label}</span>
-                          </div>
-                          <div className="flex items-baseline gap-2 shrink-0">
-                            <span className="text-lg font-bold text-gray-900">{it.value.toLocaleString()}</span>
-                            {it.pct !== null && (
-                              <span className="text-xs text-gray-400">{it.pct}%</span>
-                            )}
+                      {/* Sales by Models */}
+                      <div className="space-y-4">
+                        <div className="relative">
+                          <ResponsiveContainer width="100%" height={240}>
+                            <PieChart>
+                              <Pie
+                                data={modelChartData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={65}
+                                outerRadius={95}
+                                paddingAngle={2}
+                                dataKey="value"
+                                nameKey="name"
+                                stroke="none"
+                              >
+                                {modelChartData.map((d, i) => (
+                                  <Cell key={i} fill={d.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip
+                                formatter={(v, n) => [Number(v).toLocaleString(), n]}
+                                contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-2xl font-bold text-gray-900 tracking-tight">
+                              {totalModelSales.toLocaleString()}
+                            </span>
+                            <span className="text-[11px] font-semibold tracking-wider text-gray-500 mt-0.5">
+                              TOTAL SALES
+                            </span>
                           </div>
                         </div>
-                      ))}
+                        {(() => {
+                          const totalForPct = totalModelSales || 1;
+                          return (
+                            <div className="space-y-2">
+                              {modelChartData.length === 0 ? (
+                                <p className="text-center text-gray-400 py-4 text-xs">No sales model data</p>
+                              ) : (
+                                modelChartData.map((m) => {
+                                  const pct = ((m.value / totalForPct) * 100).toFixed(1);
+                                  return (
+                                    <div key={m.name} className="flex items-center justify-between bg-[#fafafa] rounded-lg px-4 py-3">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ background: m.color }} />
+                                        <span className="text-sm font-medium text-gray-700 truncate">{m.name}</span>
+                                      </div>
+                                      <div className="flex items-baseline gap-2 shrink-0">
+                                        <span className="text-lg font-bold text-gray-900">{m.value.toLocaleString()}</span>
+                                        <span className="text-xs text-gray-400">{pct}%</span>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </div>
 
                     {/* Divider */}
