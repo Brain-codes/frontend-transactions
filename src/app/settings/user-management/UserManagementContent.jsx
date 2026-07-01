@@ -1004,6 +1004,12 @@ const UserManagementPage = () => {
         role,
         organization_id: isOrgBound ? partnerId : null,
       };
+      const newPassword = (userForm.password || "").trim();
+      if (newPassword) {
+        if (newPassword.length < 8) throw new Error("Password must be at least 8 characters");
+        putBody.password = newPassword;
+      }
+
       const res = await fetch(
         `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
         {
