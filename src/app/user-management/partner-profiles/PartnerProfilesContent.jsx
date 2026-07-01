@@ -725,11 +725,30 @@ const PartnerProfilesContent = () => {
         {/* Pagination footer */}
         {filtered.length > 0 && (
           <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-white">
-            <p className="text-sm text-gray-600">
-              Showing <span className="font-medium">{startRecord}</span> to{" "}
-              <span className="font-medium">{endRecord}</span> of{" "}
-              <span className="font-medium">{filtered.length}</span> partners
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-gray-600">
+                Showing <span className="font-medium">{startRecord}</span> to{" "}
+                <span className="font-medium">{endRecord}</span> of{" "}
+                <span className="font-medium">{filtered.length}</span> partners
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Rows per page</span>
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}
+                >
+                  <SelectTrigger className="h-8 w-[72px] text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <SelectItem key={n} value={String(n)} className="text-sm">{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             {totalPages > 1 && (
               <div className="flex items-center gap-1">
                 <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(1)} disabled={currentPage === 1}>
