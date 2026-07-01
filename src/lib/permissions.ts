@@ -13,6 +13,7 @@ export type RouteKey =
   | "dashboard"
   | "sales"
   | "sales-create"
+  | "sales-cancelled"
   | "sales-financial-reports"
   | "partners"
   | "partners-profiles"
