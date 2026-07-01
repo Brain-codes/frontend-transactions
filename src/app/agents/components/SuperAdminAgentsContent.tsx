@@ -615,6 +615,189 @@ function AssignPartnerModal({
 
 // ── Agent Partners Modal ───────────────────────────────────────────────────────
 
+function AssignedStovesModal({
+  isOpen,
+  onClose,
+  orgIds,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  orgIds: string[];
+}) {
+  const { supabase } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [rows, setRows] = useState<Array<{ stove_id: string; partner_name: string; state: string }>>([]);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 15;
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setSearch("");
+    setPage(1);
+    setRows([]);
+    setError(null);
+    if (!supabase || orgIds.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        // Fetch org name/state map
+        const orgMap: Record<string, { name: string; state: string }> = {};
+        const OBATCH = 100;
+        for (let i = 0; i < orgIds.length; i += OBATCH) {
+          const slice = orgIds.slice(i, i + OBATCH);
+          const { data: orgs } = await supabase
+            .from("organizations")
+            .select("id,partner_name,state")
+            .in("id", slice);
+          (orgs || []).forEach((o: any) => {
+            orgMap[o.id] = { name: o.partner_name || "—", state: o.state || "—" };
+          });
+        }
+
+        // Fetch stove IDs (available/unsold) across orgs
+        const collected: Array<{ stove_id: string; partner_name: string; state: string }> = [];
+        const BATCH = 100;
+        for (let i = 0; i < orgIds.length; i += BATCH) {
+          const slice = orgIds.slice(i, i + BATCH);
+          let from = 0;
+          const PAGE = 1000;
+          while (true) {
+            const { data, error: err } = await supabase
+              .from("stove_ids")
+              .select("stove_id,organization_id")
+              .in("organization_id", slice)
+              .eq("is_archived", false)
+              .neq("status", "sold")
+              .range(from, from + PAGE - 1);
+            if (err) throw err;
+            const chunk = data || [];
+            chunk.forEach((s: any) => {
+              const meta = orgMap[s.organization_id] || { name: "—", state: "—" };
+              collected.push({
+                stove_id: s.stove_id,
+                partner_name: meta.name,
+                state: meta.state,
+              });
+            });
+            if (chunk.length < PAGE) break;
+            from += PAGE;
+          }
+        }
+        if (cancelled) return;
+        collected.sort((a, b) => a.stove_id.localeCompare(b.stove_id));
+        setRows(collected);
+      } catch (e: any) {
+        if (!cancelled) setError(e.message || "Failed to load stove IDs");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, orgIds, supabase]);
+
+  useEffect(() => { setPage(1); }, [search]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (r) =>
+        r.stove_id.toLowerCase().includes(q) ||
+        r.partner_name.toLowerCase().includes(q) ||
+        r.state.toLowerCase().includes(q)
+    );
+  }, [rows, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const exportCsv = () => {
+    const esc = (v: string) => {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ["Stove ID", "Partner Name", "State"];
+    const body = filtered.map((r) => [esc(r.stove_id), esc(r.partner_name), esc(r.state)].join(","));
+    const csv = [header.join(","), ...body].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `assigned-stoves-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Assigned for Sale / Retrieval — Stove IDs</DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center gap-2 mt-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search stove ID, partner or state..."
+              className="pl-8"
+            />
+          </div>
+          <Button onClick={exportCsv} disabled={filtered.length === 0} className="bg-black text-white hover:bg-black/80 shadow-none">
+            <Download className="h-4 w-4 mr-2" />Export
+          </Button>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          {loading ? "Loading..." : `${filtered.length.toLocaleString()} stove${filtered.length === 1 ? "" : "s"}`}
+        </p>
+        {error && <div className="text-sm text-red-600 mt-2">{error}</div>}
+        <div className="flex-1 overflow-auto border rounded mt-2">
+          <Table>
+            <TableHeader className="bg-gray-50 sticky top-0">
+              <TableRow>
+                <TableHead>Stove ID</TableHead>
+                <TableHead>Partner Name</TableHead>
+                <TableHead>State</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow><TableCell colSpan={3} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+              ) : paginated.length === 0 ? (
+                <TableRow><TableCell colSpan={3} className="text-center py-8 text-gray-500">No stoves found</TableCell></TableRow>
+              ) : (
+                paginated.map((r, i) => (
+                  <TableRow key={`${r.stove_id}-${i}`}>
+                    <TableCell className="font-mono text-sm">{r.stove_id}</TableCell>
+                    <TableCell>{r.partner_name}</TableCell>
+                    <TableCell>{r.state}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-3 text-sm">
+            <span className="text-gray-600">Page {safePage} of {totalPages}</span>
+            <div className="flex gap-1">
+              <Button variant="outline" size="sm" disabled={safePage === 1} onClick={() => setPage(safePage - 1)}>Prev</Button>
+              <Button variant="outline" size="sm" disabled={safePage === totalPages} onClick={() => setPage(safePage + 1)}>Next</Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function AgentPartnersModal({
   agent,
   isOpen,
@@ -1485,6 +1668,8 @@ export default function SuperAdminAgentsContent() {
   const [stoveSort, setStoveSort] = useState<{ key: string | null; direction: "asc" | "desc" | null }>({ key: null, direction: null });
   // Deduped totals across unique partner organizations (avoids double-counting shared orgs).
   const [stoveTotals, setStoveTotals] = useState<{ assigned: number; sold: number; unsold: number } | null>(null);
+  const [kpiAssignedOrgIds, setKpiAssignedOrgIds] = useState<string[]>([]);
+  const [showAssignedStovesModal, setShowAssignedStovesModal] = useState(false);
   // Per-role totals across all matching users (not just current page), used by KPI breakdown.
   const [roleTotals, setRoleTotals] = useState<Record<string, number>>({});
   const cycleStoveSort = (key: string) => {
@@ -1734,6 +1919,7 @@ export default function SuperAdminAgentsContent() {
           sold: globalSold,
           unsold: Math.max(0, globalAssigned - globalSold),
         });
+        setKpiAssignedOrgIds(orgIds);
 
         // 5. Merge per-agent stove_summary. received = available stoves at
         //    direct partners (true "to collect"); sold = agent's own sales;
@@ -2107,6 +2293,7 @@ export default function SuperAdminAgentsContent() {
             value: string;
             label: string;
             sub?: React.ReactNode;
+            onClick?: () => void;
           }> = [
             {
               gradient: "from-[#194977] to-[#2563EB]",
@@ -2131,7 +2318,8 @@ export default function SuperAdminAgentsContent() {
               Icon: Package,
               value: totalsReady ? totalAssigned.toLocaleString() : "—",
               label: "Assigned for Sale / Retrieval",
-              sub: "Unique stoves across all partners",
+              sub: "Click to view stove IDs",
+              onClick: () => setShowAssignedStovesModal(true),
             },
             {
               gradient: "from-[#047857] to-[#10B981]",
@@ -2151,10 +2339,14 @@ export default function SuperAdminAgentsContent() {
 
           return (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {cards.map(({ gradient, Icon, value, label, sub }) => (
+              {cards.map(({ gradient, Icon, value, label, sub, onClick }) => (
                 <div
                   key={label}
-                  className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md transition-all bg-gradient-to-br ${gradient}`}
+                  onClick={onClick}
+                  role={onClick ? "button" : undefined}
+                  tabIndex={onClick ? 0 : undefined}
+                  onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
+                  className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md transition-all bg-gradient-to-br ${gradient} ${onClick ? "cursor-pointer hover:shadow-lg hover:-translate-y-0.5" : ""}`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1 pr-3">
@@ -2525,6 +2717,14 @@ export default function SuperAdminAgentsContent() {
         partnerIds={activePartnerIdsInRange}
         dateBadge={dateBadgeLabel}
       />
+
+      <AssignedStovesModal
+        isOpen={showAssignedStovesModal}
+        onClose={() => setShowAssignedStovesModal(false)}
+        orgIds={kpiAssignedOrgIds}
+      />
+
+
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </DashboardLayout>
