@@ -119,7 +119,15 @@ const MapPage = ({
         center={{ lat: 9.082, lng: 8.6753 }}
         zoom={isFullscreen ? 6 : 6}
         mapTypeId="roadmap"
-        onLoad={(m) => setMap(m)}
+        onLoad={(m) => {
+          setMap(m);
+          // Always frame Nigeria by default.
+          const nigeriaBounds = new google.maps.LatLngBounds(
+            { lat: 4.0, lng: 2.6 }, // south-west
+            { lat: 14.0, lng: 14.7 } // north-east
+          );
+          m.fitBounds(nigeriaBounds);
+        }}
         onUnmount={() => setMap(null)}
         options={{
           disableDefaultUI: !isFullscreen,
