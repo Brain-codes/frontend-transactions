@@ -1987,6 +1987,7 @@ export default function PartnersContent() {
         <ViewCredentialModal isOpen={!!viewingCredential} onClose={() => setViewingCredential(null)} credential={viewingCredential} />
         <AssignedAgentsModal organization={agentsModalOrg} agents={agentsModalOrg ? (orgAgentsData[agentsModalOrg.id] || []) : []} isOpen={!!agentsModalOrg} onClose={() => setAgentsModalOrg(null)} />
         <StoveTransferHistoryModal organization={transferHistoryOrg} isOpen={!!transferHistoryOrg} onClose={() => setTransferHistoryOrg(null)} />
+        <SystemStovesModal isOpen={!!kpiModalMode} mode={kpiModalMode} onClose={() => setKpiModalMode(null)} />
         <ToastContainer toasts={toasts} onRemove={removeToast} />
       </DashboardLayout>
     </>
