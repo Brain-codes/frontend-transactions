@@ -44,10 +44,10 @@ const formatDate = (dateStr: string) => {
 };
 
 const getAmountPaid = (sale: AdminSales): number =>
-  sale.is_installment ? (sale.total_paid ?? 0) : sale.amount;
+  sale.total_paid ?? (sale.is_installment ? 0 : (sale.amount ?? 0));
 
 const getAmountOwed = (sale: AdminSales): number =>
-  sale.is_installment ? sale.amount - (sale.total_paid ?? 0) : 0;
+  Math.max(0, (sale.amount ?? 0) - getAmountPaid(sale));
 
 
 const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
@@ -129,7 +129,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
             {data.map((sale, idx) => (
               <TableRow
                 key={sale.id}
-                className={`${idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]"} hover:bg-gray-50`}
+                className={`${idx % 2 === 0 ? "bg-white" : "bg-[#fafafa]"} hover:bg-gray-100`}
               >
                 <TableCell className="py-1 px-1 font-medium whitespace-nowrap">{sale.transaction_id || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{formatDate(sale.sales_date || sale.created_at)}</TableCell>

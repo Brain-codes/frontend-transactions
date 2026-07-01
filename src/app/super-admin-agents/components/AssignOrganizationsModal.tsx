@@ -181,6 +181,12 @@ const AssignOrganizationsModal: React.FC<AssignOrganizationsModalProps> = ({
         superAdminAgentService.setAgentStates(agent.id, Array.from(selectedStates)),
         superAdminAgentService.setAgentOrganizations(agent.id, Array.from(selectedDirectOrgIds)),
       ]);
+      // Notify other views (Partner Profiles, Agents Profile) to refresh
+      // their cached assignment counts.
+      try {
+        window.dispatchEvent(new CustomEvent("acsl:assignment-updated", { detail: { agentId: agent.id } }));
+        window.dispatchEvent(new CustomEvent("acsl:user-updated", { detail: { agentId: agent.id } }));
+      } catch { /* non-fatal */ }
       onSuccess();
     } catch (err: any) {
       setError(err.message || "Failed to save assignments");

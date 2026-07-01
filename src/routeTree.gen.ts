@@ -49,6 +49,7 @@ import { Route as SettingsCredentialsIndexRouteImport } from './routes/settings/
 import { Route as SalesManageIndexRouteImport } from './routes/sales/manage/index'
 import { Route as SalesFinancialReportsIndexRouteImport } from './routes/sales/financial-reports/index'
 import { Route as SalesCancelledIndexRouteImport } from './routes/sales/cancelled/index'
+import { Route as SalesCancelledPurchasesIndexRouteImport } from './routes/sales/cancelled-purchases/index'
 import { Route as SalesIdIndexRouteImport } from './routes/sales/$id/index'
 import { Route as DocsSuperadminIndexRouteImport } from './routes/docs/superadmin/index'
 import { Route as DocsAdminIndexRouteImport } from './routes/docs/admin/index'
@@ -279,6 +280,12 @@ const SalesCancelledIndexRoute = SalesCancelledIndexRouteImport.update({
   path: '/sales/cancelled/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SalesCancelledPurchasesIndexRoute =
+  SalesCancelledPurchasesIndexRouteImport.update({
+    id: '/sales/cancelled-purchases/',
+    path: '/sales/cancelled-purchases/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const SalesIdIndexRoute = SalesIdIndexRouteImport.update({
   id: '/sales/$id/',
   path: '/sales/$id/',
@@ -409,6 +416,7 @@ export interface FileRoutesByFullPath {
   '/docs/admin/': typeof DocsAdminIndexRoute
   '/docs/superadmin/': typeof DocsSuperadminIndexRoute
   '/sales/$id/': typeof SalesIdIndexRoute
+  '/sales/cancelled-purchases/': typeof SalesCancelledPurchasesIndexRoute
   '/sales/cancelled/': typeof SalesCancelledIndexRoute
   '/sales/financial-reports/': typeof SalesFinancialReportsIndexRoute
   '/sales/manage/': typeof SalesManageIndexRoute
@@ -468,6 +476,7 @@ export interface FileRoutesByTo {
   '/docs/admin': typeof DocsAdminIndexRoute
   '/docs/superadmin': typeof DocsSuperadminIndexRoute
   '/sales/$id': typeof SalesIdIndexRoute
+  '/sales/cancelled-purchases': typeof SalesCancelledPurchasesIndexRoute
   '/sales/cancelled': typeof SalesCancelledIndexRoute
   '/sales/financial-reports': typeof SalesFinancialReportsIndexRoute
   '/sales/manage': typeof SalesManageIndexRoute
@@ -528,6 +537,7 @@ export interface FileRoutesById {
   '/docs/admin/': typeof DocsAdminIndexRoute
   '/docs/superadmin/': typeof DocsSuperadminIndexRoute
   '/sales/$id/': typeof SalesIdIndexRoute
+  '/sales/cancelled-purchases/': typeof SalesCancelledPurchasesIndexRoute
   '/sales/cancelled/': typeof SalesCancelledIndexRoute
   '/sales/financial-reports/': typeof SalesFinancialReportsIndexRoute
   '/sales/manage/': typeof SalesManageIndexRoute
@@ -589,6 +599,7 @@ export interface FileRouteTypes {
     | '/docs/admin/'
     | '/docs/superadmin/'
     | '/sales/$id/'
+    | '/sales/cancelled-purchases/'
     | '/sales/cancelled/'
     | '/sales/financial-reports/'
     | '/sales/manage/'
@@ -648,6 +659,7 @@ export interface FileRouteTypes {
     | '/docs/admin'
     | '/docs/superadmin'
     | '/sales/$id'
+    | '/sales/cancelled-purchases'
     | '/sales/cancelled'
     | '/sales/financial-reports'
     | '/sales/manage'
@@ -707,6 +719,7 @@ export interface FileRouteTypes {
     | '/docs/admin/'
     | '/docs/superadmin/'
     | '/sales/$id/'
+    | '/sales/cancelled-purchases/'
     | '/sales/cancelled/'
     | '/sales/financial-reports/'
     | '/sales/manage/'
@@ -767,6 +780,7 @@ export interface RootRouteChildren {
   DocsAdminIndexRoute: typeof DocsAdminIndexRoute
   DocsSuperadminIndexRoute: typeof DocsSuperadminIndexRoute
   SalesIdIndexRoute: typeof SalesIdIndexRoute
+  SalesCancelledPurchasesIndexRoute: typeof SalesCancelledPurchasesIndexRoute
   SalesCancelledIndexRoute: typeof SalesCancelledIndexRoute
   SalesFinancialReportsIndexRoute: typeof SalesFinancialReportsIndexRoute
   SalesManageIndexRoute: typeof SalesManageIndexRoute
@@ -1069,6 +1083,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SalesCancelledIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sales/cancelled-purchases/': {
+      id: '/sales/cancelled-purchases/'
+      path: '/sales/cancelled-purchases'
+      fullPath: '/sales/cancelled-purchases/'
+      preLoaderRoute: typeof SalesCancelledPurchasesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sales/$id/': {
       id: '/sales/$id/'
       path: '/sales/$id'
@@ -1231,6 +1252,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocsAdminIndexRoute: DocsAdminIndexRoute,
   DocsSuperadminIndexRoute: DocsSuperadminIndexRoute,
   SalesIdIndexRoute: SalesIdIndexRoute,
+  SalesCancelledPurchasesIndexRoute: SalesCancelledPurchasesIndexRoute,
   SalesCancelledIndexRoute: SalesCancelledIndexRoute,
   SalesFinancialReportsIndexRoute: SalesFinancialReportsIndexRoute,
   SalesManageIndexRoute: SalesManageIndexRoute,

@@ -47,8 +47,10 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Ban,
 } from "lucide-react";
 import transferHistoryService, { TransferRecord } from "../../services/transferHistoryService";
+import CancelPurchaseModal from "./CancelPurchaseModal";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const DEFAULT_PAGE_SIZE = 20;
@@ -214,6 +216,8 @@ export default function StoveTransferHistoryContent() {
   const [totalCount, setTotalCount] = useState(0);
   const [selectedRecord, setSelectedRecord] = useState<TransferRecord | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [cancelRecord, setCancelRecord] = useState<TransferRecord | null>(null);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const startRecord = records.length > 0 ? (page - 1) * pageSize + 1 : 0;
@@ -512,6 +516,14 @@ export default function StoveTransferHistoryContent() {
                                   <Eye className="h-3.5 w-3.5" />
                                   View Stove IDs
                                 </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onSelect={() => { setCancelRecord(record); setCancelOpen(true); }}
+                                  className="cursor-pointer gap-2 text-red-600 focus:text-red-700"
+                                >
+                                  <Ban className="h-3.5 w-3.5" />
+                                  Cancel Purchase
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
@@ -590,6 +602,13 @@ export default function StoveTransferHistoryContent() {
         record={selectedRecord}
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
+      />
+
+      <CancelPurchaseModal
+        record={cancelRecord}
+        isOpen={cancelOpen}
+        onClose={() => setCancelOpen(false)}
+        onCancelled={fetchRecords}
       />
     </>
   );

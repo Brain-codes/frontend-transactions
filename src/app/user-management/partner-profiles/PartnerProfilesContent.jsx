@@ -55,6 +55,7 @@ import adminCredentialsService from "../../services/adminCredentialsService";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import adminAgentService from "../../services/adminAgentService.jsx";
 import { createClientComponentClient } from "@/lib/supabaseClient";
+import { getAgentIdsForPartner } from "../../services/agentAssignmentQueries";
 
 const supabase = createClientComponentClient();
 
@@ -73,19 +74,33 @@ const ROLE_BADGE = {
 };
 const formatRole = (r) => ROLE_LABELS[r] || (r ? r.replace(/_/g, " ") : "—");
 
+// Fetch every agent (ACSL + partner agent) associated with an organization.
+// ACSL agents come from the shared assignment-query helper so the count and
+// list always match the Agents Profile view. Partner agents come from the
+// profiles table via org membership.
 async function fetchAllAgentsForOrg(orgId) {
-  const [acslRes, partnerRes] = await Promise.all([
-    superAdminAgentService.getAgentsByOrganization(orgId).catch(() => null),
-    adminAgentService.getSalesAgents({ organization_id: orgId, limit: 100 }).catch(() => null),
-  ]);
-  const acslList = acslRes?.data?.agents || acslRes?.data || [];
-  const partnerList = partnerRes?.data?.agents || partnerRes?.data || [];
-  const tagged = [
-    ...(Array.isArray(acslList) ? acslList : []).map((a) => ({ ...a, role: a.role || "acsl_agent" })),
-    ...(Array.isArray(partnerList) ? partnerList : []).map((a) => ({ ...a, role: a.role || "partner_agent" })),
-  ];
+  const acslIds = await getAgentIdsForPartner(orgId);
+
+  let acslList = [];
+  if (acslIds.length > 0) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, phone, role")
+      .in("id", acslIds);
+    acslList = (data || []).map((a) => ({ ...a, role: a.role || "acsl_agent" }));
+  }
+
+  // Partner agents belonging to this organization
+  const { data: partnerAgents } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, phone, role")
+    .eq("organization_id", orgId)
+    .in("role", ["partner_agent", "agent"]);
+  const partnerList = (partnerAgents || []).map((a) => ({ ...a, role: a.role || "partner_agent" }));
+
+  const merged = [...acslList, ...partnerList];
   const seen = new Set();
-  return tagged.filter((a) => {
+  return merged.filter((a) => {
     const k = a.id || a.email;
     if (!k || seen.has(k)) return false;
     seen.add(k);
@@ -99,7 +114,7 @@ const PartnerProfilesContent = () => {
   const { toast, toasts, removeToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [partners, setPartners] = useState([]);
-  const [filters, setFilters] = useState({ search: "", state: "" });
+  const [filters, setFilters] = useState({ search: "", state: "", agentFilter: "" });
   const [page, setPage] = useState(1);
   const [detailsPartner, setDetailsPartner] = useState(null);
   const [editingPartner, setEditingPartner] = useState(null);
@@ -137,7 +152,7 @@ const PartnerProfilesContent = () => {
     setStovesModalSearch("");
     try {
       const { data, error } = await supabase
-        .from("stove_ids")
+        .from("stove_ids_base")
         .select("id, stove_id, status, created_at")
         .eq("organization_id", partner.id)
         .eq("is_archived", false)
@@ -170,6 +185,21 @@ const PartnerProfilesContent = () => {
     loadPartners();
   }, []);
 
+  // Refresh agent counts when an assignment is added / changed elsewhere in
+  // the app (e.g. the ACSL Agents assign-partners modal). Clearing the cache
+  // triggers the lazy-fetch effect for the visible page.
+  useEffect(() => {
+    const handler = () => {
+      setAgentCounts({});
+    };
+    window.addEventListener("acsl:user-updated", handler);
+    window.addEventListener("acsl:assignment-updated", handler);
+    return () => {
+      window.removeEventListener("acsl:user-updated", handler);
+      window.removeEventListener("acsl:assignment-updated", handler);
+    };
+  }, []);
+
   const handleViewCredentials = async (org) => {
     setLoadingCredentialOrgId(org.id);
     try {
@@ -200,9 +230,15 @@ const PartnerProfilesContent = () => {
         const hay = `${p.partner_name ?? ""} ${p.branch ?? ""} ${p.contact_phone ?? ""} ${p.email ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
+      if (filters.agentFilter) {
+        const count = agentCounts[p.id];
+        if (count === undefined) return false;
+        if (filters.agentFilter === "assigned" && count === 0) return false;
+        if (filters.agentFilter === "unassigned" && count > 0) return false;
+      }
       return true;
     });
-  }, [partners, filters]);
+  }, [partners, filters, agentCounts]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -250,7 +286,7 @@ const PartnerProfilesContent = () => {
         for (let i = 0; i < ids.length; i += BATCH) {
           const slice = ids.slice(i, i + BATCH);
           const { data } = await supabase
-            .from("stove_ids")
+            .from("stove_ids_base")
             .select("organization_id")
             .in("organization_id", slice)
             .eq("is_archived", false);
@@ -273,7 +309,39 @@ const PartnerProfilesContent = () => {
     return () => { cancelled = true; };
   }, [pageRows, stoveCounts]);
 
-  const hasActiveFilters = filters.search !== "" || filters.state !== "";
+  // Eagerly fetch agent counts for all partners when filtering by agent status
+  useEffect(() => {
+    if (!filters.agentFilter || partners.length === 0) return;
+    const missing = partners.filter((p) => agentCounts[p.id] === undefined);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const BATCH = 20;
+      for (let i = 0; i < missing.length; i += BATCH) {
+        if (cancelled) return;
+        const slice = missing.slice(i, i + BATCH);
+        const results = await Promise.all(
+          slice.map(async (p) => {
+            try {
+              const list = await fetchAllAgentsForOrg(p.id);
+              return [p.id, list.length];
+            } catch {
+              return [p.id, 0];
+            }
+          })
+        );
+        if (cancelled) return;
+        setAgentCounts((prev) => {
+          const next = { ...prev };
+          results.forEach(([id, c]) => { next[id] = c; });
+          return next;
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [filters.agentFilter, partners, agentCounts]);
+
+  const hasActiveFilters = filters.search !== "" || filters.state !== "" || filters.agentFilter !== "";
 
 
   const handleFilterChange = (field, value) => {
@@ -282,7 +350,7 @@ const PartnerProfilesContent = () => {
   };
 
   const handleClearFilters = () => {
-    setFilters({ search: "", state: "" });
+    setFilters({ search: "", state: "", agentFilter: "" });
     setPage(1);
   };
 
@@ -325,6 +393,20 @@ const PartnerProfilesContent = () => {
             {states.map((s) => (
               <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filters.agentFilter || "all"}
+          onValueChange={(v) => handleFilterChange("agentFilter", v === "all" ? "" : v)}
+        >
+          <SelectTrigger className="w-[200px] h-9 bg-white text-xs shadow-none border-gray-200 text-gray-400 data-[placeholder]:text-gray-400">
+            <SelectValue placeholder="All Partners" />
+          </SelectTrigger>
+          <SelectContent className="text-xs">
+            <SelectItem value="all" className="text-xs">All Partners</SelectItem>
+            <SelectItem value="assigned" className="text-xs">With Assigned Agents</SelectItem>
+            <SelectItem value="unassigned" className="text-xs">With No Agents</SelectItem>
           </SelectContent>
         </Select>
 

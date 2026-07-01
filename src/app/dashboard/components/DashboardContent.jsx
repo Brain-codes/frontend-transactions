@@ -491,12 +491,13 @@ const DashboardContent = ({
                 { name: "Sold", value: sold, color: "#4a5d0f" },
                 { name: "Available", value: available, color: "#a8c34a" },
               ];
-              const items = [
-                { label: "STOVES SOLD TO PARTNERS", value: received, color: "#1f2937", pct: null },
-                { label: "STOVES BOUGHT BY END USERS", value: sold, color: "#4a5d0f", pct: soldPct },
-                { label: "UNSOLD STOVES WITH PARTNERS", value: available, color: "#a8c34a", pct: availPct },
+              const modelChartData = salesModelData.map((m, i) => ({
+                name: m.model,
+                value: m.count,
+                color: PIE_COLORS[i % PIE_COLORS.length],
+              }));
+              const totalModelSales = modelChartData.reduce((s, d) => s + (d.value || 0), 0);
 
-              ];
               return (
                 <Card className="bg-white shadow-none">
                   <CardHeader className="rounded-t-lg text-white py-2 px-4 flex flex-row items-center justify-between gap-3 flex-wrap" style={{ backgroundColor: DARK_NAVY }}>
@@ -646,59 +647,124 @@ const DashboardContent = ({
                   </CardHeader>
 
                   <CardContent className="pt-5 pb-5 px-5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                      <div className="relative">
-                        <ResponsiveContainer width="100%" height={260}>
-                          <PieChart>
-                            <Pie
-                              data={doughnutData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={70}
-                              outerRadius={100}
-                              paddingAngle={2}
-                              dataKey="value"
-                              nameKey="name"
-                              stroke="none"
+                    {(() => {
+                      // Shared custom label with connector line + colored % text
+                      const renderOutsideLabel = (total) => (props) => {
+                        const { cx, cy, midAngle, outerRadius, value, fill } = props;
+                        if (!value) return null;
+                        const RAD = Math.PI / 180;
+                        const sin = Math.sin(-midAngle * RAD);
+                        const cos = Math.cos(-midAngle * RAD);
+                        const sx = cx + (outerRadius + 2) * cos;
+                        const sy = cy + (outerRadius + 2) * sin;
+                        const mx = cx + (outerRadius + 14) * cos;
+                        const my = cy + (outerRadius + 14) * sin;
+                        const ex = mx + (cos >= 0 ? 1 : -1) * 18;
+                        const ey = my;
+                        const textAnchor = cos >= 0 ? "start" : "end";
+                        const pct = ((value / (total || 1)) * 100).toFixed(1);
+                        return (
+                          <g>
+                            <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" strokeWidth={1} />
+                            <circle cx={ex} cy={ey} r={1.5} fill={fill} stroke="none" />
+                            <text
+                              x={ex + (cos >= 0 ? 4 : -4)}
+                              y={ey}
+                              textAnchor={textAnchor}
+                              dominantBaseline="central"
+                              fill={fill}
+                              style={{ fontSize: 12, fontWeight: 600, fontFamily: "Arial, sans-serif" }}
                             >
-                              {doughnutData.map((d, i) => (
-                                <Cell key={i} fill={d.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip
-                              formatter={(v, n) => [Number(v).toLocaleString(), n]}
-                              contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                          <span className="text-2xl font-bold text-gray-900 tracking-tight">
-                            {received.toLocaleString()}
-                          </span>
-                          <span className="text-[11px] font-semibold tracking-wider text-gray-500 mt-0.5">
-                            STOVES RECEIVED
-                          </span>
+                              {pct}%
+                            </text>
+                          </g>
+                        );
+                      };
+
+                      const Legend = ({ entries, total }) => (
+                        <div className="flex flex-wrap justify-center gap-x-5 gap-y-1.5 mt-2">
+                          {entries.map((e) => {
+                            const pct = ((e.value / (total || 1)) * 100).toFixed(1);
+                            return (
+                              <div key={e.name} className="flex items-center gap-1.5 text-[12px]" style={{ fontFamily: "Arial, sans-serif" }}>
+                                <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: e.color }} />
+                                <span className="text-gray-800">
+                                  {e.name}{" "}
+                                  <span className="text-gray-500">({e.value.toLocaleString()} • {pct}%)</span>
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
-                      </div>
-                      <div className="space-y-3">
-                        {items.map((it) => (
-                          <div key={it.label} className="flex items-center justify-between border-b border-gray-100 pb-2 last:border-0">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ background: it.color }} />
-                              <span className="text-base font-medium text-gray-700 truncate">{it.label}</span>
-                            </div>
-                            <div className="flex items-baseline gap-2 shrink-0">
-                              <span className="text-xl font-bold text-gray-900">{it.value.toLocaleString()}</span>
-                              {it.pct !== null && (
-                                <span className="text-sm text-gray-400">{it.pct}%</span>
-                              )}
-                            </div>
+                      );
 
-
+                      const Donut = ({ title, data, total, centerValue, centerLabel }) => (
+                        <div>
+                          <h3 className="text-center text-[15px] font-semibold text-gray-800 mb-1" style={{ fontFamily: "Arial, sans-serif" }}>
+                            {title}
+                          </h3>
+                          <div className="relative">
+                            <ResponsiveContainer width="100%" height={260}>
+                              <PieChart margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
+                                <Pie
+                                  data={data}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={60}
+                                  outerRadius={88}
+                                  paddingAngle={1}
+                                  dataKey="value"
+                                  nameKey="name"
+                                  stroke="none"
+                                  labelLine={false}
+                                  label={renderOutsideLabel(total)}
+                                  isAnimationActive={false}
+                                >
+                                  {data.map((d, i) => (
+                                    <Cell key={i} fill={d.color} />
+                                  ))}
+                                </Pie>
+                                <Tooltip
+                                  formatter={(v, n) => [Number(v).toLocaleString(), n]}
+                                  contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
+                                />
+                              </PieChart>
+                            </ResponsiveContainer>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                              <span className="text-2xl font-bold text-gray-900 tracking-tight">
+                                {centerValue.toLocaleString()}
+                              </span>
+                              <span className="text-[10px] font-semibold tracking-wider text-gray-500 mt-0.5">
+                                {centerLabel}
+                              </span>
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    </div>
+                          <Legend entries={data} total={total} />
+                        </div>
+                      );
+
+                      const inventoryTotal = (doughnutData[0]?.value || 0) + (doughnutData[1]?.value || 0);
+
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                          <Donut
+                            title="Stove Inventory"
+                            data={doughnutData}
+                            total={inventoryTotal}
+                            centerValue={received}
+                            centerLabel="STOVES RECEIVED"
+                          />
+                          <Donut
+                            title="Sales by Models"
+                            data={modelChartData}
+                            total={totalModelSales}
+                            centerValue={totalModelSales}
+                            centerLabel="TOTAL SALES"
+                          />
+                        </div>
+                      );
+                    })()}
+
 
                     {/* Divider */}
                     <div className="my-5 flex items-center gap-3">
@@ -801,6 +867,60 @@ const DashboardContent = ({
                               <LabelList dataKey="value" position="top" fontSize={11} fill="#374151" />
                             </Line>
                           </ComposedChart>
+                        </ResponsiveContainer>
+                      );
+                    })()}
+
+                    {/* Divider — Sales by States */}
+                    <div className="mt-6 mb-4 flex items-center gap-3">
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                      <span className="text-[10px] font-semibold tracking-[0.15em] text-gray-400 uppercase">
+                        Sales by States
+                      </span>
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                    </div>
+
+                    {(() => {
+                      const rawStates = [...(data?.byState ?? [])].sort((a, b) => (b.count || 0) - (a.count || 0));
+                      const chartData = rawStates.slice(0, 15).map((s) => ({
+                        state: s.state ?? "Unknown",
+                        sales: Number(s.count ?? 0),
+                      }));
+                      return (
+                        <ResponsiveContainer width="100%" height={340}>
+                          <BarChart data={chartData} margin={{ top: 24, right: 16, left: 8, bottom: 8 }}>
+                            <defs>
+                              <linearGradient id="stateBarFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#4a5d0f" />
+                                <stop offset="100%" stopColor="#8ba832" />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                            <XAxis
+                              dataKey="state"
+                              tick={{ fontSize: 10, fill: "#6b7280" }}
+                              axisLine={{ stroke: "#e5e7eb" }}
+                              tickLine={false}
+                              interval={0}
+                              angle={-35}
+                              textAnchor="end"
+                              height={60}
+                            />
+                            <YAxis
+                              tick={{ fontSize: 11, fill: "#6b7280" }}
+                              axisLine={false}
+                              tickLine={false}
+                              allowDecimals={false}
+                              domain={[0, (dataMax) => Math.max(1, Math.ceil(dataMax * 1.1))]}
+                            />
+                            <Tooltip
+                              formatter={(v) => [Number(v).toLocaleString(), "Sales"]}
+                              contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}
+                            />
+                            <Bar dataKey="sales" fill="url(#stateBarFill)" barSize={28} radius={[4, 4, 0, 0]}>
+                              <LabelList dataKey="sales" position="top" fontSize={10} fill="#4a5d0f" formatter={(v) => Number(v).toLocaleString()} />
+                            </Bar>
+                          </BarChart>
                         </ResponsiveContainer>
                       );
                     })()}
