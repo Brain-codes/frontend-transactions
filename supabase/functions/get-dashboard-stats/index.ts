@@ -145,11 +145,12 @@ serve(async (req) => {
     const totalStovesSold = stovesSoldCumulative ?? 0;
     const totalStovesAvailable = Math.max(0, (totalStovesReceived ?? 0) - totalStovesSold);
 
-    // Get total sales count for the organization
+    // Get total sales count for the organization (exclude cancelled)
     const { count: totalSalesCount, error: salesCountError } = await supabase
       .from("sales")
       .select("*", { count: "exact", head: true })
-      .eq("organization_id", organizationId);
+      .eq("organization_id", organizationId)
+      .eq("is_archived", false);
 
     if (salesCountError) {
       console.error("Error fetching sales count:", salesCountError);
