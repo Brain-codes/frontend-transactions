@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolveAssignedOrgIds } from "../_shared/resolveAssignedOrgIds.ts";
 
@@ -18,7 +17,7 @@ function jsonError(message: string, status = 400): Response {
   );
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   console.log("➡️ Incoming request:", req.method, req.url);
 
   if (req.method === "OPTIONS") {

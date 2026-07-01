@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withCors } from "./cors.ts";
 import { authenticateUser } from "./authenticate.ts";
@@ -8,7 +7,7 @@ import { fetchRelatedData } from "./fetch-related.ts";
 import { convertToCSV, prepareExportData } from "./export.ts";
 import { transformResponse } from "./format-transformer.ts";
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   console.log("🚀 Sales API started");
   console.log("📥 Request:", req.method, req.url);
 

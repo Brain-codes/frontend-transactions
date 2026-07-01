@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js";
 function withCors(res) {
   res.headers.set("Access-Control-Allow-Origin", "*");
@@ -9,7 +8,7 @@ function withCors(res) {
   );
   return res;
 }
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return withCors(
       new Response("ok", {
@@ -77,9 +76,19 @@ serve(async (req) => {
       .select("organization_id, role")
       .eq("id", userId)
       .maybeSingle();
+    // Roles with system-wide sales visibility (mirror get-sales-advanced):
+    // super_admin plus ACSL agent roles can view any sale regardless of org.
+    const systemWideRoles = [
+      "super_admin",
+      "acsl_agent",
+      "acsl_agent_manager",
+      "super_admin_agent",
+    ];
+    const hasSystemWideAccess = systemWideRoles.includes(profile?.role);
+
     if (
       profileError ||
-      (!profile?.organization_id && profile?.role !== "super_admin")
+      (!profile?.organization_id && !hasSystemWideAccess)
     ) {
       return withCors(
         new Response(
@@ -114,8 +123,9 @@ serve(async (req) => {
       saleQuery = saleQuery.eq("stove_serial_no", stoveSerialNo);
     }
 
-    // Apply organization filter for non-super admins
-    if (profile.role !== "super_admin") {
+    // Apply organization filter only for org-scoped users. Roles with system-wide
+    // access (super_admin + ACSL agents) can view any sale.
+    if (!hasSystemWideAccess) {
       saleQuery = saleQuery.eq("organization_id", profile.organization_id);
     }
     const { data: sale, error: saleError } = await saleQuery.maybeSingle();
