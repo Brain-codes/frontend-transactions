@@ -298,7 +298,7 @@ const PartnerProfilesContent = () => {
     return () => { cancelled = true; };
   }, [pageRows, stoveCounts]);
 
-  const hasActiveFilters = filters.search !== "" || filters.state !== "";
+  const hasActiveFilters = filters.search !== "" || filters.state !== "" || filters.agentFilter !== "";
 
 
   const handleFilterChange = (field, value) => {
