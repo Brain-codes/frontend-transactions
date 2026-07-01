@@ -115,6 +115,21 @@ export default function UnifiedSalesContent() {
     }
   }, []);
 
+  const handleCancelSale = useCallback((sale: AdminSales) => {
+    setCancelTarget(sale);
+  }, []);
+
+  const confirmCancelSale = useCallback(async (reason: string) => {
+    if (!cancelTarget) return;
+    const result = await (adminSalesService as any).cancelSale(cancelTarget.id, reason);
+    if (result?.success) {
+      setCancelTarget(null);
+      reload();
+    } else {
+      alert(result?.error || "Failed to cancel sale");
+    }
+  }, [cancelTarget]);
+
   return (
     <DashboardLayout currentRoute="sales" title="Sales Record">
       <div className="p-6 space-y-6">
