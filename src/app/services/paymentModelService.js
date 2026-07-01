@@ -377,6 +377,33 @@ class PaymentModelService {
       .select()
       .single();
     if (error) throw new Error(error.message);
+
+    // Ensure the sale row reflects the new payment (in case no DB trigger handles it)
+    try {
+      const { data: saleRow } = await supabase
+        .from("sales")
+        .select("amount, total_paid")
+        .eq("id", saleId)
+        .single();
+      if (saleRow) {
+        const newTotalPaid =
+          (Number(saleRow.total_paid) || 0) + Number(payload.amount);
+        const total = Number(saleRow.amount) || 0;
+        const newStatus =
+          total > 0 && newTotalPaid >= total
+            ? "fully_paid"
+            : newTotalPaid > 0
+            ? "partially_paid"
+            : "pending";
+        await supabase
+          .from("sales")
+          .update({ total_paid: newTotalPaid, payment_status: newStatus })
+          .eq("id", saleId);
+      }
+    } catch (e) {
+      console.warn("[recordInstallmentPayment] sale totals update failed", e);
+    }
+
     return { success: true, message: "Payment recorded", data };
   }
 }
