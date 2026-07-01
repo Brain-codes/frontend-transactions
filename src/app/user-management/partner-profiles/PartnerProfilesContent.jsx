@@ -281,7 +281,7 @@ const PartnerProfilesContent = () => {
   }, [partners]);
 
   const filtered = useMemo(() => {
-    return partners.filter((p) => {
+    const list = partners.filter((p) => {
       if (filters.state && p.state !== filters.state) return false;
       if (filters.search) {
         const q = filters.search.toLowerCase();
@@ -296,7 +296,29 @@ const PartnerProfilesContent = () => {
       }
       return true;
     });
-  }, [partners, filters, agentCounts]);
+
+    if (!sortConfig.key) return list;
+
+    const dir = sortConfig.direction === "asc" ? 1 : -1;
+    return [...list].sort((a, b) => {
+      if (sortConfig.key === "partner") {
+        const av = (a.partner_name || "").toLowerCase();
+        const bv = (b.partner_name || "").toLowerCase();
+        return av.localeCompare(bv) * dir;
+      }
+      if (sortConfig.key === "assigned_agents") {
+        const av = agentCounts[a.id] ?? -1;
+        const bv = agentCounts[b.id] ?? -1;
+        return (av - bv) * dir;
+      }
+      if (sortConfig.key === "total_stoves") {
+        const av = stoveCounts[a.id] ?? -1;
+        const bv = stoveCounts[b.id] ?? -1;
+        return (av - bv) * dir;
+      }
+      return 0;
+    });
+  }, [partners, filters, agentCounts, stoveCounts, sortConfig]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
