@@ -1124,6 +1124,7 @@ function StovesStatusModal({
                 <TableHead>State</TableHead>
                 <TableHead>Branch</TableHead>
                 {showAgentCol && <TableHead>Agent</TableHead>}
+                {showAgentCol && <TableHead>Sales Date</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
