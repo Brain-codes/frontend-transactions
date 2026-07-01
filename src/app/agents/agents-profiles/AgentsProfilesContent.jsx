@@ -149,6 +149,8 @@ function inferSupervisorsForAgent(agentOrgIds, managerInfo, assignmentRows = [])
 
 const AgentsProfilesContent = () => {
   const { toast, toasts, removeToast } = useToast();
+  const navigate = useNavigate();
+
   const supabaseRef = useRef(null);
   if (!supabaseRef.current) supabaseRef.current = createClientComponentClient();
   const isMountedRef = useRef(true);
