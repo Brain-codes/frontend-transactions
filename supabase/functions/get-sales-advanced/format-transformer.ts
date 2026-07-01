@@ -28,17 +28,19 @@ export function transformToFormat1(salesData: any[]): ClaraFormat[] {
     const userName = nameParts[0] || '';
     const userSurname = nameParts.slice(1).join(' ') || '';
 
-    // Extract address information
-    const address = sale.addresses?.full_address || 
-                   `${sale.addresses?.street || ''} ${sale.addresses?.city || ''}`.trim() || 
+    // Extract address information. Address may arrive as `addresses` (main-query
+    // join) or `address` (fetched in fetch-related) — support both.
+    const addr = sale.addresses || sale.address;
+    const address = addr?.full_address ||
+                   `${addr?.street || ''} ${addr?.city || ''}`.trim() ||
                    '';
-    
-    const state = sale.state_backup || sale.addresses?.state || sale.organizations?.state || '';
+
+    const state = sale.state_backup || addr?.state || sale.organizations?.state || sale.organization?.state || '';
     const district = sale.lga_backup || '';
-    
+
     // Extract coordinates
-    const latitude = sale.addresses?.latitude || null;
-    const longitude = sale.addresses?.longitude || null;
+    const latitude = addr?.latitude || null;
+    const longitude = addr?.longitude || null;
     
     // Extract partner/field assistant info
     const salesPartner = sale.partner_name || sale.organizations?.partner_name || '';

@@ -20,17 +20,18 @@ export async function fetchRelatedData(
   // Use Promise.all for parallel fetching to improve performance
   const fetchPromises: Promise<void>[] = [];
 
-  // Only fetch data that wasn't already included in the main query joins
-  if (filters.includeOrganization && !sales[0]?.organizations) {
+  // Organization, address and creator are needed everywhere, so they are fetched
+  // unconditionally (not gated behind include* flags) whenever they aren't already
+  // present from the main-query joins. Each is a single indexed IN query.
+  if (!sales[0]?.organizations && !sales[0]?.organization) {
     fetchPromises.push(fetchOrganizations(supabase, sales));
   }
 
-  if (filters.includeAddress && !sales[0]?.addresses) {
+  if (!sales[0]?.addresses && !sales[0]?.address) {
     fetchPromises.push(fetchAddresses(supabase, sales));
   }
 
-  // Always fetch creators via direct profiles query — reliable regardless of FK constraints
-  if (filters.includeCreator) {
+  if (!sales[0]?.creator) {
     fetchPromises.push(fetchCreators(supabase, sales));
   }
 
