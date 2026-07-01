@@ -10,6 +10,18 @@ function CreateSaleView() {
   const router = useRouter();
   const { user } = useAuth();
 
+  // Reset any persisted partner/org selection so the form starts fresh
+  // whenever the user enters or leaves the Sell Stove page.
+  useEffect(() => {
+    const clearSelection = () => {
+      if (typeof sessionStorage === "undefined") return;
+      sessionStorage.removeItem("saa_selected_org_id");
+      sessionStorage.removeItem("saa_selected_org_name");
+    };
+    clearSelection();
+    return clearSelection;
+  }, []);
+
   const handleSuccess = () => {
     router.push("/sales");
   };
@@ -17,6 +29,7 @@ function CreateSaleView() {
   const handleCancel = () => {
     router.push("/sales");
   };
+
 
   return (
     <DashboardLayout
