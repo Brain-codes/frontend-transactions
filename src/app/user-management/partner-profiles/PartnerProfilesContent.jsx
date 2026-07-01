@@ -269,7 +269,7 @@ const PartnerProfilesContent = () => {
         for (let i = 0; i < ids.length; i += BATCH) {
           const slice = ids.slice(i, i + BATCH);
           const { data } = await supabase
-            .from("stove_ids")
+            .from("stove_ids_base")
             .select("organization_id")
             .in("organization_id", slice)
             .eq("is_archived", false);
