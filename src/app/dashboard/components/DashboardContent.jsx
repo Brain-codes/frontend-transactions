@@ -497,6 +497,13 @@ const DashboardContent = ({
                 { label: "UNSOLD STOVES WITH PARTNERS", value: available, color: "#a8c34a", pct: availPct },
 
               ];
+              const modelChartData = salesModelData.map((m, i) => ({
+                name: m.model,
+                value: m.count,
+                color: PIE_COLORS[i % PIE_COLORS.length],
+              }));
+              const totalModelSales = modelChartData.reduce((s, d) => s + (d.value || 0), 0);
+
               return (
                 <Card className="bg-white shadow-none">
                   <CardHeader className="rounded-t-lg text-white py-2 px-4 flex flex-row items-center justify-between gap-3 flex-wrap" style={{ backgroundColor: DARK_NAVY }}>
