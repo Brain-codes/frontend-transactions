@@ -73,19 +73,38 @@ const ROLE_BADGE = {
 };
 const formatRole = (r) => ROLE_LABELS[r] || (r ? r.replace(/_/g, " ") : "—");
 
+// Count ONLY agents explicitly assigned to this partner:
+//   - ACSL agents via direct `acsl_agent_organizations` row (state-based
+//     coverage is intentionally excluded — the user considers those unassigned)
+//   - Partner agents whose profile.organization_id matches
 async function fetchAllAgentsForOrg(orgId) {
-  const [acslRes, partnerRes] = await Promise.all([
-    superAdminAgentService.getAgentsByOrganization(orgId).catch(() => null),
-    adminAgentService.getSalesAgents({ organization_id: orgId, limit: 100 }).catch(() => null),
-  ]);
-  const acslList = acslRes?.data?.agents || acslRes?.data || [];
-  const partnerList = partnerRes?.data?.agents || partnerRes?.data || [];
-  const tagged = [
-    ...(Array.isArray(acslList) ? acslList : []).map((a) => ({ ...a, role: a.role || "acsl_agent" })),
-    ...(Array.isArray(partnerList) ? partnerList : []).map((a) => ({ ...a, role: a.role || "partner_agent" })),
-  ];
+  // 1. ACSL agents with a direct assignment row
+  const { data: directRows } = await supabase
+    .from("acsl_agent_organizations")
+    .select("agent_id")
+    .eq("organization_id", orgId);
+  const acslIds = [...new Set((directRows || []).map((r) => r.agent_id))];
+
+  let acslList = [];
+  if (acslIds.length > 0) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, phone, role")
+      .in("id", acslIds);
+    acslList = (data || []).map((a) => ({ ...a, role: a.role || "acsl_agent" }));
+  }
+
+  // 2. Partner agents belonging to this organization
+  const { data: partnerAgents } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, phone, role")
+    .eq("organization_id", orgId)
+    .in("role", ["partner_agent", "agent"]);
+  const partnerList = (partnerAgents || []).map((a) => ({ ...a, role: a.role || "partner_agent" }));
+
+  const merged = [...acslList, ...partnerList];
   const seen = new Set();
-  return tagged.filter((a) => {
+  return merged.filter((a) => {
     const k = a.id || a.email;
     if (!k || seen.has(k)) return false;
     seen.add(k);
