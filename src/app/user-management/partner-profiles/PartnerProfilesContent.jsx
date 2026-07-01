@@ -307,7 +307,7 @@ const PartnerProfilesContent = () => {
   };
 
   const handleClearFilters = () => {
-    setFilters({ search: "", state: "" });
+    setFilters({ search: "", state: "", agentFilter: "" });
     setPage(1);
   };
 
