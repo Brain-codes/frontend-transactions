@@ -38,6 +38,9 @@ import {
   Phone,
   Package,
   Search,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import {
   Dialog,
@@ -158,7 +161,19 @@ const PartnerProfilesContent = () => {
   const [loading, setLoading] = useState(false);
   const [partners, setPartners] = useState([]);
   const [filters, setFilters] = useState({ search: "", state: "", agentFilter: "" });
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [page, setPage] = useState(1);
+
+  const handleSort = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "asc" };
+    });
+    setPage(1);
+  };
+
   const [detailsPartner, setDetailsPartner] = useState(null);
   const [editingPartner, setEditingPartner] = useState(null);
   const [viewingCredential, setViewingCredential] = useState(null);
@@ -266,7 +281,7 @@ const PartnerProfilesContent = () => {
   }, [partners]);
 
   const filtered = useMemo(() => {
-    return partners.filter((p) => {
+    const list = partners.filter((p) => {
       if (filters.state && p.state !== filters.state) return false;
       if (filters.search) {
         const q = filters.search.toLowerCase();
@@ -281,7 +296,29 @@ const PartnerProfilesContent = () => {
       }
       return true;
     });
-  }, [partners, filters, agentCounts]);
+
+    if (!sortConfig.key) return list;
+
+    const dir = sortConfig.direction === "asc" ? 1 : -1;
+    return [...list].sort((a, b) => {
+      if (sortConfig.key === "partner") {
+        const av = (a.partner_name || "").toLowerCase();
+        const bv = (b.partner_name || "").toLowerCase();
+        return av.localeCompare(bv) * dir;
+      }
+      if (sortConfig.key === "assigned_agents") {
+        const av = agentCounts[a.id] ?? -1;
+        const bv = agentCounts[b.id] ?? -1;
+        return (av - bv) * dir;
+      }
+      if (sortConfig.key === "total_stoves") {
+        const av = stoveCounts[a.id] ?? -1;
+        const bv = stoveCounts[b.id] ?? -1;
+        return (av - bv) * dir;
+      }
+      return 0;
+    });
+  }, [partners, filters, agentCounts, stoveCounts, sortConfig]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -482,12 +519,39 @@ const PartnerProfilesContent = () => {
           <Table>
             <TableHeader>
               <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
-                <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg">Partner</TableHead>
+                <TableHead className="text-white font-semibold text-sm whitespace-nowrap first:rounded-tl-lg cursor-pointer select-none" onClick={() => handleSort("partner")}>
+                  <span className="inline-flex items-center gap-1">
+                    Partner
+                    {sortConfig.key === "partner" ? (
+                      sortConfig.direction === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />
+                    )}
+                  </span>
+                </TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">State</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Branch</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
-                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Assigned Agents</TableHead>
-                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Total Stoves Purchased</TableHead>
+                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("assigned_agents")}>
+                  <span className="inline-flex items-center justify-center gap-1">
+                    Assigned Agents
+                    {sortConfig.key === "assigned_agents" ? (
+                      sortConfig.direction === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />
+                    )}
+                  </span>
+                </TableHead>
+                <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("total_stoves")}>
+                  <span className="inline-flex items-center justify-center gap-1">
+                    Total Stoves Purchased
+                    {sortConfig.key === "total_stoves" ? (
+                      sortConfig.direction === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />
+                    )}
+                  </span>
+                </TableHead>
                 <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap rounded-tr-lg">Actions</TableHead>
               </TableRow>
             </TableHeader>
