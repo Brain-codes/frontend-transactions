@@ -158,7 +158,10 @@ serve(async (req) => {
     if (isInstallment && paymentModelId) {
       console.log("💳 Installment mode: validating payment model", paymentModelId);
 
-      // Any active payment model is available to any org — no per-org gating.
+      // Payment models are decoupled from partners — any active model is allowed.
+
+
+
       // Fetch model details
       const { data: paymentModel, error: modelError } = await supabase
         .from("payment_models")

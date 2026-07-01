@@ -91,6 +91,8 @@ serve(async (req) => {
     }
 
     const buildSalesQuery = (query: any) => {
+      // Exclude cancelled/archived sales from all dashboard metrics
+      query = query.eq("is_archived", false);
       if (partnerNames?.length) query = query.in("partner_name", partnerNames);
       if (stateFilter) query = query.ilike("state_backup", stateFilter);
       if (branchFilter) query = query.eq("retailer_branch", branchFilter);
