@@ -26,6 +26,7 @@ interface FinancialReportsTableProps {
   onApproveSale?: (sale: AdminSales) => void;
   onEditSale?: (sale: AdminSales) => void;
   onDeleteSale?: (sale: AdminSales) => void;
+  onCancelSale?: (sale: AdminSales) => void;
   sortOrder: "asc" | "desc";
   onToggleSort: () => void;
   // "admin" shows Agent column, "superAdmin" shows Partner column, "agent" hides both
