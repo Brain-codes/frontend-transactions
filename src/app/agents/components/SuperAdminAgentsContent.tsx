@@ -2940,7 +2940,7 @@ export default function SuperAdminAgentsContent() {
                       Records not collected <StoveSortIcon col="in_stock" />
                     </button>
                   </TableHead>
-                  <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
+                  
                 </TableRow>
               </TableHeader>
               <TableBody className={loading ? "opacity-40" : ""}>
