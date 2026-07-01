@@ -521,11 +521,13 @@ const UserManagementPage = () => {
   // ── Form helpers ───────────────────────────────────────────────────────────
 
   const resetForm = () => {
-    setUserForm({ full_name: "", email: "", phone: "", role: undefined, password: "", auto_generate_password: true });
+    // Partners can only create partner_agent users under their own org — preseed both.
+    const defaultRole = isPartner ? "partner_agent" : undefined;
+    setUserForm({ full_name: "", email: "", phone: "", role: defaultRole, password: "", auto_generate_password: true });
     setFormErrors({});
     setShowPassword(false);
     setPartnerSearch("");
-    setSelectedPartnerIds(new Set());
+    setSelectedPartnerIds(isPartner && callerOrgId ? new Set([callerOrgId]) : new Set());
     setSelectedStates(new Set());
     setSelectedManagerIds(new Set());
     setManagerSearch("");
@@ -533,6 +535,7 @@ const UserManagementPage = () => {
     setFormMode("create");
     setSelectedUser(null);
   };
+
 
   // Role classifiers
   // - partner_agent: flat partner-only picker (legacy)
