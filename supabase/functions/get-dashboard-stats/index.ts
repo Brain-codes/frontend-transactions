@@ -130,7 +130,8 @@ serve(async (req) => {
     let stovesSoldQuery = supabase
       .from("sales")
       .select("*", { count: "exact", head: true })
-      .eq("organization_id", organizationId);
+      .eq("organization_id", organizationId)
+      .eq("is_archived", false);
     if (endOfYear) stovesSoldQuery = stovesSoldQuery.lt("sales_date", endOfYear);
 
     const [
@@ -144,11 +145,12 @@ serve(async (req) => {
     const totalStovesSold = stovesSoldCumulative ?? 0;
     const totalStovesAvailable = Math.max(0, (totalStovesReceived ?? 0) - totalStovesSold);
 
-    // Get total sales count for the organization
+    // Get total sales count for the organization (exclude cancelled)
     const { count: totalSalesCount, error: salesCountError } = await supabase
       .from("sales")
       .select("*", { count: "exact", head: true })
-      .eq("organization_id", organizationId);
+      .eq("organization_id", organizationId)
+      .eq("is_archived", false);
 
     if (salesCountError) {
       console.error("Error fetching sales count:", salesCountError);
@@ -189,6 +191,7 @@ serve(async (req) => {
         .from("sales")
         .select("*", { count: "exact", head: true })
         .eq("organization_id", organizationId)
+        .eq("is_archived", false)
         .eq("status", "completed");
 
     if (completedCountError) {
@@ -213,6 +216,7 @@ serve(async (req) => {
           { count: "exact", head: true }
         )
         .eq("organization_id", organizationId)
+        .eq("is_archived", false)
         .not("address.latitude", "is", null)
         .not("address.longitude", "is", null);
 
@@ -229,17 +233,19 @@ serve(async (req) => {
         .from("sales")
         .select("*", { count: "exact", head: true })
         .eq("organization_id", organizationId)
+        .eq("is_archived", false)
         .in("status", ["incomplete", "pending"]);
 
     if (pendingCountError) {
       console.error("Error fetching pending sales count:", pendingCountError);
     }
 
-    // Get financial + chart data (year-filtered)
+    // Get financial + chart data (year-filtered, exclude cancelled)
     let salesQuery = supabase
       .from("sales")
       .select("amount, total_paid, is_installment, payment_status, state_backup, payment_model_id")
       .eq("organization_id", organizationId)
+      .eq("is_archived", false)
       .not("amount", "is", null);
 
     if (dateFrom) salesQuery = salesQuery.gte("sales_date", dateFrom);
