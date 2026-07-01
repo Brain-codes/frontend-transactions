@@ -10,24 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Download } from "lucide-react";
 import Link from "@/compat/Link";
 
+// All authenticated users land on the unified Super Admin dashboard.
+// Data-scoping and per-role menu visibility happens inside the app.
 const getRouteForRole = (role) => {
-  switch (role) {
-    case "super_admin":
-    case "acsl_agent_manager":
-      return "/dashboard";
-    case "acsl_agent":
-    case "super_admin_agent":
-      return "/super-admin-agent";
-    case "partner":
-    case "admin":
-      return "/admin";
-    case "partner_agent":
-    case "agent":
-      return "/admin/sales";
-    default:
-      return null;
-  }
+  if (!role) return null;
+  return "/dashboard";
 };
+
 
 const LoginPage = () => {
   const [loginData, setLoginData] = useState({
