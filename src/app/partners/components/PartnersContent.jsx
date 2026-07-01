@@ -1399,20 +1399,20 @@ export default function PartnersContent() {
                 active: sortMode === "default" && filters.partner_type === "all",
               },
               {
-                gradient: "from-[#047857] to-[#10B981]",
-                Icon: TrendingUp,
-                value: loadingStats ? "—" : stats.performing_partners.toLocaleString(),
-                label: "Stoves Sold to End Users",
-                onClick: () => setSortMode("active"),
-                active: sortMode === "active",
-              },
-              {
                 gradient: "from-[#B45309] to-[#F59E0B]",
                 Icon: Package,
                 value: loadingStats ? "—" : stats.total_received.toLocaleString(),
                 label: "Stoves Purchased from ACSL",
                 onClick: () => setSortMode("stoves_desc"),
                 active: sortMode === "stoves_desc",
+              },
+              {
+                gradient: "from-[#047857] to-[#10B981]",
+                Icon: TrendingUp,
+                value: loadingStats ? "—" : stats.performing_partners.toLocaleString(),
+                label: "Stoves Sold to End Users",
+                onClick: () => setSortMode("active"),
+                active: sortMode === "active",
               },
               {
                 gradient: "from-[#7C3AED] to-[#A78BFA]",
