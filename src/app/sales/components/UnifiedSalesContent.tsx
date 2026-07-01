@@ -189,6 +189,7 @@ export default function UnifiedSalesContent() {
           loadSales={loadSales}
           onEditSale={handleEditSale}
           onDeleteSale={handleDeleteSale}
+          onCancelSale={handleCancelSale}
           onApproveSale={(isAcslAgent || isAcslAgentManager) ? setApproveSale : undefined}
           viewFrom={viewFrom as any}
           selectedYear={isSuperAdmin ? selectedYear : undefined}
