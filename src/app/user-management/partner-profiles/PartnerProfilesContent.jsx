@@ -307,15 +307,24 @@ const PartnerProfilesContent = () => {
         return av.localeCompare(bv) * dir;
       }
       if (sortConfig.key === "assigned_agents") {
-        const av = agentCounts[a.id] ?? -1;
-        const bv = agentCounts[b.id] ?? -1;
+        const av = agentCounts[a.id];
+        const bv = agentCounts[b.id];
+        if (av === undefined && bv === undefined) return (a.partner_name || "").localeCompare(b.partner_name || "");
+        if (av === undefined) return 1;   // unloaded rows always at the bottom
+        if (bv === undefined) return -1;
+        if (av === bv) return (a.partner_name || "").localeCompare(b.partner_name || "");
         return (av - bv) * dir;
       }
       if (sortConfig.key === "total_stoves") {
-        const av = stoveCounts[a.id] ?? -1;
-        const bv = stoveCounts[b.id] ?? -1;
+        const av = stoveCounts[a.id];
+        const bv = stoveCounts[b.id];
+        if (av === undefined && bv === undefined) return (a.partner_name || "").localeCompare(b.partner_name || "");
+        if (av === undefined) return 1;
+        if (bv === undefined) return -1;
+        if (av === bv) return (a.partner_name || "").localeCompare(b.partner_name || "");
         return (av - bv) * dir;
       }
+
       return 0;
     });
   }, [partners, filters, agentCounts, stoveCounts, sortConfig]);
