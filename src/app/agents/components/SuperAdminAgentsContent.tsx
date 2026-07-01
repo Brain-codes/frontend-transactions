@@ -942,6 +942,7 @@ function StovesStatusModal({
                 state: meta.state,
                 branch: meta.branch,
                 agent_name: saleIdToAgent[s.sale_id] || "—",
+                sales_date: saleIdToDate[s.sale_id] || "",
               });
             });
           }
