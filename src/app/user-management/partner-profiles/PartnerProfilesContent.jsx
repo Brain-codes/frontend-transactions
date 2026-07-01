@@ -353,6 +353,20 @@ const PartnerProfilesContent = () => {
           </SelectContent>
         </Select>
 
+        <Select
+          value={filters.agentFilter || "all"}
+          onValueChange={(v) => handleFilterChange("agentFilter", v === "all" ? "" : v)}
+        >
+          <SelectTrigger className="w-[200px] h-9 bg-white text-xs shadow-none border-gray-200 text-gray-400 data-[placeholder]:text-gray-400">
+            <SelectValue placeholder="All Partners" />
+          </SelectTrigger>
+          <SelectContent className="text-xs">
+            <SelectItem value="all" className="text-xs">All Partners</SelectItem>
+            <SelectItem value="assigned" className="text-xs">With Assigned Agents</SelectItem>
+            <SelectItem value="unassigned" className="text-xs">With No Agents</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Button
           onClick={handleClearFilters}
           size="sm"
