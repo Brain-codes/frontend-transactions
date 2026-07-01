@@ -121,6 +121,17 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
             </DropdownMenuItem>
           )}
 
+          {/* Cancel Sale - available for admin/partner/superAdmin */}
+          {onCancelSale && viewFrom !== "agent" && (
+            <DropdownMenuItem
+              onClick={() => onCancelSale(sale)}
+              className="py-2 px-3 rounded-md hover:!bg-red-600 hover:!text-white cursor-pointer text-red-600"
+            >
+              <Ban className="mr-2 h-4 w-4" />
+              Cancel Sale
+            </DropdownMenuItem>
+          )}
+
           {/* Payment Information Section */}
           <DropdownMenuSeparator />
           <div className="px-3 py-1.5">
