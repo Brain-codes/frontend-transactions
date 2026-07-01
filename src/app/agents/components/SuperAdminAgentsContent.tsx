@@ -3079,6 +3079,27 @@ export default function SuperAdminAgentsContent() {
         orgIds={kpiAssignedOrgIds}
       />
 
+      <StovesStatusModal
+        isOpen={showSoldStovesModal}
+        onClose={() => setShowSoldStovesModal(false)}
+        orgIds={kpiAssignedOrgIds}
+        mode="sold"
+        title="Stoves Sold / Retrieved — Stove IDs"
+        filenamePrefix="sold-stoves"
+        showExport={true}
+      />
+
+      <StovesStatusModal
+        isOpen={showUnsoldStovesModal}
+        onClose={() => setShowUnsoldStovesModal(false)}
+        orgIds={kpiAssignedOrgIds}
+        mode="unsold"
+        title="Unsold / Unretrieved Stoves — Stove IDs"
+        filenamePrefix="unsold-stoves"
+        showExport={true}
+      />
+
+
       <AgentsListModal
         isOpen={showAgentsListModal}
         onClose={() => setShowAgentsListModal(false)}
