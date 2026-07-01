@@ -732,8 +732,8 @@ function AssignedStovesModal({
       const s = String(v ?? "");
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = ["Stove ID", "Partner Name", "State", "Branch"];
-    const body = filtered.map((r) => [esc(r.stove_id), esc(r.partner_name), esc(r.state), esc(r.branch)].join(","));
+    const header = ["Stove ID", "Partner Name", "State", "Branch", "Status"];
+    const body = filtered.map((r) => [esc(r.stove_id), esc(r.partner_name), esc(r.state), esc(r.branch), esc(r.status)].join(","));
     const csv = [header.join(","), ...body].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
