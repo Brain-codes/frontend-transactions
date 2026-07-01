@@ -216,6 +216,7 @@ serve(async (req) => {
           { count: "exact", head: true }
         )
         .eq("organization_id", organizationId)
+        .eq("is_archived", false)
         .not("address.latitude", "is", null)
         .not("address.longitude", "is", null);
 
