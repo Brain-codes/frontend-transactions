@@ -85,6 +85,7 @@ interface FinancialReportsViewProps {
   loadSales: () => Promise<{ success: boolean; data?: AdminSales[]; error?: string }>;
   onEditSale?: (sale: AdminSales) => void;
   onDeleteSale?: (sale: AdminSales) => void;
+  onCancelSale?: (sale: AdminSales) => void;
   onApproveSale?: (sale: AdminSales) => void;
   viewFrom?: "admin" | "superAdmin" | "agent" | "acsl_agent";
   selectedYear?: number;
