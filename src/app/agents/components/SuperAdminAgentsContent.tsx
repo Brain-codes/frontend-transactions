@@ -941,7 +941,56 @@ function StovesStatusModal({
             });
           }
         } else {
-          // Unsold: unchanged — available stoves at agent-assigned partners.
+          // Unsold = every non-archived stove in the agents' orgs, MINUS the
+          // stove IDs already recorded as sold by these agents. Result matches
+          // the "Assigned − Sold" KPI.
+          const agentList = agents || [];
+          const agentIds = agentList.map((a) => a.id).filter(Boolean);
+
+          // Collect stove IDs sold by these agents at these orgs so we can
+          // exclude them from the unsold list.
+          const soldStoveIds = new Set<string>();
+          if (agentIds.length > 0) {
+            type SaleRow = { id: string };
+            const saleIds: string[] = [];
+            const ABATCH = 100;
+            for (let i = 0; i < agentIds.length; i += ABATCH) {
+              const aSlice = agentIds.slice(i, i + ABATCH);
+              for (let j = 0; j < orgIds.length; j += OBATCH) {
+                const oSlice = orgIds.slice(j, j + OBATCH);
+                let from = 0;
+                const PAGE = 1000;
+                while (true) {
+                  const { data, error: err } = await supabase
+                    .from("sales")
+                    .select("id")
+                    .in("created_by", aSlice)
+                    .in("organization_id", oSlice)
+                    .eq("is_archived", false)
+                    .range(from, from + PAGE - 1);
+                  if (err) throw err;
+                  const chunk = (data as SaleRow[] | null) || [];
+                  chunk.forEach((s) => saleIds.push(s.id));
+                  if (chunk.length < PAGE) break;
+                  from += PAGE;
+                }
+              }
+            }
+            const uniqSaleIds = Array.from(new Set(saleIds));
+            const SIBATCH = 200;
+            for (let i = 0; i < uniqSaleIds.length; i += SIBATCH) {
+              const slice = uniqSaleIds.slice(i, i + SIBATCH);
+              const { data, error: err } = await supabase
+                .from("stove_ids")
+                .select("stove_id,organization_id")
+                .in("sale_id", slice);
+              if (err) throw err;
+              (data || []).forEach((s: any) => {
+                soldStoveIds.add(`${s.stove_id}::${s.organization_id}`);
+              });
+            }
+          }
+
           const BATCH = 100;
           for (let i = 0; i < orgIds.length; i += BATCH) {
             const slice = orgIds.slice(i, i + BATCH);
@@ -958,6 +1007,8 @@ function StovesStatusModal({
               if (err) throw err;
               const chunk = data || [];
               chunk.forEach((s: any) => {
+                const key = `${s.stove_id}::${s.organization_id}`;
+                if (soldStoveIds.has(key)) return;
                 const meta = orgMap[s.organization_id] || { name: "—", state: "—", branch: "—" };
                 collected.push({
                   stove_id: s.stove_id,
