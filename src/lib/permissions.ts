@@ -79,7 +79,6 @@ const ALL_ROUTES: RouteKey[] = [
   "dashboard",
   "sales",
   "sales-create",
-      "sales-cancelled",
   "sales-cancelled",
   "sales-financial-reports",
   "partners",
