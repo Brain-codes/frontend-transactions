@@ -2464,6 +2464,7 @@ export default function SuperAdminAgentsContent() {
               assigned_organizations_count,
               total_partners_count,
               stove_summary: { received, sold, available },
+              direct_org_ids: directOrgs,
             };
           })
         );
