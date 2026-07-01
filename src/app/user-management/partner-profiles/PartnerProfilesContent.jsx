@@ -389,9 +389,12 @@ const PartnerProfilesContent = () => {
     return () => { cancelled = true; };
   }, [pageRows, stoveCounts]);
 
-  // Eagerly fetch agent counts for all partners when filtering by agent status
+  // Eagerly fetch agent counts for all partners when filtering OR sorting by agent count.
+  // Without this, sort-by-assigned-agents keeps re-ordering as lazy per-page fetches land,
+  // which pulls new rows onto the page, triggers more fetches, and makes the table "act up".
   useEffect(() => {
-    if (!filters.agentFilter || partners.length === 0) return;
+    const needAll = Boolean(filters.agentFilter) || sortConfig.key === "assigned_agents";
+    if (!needAll || partners.length === 0) return;
     const missing = partners.filter((p) => agentCounts[p.id] === undefined);
     if (missing.length === 0) return;
     let cancelled = false;
@@ -419,7 +422,41 @@ const PartnerProfilesContent = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [filters.agentFilter, partners, agentCounts]);
+  }, [filters.agentFilter, sortConfig.key, partners, agentCounts]);
+
+  // Eagerly fetch stove counts for all partners when sorting by that column, same reason.
+  useEffect(() => {
+    if (sortConfig.key !== "total_stoves" || partners.length === 0) return;
+    const missing = partners.filter((p) => stoveCounts[p.id] === undefined);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const ids = missing.map((p) => p.id);
+      try {
+        const counts = {};
+        ids.forEach((id) => { counts[id] = 0; });
+        const BATCH = 50;
+        for (let i = 0; i < ids.length; i += BATCH) {
+          if (cancelled) return;
+          const slice = ids.slice(i, i + BATCH);
+          const { data } = await supabase
+            .from("stove_ids_base")
+            .select("organization_id")
+            .in("organization_id", slice)
+            .eq("is_archived", false);
+          (data || []).forEach((r) => {
+            counts[r.organization_id] = (counts[r.organization_id] || 0) + 1;
+          });
+        }
+        if (cancelled) return;
+        setStoveCounts((prev) => ({ ...prev, ...counts }));
+      } catch {
+        // ignore; lazy per-page effect will retry
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [sortConfig.key, partners, stoveCounts]);
+
 
   const hasActiveFilters = filters.search !== "" || filters.state !== "" || filters.agentFilter !== "";
 
