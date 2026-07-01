@@ -447,26 +447,13 @@ const CreateSalesForm = ({
     }
   };
 
-  const fetchPaymentModels = async (orgId) => {
-    const organizationId = orgId ||
-      profileService.getOrganizationId() ||
-      (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("saa_selected_org_id") : null);
+  const fetchPaymentModels = async () => {
+    // Payment models are decoupled from partners — always list every active
+    // model so any user can pick any payment type freely regardless of partner.
     try {
       setModelsLoading(true);
-      let models = [];
-      if (organizationId) {
-        const result = await paymentModelService.getOrgPaymentModels(organizationId);
-        if (result?.data?.length > 0) {
-          models = result.data
-            .map((a) => a.payment_model)
-            .filter((m) => m && m.is_active !== false);
-        }
-      }
-      // Fallback: list all active payment models if none assigned to org
-      if (models.length === 0) {
-        const all = await paymentModelService.getPaymentModels({ status: "active" });
-        models = (all?.data || []).filter((m) => m && m.is_active !== false);
-      }
+      const all = await paymentModelService.getPaymentModels({ status: "active" });
+      const models = (all?.data || []).filter((m) => m && m.is_active !== false);
       setPaymentModels(models);
     } catch (err) {
       console.error("Error fetching payment models:", err);
