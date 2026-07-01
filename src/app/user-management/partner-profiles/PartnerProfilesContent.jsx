@@ -87,7 +87,16 @@ async function fetchAllAgentsForOrg(orgId) {
       .from("profiles")
       .select("id, full_name, email, phone, role")
       .in("id", acslIds);
-    acslList = (data || []).map((a) => ({ ...a, role: a.role || "acsl_agent" }));
+    const byId = new Map((data || []).map((a) => [a.id, a]));
+    // Preserve every assigned id even when the profile row isn't visible
+    // (e.g. blocked by RLS). Without this the "With Assigned Agents"
+    // filter would silently drop partners whose agent profiles are hidden.
+    acslList = acslIds.map((id) => {
+      const p = byId.get(id);
+      return p
+        ? { ...p, role: p.role || "acsl_agent" }
+        : { id, full_name: "Unknown agent", email: "", phone: "", role: "acsl_agent" };
+    });
   }
 
   // Partner agents belonging to this organization
@@ -107,6 +116,7 @@ async function fetchAllAgentsForOrg(orgId) {
     return true;
   });
 }
+
 
 const PAGE_SIZE = 10;
 
