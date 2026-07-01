@@ -529,11 +529,8 @@ function StoveDetail({ stove, sale, isSuperAdmin, isAcslAgent }) {
   const progressPercent = saleAmount > 0 ? (totalPaid / saleAmount) * 100 : 0;
   const isFullyPaid = sale?.payment_status === "fully_paid";
 
-  const creatorName = sale?.creator
-    ? ["agent", "partner_agent"].includes(sale.creator.role)
-      ? sale.creator.full_name
-      : "Admin"
-    : sale?.agent_name || null;
+  const creatorName =
+    sale?.creator?.full_name || sale?.agent_name || null;
 
   const previousStoveLabel =
     sale?.previous_stove_type === "wood_stove"

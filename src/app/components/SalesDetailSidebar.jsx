@@ -706,9 +706,9 @@ const SalesDetailSidebar = ({ sale, isOpen, onClose }) => {
                           Created By
                         </label>
                         <p className="text-sm text-gray-900 mt-1">
-                          {sale.created_by ||
-                            sale.creator?.name ||
+                          {sale.creator?.full_name ||
                             sale.profiles?.full_name ||
+                            sale.agent_name ||
                             "N/A"}
                         </p>
                       </div>

@@ -145,9 +145,9 @@ export default function HeatmapPage() {
             productCategory:
               sale.product_type || sale.stove_type || "Clean Cookstoves",
             salesRep:
-              sale.created_by ||
-              sale.creator?.name ||
+              sale.creator?.full_name ||
               sale.profiles?.full_name ||
+              sale.agent_name ||
               "Unknown",
             serialNumber: sale.stove_serial_no,
             phone: sale.phone || sale.contact_phone,
