@@ -1087,7 +1087,7 @@ function StovesStatusModal({
     URL.revokeObjectURL(url);
   };
 
-  const colCount = showAgentCol ? 5 : 4;
+  const colCount = showAgentCol ? 6 : 4;
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
