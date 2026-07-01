@@ -53,7 +53,7 @@ const getAmountOwed = (sale: AdminSales): number =>
 const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
   data, loading, currentPage, pageSize, totalRecords,
   onPageChange, onPageSizeChange, onViewDetails, onViewHistory, onRecordPayment,
-  onApproveSale, onEditSale, onDeleteSale, sortOrder, onToggleSort, viewFrom = "admin",
+  onApproveSale, onEditSale, onDeleteSale, onCancelSale, sortOrder, onToggleSort, viewFrom = "admin",
 }) => {
   const totalPages = Math.ceil(totalRecords / pageSize);
   const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
