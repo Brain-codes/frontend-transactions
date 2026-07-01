@@ -935,6 +935,7 @@ function StovesStatusModal({
               });
             });
           }
+        } else {
           // Unsold: unchanged — available stoves at agent-assigned partners.
           const BATCH = 100;
           for (let i = 0; i < orgIds.length; i += BATCH) {
