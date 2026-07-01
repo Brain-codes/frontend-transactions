@@ -603,6 +603,13 @@ export default function StoveTransferHistoryContent() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
       />
+
+      <CancelPurchaseModal
+        record={cancelRecord}
+        isOpen={cancelOpen}
+        onClose={() => setCancelOpen(false)}
+        onCancelled={fetchRecords}
+      />
     </>
   );
 }
