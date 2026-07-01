@@ -3236,6 +3236,39 @@ export default function SuperAdminAgentsContent() {
         agents={agents}
       />
 
+      {/* Row-level per-agent modals for Records to collect / collected / not collected */}
+      {rowStoveModal && rowStoveModal.mode === "assigned" && (
+        <AssignedStovesModal
+          isOpen={true}
+          onClose={() => setRowStoveModal(null)}
+          orgIds={rowStoveModal.agent.direct_org_ids || []}
+        />
+      )}
+      {rowStoveModal && rowStoveModal.mode === "sold" && (
+        <StovesStatusModal
+          isOpen={true}
+          onClose={() => setRowStoveModal(null)}
+          orgIds={rowStoveModal.agent.direct_org_ids || []}
+          mode="sold"
+          title={`Records collected — ${rowStoveModal.agent.full_name}`}
+          filenamePrefix={`records-collected-${rowStoveModal.agent.full_name.replace(/\s+/g, "_")}`}
+          showExport={true}
+          agents={[{ id: rowStoveModal.agent.id, full_name: rowStoveModal.agent.full_name }]}
+        />
+      )}
+      {rowStoveModal && rowStoveModal.mode === "unsold" && (
+        <StovesStatusModal
+          isOpen={true}
+          onClose={() => setRowStoveModal(null)}
+          orgIds={rowStoveModal.agent.direct_org_ids || []}
+          mode="unsold"
+          title={`Records not collected — ${rowStoveModal.agent.full_name}`}
+          filenamePrefix={`records-not-collected-${rowStoveModal.agent.full_name.replace(/\s+/g, "_")}`}
+          showExport={true}
+          agents={[{ id: rowStoveModal.agent.id, full_name: rowStoveModal.agent.full_name }]}
+        />
+      )}
+
 
       <AgentsListModal
         isOpen={showAgentsListModal}
