@@ -26,6 +26,7 @@ export const createInitialFormData = () => ({
   partnerName: "",
   retailerBranch: "",
   amount: "",
+  amountReceived: "",
   addressData: {
     fullAddress: "",
     street: "",
@@ -97,6 +98,12 @@ export const populateFormDataForEdit = (saleData) => {
     partnerName: saleData.partnerName || saleData.partner_name || "",
     retailerBranch: saleData.retailerBranch || saleData.retailer_branch || "",
     amount: saleData.amount ? saleData.amount.toString() : "",
+    amountReceived:
+      saleData.amountReceived != null
+        ? saleData.amountReceived.toString()
+        : saleData.amount_received != null
+          ? saleData.amount_received.toString()
+          : "",
     addressData: {
       fullAddress:
         saleData.addressData?.fullAddress ||
@@ -196,6 +203,10 @@ export const transformFormDataForAPI = (formData, isEdit = false) => {
     partnerName: formData.partnerName,
     retailerBranch: formData.retailerBranch,
     amount: parseFloat(formData.amount),
+    amountReceived:
+      formData.amountReceived !== "" && formData.amountReceived != null
+        ? parseFloat(formData.amountReceived)
+        : null,
     stoveSerialNo: formData.stoveSerialNo,
     stateBackup: formData.stateBackup,
     lgaBackup: formData.lgaBackup,
