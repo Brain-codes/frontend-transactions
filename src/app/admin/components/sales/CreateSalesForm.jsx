@@ -785,7 +785,7 @@ const CreateSalesForm = ({
     handleInputChange("retailerBranch", org.branch || "");
     setErrors((prev) => ({ ...prev, partnerName: null, state: null, branch: null }));
     fetchAvailableStoves();
-    fetchPaymentModels(org.id);
+    // Payment models are global — no need to refetch per partner.
   };
 
   const resetStoveSelection = () => {
