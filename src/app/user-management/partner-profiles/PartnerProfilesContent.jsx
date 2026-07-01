@@ -185,6 +185,21 @@ const PartnerProfilesContent = () => {
     loadPartners();
   }, []);
 
+  // Refresh agent counts when an assignment is added / changed elsewhere in
+  // the app (e.g. the ACSL Agents assign-partners modal). Clearing the cache
+  // triggers the lazy-fetch effect for the visible page.
+  useEffect(() => {
+    const handler = () => {
+      setAgentCounts({});
+    };
+    window.addEventListener("acsl:user-updated", handler);
+    window.addEventListener("acsl:assignment-updated", handler);
+    return () => {
+      window.removeEventListener("acsl:user-updated", handler);
+      window.removeEventListener("acsl:assignment-updated", handler);
+    };
+  }, []);
+
   const handleViewCredentials = async (org) => {
     setLoadingCredentialOrgId(org.id);
     try {
