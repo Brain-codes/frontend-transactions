@@ -1736,6 +1736,7 @@ export default function SuperAdminAgentsContent() {
           sold: globalSold,
           unsold: Math.max(0, globalAssigned - globalSold),
         });
+        setKpiAssignedOrgIds(orgIds);
 
         // 5. Merge per-agent stove_summary. received = available stoves at
         //    direct partners (true "to collect"); sold = agent's own sales;
