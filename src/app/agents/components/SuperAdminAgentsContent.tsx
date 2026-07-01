@@ -100,6 +100,7 @@ interface AcslAgent {
   total_partners_count: number;
   assigned_states?: string[];
   stove_summary?: { received: number; sold: number; available: number };
+  direct_org_ids?: string[];
 }
 
 interface PartnerOrg {
