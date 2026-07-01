@@ -207,12 +207,9 @@ const AdminSalesDetailModal: React.FC<AdminSalesDetailModalProps> = ({
       ? (sale as SuperAdminSale).addresses
       : (sale as AdminSales).address);
 
-  // Creator — show agent's full name if they're an agent, otherwise "Admin"
-  const creatorName = activeSale?.creator
-    ? activeSale.creator.role === "agent"
-      ? activeSale.creator.full_name
-      : "Admin"
-    : (activeSale as AdminSales)?.agent_name || null;
+  // Creator — the name of the person who actually made the sale, regardless of role.
+  const creatorName =
+    activeSale?.creator?.full_name || (activeSale as AdminSales)?.agent_name || null;
 
   return (
     <>
