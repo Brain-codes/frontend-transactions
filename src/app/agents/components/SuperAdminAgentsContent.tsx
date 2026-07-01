@@ -1065,11 +1065,14 @@ function StovesStatusModal({
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const header = showAgentCol
-      ? ["Stove ID", "Partner Name", "State", "Branch", "Agent"]
+      ? ["Stove ID", "Partner Name", "State", "Branch", "Agent", "Sales Date"]
       : ["Stove ID", "Partner Name", "State", "Branch"];
     const body = filtered.map((r) => {
       const base = [esc(r.stove_id), esc(r.partner_name), esc(r.state), esc(r.branch)];
-      if (showAgentCol) base.push(esc(r.agent_name || "—"));
+      if (showAgentCol) {
+        base.push(esc(r.agent_name || "—"));
+        base.push(esc(r.sales_date ? format(new Date(r.sales_date), "dd MMM yyyy") : "—"));
+      }
       return base.join(",");
     });
     const csv = [header.join(","), ...body].join("\n");
