@@ -2352,15 +2352,13 @@ export default function SuperAdminAgentsContent() {
         );
         if (cancelled) return;
 
-        // 4. Global totals — sum per-agent "to-collect" (available stoves at
-        //    each agent's directly-assigned partners) and per-agent collected.
+        // 4. Global totals — sum available stoves across the unique set of
+        //    directly-assigned partners (avoid double-counting when multiple
+        //    agents share the same partner). Collected = per-agent sales.
         let globalAssigned = 0;
         let globalSold = 0;
-        for (const a of agents) {
-          const orgs = agentToDirectOrgIds[a.id] || [];
-          for (const oid of orgs) globalAssigned += stoveAvailableByOrg[oid] || 0;
-          globalSold += soldByAgent[a.id] || 0;
-        }
+        for (const oid of orgIds) globalAssigned += stoveAvailableByOrg[oid] || 0;
+        for (const a of agents) globalSold += soldByAgent[a.id] || 0;
         setStoveTotals({
           assigned: globalAssigned,
           sold: globalSold,
