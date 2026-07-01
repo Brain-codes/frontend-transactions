@@ -219,9 +219,15 @@ const PartnerProfilesContent = () => {
         const hay = `${p.partner_name ?? ""} ${p.branch ?? ""} ${p.contact_phone ?? ""} ${p.email ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
+      if (filters.agentFilter) {
+        const count = agentCounts[p.id];
+        if (count === undefined) return false;
+        if (filters.agentFilter === "assigned" && count === 0) return false;
+        if (filters.agentFilter === "unassigned" && count > 0) return false;
+      }
       return true;
     });
-  }, [partners, filters]);
+  }, [partners, filters, agentCounts]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
