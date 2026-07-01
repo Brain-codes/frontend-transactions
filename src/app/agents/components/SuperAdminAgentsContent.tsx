@@ -2718,6 +2718,14 @@ export default function SuperAdminAgentsContent() {
         dateBadge={dateBadgeLabel}
       />
 
+      <AssignedStovesModal
+        isOpen={showAssignedStovesModal}
+        onClose={() => setShowAssignedStovesModal(false)}
+        orgIds={kpiAssignedOrgIds}
+      />
+
+
+
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </DashboardLayout>
   );
