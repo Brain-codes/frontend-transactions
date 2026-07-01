@@ -664,8 +664,10 @@ function AssignedStovesModal({
           });
         }
 
-        // Fetch stove IDs (available/unsold) across orgs
-        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string }> = [];
+        // Fetch ALL stove IDs (regardless of status) across orgs — the full
+        // assigned pool. Status is shown per row so users can distinguish
+        // sold vs available.
+        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string; status: string }> = [];
         const BATCH = 100;
         for (let i = 0; i < orgIds.length; i += BATCH) {
           const slice = orgIds.slice(i, i + BATCH);
@@ -674,10 +676,9 @@ function AssignedStovesModal({
           while (true) {
             const { data, error: err } = await supabase
               .from("stove_ids")
-              .select("stove_id,organization_id")
+              .select("stove_id,organization_id,status")
               .in("organization_id", slice)
               .eq("is_archived", false)
-              .neq("status", "sold")
               .range(from, from + PAGE - 1);
             if (err) throw err;
             const chunk = data || [];
@@ -688,6 +689,7 @@ function AssignedStovesModal({
                 partner_name: meta.name,
                 state: meta.state,
                 branch: meta.branch,
+                status: String(s.status || "—"),
               });
             });
             if (chunk.length < PAGE) break;
