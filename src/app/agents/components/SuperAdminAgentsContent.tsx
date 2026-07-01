@@ -3013,51 +3013,6 @@ export default function SuperAdminAgentsContent() {
                           <span className="text-gray-400">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-center">
-
-                        <div className="flex items-center justify-center gap-1">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-7 w-7 p-0">
-                              <MoreVertical className="h-3.5 w-3.5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setAssignPartnerAgent(agent)}>
-                              <UserPlus className="h-4 w-4 mr-2 text-[#4a5d0f]" />Assign Partner
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => { setSelectedAgent(agent); setShowViewModal(true); }}>
-                              <Eye className="h-4 w-4 mr-2" />View Details
-                            </DropdownMenuItem>
-                            {(agent.role === "acsl_agent" || agent.role === "acsl_agent_manager") && (
-                              <DropdownMenuItem
-                                onClick={() => handleViewCredentials(agent)}
-                                disabled={loadingCredentialId === agent.id}
-                              >
-                                <KeyRound className="h-4 w-4 mr-2 text-brand" />
-                                {loadingCredentialId === agent.id ? "Loading…" : "View Credentials"}
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onClick={() => { setSelectedAgent(agent); setAgentFormMode("edit"); }}>
-                              <Edit className="h-4 w-4 mr-2" />Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleToggleStatus(agent)}>
-                              {agent.status === "active" ? (
-                                <><Ban className="h-4 w-4 mr-2 text-orange-500" />Disable</>
-                              ) : (
-                                <><CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />Enable</>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-red-600"
-                              onClick={() => { setSelectedAgent(agent); setShowDeleteModal(true); }}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        </div>
-                      </TableCell>
                     </TableRow>
                   ))
                 )}
