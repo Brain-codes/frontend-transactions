@@ -1703,29 +1703,31 @@ export default function PartnersContent() {
                 Icon: Package,
                 value: loadingStats ? "—" : stats.total_received.toLocaleString(),
                 label: "Stoves Purchased from ACSL",
-                onClick: () => setSortMode("stoves_desc"),
-                active: sortMode === "stoves_desc",
+                onClick: () => setKpiModalMode("purchased"),
+                active: false,
               },
               {
                 gradient: "from-[#047857] to-[#10B981]",
                 Icon: TrendingUp,
-                value: loadingStats ? "—" : stats.performing_partners.toLocaleString(),
-                label: "Stoves Sold to End Users",
-                onClick: () => setSortMode("active"),
-                active: sortMode === "active",
+                value: loadingStats ? "—" : stats.total_sold.toLocaleString(),
+                label: "Total Stoves Sold",
+                onClick: () => setKpiModalMode("sold"),
+                active: false,
               },
               {
                 gradient: "from-[#7C3AED] to-[#A78BFA]",
                 Icon: Boxes,
                 value: loadingStats ? "—" : stats.total_available.toLocaleString(),
-                label: "Unsold Stoves with Partners",
-                onClick: () => setSortMode("available_desc"),
-                active: sortMode === "available_desc",
+                label: "Total Unsold Stoves",
+                onClick: () => setKpiModalMode("unsold"),
+                active: false,
               },
-            ].map(({ gradient, Icon, value, label, sub, subBadge }) => (
-              <div
+            ].map(({ gradient, Icon, value, label, sub, subBadge, onClick }) => (
+              <button
+                type="button"
                 key={label}
-                className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md transition-all bg-gradient-to-br ${gradient}`}
+                onClick={onClick}
+                className={`relative overflow-hidden rounded-lg border-transparent px-4 py-4 shadow-md transition-all bg-gradient-to-br ${gradient} text-left hover:brightness-110 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/60 cursor-pointer`}
               >
                 <div className="flex items-start justify-between">
                   <div className="min-w-0 flex-1 pr-3">
@@ -1744,7 +1746,7 @@ export default function PartnersContent() {
                     )}
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
 
           </div>
