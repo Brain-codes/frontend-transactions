@@ -2352,8 +2352,8 @@ export default function SuperAdminAgentsContent() {
         );
         if (cancelled) return;
 
-        // 4. Global totals — sum available stoves across the unique set of
-        //    directly-assigned partners (avoid double-counting when multiple
+        // 4. Global totals — sum available/unsold stoves across the unique set
+        //    of directly-assigned partners (avoid double-counting when multiple
         //    agents share the same partner). Collected = per-agent sales.
         let globalAssigned = 0;
         let globalSold = 0;
@@ -2362,7 +2362,10 @@ export default function SuperAdminAgentsContent() {
         setStoveTotals({
           assigned: globalAssigned,
           sold: globalSold,
-          unsold: Math.max(0, globalAssigned - globalSold),
+          // globalAssigned is already the unsold/available stove count from
+          // stove_ids, so subtracting sold records makes the KPI lower than the
+          // modal list by the number of agent sales.
+          unsold: globalAssigned,
         });
         setKpiAssignedOrgIds(orgIds);
 
