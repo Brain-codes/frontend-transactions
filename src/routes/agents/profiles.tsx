@@ -8,7 +8,7 @@ const AgentsProfilesContent = lazy(
 
 function AgentsProfilesPage() {
   return (
-    <ProtectedRoute requireAdminAccess>
+    <ProtectedRoute requireAdminAccess routeKey="agents-profiles">
       <Suspense fallback={<div className="p-6 text-gray-500">Loading...</div>}>
         <AgentsProfilesContent />
       </Suspense>

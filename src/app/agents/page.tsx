@@ -75,7 +75,7 @@ function PerformanceTabs() {
 
 export default function AgentsPage() {
   return (
-    <ProtectedRoute requireAdminAccess>
+    <ProtectedRoute requireAdminAccess routeKey="agents">
       <PerformanceTabs />
     </ProtectedRoute>
   );

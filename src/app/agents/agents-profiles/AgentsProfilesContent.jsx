@@ -42,6 +42,7 @@ import EditSuperAdminAgentModal from "../../super-admin-agents/components/EditSu
 import AssignOrganizationsModal from "../../super-admin-agents/components/AssignOrganizationsModal";
 import AgentViewCredentialModal from "../../admin/components/agents/AgentViewCredentialModal";
 import tokenManager from "@/utils/tokenManager";
+import { useAuth } from "../../contexts/useAuth";
 import {
   Dialog,
   DialogContent,
@@ -150,6 +151,7 @@ function inferSupervisorsForAgent(agentOrgIds, managerInfo, assignmentRows = [])
 const AgentsProfilesContent = () => {
   const { toast, toasts, removeToast } = useToast();
   const navigate = useNavigate();
+  const { user, isSuperAdmin } = useAuth();
 
   const supabaseRef = useRef(null);
   if (!supabaseRef.current) supabaseRef.current = createClientComponentClient();
@@ -263,6 +265,9 @@ const AgentsProfilesContent = () => {
 
       const rows = (json.data || [])
         .filter((u) => u.role !== "partner_agent" && u.role !== "partner")
+        // Scoped callers get their own row back (needed elsewhere for form
+        // cascades) but must not see — or manage — themselves in this list.
+        .filter((u) => isSuperAdmin || u.id !== user?.id)
         .map((u) => ({
           id: u.id,
           full_name: u.full_name || u.name || u.email || "—",
@@ -276,6 +281,9 @@ const AgentsProfilesContent = () => {
           assigned_states_count: u.assigned_states_count ?? 0,
           organization_id: u.organization_id ?? null,
           organization: u.organization ?? null,
+          // Server-resolved supervisor (profiles.manager_id). Legacy rows
+          // without one stay undefined so the inference fallback still runs.
+          supervisors: u.manager_name ? [u.manager_name] : undefined,
         }));
       setAgents(rows);
       hydrateAgentCounts(rows);
@@ -382,7 +390,9 @@ const AgentsProfilesContent = () => {
         })
       );
 
-      const acslAgents = agentsList.filter((a) => a.role === "acsl_agent");
+      const acslAgents = agentsList.filter(
+        (a) => a.role === "acsl_agent" && a.supervisors === undefined
+      );
       const BATCH = 8;
       for (let i = 0; i < acslAgents.length; i += BATCH) {
         if (!isMountedRef.current) return;
