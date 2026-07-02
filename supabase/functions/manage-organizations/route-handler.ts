@@ -13,7 +13,8 @@ export async function handleOrganizationRoute(
   req: Request,
   supabase: any,
   userId: string,
-  userRole: string
+  userRole: string,
+  allowedOrgIds: string[] | null = null
 ) {
   // Parse URL to get organization ID if present
   const url = new URL(req.url);
@@ -29,11 +30,14 @@ export async function handleOrganizationRoute(
   switch (method) {
     case "GET":
       if (organizationId && organizationId !== "manage-organizations") {
-        // Get single organization
+        // Get single organization (must be within the caller's scope)
+        if (allowedOrgIds && !allowedOrgIds.includes(organizationId)) {
+          throw new Error("Unauthorized: Organization not in your assigned scope");
+        }
         return await getOrganization(supabase, organizationId);
       } else {
         // Get all organizations with pagination
-        return await getOrganizations(supabase, url.searchParams);
+        return await getOrganizations(supabase, url.searchParams, allowedOrgIds);
       }
 
     case "POST":

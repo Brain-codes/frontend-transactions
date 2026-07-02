@@ -2,12 +2,15 @@
 import React, { useEffect, createContext, useContext } from "react";
 import { useRouter } from "@/compat/navigation";
 import { useAuth } from "../contexts/useAuth";
+import { getRolePermissions, isSuperAdminRole, type RouteKey } from "@/lib/permissions";
 
 type ProtectedRouteProp = {
   children?: React.ReactNode;
   allowedRoles?: string[];
   requireSuperAdmin?: boolean;
   requireAdminAccess?: boolean;
+  /** Gate by the PERMISSIONS route map — the single source of truth for the RBAC matrix. */
+  routeKey?: RouteKey;
 };
 
 // When a parent ProtectedRoute is already mounted (the app shell in __root),
@@ -20,6 +23,7 @@ const ProtectedRoute = ({
   allowedRoles,
   requireSuperAdmin = false,
   requireAdminAccess = false,
+  routeKey,
 }: ProtectedRouteProp) => {
   const alreadyMounted = useContext(ProtectedRouteMountedContext);
   const {
@@ -40,7 +44,12 @@ const ProtectedRoute = ({
       return;
     }
 
-    if (isSuperAdmin) return;
+    if (isSuperAdmin || isSuperAdminRole(userRole)) return;
+
+    if (routeKey && !getRolePermissions(userRole).routes.includes(routeKey)) {
+      router.push("/unauthorized");
+      return;
+    }
 
     if (allowedRoles && allowedRoles.length > 0) {
       if (!userRole || !allowedRoles.includes(userRole)) {
@@ -67,6 +76,7 @@ const ProtectedRoute = ({
     allowedRoles,
     requireSuperAdmin,
     requireAdminAccess,
+    routeKey,
     router,
     alreadyMounted,
   ]);
