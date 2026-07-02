@@ -28,7 +28,6 @@ export default function UnifiedSalesContent() {
   const isAcslAgent = userRole === "acsl_agent" || userRole === "super_admin_agent";
   const isAcslAgentManager = userRole === "acsl_agent_manager";
   const isPartner = userRole === "partner" || userRole === "admin";
-  const isAgent = userRole === "partner_agent" || userRole === "agent";
 
   const viewFrom = isSuperAdmin ? "superAdmin" : ((isAcslAgent || isAcslAgentManager) ? "acsl_agent" : (isPartner ? "admin" : "agent"));
 
@@ -60,29 +59,15 @@ export default function UnifiedSalesContent() {
     }
   }, [searchParams, router]);
 
+  // Single fetch path for every role — get-sales-advanced scopes rows
+  // server-side per the RBAC matrix (all / assigned orgs / own org / own sales).
   const loadSales = useCallback(async () => {
-    if (isSuperAdmin) {
-      return salesAdvancedService.getSalesData(
-        { limit: 1000, responseFormat: "format2" },
-        "POST",
-        "SuperAdminManageSales"
-      );
-    }
-    
-    if (isAcslAgent || isAcslAgentManager) {
-      return salesAdvancedService.getSalesData(
-        { limit: 1000, responseFormat: "format2" },
-        "POST",
-        "AgentManageSales"
-      );
-    }
-
-    // Default for partner/agent
-    return adminSalesService.getFinancialReportSales({
-      limit: 1000,
-      ...(isAgent && user?.id ? { createdBy: user.id } : {}),
-    });
-  }, [isSuperAdmin, isAcslAgent, isAgent, user?.id]);
+    return salesAdvancedService.getSalesData(
+      { limit: 1000, responseFormat: "format2" },
+      "POST",
+      "ManageSales"
+    );
+  }, []);
 
   const handleEditSale = useCallback(async (sale: AdminSales) => {
     try {

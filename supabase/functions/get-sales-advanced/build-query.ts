@@ -11,7 +11,8 @@ export async function buildQuery(
   filters: Filters,
   userRole: string,
   userOrgId: string | null,
-  assignedOrgIds?: string[]
+  assignedOrgIds?: string[],
+  userId?: string
 ): Promise<QueryResult> {
   console.log("🔍 Building optimized sales query with joins...");
 
@@ -37,7 +38,7 @@ export async function buildQuery(
   let query = supabase.from("sales").select(selectFields, { count: "exact" });
 
   // Apply all filters
-  query = applyAllFilters(query, filters, userRole, userOrgId, assignedOrgIds);
+  query = applyAllFilters(query, filters, userRole, userOrgId, assignedOrgIds, userId);
 
   console.log("🚀 Executing optimized query with joins...");
 
@@ -150,10 +151,11 @@ function applyAllFilters(
   filters: Filters,
   userRole: string,
   userOrgId: string | null,
-  assignedOrgIds?: string[]
+  assignedOrgIds?: string[],
+  userId?: string
 ) {
   // Apply filters in order of selectivity (most selective first)
-  query = applyOrganizationFilters(query, filters, userRole, userOrgId, assignedOrgIds);
+  query = applyOrganizationFilters(query, filters, userRole, userOrgId, assignedOrgIds, userId);
   query = applyDateFilters(query, filters);
   query = applyStoveFilters(query, filters);
   query = applyStatusFilters(query, filters);
@@ -270,39 +272,63 @@ function applyStatusFilters(query: any, filters: Filters) {
   return query;
 }
 
+// UUID that matches no row — used to return an empty result set for scoped
+// callers with nothing assigned, instead of silently widening their scope.
+const NO_MATCH_ID = "00000000-0000-0000-0000-000000000000";
+
 function applyOrganizationFilters(
   query: any,
   filters: Filters,
   userRole: string,
   userOrgId: string | null,
-  assignedOrgIds?: string[]
+  assignedOrgIds?: string[],
+  userId?: string
 ) {
   console.log("🏢 Applying organization filters...");
 
-  if (userRole === "acsl_agent" || userRole === "super_admin_agent") {
-    // ACSL agents have system-wide sales visibility (same as super_admin).
-    // assignedOrgIds is used for partner management scope, not for sales filtering.
-    console.log("🔗 ACSL agent: system-wide sales visibility");
-    if (filters.organizationId) {
-      query = query.eq("organization_id", filters.organizationId);
-    } else if (filters.organizationIds?.length) {
-      query = query.in("organization_id", filters.organizationIds);
-    }
-  } else if (userRole !== "super_admin") {
-    console.log("👤 Non-super-admin: applying org restrictions");
-    if (filters.organizationId) {
-      query = query.eq("organization_id", filters.organizationId);
-    } else if (filters.organizationIds?.length) {
-      query = query.in("organization_id", filters.organizationIds);
-    } else if (userOrgId) {
-      query = query.eq("organization_id", userOrgId);
-    }
-  } else {
+  if (userRole === "super_admin") {
+    // Super admin: all sales, optional org filtering
     console.log("👑 Super admin: optional org filtering");
     if (filters.organizationId) {
       query = query.eq("organization_id", filters.organizationId);
     } else if (filters.organizationIds?.length) {
       query = query.in("organization_id", filters.organizationIds);
+    }
+  } else if (
+    userRole === "acsl_agent" ||
+    userRole === "acsl_agent_manager" ||
+    userRole === "super_admin_agent"
+  ) {
+    // ACSL roles: assigned partner sales only. Client-supplied org filters are
+    // honored only within the assigned scope (intersection), never beyond it.
+    console.log(`🔗 ${userRole}: scoped to ${assignedOrgIds?.length || 0} assigned orgs`);
+    const scope = assignedOrgIds || [];
+    if (scope.length === 0) {
+      query = query.eq("organization_id", NO_MATCH_ID);
+    } else if (filters.organizationId) {
+      query = scope.includes(filters.organizationId)
+        ? query.eq("organization_id", filters.organizationId)
+        : query.eq("organization_id", NO_MATCH_ID);
+    } else if (filters.organizationIds?.length) {
+      const allowed = filters.organizationIds.filter((id) => scope.includes(id));
+      query = allowed.length
+        ? query.in("organization_id", allowed)
+        : query.eq("organization_id", NO_MATCH_ID);
+    } else {
+      query = query.in("organization_id", scope);
+    }
+  } else if (userRole === "partner" || userRole === "admin") {
+    // Partner: own organization's sales only. Client org filters cannot widen this.
+    console.log("🏢 Partner: locked to own organization");
+    query = query.eq("organization_id", userOrgId || NO_MATCH_ID);
+  } else {
+    // partner_agent / agent: own sales only, regardless of org or client filters.
+    // A sale belongs to the agent if they created it or it was sold on their behalf.
+    console.log("👤 Partner agent: own sales only");
+    if (userId) {
+      query = query.or(`created_by.eq.${userId},sold_on_behalf_of.eq.${userId}`);
+    } else {
+      query = query.eq("organization_id", NO_MATCH_ID);
     }
   }
 

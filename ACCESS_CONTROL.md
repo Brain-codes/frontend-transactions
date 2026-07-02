@@ -96,6 +96,17 @@ Legend: **Full access** = complete module access • **No Access / Hidden** = me
 - **Partners tab** (`PartnersContent`): shared by every role with the `agents` route. The partner list comes from `manage-organizations` and KPI numbers from `get-stove-stats`; both scope server-side: super_admin → all orgs; `acsl_agent` / `acsl_agent_manager` → `resolveAssignedOrgIds` (read-only); `partner` (and legacy `admin`) → **own organization only** (read-only, forced to `profiles.organization_id`; zero rows if none). Writes on `manage-organizations` remain super-admin only regardless of tab.
 - The old fork where a `partner` caller got a mislabeled "ACSL Agents" tab rendering a separate `PartnerAgentsContent` component was removed (the component was deleted; Agent Management → Partner Agents lives at `/agents/partner-agents-profiles` with its own scoping). Every role now renders the same tab components; only tab visibility and server-side row scoping differ.
 
+## Manage Sales scoping (implemented)
+
+All sales list surfaces (`/sales`, cancelled sales, financial reports, Stove Users Data / end-user records, dashboard sales tables) fetch through the **`get-sales-advanced`** edge function, and row scoping is enforced **server-side** in `supabase/functions/get-sales-advanced/build-query.ts` (`applyOrganizationFilters`):
+
+- `super_admin` → all sales; client org filters are optional narrowing.
+- `acsl_agent` / `acsl_agent_manager` → sales of **assigned partners only** (`resolveAssignedOrgIds`: direct + state + manager's subordinate-inherited assignments). Client-supplied org filters are intersected with the assigned scope — they can narrow it, never widen it. Zero assignments → zero rows, never global.
+- `partner` (and legacy `admin`) → locked to `profiles.organization_id`; client org filters cannot escape it. No org on profile → zero rows.
+- `partner_agent` / `agent` → **own sales only**: rows where `created_by = them` **or** `sold_on_behalf_of = them` (covers both self-created sales and sales recorded on their behalf), regardless of any client filter.
+
+Frontend uses **one fetch path for every role** (`UnifiedSalesContent.loadSales` → `salesAdvancedService.getSalesData`). The old fork — a separate service call per role, with the agent's "own sales" scoping done by the *client* passing `createdBy` — was removed; the client no longer participates in scoping.
+
 ## Data scoping
 
 Menu/route visibility is necessary but not sufficient — record-level access must also be enforced wherever a shared view is scoped by organization/assignment (e.g. org filters, RLS in services/edge functions) so that non-admin roles only see rows relevant to them, even inside a shared component.

@@ -132,7 +132,8 @@ async function executeMainLogic(req: Request) {
       filters,
       userRole,
       userOrgId,
-      assignedOrgIds
+      assignedOrgIds,
+      userId
     );
     console.log(`✅ Found ${sales?.length || 0} sales records`);
 
