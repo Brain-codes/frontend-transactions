@@ -27,13 +27,21 @@ serve(async (req) => {
     // (RBAC: Dashboard -> "Own sales"), not the whole partner organization.
     const isOwnSalesScope = userRole === "partner_agent" || userRole === "agent";
 
+    // Attribution filter: match sales attributed to this person via
+    // sold_on_behalf_of, falling back to created_by for older/edge-case rows
+    // where sold_on_behalf_of was never backfilled. Always excludes cancelled
+    // sales (is_archived = true) — a cancelled-then-corrected sale must count
+    // once, not twice, in every KPI derived from the `sales` table.
+    const personalSalesFilter = (q: any) =>
+      q
+        .eq("is_archived", false)
+        .or(`sold_on_behalf_of.eq.${userId},and(sold_on_behalf_of.is.null,created_by.eq.${userId})`);
+
     if (isOwnSalesScope) {
       // Stove inventory (received/available) belongs to the partner organization —
       // a partner agent inherits visibility into their org's whole stove ledger,
       // same as the partner they're tied to. Sales-derived numbers (sold count,
-      // financials, sales model, by-state) are attributed to the agent personally
-      // via sold_on_behalf_of (the selling agent, not created_by the record's
-      // actual creator — defaults to the creator on self-sales).
+      // financials, sales model, by-state) are attributed to the agent personally.
       const [receivedResult, soldCumulativeResult, salesResult] = await Promise.all([
         organizationId
           ? supabase
@@ -43,16 +51,15 @@ serve(async (req) => {
               .lt("created_at", endOfYear)
           : Promise.resolve({ count: 0 }),
 
-        supabase
-          .from("sales")
-          .select("*", { count: "exact", head: true })
-          .eq("sold_on_behalf_of", userId)
-          .lt("sales_date", endOfYear),
+        personalSalesFilter(
+          supabase.from("sales").select("*", { count: "exact", head: true })
+        ).lt("sales_date", endOfYear),
 
-        supabase
-          .from("sales")
-          .select("amount, total_paid, is_installment, state_backup, payment_model_id")
-          .eq("sold_on_behalf_of", userId)
+        personalSalesFilter(
+          supabase
+            .from("sales")
+            .select("amount, total_paid, is_installment, state_backup, payment_model_id")
+        )
           .gte("sales_date", startDate)
           .lt("sales_date", endOfYear),
       ]);
@@ -139,9 +146,33 @@ serve(async (req) => {
     // performance, so their sales stay aggregated across assignedOrgIds.
     const isPersonalSalesAttribution = userRole === "acsl_agent";
 
+    // A manager must see every sale their team recorded, even for a partner
+    // org that's only assigned to the subordinate — not the manager — so the
+    // team's own sales are matched by attribution (sold_on_behalf_of) in
+    // addition to the org-based scope.
+    let teamOrClause: string | null = null;
+    // Attribution-only clause (no org) — used to count sales actually sold by
+    // the manager or an ACSL agent on their team, as opposed to org-wide sales.
+    let teamAttributionClause: string | null = null;
+    if (userRole === "acsl_agent_manager") {
+      const { data: subordinates } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("manager_id", userId)
+        .eq("role", "acsl_agent");
+      const teamIds = [userId, ...(subordinates || []).map((s: any) => s.id)];
+      // Attribution matches EITHER sold_on_behalf_of OR created_by — the latter
+      // is the fallback for older rows where sold_on_behalf_of was never set.
+      const teamList = teamIds.join(",");
+      teamAttributionClause = `sold_on_behalf_of.in.(${teamList}),created_by.in.(${teamList})`;
+      teamOrClause = `organization_id.in.(${assignedOrgIds.join(",")}),${teamAttributionClause}`;
+    }
+
     // Balance-sheet stove counts: cumulative as of end of selected year.
     // created_at is used for received (no transfer-date column); sales_date
     // is authoritative for sold. Financial metrics remain year-specific.
+    // Every sales query excludes cancelled sales (is_archived = true) — a
+    // cancelled-then-corrected sale must count once, not twice.
     const [receivedResult, soldCumulativeResult, salesResult] = await Promise.all([
       supabase
         .from("stove_ids")
@@ -150,28 +181,34 @@ serve(async (req) => {
         .lt("created_at", endOfYear),
 
       isPersonalSalesAttribution
-        ? supabase
-            .from("sales")
-            .select("*", { count: "exact", head: true })
-            .eq("sold_on_behalf_of", userId)
-            .lt("sales_date", endOfYear)
-        : supabase
-            .from("sales")
-            .select("*", { count: "exact", head: true })
-            .in("organization_id", assignedOrgIds)
-            .lt("sales_date", endOfYear),
+        ? personalSalesFilter(
+            supabase.from("sales").select("*", { count: "exact", head: true })
+          ).lt("sales_date", endOfYear)
+        : (teamOrClause
+            ? supabase.from("sales").select("*", { count: "exact", head: true }).eq("is_archived", false).or(teamOrClause)
+            : supabase.from("sales").select("*", { count: "exact", head: true }).eq("is_archived", false).in("organization_id", assignedOrgIds)
+          ).lt("sales_date", endOfYear),
 
       isPersonalSalesAttribution
-        ? supabase
-            .from("sales")
-            .select("amount, total_paid, is_installment, state_backup, payment_model_id")
-            .eq("sold_on_behalf_of", userId)
+        ? personalSalesFilter(
+            supabase
+              .from("sales")
+              .select("amount, total_paid, is_installment, state_backup, payment_model_id")
+          )
             .gte("sales_date", startDate)
             .lt("sales_date", endOfYear)
-        : supabase
-            .from("sales")
-            .select("amount, total_paid, is_installment, state_backup, payment_model_id")
-            .in("organization_id", assignedOrgIds)
+        : (teamOrClause
+            ? supabase
+                .from("sales")
+                .select("amount, total_paid, is_installment, state_backup, payment_model_id")
+                .eq("is_archived", false)
+                .or(teamOrClause)
+            : supabase
+                .from("sales")
+                .select("amount, total_paid, is_installment, state_backup, payment_model_id")
+                .eq("is_archived", false)
+                .in("organization_id", assignedOrgIds)
+          )
             .gte("sales_date", startDate)
             .lt("sales_date", endOfYear),
     ]);
@@ -211,6 +248,20 @@ serve(async (req) => {
       .map(([model, count]) => ({ model, count, percentage: totalSales > 0 ? (count / totalSales) * 100 : 0 }))
       .sort((a, b) => b.count - a.count);
 
+    // Actual sales made by the manager + their team (attribution only, not the
+    // full org-wide scope). Only meaningful for acsl_agent_manager.
+    let teamSalesCount: number | null = null;
+    if (teamAttributionClause) {
+      const { count } = await supabase
+        .from("sales")
+        .select("*", { count: "exact", head: true })
+        .eq("is_archived", false)
+        .or(teamAttributionClause)
+        .gte("sales_date", startDate)
+        .lt("sales_date", endOfYear);
+      teamSalesCount = count ?? 0;
+    }
+
     return withCors(
       new Response(
         JSON.stringify({
@@ -224,6 +275,7 @@ serve(async (req) => {
             outstandingBalance: expectedReceivable - amountReceived,
             byState,
             salesModelData,
+            teamSalesCount,
           },
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }

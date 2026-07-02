@@ -64,6 +64,19 @@ export const validateSalesForm = (formData) => {
     errors.amount = "Valid sale amount is required";
   }
 
+  // Amount received cannot exceed the sales amount
+  if (
+    formData.amountReceived !== "" &&
+    formData.amountReceived !== null &&
+    formData.amountReceived !== undefined
+  ) {
+    const received = parseFloat(formData.amountReceived);
+    const saleAmount = parseFloat(formData.amount);
+    if (!Number.isNaN(received) && !Number.isNaN(saleAmount) && received > saleAmount) {
+      errors.amountReceived = "Amount received cannot be greater than the sales amount";
+    }
+  }
+
   // Stove serial number validation
   if (!formData.stoveSerialNo) {
     errors.stoveSerialNo = "Stove serial number is required";

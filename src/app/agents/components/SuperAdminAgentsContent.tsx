@@ -2459,7 +2459,8 @@ export default function SuperAdminAgentsContent() {
             const { count } = await supabase
               .from("sales")
               .select("*", { count: "exact", head: true })
-              .eq("created_by", a.id);
+              .eq("created_by", a.id)
+              .eq("is_archived", false);
             soldByAgent[a.id] = count || 0;
           })
         );

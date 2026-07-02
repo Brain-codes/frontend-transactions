@@ -1298,7 +1298,13 @@ const CreateSalesForm = ({
                 <GooglePlacesInput
                   value={formData.addressData}
                   onChange={handleAddressSelect}
-                  placeholder="Search for address in Nigeria..."
+                  biasState={formData.stateBackup}
+                  biasLga={formData.lgaBackup}
+                  placeholder={
+                    formData.stateBackup
+                      ? `Search address in ${formData.lgaBackup || formData.stateBackup}...`
+                      : "Select state & LGA first for better matches..."
+                  }
                   className={`w-full ${errors.address ? "border-red-500" : ""}`}
                 />
               </FormField>

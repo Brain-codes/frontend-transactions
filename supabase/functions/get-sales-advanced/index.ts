@@ -110,7 +110,7 @@ async function executeMainLogic(req: Request) {
 
     // Authenticate user
     console.log("🔐 Authenticating user...");
-    const { userRole, userId, userOrgId, assignedOrgIds } = await authenticateUser(supabase);
+    const { userRole, userId, userOrgId, assignedOrgIds, teamAgentIds } = await authenticateUser(supabase);
     console.log(`✅ Authenticated as: ${userRole}`);
 
     // Parse request filters
@@ -133,7 +133,8 @@ async function executeMainLogic(req: Request) {
       userRole,
       userOrgId,
       assignedOrgIds,
-      userId
+      userId,
+      teamAgentIds
     );
     console.log(`✅ Found ${sales?.length || 0} sales records`);
 

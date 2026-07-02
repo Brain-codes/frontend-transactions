@@ -3,12 +3,14 @@ import { useRouter } from "@/compat/navigation";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import DashboardLayout from "../../components/DashboardLayout";
 import { useAuth } from "../../contexts/useAuth";
+import { useToastNotification } from "../../contexts/useToastNotification";
 import CreateSalesForm from "../../admin/components/sales/CreateSalesForm";
 
 
 function CreateSaleView() {
   const router = useRouter();
   const { user } = useAuth();
+  const { toast } = useToastNotification();
 
   // Reset any persisted partner/org selection so the form starts fresh
   // whenever the user enters or leaves the Sell Stove page.
@@ -23,6 +25,10 @@ function CreateSaleView() {
   }, []);
 
   const handleSuccess = () => {
+    toast.success(
+      "Sale Created Successfully",
+      "The sale has been recorded and will be processed."
+    );
     router.push("/sales");
   };
 

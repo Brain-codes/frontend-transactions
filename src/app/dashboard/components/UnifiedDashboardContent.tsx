@@ -339,6 +339,7 @@ const UnifiedDashboardContent = () => {
       byState: data.byState ?? [],
       salesModelData: data.salesModelData ?? [],
       monthlySales: data.monthlySales ?? [],
+      teamSalesCount: data.teamSalesCount ?? null,
     };
 
   }, [data, scope]);

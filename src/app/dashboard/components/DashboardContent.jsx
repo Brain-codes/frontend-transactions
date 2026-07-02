@@ -767,13 +767,21 @@ const DashboardContent = ({
                             centerValue={received}
                             centerLabel="STOVES RECEIVED"
                           />
-                          <Donut
-                            title="Sales by Models"
-                            data={modelChartData}
-                            total={totalModelSales}
-                            centerValue={totalModelSales}
-                            centerLabel="TOTAL SALES"
-                          />
+                          <div>
+                            <Donut
+                              title="Sales by Models"
+                              data={modelChartData}
+                              total={totalModelSales}
+                              centerValue={totalModelSales}
+                              centerLabel="TOTAL SALES"
+                            />
+                            {role === "acsl_agent_manager" && data?.teamSalesCount != null && (
+                              <p className="mt-2 text-right text-xs text-gray-600">
+                                <span className="font-semibold text-gray-800">Actual Sale(s) by Team:</span>{" "}
+                                <span className="font-bold text-[#4a5d0f]">{Number(data.teamSalesCount).toLocaleString()}</span>
+                              </p>
+                            )}
+                          </div>
                         </div>
                       );
                     })()}

@@ -50,7 +50,7 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
       )}
 
       {/* Approve button (ACSL Agent only) */}
-      {onApproveSale && !sale.agent_approved && (
+      {/* {onApproveSale && !sale.agent_approved && (
         <Button
           variant="default"
           size="sm"
@@ -60,7 +60,7 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
           <CheckCircle2 className="h-3 w-3" />
           Approve
         </Button>
-      )}
+      )} */}
 
       {/* More dropdown */}
       <DropdownMenu>

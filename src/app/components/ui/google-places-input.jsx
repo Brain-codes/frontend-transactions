@@ -93,6 +93,8 @@ const GooglePlacesInput = ({
   placeholder = "Search for address...",
   disabled = false,
   className = "",
+  biasState = "",
+  biasLga = "",
 }) => {
   const [scriptStatus, setScriptStatus] = useState("loading"); // loading | ready | unavailable
   const [suggestionsError, setSuggestionsError] = useState(null);
@@ -102,6 +104,8 @@ const GooglePlacesInput = ({
   const [searching, setSearching] = useState(false);
 
   const placesLibRef = useRef(null); // { AutocompleteSuggestion, AutocompleteSessionToken }
+  const geocoderRef = useRef(null); // google.maps.Geocoder for LGA/State biasing
+  const locationBiasRef = useRef(null); // { center: {lat,lng}, radius } derived from LGA/State
   const sessionTokenRef = useRef(null);
   const debounceRef = useRef(null);
   const inputRef = useRef(null);
@@ -139,6 +143,16 @@ const GooglePlacesInput = ({
             Place: lib.Place,
           };
           sessionTokenRef.current = new lib.AutocompleteSessionToken();
+          // Geocoding library powers LGA/State location biasing. Optional —
+          // if it fails to load we simply fall back to nationwide suggestions.
+          try {
+            const geoLib = await google.maps.importLibrary("geocoding");
+            if (!cancelled && geoLib?.Geocoder) {
+              geocoderRef.current = new geoLib.Geocoder();
+            }
+          } catch {
+            // Non-fatal: biasing just stays disabled.
+          }
           setScriptStatus("ready");
         } catch (err) {
           // eslint-disable-next-line no-console
@@ -172,17 +186,60 @@ const GooglePlacesInput = ({
     [onChange]
   );
 
+  // Whenever the selected State/LGA changes, geocode it to a center point so
+  // autocomplete results near that LGA/State are ranked first. Falls back to
+  // nationwide suggestions when nothing is selected or geocoding fails.
+  useEffect(() => {
+    if (scriptStatus !== "ready" || !geocoderRef.current) return;
+
+    const state = biasState?.trim();
+    const lga = biasLga?.trim();
+    if (!state) {
+      locationBiasRef.current = null;
+      return;
+    }
+
+    let cancelled = false;
+    const address = [lga, state, "Nigeria"].filter(Boolean).join(", ");
+    geocoderRef.current
+      .geocode({ address, region: "ng" })
+      .then((res) => {
+        if (cancelled) return;
+        const loc = res?.results?.[0]?.geometry?.location;
+        if (!loc) {
+          locationBiasRef.current = null;
+          return;
+        }
+        locationBiasRef.current = {
+          center: { lat: loc.lat(), lng: loc.lng() },
+          // Tighter radius when an LGA is chosen, wider for state-only.
+          radius: lga ? 20000 : 60000,
+        };
+      })
+      .catch(() => {
+        if (!cancelled) locationBiasRef.current = null;
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [biasState, biasLga, scriptStatus]);
+
   const fetchSuggestions = useCallback(async (input) => {
     const lib = placesLibRef.current;
     if (!lib?.AutocompleteSuggestion) return;
     try {
       setSearching(true);
+      const request = {
+        input,
+        sessionToken: sessionTokenRef.current,
+        includedRegionCodes: ["ng"],
+      };
+      if (locationBiasRef.current) {
+        request.locationBias = locationBiasRef.current;
+      }
       const { suggestions } =
-        await lib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
-          input,
-          sessionToken: sessionTokenRef.current,
-          includedRegionCodes: ["ng"],
-        });
+        await lib.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
       setPredictions(suggestions || []);
       setShowSuggestions((suggestions || []).length > 0);
       setSuggestionsError(null);
