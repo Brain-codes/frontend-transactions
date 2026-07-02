@@ -132,6 +132,13 @@ serve(async (req) => {
       );
     }
 
+    // A plain ACSL agent (not a manager) sees stove inventory across every
+    // partner assigned to them, but sales-derived numbers are attributed to
+    // them personally — same split as the partner-agent case above. An
+    // acsl_agent_manager, by contrast, is tracking their whole team's
+    // performance, so their sales stay aggregated across assignedOrgIds.
+    const isPersonalSalesAttribution = userRole === "acsl_agent";
+
     // Balance-sheet stove counts: cumulative as of end of selected year.
     // created_at is used for received (no transfer-date column); sales_date
     // is authoritative for sold. Financial metrics remain year-specific.
@@ -142,18 +149,31 @@ serve(async (req) => {
         .in("organization_id", assignedOrgIds)
         .lt("created_at", endOfYear),
 
-      supabase
-        .from("sales")
-        .select("*", { count: "exact", head: true })
-        .in("organization_id", assignedOrgIds)
-        .lt("sales_date", endOfYear),
+      isPersonalSalesAttribution
+        ? supabase
+            .from("sales")
+            .select("*", { count: "exact", head: true })
+            .eq("sold_on_behalf_of", userId)
+            .lt("sales_date", endOfYear)
+        : supabase
+            .from("sales")
+            .select("*", { count: "exact", head: true })
+            .in("organization_id", assignedOrgIds)
+            .lt("sales_date", endOfYear),
 
-      supabase
-        .from("sales")
-        .select("amount, total_paid, is_installment, state_backup, payment_model_id")
-        .in("organization_id", assignedOrgIds)
-        .gte("sales_date", startDate)
-        .lt("sales_date", endOfYear),
+      isPersonalSalesAttribution
+        ? supabase
+            .from("sales")
+            .select("amount, total_paid, is_installment, state_backup, payment_model_id")
+            .eq("sold_on_behalf_of", userId)
+            .gte("sales_date", startDate)
+            .lt("sales_date", endOfYear)
+        : supabase
+            .from("sales")
+            .select("amount, total_paid, is_installment, state_backup, payment_model_id")
+            .in("organization_id", assignedOrgIds)
+            .gte("sales_date", startDate)
+            .lt("sales_date", endOfYear),
     ]);
 
     const sales = salesResult.data || [];
