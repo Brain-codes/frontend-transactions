@@ -107,6 +107,23 @@ All sales list surfaces (`/sales`, cancelled sales, financial reports, Stove Use
 
 Frontend uses **one fetch path for every role** (`UnifiedSalesContent.loadSales` → `salesAdvancedService.getSalesData`). The old fork — a separate service call per role, with the agent's "own sales" scoping done by the *client* passing `createdBy` — was removed; the client no longer participates in scoping.
 
+## Stove Users Data scoping (implemented)
+
+`/end-user-records` ("Stove Users Data" in the sidebar) is one shared page (`EndUserRecordsContent`) for every role:
+
+- **Route access**: all five roles have `end-user-records` in `PERMISSIONS`, and the page is gated by `routeKey="end-user-records"` on `ProtectedRoute`, so any future role without the route is rejected even on direct URL entry. Sidebar visibility comes from the same `canRoute` check.
+- **Row scoping is entirely server-side** — the page fetches through the same `get-sales-advanced` edge function as Manage Sales, so the matrix row is enforced by `applyOrganizationFilters`: super_admin → all records; `acsl_agent` / `acsl_agent_manager` → assigned partners' records (`resolveAssignedOrgIds`); `partner` → own organization's records; `partner_agent` / `agent` → own sales records (`created_by` or `sold_on_behalf_of`). The client sends no role-specific filters.
+- The edge function caps each response at 500 rows, so the page fetches page-by-page until `pagination.totalPages` is exhausted — otherwise large scopes (super admin, big partners) silently lose records past 500.
+- The Details modal (`AdminSalesDetailModal`) is shared; its `viewFrom="superAdmin"` prop only selects the list-data field shape and hides the Record Payment button — it grants no extra capability.
+
+## Purchases from ACSL / Stove Transfer History scoping (implemented)
+
+`/stove-transfer-history` is gated by `routeKey="stove-transfer-history"` (super_admin, acsl_agent_manager, acsl_agent, partner — no partner_agent). The **`get-transfer-history`** edge function was previously super-admin-only (403 for everyone else); it now authenticates all four roles and scopes rows server-side on `stove_transfer_history.organization_id`:
+
+- `super_admin` → all transfers.
+- `acsl_agent` / `acsl_agent_manager` → transfers of assigned partner orgs only (`resolveAssignedOrgIds`); zero assignments → zero rows.
+- `partner` (and legacy `admin`) → own organization's transfers only.
+
 ## Data scoping
 
 Menu/route visibility is necessary but not sufficient — record-level access must also be enforced wherever a shared view is scoped by organization/assignment (e.g. org filters, RLS in services/edge functions) so that non-admin roles only see rows relevant to them, even inside a shared component.

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { resolveAssignedOrgIds } from "../_shared/resolveAssignedOrgIds.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,12 +37,32 @@ serve(async (req) => {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, organization_id")
     .eq("id", user.id)
     .single();
 
-  if (!profile || profile.role !== "super_admin") {
-    return jsonError("Access denied. Super admin role required.", 403);
+  const role = profile?.role;
+  const ALLOWED_ROLES = [
+    "super_admin",
+    "acsl_agent",
+    "acsl_agent_manager",
+    "super_admin_agent",
+    "partner",
+    "admin",
+  ];
+  if (!role || !ALLOWED_ROLES.includes(role)) {
+    return jsonError("Access denied.", 403);
+  }
+
+  // Row scope per RBAC matrix: super_admin → all; ACSL roles → assigned
+  // partner orgs; partner → own org. Never widened by client filters.
+  const NO_MATCH_ID = "00000000-0000-0000-0000-000000000000";
+  let scopeOrgIds: string[] | null = null; // null = unrestricted (super_admin)
+  if (role === "acsl_agent" || role === "acsl_agent_manager" || role === "super_admin_agent") {
+    const resolved = await resolveAssignedOrgIds(supabase, user.id);
+    scopeOrgIds = resolved.assignedOrgIds.length ? resolved.assignedOrgIds : [NO_MATCH_ID];
+  } else if (role === "partner" || role === "admin") {
+    scopeOrgIds = profile.organization_id ? [profile.organization_id] : [NO_MATCH_ID];
   }
 
   const url = new URL(req.url);
@@ -58,6 +79,8 @@ serve(async (req) => {
     .select("*", { count: "exact" })
     .order("transfer_date", { ascending: sort_order })
     .range(offset, offset + limit - 1);
+
+  if (scopeOrgIds) query = query.in("organization_id", scopeOrgIds);
 
   if (search.trim()) {
     const term = `%${search.trim()}%`;

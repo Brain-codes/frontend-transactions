@@ -4,7 +4,7 @@ import StoveTransferHistoryContent from "./components/StoveTransferHistoryConten
 
 export default function StoveTransferHistoryPage() {
   return (
-    <ProtectedRoute requireAdminAccess>
+    <ProtectedRoute requireAdminAccess routeKey="stove-transfer-history">
       <StoveTransferHistoryContent />
     </ProtectedRoute>
   );
