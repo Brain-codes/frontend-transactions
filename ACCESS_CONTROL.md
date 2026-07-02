@@ -60,7 +60,7 @@ Legend: **Full access** = complete module access • **No Access / Hidden** = me
 - **super_admin** — everything.
 - **acsl_agent_manager** — everything except Map, Settings, User Groups.
 - **acsl_agent** — like manager, minus User Management and ACSL Agents Profile (Agent Management → ACSL Agents).
-- **partner** — no Partner Management, no ACSL Agents Profile, no Performance Report, no Map, no Settings, no User Groups. Still sees User Manager, Partner Agents Profile, Sales, Stove Users Data, Track Stoves.
+- **partner** — no Partner Management, no ACSL Agents Profile, no Map, no Settings, no User Groups. Performance Report shows the **Partners tab only** (own organization). Still sees User Manager, Partner Agents Profile, Sales, Stove Users Data, Track Stoves.
 - **partner_agent / agent** — Dashboard, Sales, Sell Stove, Stove Manager, Stove Users Data, Sales Monitoring App only.
 
 ## User Manager (create-user) form rules
@@ -86,6 +86,14 @@ Legend: **Full access** = complete module access • **No Access / Hidden** = me
 - Both profile pages share one fetch path for every role — the `manage-users` edge function; the server decides the rows via `scope.ts`:
   - `super_admin` → all users; `acsl_agent_manager` → own subordinate ACSL agents (`manager_id`) + agents of assigned partners; `acsl_agent` → agents of assigned partners only (via `resolveAssignedOrgIds`); `partner` → agents of their own organization.
   - `acsl_agent` callers are **read-only** (GET only) in `manage-users` — writes are rejected in the route handler before dispatch.
+
+## Performance Report scoping (implemented)
+
+`/agents` renders the Performance Report as two tabs on one shared page (`src/app/agents/page.tsx`); the page is gated by `routeKey="agents"`, so `partner_agent`/`agent` are rejected even on direct URL entry.
+
+- **ACSL Agents tab** (`SuperAdminAgentsContent`): shown only when `can("manage-acsl-agents")` (super_admin) or `can("manage-acsl-agents-scoped")` (acsl_agent_manager). Hidden for `acsl_agent` and `partner` per the matrix. The agent list comes from the `manage-users` edge function, which scopes rows server-side (`scope.ts`): super_admin → all, manager → own subordinate ACSL agents + agents of assigned partners. Per-agent performance stats (assigned/collected/in-stock) are derived only from the agents the server returned — there is no separate client-side role filter.
+- **Partners tab** (`PartnersContent`): shared by every role with the `agents` route. The partner list comes from `manage-organizations` and KPI numbers from `get-stove-stats`; both scope server-side: super_admin → all orgs; `acsl_agent` / `acsl_agent_manager` → `resolveAssignedOrgIds` (read-only); `partner` (and legacy `admin`) → **own organization only** (read-only, forced to `profiles.organization_id`; zero rows if none). Writes on `manage-organizations` remain super-admin only regardless of tab.
+- The old fork where a `partner` caller got a mislabeled "ACSL Agents" tab rendering a separate `PartnerAgentsContent` component was removed (the component was deleted; Agent Management → Partner Agents lives at `/agents/partner-agents-profiles` with its own scoping). Every role now renders the same tab components; only tab visibility and server-side row scoping differ.
 
 ## Data scoping
 

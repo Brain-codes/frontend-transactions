@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from "react";
 import ProtectedRoute from "../components/ProtectedRoute";
 import { usePermissions } from "../hooks/usePermissions";
 import SuperAdminAgentsContent from "./components/SuperAdminAgentsContent";
-import PartnerAgentsContent from "./components/PartnerAgentsContent";
 import PartnersContent from "../partners/components/PartnersContent";
 import { Users, Building2 } from "lucide-react";
 
@@ -10,9 +9,9 @@ type TabKey = "agents" | "partners";
 
 function PerformanceTabs() {
   const { can } = usePermissions();
-  const canAcsl = can("manage-acsl-agents") || can("manage-acsl-agents-scoped");
-  const canPartner = can("manage-agents");
-  const showAgents = canAcsl || canPartner;
+  // ACSL Agents tab: super_admin (full) + acsl_agent_manager (scoped) only —
+  // per the RBAC matrix it is hidden for acsl_agent and partner.
+  const showAgents = can("manage-acsl-agents") || can("manage-acsl-agents-scoped");
 
   const tabs = useMemo(() => {
     const list: { key: TabKey; label: string; icon: typeof Users }[] = [];
@@ -64,7 +63,7 @@ function PerformanceTabs() {
 
       <div role="tabpanel">
         {active === "agents" && showAgents ? (
-          canAcsl ? <SuperAdminAgentsContent /> : <PartnerAgentsContent />
+          <SuperAdminAgentsContent />
         ) : (
           <PartnersContent />
         )}

@@ -1,8 +1,10 @@
 // Authentication module for organization management operations.
 // Super admins get full access; ACSL agents/managers get read-only access
-// scoped to their assigned organizations (resolved by the caller).
+// scoped to their assigned organizations (resolved by the caller); partners
+// get read-only access scoped to their own organization.
 
 const READ_SCOPED_ROLES = ["acsl_agent", "acsl_agent_manager", "super_admin_agent"];
+const OWN_ORG_ROLES = ["partner", "admin"];
 
 export async function authenticateOrganizationAccess(supabase: any) {
   console.log("🔐 Authenticating organization access...");
@@ -34,8 +36,9 @@ export async function authenticateOrganizationAccess(supabase: any) {
 
   const isSuperAdmin = profile.role === "super_admin";
   const isScopedReader = READ_SCOPED_ROLES.includes(profile.role);
+  const isOwnOrgReader = OWN_ORG_ROLES.includes(profile.role);
 
-  if (!isSuperAdmin && !isScopedReader) {
+  if (!isSuperAdmin && !isScopedReader && !isOwnOrgReader) {
     console.log("❌ Access denied for role:", profile.role);
     throw new Error("Unauthorized: Super admin privileges required");
   }
@@ -47,5 +50,6 @@ export async function authenticateOrganizationAccess(supabase: any) {
     userEmail: profile.email,
     organizationId: profile.organization_id,
     isSuperAdmin,
+    isOwnOrgReader,
   };
 }

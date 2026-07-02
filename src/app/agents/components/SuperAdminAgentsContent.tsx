@@ -83,6 +83,26 @@ import AgentViewCredentialModal from "../../admin/components/agents/AgentViewCre
 import AgentCredentialsModal from "../../admin/components/agents/AgentCredentialsModal";
 import tokenManager from "@/utils/tokenManager";
 
+// PostgREST caps un-ranged selects at 1000 rows, silently truncating bigger
+// result sets. Rebuilds the query per page (builders aren't reusable) and
+// loops .range() until exhausted.
+async function fetchAllRows<T = any>(
+  buildQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>
+): Promise<T[]> {
+  const PAGE = 1000;
+  const rows: T[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await buildQuery(from, from + PAGE - 1);
+    if (error) throw error;
+    const chunk = data || [];
+    rows.push(...chunk);
+    if (chunk.length < PAGE) break;
+    from += PAGE;
+  }
+  return rows;
+}
+
 interface AcslAgent {
   id: string;
   full_name: string;
@@ -1365,13 +1385,16 @@ function AgentPartnersModal({
         const counts: Record<string, number> = {};
         for (let i = 0; i < orgIds.length; i += BATCH) {
           const slice = orgIds.slice(i, i + BATCH);
-          const { data } = await supabase
-            .from("stove_ids")
-            .select("organization_id")
-            .in("organization_id", slice)
-            .eq("is_archived", false)
-            .neq("status", "sold");
-          (data || []).forEach((r: any) => {
+          const data = await fetchAllRows((from, to) =>
+            supabase
+              .from("stove_ids")
+              .select("organization_id")
+              .in("organization_id", slice)
+              .eq("is_archived", false)
+              .neq("status", "sold")
+              .range(from, to)
+          );
+          data.forEach((r: any) => {
             counts[r.organization_id] = (counts[r.organization_id] || 0) + 1;
           });
         }
@@ -1740,19 +1763,23 @@ function ActivePartnersModal({
         const orgs: any[] = orgResults.flatMap((r) => r.data || []);
 
         // Fetch stove counts grouped by org (client-side aggregation)
-        const stoveBatches: Promise<any>[] = [];
+        const stoveBatches: Promise<any[]>[] = [];
         for (let i = 0; i < partnerIds.length; i += BATCH) {
+          const slice = partnerIds.slice(i, i + BATCH);
           stoveBatches.push(
-            supabase
-              .from("stove_ids")
-              .select("organization_id, status")
-              .in("organization_id", partnerIds.slice(i, i + BATCH))
-              .eq("is_archived", false)
+            fetchAllRows((from, to) =>
+              supabase
+                .from("stove_ids")
+                .select("organization_id, status")
+                .in("organization_id", slice)
+                .eq("is_archived", false)
+                .range(from, to)
+            )
           );
         }
         const stoveResults = await Promise.all(stoveBatches);
         const stoveCounts: Record<string, { total: number; sold: number; available: number }> = {};
-        stoveResults.flatMap((r) => r.data || []).forEach((s: any) => {
+        stoveResults.flat().forEach((s: any) => {
           if (!stoveCounts[s.organization_id]) stoveCounts[s.organization_id] = { total: 0, sold: 0, available: 0 };
           stoveCounts[s.organization_id].total++;
           if (s.status === "sold") stoveCounts[s.organization_id].sold++;
@@ -1965,12 +1992,16 @@ function StockModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
     if (!isOpen) return;
     setSearch(""); setPage(1); setStoves([]);
     setLoading(true);
-    supabase
-      .from("stove_ids")
-      .select("id, stove_id, status, organization_id, organizations(partner_name, state)")
-      .eq("status", "available")
-      .order("stove_id", { ascending: true })
-      .then(({ data }: { data: any[] | null }) => setStoves(data || []))
+    fetchAllRows((from, to) =>
+      supabase
+        .from("stove_ids")
+        .select("id, stove_id, status, organization_id, organizations(partner_name, state)")
+        .eq("status", "available")
+        .order("stove_id", { ascending: true })
+        .range(from, to)
+    )
+      .then((data: any[]) => setStoves(data))
+      .catch(() => setStoves([]))
       .finally(() => setLoading(false));
   }, [isOpen, supabase]);
 
@@ -2392,21 +2423,32 @@ export default function SuperAdminAgentsContent() {
         const stoveSoldByOrg: Record<string, number> = {};
         for (let i = 0; i < orgIds.length; i += BATCH) {
           const slice = orgIds.slice(i, i + BATCH);
-          const { data } = await supabase
-            .from("stove_ids")
-            .select("organization_id,status")
-            .in("organization_id", slice)
-            .eq("is_archived", false);
-          (data || []).forEach((s: any) => {
-            const oid = s.organization_id;
-            const status = String(s.status || "").toLowerCase();
-            stoveTotalByOrg[oid] = (stoveTotalByOrg[oid] || 0) + 1;
-            if (status === "sold") {
-              stoveSoldByOrg[oid] = (stoveSoldByOrg[oid] || 0) + 1;
-            } else {
-              stoveAvailableByOrg[oid] = (stoveAvailableByOrg[oid] || 0) + 1;
-            }
-          });
+          // Paginate past PostgREST's 1000-row cap — a single un-ranged
+          // select silently truncates, undercounting orgs with big pools.
+          let from = 0;
+          const PAGE = 1000;
+          while (true) {
+            const { data, error: err } = await supabase
+              .from("stove_ids")
+              .select("organization_id,status")
+              .in("organization_id", slice)
+              .eq("is_archived", false)
+              .range(from, from + PAGE - 1);
+            if (err) throw err;
+            const chunk = data || [];
+            chunk.forEach((s: any) => {
+              const oid = s.organization_id;
+              const status = String(s.status || "").toLowerCase();
+              stoveTotalByOrg[oid] = (stoveTotalByOrg[oid] || 0) + 1;
+              if (status === "sold") {
+                stoveSoldByOrg[oid] = (stoveSoldByOrg[oid] || 0) + 1;
+              } else {
+                stoveAvailableByOrg[oid] = (stoveAvailableByOrg[oid] || 0) + 1;
+              }
+            });
+            if (chunk.length < PAGE) break;
+            from += PAGE;
+          }
         }
         if (cancelled) return;
 
