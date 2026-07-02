@@ -107,22 +107,85 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+// Public origin used to build absolute URLs for canonical + social share tags.
+// Set VITE_SITE_URL in your deploy env; falls back to the placeholder below.
+const SITE_URL = (
+  import.meta.env.VITE_SITE_URL || "https://sales-monitoring.atmosfair.app"
+).replace(/\/$/, "");
+
+const SITE_NAME = "Atmosfair Sales Monitoring";
+const SITE_TITLE = "Atmosfair Sales Monitoring — Field Sales & Agent Tracking";
+const SITE_DESCRIPTION =
+  "Real-time field sales monitoring, agent tracking, and performance analytics for the Save80 / Atmosfair programme. Record sales offline, sync automatically, and manage teams from a central dashboard.";
+const OG_IMAGE = `${SITE_URL}/og-image.png`;
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, viewport-fit=cover",
+      },
+      { title: SITE_TITLE },
+      { name: "description", content: SITE_DESCRIPTION },
+      { name: "author", content: "Atmosfair" },
+      { name: "application-name", content: SITE_NAME },
+      { name: "apple-mobile-web-app-title", content: "Sales Monitor" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      {
+        name: "apple-mobile-web-app-status-bar-style",
+        content: "default",
+      },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "theme-color", content: "#1d4ed8" },
+      {
+        name: "keywords",
+        content:
+          "sales monitoring, field sales, agent tracking, sales analytics, stove management, Save80, Atmosfair, offline sales app",
+      },
+      // Open Graph
+      { property: "og:site_name", content: SITE_NAME },
+      { property: "og:title", content: SITE_TITLE },
+      { property: "og:description", content: SITE_DESCRIPTION },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
+      { property: "og:url", content: SITE_URL },
+      { property: "og:image", content: OG_IMAGE },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: SITE_NAME },
+      // Twitter
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: SITE_TITLE },
+      { name: "twitter:description", content: SITE_DESCRIPTION },
+      { name: "twitter:image", content: OG_IMAGE },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "canonical", href: SITE_URL },
+      // Favicons & app icons
+      { rel: "icon", href: "/favicon.ico", sizes: "any" },
+      {
+        rel: "icon",
+        type: "image/png",
+        sizes: "16x16",
+        href: "/favicon-16x16.png",
+      },
+      {
+        rel: "icon",
+        type: "image/png",
+        sizes: "32x32",
+        href: "/favicon-32x32.png",
+      },
+      {
+        rel: "icon",
+        type: "image/png",
+        sizes: "48x48",
+        href: "/favicon-48x48.png",
+      },
+      { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
+      { rel: "manifest", href: "/site.webmanifest" },
+      // Performance hints
       { rel: "preconnect", href: "https://oeiwnpngbnkhcismhpgs.supabase.co" },
       { rel: "preconnect", href: "https://maps.googleapis.com" },
       { rel: "preconnect", href: "https://maps.gstatic.com", crossOrigin: "" },
