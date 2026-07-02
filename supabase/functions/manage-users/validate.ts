@@ -138,6 +138,15 @@ export function validateUpdateData(data: any) {
     }
   }
 
+  // Password validation (optional for updates)
+  if (data.password !== undefined && data.password !== null && data.password !== "") {
+    if (typeof data.password !== "string" || data.password.length < 8) {
+      errors.push("Password must be at least 8 characters");
+    } else {
+      validatedData.password = data.password;
+    }
+  }
+
   if (errors.length > 0) {
     throw new Error(`validation: ${errors.join(", ")}`);
   }
@@ -151,6 +160,7 @@ export function validateUpdateData(data: any) {
 
   return validatedData;
 }
+
 
 function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

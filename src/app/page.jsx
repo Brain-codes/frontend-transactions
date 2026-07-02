@@ -4,27 +4,18 @@ import { useAuth } from "./contexts/useAuth";
 import { useRouter } from "@/compat/navigation";
 
 export default function Home() {
-  const { isAuthenticated, isSuperAdmin, isSuperAdminAgent, isAcslAgent, isAdmin, isPartner, isAgent, isPartnerAgent, loading } =
-    useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      if (!isAuthenticated) {
-        router.push("/login");
-      } else if (isSuperAdmin) {
-        router.push("/dashboard");
-      } else if (isAcslAgent || isSuperAdminAgent) {
-        router.push("/super-admin-agent");
-      } else if (isPartner || isAdmin) {
-        router.push("/admin");
-      } else if (isPartnerAgent || isAgent) {
-        router.push("/admin/sales");
-      } else {
-        router.push("/unauthorized");
-      }
+    if (loading) return;
+    if (!isAuthenticated) {
+      router.push("/login");
+    } else {
+      // All authenticated users land on the unified dashboard.
+      router.push("/dashboard");
     }
-  }, [isAuthenticated, isSuperAdmin, isSuperAdminAgent, isAcslAgent, isAdmin, isPartner, isAgent, isPartnerAgent, loading, router]);
+  }, [isAuthenticated, loading, router]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -32,3 +23,4 @@ export default function Home() {
     </div>
   );
 }
+

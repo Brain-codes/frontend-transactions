@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -147,6 +149,8 @@ function inferSupervisorsForAgent(agentOrgIds, managerInfo, assignmentRows = [])
 
 const AgentsProfilesContent = () => {
   const { toast, toasts, removeToast } = useToast();
+  const navigate = useNavigate();
+
   const supabaseRef = useRef(null);
   if (!supabaseRef.current) supabaseRef.current = createClientComponentClient();
   const isMountedRef = useRef(true);
@@ -594,13 +598,15 @@ const AgentsProfilesContent = () => {
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Agent Phone</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Supervisor(s)</TableHead>
                 <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">States Assigned</TableHead>
-                <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center rounded-tr-lg">Partners Assigned</TableHead>
+                <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">Partners Assigned</TableHead>
+                <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-right rounded-tr-lg">Actions</TableHead>
+
               </TableRow>
             </TableHeader>
             <TableBody className={loading ? "opacity-40" : ""}>
               {pageRows.length === 0 && !loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-10 text-gray-500">
                     No agents found
                   </TableCell>
                 </TableRow>
@@ -679,7 +685,17 @@ const AgentsProfilesContent = () => {
                         );
                       })()}
                     </TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      <Button
+                        size="sm"
+                        className="h-8 rounded-none bg-[#4a5d0f] hover:bg-[#3d4d0c] text-white text-xs font-medium px-3"
+                        onClick={() => navigate({ to: "/user-management/users", search: { edit: a.id } })}
+                      >
+                        Manage Agent
+                      </Button>
+                    </TableCell>
                   </TableRow>
+
                 ))
               )}
             </TableBody>

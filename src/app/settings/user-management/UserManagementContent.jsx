@@ -1,6 +1,8 @@
 
 import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "@tanstack/react-router";
+
 import DashboardLayout from "../../components/DashboardLayout";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
@@ -164,8 +166,19 @@ const getRoleBadgeClasses = (role) => {
 };
 
 const UserManagementPage = () => {
-  const { supabase } = useAuth();
+  const { supabase, user, isSuperAdmin, isAcslAgentManager, isPartner } = useAuth();
   const { toast, toasts, removeToast } = useToast();
+
+  // Caller-role-based role catalog for the create form.
+  const callerCreatableRoles = isSuperAdmin
+    ? ["super_admin", "acsl_agent_manager", "acsl_agent", "partner", "partner_agent", "agent"]
+    : isAcslAgentManager
+    ? ["acsl_agent", "partner", "partner_agent"]
+    : isPartner
+    ? ["partner_agent"]
+    : [];
+  const callerOrgId = user?.user_metadata?.organization_id || user?.app_metadata?.organization_id || null;
+
 
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
@@ -319,6 +332,44 @@ const UserManagementPage = () => {
   };
 
   useEffect(() => { fetchUsers(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-open the Edit view when navigated in with ?edit=<userId> (e.g. from Agents Profile "Manage Agent")
+  const router = useRouter();
+  const editedFromParamRef = useRef(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get("edit");
+    if (!editId || editedFromParamRef.current === editId) return;
+    editedFromParamRef.current = editId;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, full_name, email, phone, role")
+          .eq("id", editId)
+          .maybeSingle();
+        if (error) throw error;
+        if (data) {
+          await openEditView(data);
+        } else {
+          toast({ variant: "error", title: "User not found" });
+        }
+      } catch (err) {
+        toast({ variant: "error", title: "Failed to open user", description: err.message });
+      } finally {
+        // Clear the query param so a refresh doesn't reopen the modal
+        try {
+          router.navigate({ to: "/user-management/users", search: {}, replace: true });
+        } catch {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("edit");
+          window.history.replaceState({}, "", url.toString());
+        }
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase]);
+
 
   // ── Sort ───────────────────────────────────────────────────────────────────
 
@@ -510,11 +561,13 @@ const UserManagementPage = () => {
   // ── Form helpers ───────────────────────────────────────────────────────────
 
   const resetForm = () => {
-    setUserForm({ full_name: "", email: "", phone: "", role: undefined, password: "", auto_generate_password: true });
+    // Partners can only create partner_agent users under their own org — preseed both.
+    const defaultRole = isPartner ? "partner_agent" : undefined;
+    setUserForm({ full_name: "", email: "", phone: "", role: defaultRole, password: "", auto_generate_password: true });
     setFormErrors({});
     setShowPassword(false);
     setPartnerSearch("");
-    setSelectedPartnerIds(new Set());
+    setSelectedPartnerIds(isPartner && callerOrgId ? new Set([callerOrgId]) : new Set());
     setSelectedStates(new Set());
     setSelectedManagerIds(new Set());
     setManagerSearch("");
@@ -522,6 +575,7 @@ const UserManagementPage = () => {
     setFormMode("create");
     setSelectedUser(null);
   };
+
 
   // Role classifiers
   // - partner_agent: flat partner-only picker (legacy)
@@ -759,8 +813,13 @@ const UserManagementPage = () => {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email)) errors.email = "Invalid email format";
     if (!userForm.role) errors.role = "User Group is required";
     if (isOrganizationBoundAgentRole(userForm.role) && selectedPartnerIds.size !== 1) errors.partner = "Select exactly one Partner for this agent";
-    if (!userForm.auto_generate_password && !userForm.password) errors.password = "Password is required";
-    else if (!userForm.auto_generate_password && userForm.password.length < 8) errors.password = "Password must be at least 8 characters";
+    if (formMode === "create") {
+      if (!userForm.auto_generate_password && !userForm.password) errors.password = "Password is required";
+      else if (!userForm.auto_generate_password && userForm.password.length < 8) errors.password = "Password must be at least 8 characters";
+    } else if (userForm.password && userForm.password.length < 8) {
+      errors.password = "Password must be at least 8 characters";
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -950,6 +1009,12 @@ const UserManagementPage = () => {
         role,
         organization_id: isOrgBound ? partnerId : null,
       };
+      const newPassword = (userForm.password || "").trim();
+      if (newPassword) {
+        if (newPassword.length < 8) throw new Error("Password must be at least 8 characters");
+        putBody.password = newPassword;
+      }
+
       const res = await fetch(
         `${supabaseFunctionsUrl}/manage-users/${selectedUser.id}`,
         {
@@ -1442,21 +1507,30 @@ const UserManagementPage = () => {
                 {/* User Group */}
                 <div className="space-y-1.5">
                   <Label htmlFor="role" className="text-sm font-medium text-gray-700">User Group <span className="text-red-500">*</span></Label>
-                  <Select value={userForm.role} onValueChange={handleRoleChange}>
+                  <Select
+                    value={userForm.role}
+                    onValueChange={handleRoleChange}
+                    disabled={callerCreatableRoles.length <= 1 && formMode === "create"}
+                  >
                     <SelectTrigger id="role" className="shadow-none border-gray-300">
                       <SelectValue placeholder="Select user group" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="super_admin">Super Admin</SelectItem>
-                      <SelectItem value="acsl_agent_manager">ACSL Agent Manager</SelectItem>
-                      <SelectItem value="acsl_agent">ACSL Agent</SelectItem>
-                      <SelectItem value="partner_agent">Partner Agent</SelectItem>
-                      <SelectItem value="agent">Agent</SelectItem>
+                      {callerCreatableRoles.includes("super_admin") && <SelectItem value="super_admin">Super Admin</SelectItem>}
+                      {callerCreatableRoles.includes("acsl_agent_manager") && <SelectItem value="acsl_agent_manager">ACSL Agent Manager</SelectItem>}
+                      {callerCreatableRoles.includes("acsl_agent") && <SelectItem value="acsl_agent">ACSL Agent</SelectItem>}
+                      {callerCreatableRoles.includes("partner") && <SelectItem value="partner">Partner</SelectItem>}
+                      {callerCreatableRoles.includes("partner_agent") && <SelectItem value="partner_agent">Partner Agent</SelectItem>}
+                      {callerCreatableRoles.includes("agent") && <SelectItem value="agent">Agent</SelectItem>}
                     </SelectContent>
                   </Select>
                   {formErrors.role && <p className="text-xs text-red-600">{formErrors.role}</p>}
                   {formMode === "edit" && <p className="text-xs text-gray-400">Changing the user group updates the assignment fields below.</p>}
+                  {isPartner && formMode === "create" && (
+                    <p className="text-xs text-gray-500">You can only create Partner Agent users under your partner organization.</p>
+                  )}
                 </div>
+
               </div>
 
               {formMode === "edit" && editAssignmentsLoading && (
@@ -2128,6 +2202,39 @@ const UserManagementPage = () => {
                 )}
               </div>
               )}
+
+              {/* Change Password — edit only */}
+              {formMode === "edit" && (
+              <div className="space-y-3 border border-gray-200 rounded-md p-3 bg-[#fafcfc]">
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit_password" className="text-sm font-medium text-gray-700">Change Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="edit_password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Leave blank to keep current password"
+                      value={userForm.password}
+                      onChange={(e) => setUserForm((prev) => ({ ...prev, password: e.target.value }))}
+                      className={`shadow-none pr-9 ${formErrors.password ? "border-red-500" : "border-gray-300"}`}
+                      autoComplete="new-password"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0.5 top-1/2 -translate-y-1/2 h-7 w-7 p-0 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4 text-gray-500" /> : <Eye className="h-4 w-4 text-gray-500" />}
+                    </Button>
+                  </div>
+                  {formErrors.password
+                    ? <p className="text-xs text-red-600">{formErrors.password}</p>
+                    : <p className="text-xs text-gray-500">Minimum 8 characters. Leave blank to keep the user's current password.</p>}
+                </div>
+              </div>
+              )}
+
 
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => { setShowCreateModal(false); resetForm(); }} disabled={actionLoading === "create"} className="shadow-none border-gray-300">

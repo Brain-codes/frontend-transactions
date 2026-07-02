@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
-import MonthlySalesChart from "../../partners/components/MonthlySalesChart";
+import AgentRecordsChart from "./AgentRecordsChart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -100,6 +100,7 @@ interface AcslAgent {
   total_partners_count: number;
   assigned_states?: string[];
   stove_summary?: { received: number; sold: number; available: number };
+  direct_org_ids?: string[];
 }
 
 interface PartnerOrg {
@@ -836,7 +837,7 @@ function StovesStatusModal({
   const { supabase } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<Array<{ stove_id: string; partner_name: string; state: string; branch: string; agent_name?: string }>>([]);
+  const [rows, setRows] = useState<Array<{ stove_id: string; partner_name: string; state: string; branch: string; agent_name?: string; sales_date?: string }>>([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
@@ -866,7 +867,7 @@ function StovesStatusModal({
           });
         }
 
-        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string; agent_name?: string }> = [];
+        const collected: Array<{ stove_id: string; partner_name: string; state: string; branch: string; agent_name?: string; sales_date?: string }> = [];
 
         if (mode === "sold") {
           // Attribution-based: only stoves sold by the agents in this report.
@@ -881,7 +882,7 @@ function StovesStatusModal({
           }
 
           // 1. Fetch sales rows created by these agents, scoped to relevant orgs.
-          type SaleRow = { id: string; organization_id: string | null; created_by: string };
+          type SaleRow = { id: string; organization_id: string | null; created_by: string; sales_date?: string | null };
           const salesRows: SaleRow[] = [];
           const ABATCH = 100;
           for (let i = 0; i < agentIds.length; i += ABATCH) {
@@ -893,7 +894,7 @@ function StovesStatusModal({
               while (true) {
                 const { data, error: err } = await supabase
                   .from("sales")
-                  .select("id,organization_id,created_by,is_archived")
+                  .select("id,organization_id,created_by,is_archived,sales_date")
                   .in("created_by", aSlice)
                   .in("organization_id", oSlice)
                   .eq("is_archived", false)
@@ -904,6 +905,7 @@ function StovesStatusModal({
                   id: s.id,
                   organization_id: s.organization_id,
                   created_by: s.created_by,
+                  sales_date: s.sales_date || null,
                 }));
                 if (chunk.length < PAGE) break;
                 from += PAGE;
@@ -912,7 +914,11 @@ function StovesStatusModal({
           }
 
           const saleIdToAgent: Record<string, string> = {};
-          salesRows.forEach((s) => { saleIdToAgent[s.id] = agentNameById[s.created_by] || "—"; });
+          const saleIdToDate: Record<string, string> = {};
+          salesRows.forEach((s) => {
+            saleIdToAgent[s.id] = agentNameById[s.created_by] || "—";
+            saleIdToDate[s.id] = s.sales_date || "";
+          });
 
           // 2. Fetch stove_ids linked to those sales (authoritative stove list).
           const saleIds = Array.from(new Set(salesRows.map((s) => s.id)));
@@ -937,6 +943,7 @@ function StovesStatusModal({
                 state: meta.state,
                 branch: meta.branch,
                 agent_name: saleIdToAgent[s.sale_id] || "—",
+                sales_date: saleIdToDate[s.sale_id] || "",
               });
             });
           }
@@ -1014,6 +1021,7 @@ function StovesStatusModal({
                   partner_name: meta.name,
                   state: meta.state,
                   branch: meta.branch,
+                  sales_date: "",
                 });
               });
               if (chunk.length < PAGE) break;
@@ -1058,11 +1066,14 @@ function StovesStatusModal({
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const header = showAgentCol
-      ? ["Stove ID", "Partner Name", "State", "Branch", "Agent"]
+      ? ["Stove ID", "Partner Name", "State", "Branch", "Agent", "Sales Date"]
       : ["Stove ID", "Partner Name", "State", "Branch"];
     const body = filtered.map((r) => {
       const base = [esc(r.stove_id), esc(r.partner_name), esc(r.state), esc(r.branch)];
-      if (showAgentCol) base.push(esc(r.agent_name || "—"));
+      if (showAgentCol) {
+        base.push(esc(r.agent_name || "—"));
+        base.push(esc(r.sales_date ? format(new Date(r.sales_date), "dd MMM yyyy") : "—"));
+      }
       return base.join(",");
     });
     const csv = [header.join(","), ...body].join("\n");
@@ -1077,7 +1088,7 @@ function StovesStatusModal({
     URL.revokeObjectURL(url);
   };
 
-  const colCount = showAgentCol ? 5 : 4;
+  const colCount = showAgentCol ? 6 : 4;
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
@@ -1114,6 +1125,7 @@ function StovesStatusModal({
                 <TableHead>State</TableHead>
                 <TableHead>Branch</TableHead>
                 {showAgentCol && <TableHead>Agent</TableHead>}
+                {showAgentCol && <TableHead>Sales Date</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1129,6 +1141,7 @@ function StovesStatusModal({
                     <TableCell>{r.state}</TableCell>
                     <TableCell>{r.branch}</TableCell>
                     {showAgentCol && <TableCell>{r.agent_name || "—"}</TableCell>}
+                    {showAgentCol && <TableCell>{r.sales_date ? format(new Date(r.sales_date), "dd MMM yyyy") : "—"}</TableCell>}
                   </TableRow>
                 ))
               )}
@@ -2171,6 +2184,7 @@ export default function SuperAdminAgentsContent() {
   const [showAssignedStovesModal, setShowAssignedStovesModal] = useState(false);
   const [showSoldStovesModal, setShowSoldStovesModal] = useState(false);
   const [showUnsoldStovesModal, setShowUnsoldStovesModal] = useState(false);
+  const [rowStoveModal, setRowStoveModal] = useState<{ agent: AcslAgent; mode: "assigned" | "sold" | "unsold" } | null>(null);
   const [showAgentsListModal, setShowAgentsListModal] = useState(false);
   // Per-role totals across all matching users (not just current page), used by KPI breakdown.
   const [roleTotals, setRoleTotals] = useState<Record<string, number>>({});
@@ -2451,6 +2465,7 @@ export default function SuperAdminAgentsContent() {
               assigned_organizations_count,
               total_partners_count,
               stove_summary: { received, sold, available },
+              direct_org_ids: directOrgs,
             };
           })
         );
@@ -2881,7 +2896,7 @@ export default function SuperAdminAgentsContent() {
         )}
 
         {/* Monthly Records Collection Chart */}
-        <MonthlySalesChart title="Records Collected" tooltipLabel="Collected" />
+        <AgentRecordsChart title="Records Collected" tooltipLabel="Collected" />
 
         {/* Active filter banner */}
         {sortMode !== "default" && (
@@ -2940,13 +2955,13 @@ export default function SuperAdminAgentsContent() {
                       Records not collected <StoveSortIcon col="in_stock" />
                     </button>
                   </TableHead>
-                  <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Actions</TableHead>
+                  
                 </TableRow>
               </TableHeader>
               <TableBody className={loading ? "opacity-40" : ""}>
                 {!loading && sortedAgents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12">
+                    <TableCell colSpan={6} className="text-center py-12">
                       <Users className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500 font-medium">
                         {sortMode !== "default" ? "No agents match the active filter" : "No agents found"}
@@ -2985,78 +3000,51 @@ export default function SuperAdminAgentsContent() {
                           {(agent.assigned_organizations_count ?? 0).toLocaleString()}
                         </button>
                       </TableCell>
-                      {/* Stoves split into 3 columns */}
+                      {/* Stoves split into 3 columns — clickable pills like Partners Performance report */}
                       <TableCell className="text-center">
                         {agent.stove_summary ? (
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                          <button
+                            type="button"
+                            onClick={() => setRowStoveModal({ agent, mode: "assigned" })}
+                            disabled={agent.stove_summary.received === 0 || !(agent.direct_org_ids && agent.direct_org_ids.length)}
+                            className="inline-flex items-center justify-center min-w-[40px] px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            title="Records to collect"
+                          >
                             {agent.stove_summary.received.toLocaleString()}
-                          </span>
+                          </button>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
                       </TableCell>
                       <TableCell className="text-center">
                         {agent.stove_summary ? (
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                          <button
+                            type="button"
+                            onClick={() => setRowStoveModal({ agent, mode: "sold" })}
+                            disabled={agent.stove_summary.sold === 0 || !(agent.direct_org_ids && agent.direct_org_ids.length)}
+                            className="inline-flex items-center justify-center min-w-[40px] px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            title="Records collected"
+                          >
                             {agent.stove_summary.sold.toLocaleString()}
-                          </span>
+                          </button>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
                       </TableCell>
                       <TableCell className="text-center">
                         {agent.stove_summary ? (
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                          <button
+                            type="button"
+                            onClick={() => setRowStoveModal({ agent, mode: "unsold" })}
+                            disabled={agent.stove_summary.available === 0 || !(agent.direct_org_ids && agent.direct_org_ids.length)}
+                            className="inline-flex items-center justify-center min-w-[40px] px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            title="Records not collected"
+                          >
                             {agent.stove_summary.available.toLocaleString()}
-                          </span>
+                          </button>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
-                      </TableCell>
-                      <TableCell className="text-center">
-
-                        <div className="flex items-center justify-center gap-1">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-7 w-7 p-0">
-                              <MoreVertical className="h-3.5 w-3.5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setAssignPartnerAgent(agent)}>
-                              <UserPlus className="h-4 w-4 mr-2 text-[#4a5d0f]" />Assign Partner
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => { setSelectedAgent(agent); setShowViewModal(true); }}>
-                              <Eye className="h-4 w-4 mr-2" />View Details
-                            </DropdownMenuItem>
-                            {(agent.role === "acsl_agent" || agent.role === "acsl_agent_manager") && (
-                              <DropdownMenuItem
-                                onClick={() => handleViewCredentials(agent)}
-                                disabled={loadingCredentialId === agent.id}
-                              >
-                                <KeyRound className="h-4 w-4 mr-2 text-brand" />
-                                {loadingCredentialId === agent.id ? "Loading…" : "View Credentials"}
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onClick={() => { setSelectedAgent(agent); setAgentFormMode("edit"); }}>
-                              <Edit className="h-4 w-4 mr-2" />Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleToggleStatus(agent)}>
-                              {agent.status === "active" ? (
-                                <><Ban className="h-4 w-4 mr-2 text-orange-500" />Disable</>
-                              ) : (
-                                <><CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />Enable</>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-red-600"
-                              onClick={() => { setSelectedAgent(agent); setShowDeleteModal(true); }}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -3247,6 +3235,39 @@ export default function SuperAdminAgentsContent() {
         showExport={true}
         agents={agents}
       />
+
+      {/* Row-level per-agent modals for Records to collect / collected / not collected */}
+      {rowStoveModal && rowStoveModal.mode === "assigned" && (
+        <AssignedStovesModal
+          isOpen={true}
+          onClose={() => setRowStoveModal(null)}
+          orgIds={rowStoveModal.agent.direct_org_ids || []}
+        />
+      )}
+      {rowStoveModal && rowStoveModal.mode === "sold" && (
+        <StovesStatusModal
+          isOpen={true}
+          onClose={() => setRowStoveModal(null)}
+          orgIds={rowStoveModal.agent.direct_org_ids || []}
+          mode="sold"
+          title={`Records collected — ${rowStoveModal.agent.full_name}`}
+          filenamePrefix={`records-collected-${rowStoveModal.agent.full_name.replace(/\s+/g, "_")}`}
+          showExport={true}
+          agents={[{ id: rowStoveModal.agent.id, full_name: rowStoveModal.agent.full_name }]}
+        />
+      )}
+      {rowStoveModal && rowStoveModal.mode === "unsold" && (
+        <StovesStatusModal
+          isOpen={true}
+          onClose={() => setRowStoveModal(null)}
+          orgIds={rowStoveModal.agent.direct_org_ids || []}
+          mode="unsold"
+          title={`Records not collected — ${rowStoveModal.agent.full_name}`}
+          filenamePrefix={`records-not-collected-${rowStoveModal.agent.full_name.replace(/\s+/g, "_")}`}
+          showExport={true}
+          agents={[{ id: rowStoveModal.agent.id, full_name: rowStoveModal.agent.full_name }]}
+        />
+      )}
 
 
       <AgentsListModal

@@ -154,7 +154,7 @@ async function fetchAllAgentsForOrg(orgId) {
 }
 
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const PartnerProfilesContent = () => {
   const { toast, toasts, removeToast } = useToast();
@@ -163,6 +163,8 @@ const PartnerProfilesContent = () => {
   const [filters, setFilters] = useState({ search: "", state: "", agentFilter: "" });
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
 
   const handleSort = (key) => {
     setSortConfig((prev) => {
@@ -307,24 +309,34 @@ const PartnerProfilesContent = () => {
         return av.localeCompare(bv) * dir;
       }
       if (sortConfig.key === "assigned_agents") {
-        const av = agentCounts[a.id] ?? -1;
-        const bv = agentCounts[b.id] ?? -1;
+        const av = agentCounts[a.id];
+        const bv = agentCounts[b.id];
+        if (av === undefined && bv === undefined) return (a.partner_name || "").localeCompare(b.partner_name || "");
+        if (av === undefined) return 1;   // unloaded rows always at the bottom
+        if (bv === undefined) return -1;
+        if (av === bv) return (a.partner_name || "").localeCompare(b.partner_name || "");
         return (av - bv) * dir;
       }
       if (sortConfig.key === "total_stoves") {
-        const av = stoveCounts[a.id] ?? -1;
-        const bv = stoveCounts[b.id] ?? -1;
+        const av = stoveCounts[a.id];
+        const bv = stoveCounts[b.id];
+        if (av === undefined && bv === undefined) return (a.partner_name || "").localeCompare(b.partner_name || "");
+        if (av === undefined) return 1;
+        if (bv === undefined) return -1;
+        if (av === bv) return (a.partner_name || "").localeCompare(b.partner_name || "");
         return (av - bv) * dir;
       }
+
       return 0;
     });
   }, [partners, filters, agentCounts, stoveCounts, sortConfig]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const startRecord = filtered.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
-  const endRecord = Math.min(currentPage * PAGE_SIZE, filtered.length);
+  const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const startRecord = filtered.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endRecord = Math.min(currentPage * pageSize, filtered.length);
+
 
   // Fetch agent counts for currently visible partners (lazy, cached)
   useEffect(() => {
@@ -389,9 +401,12 @@ const PartnerProfilesContent = () => {
     return () => { cancelled = true; };
   }, [pageRows, stoveCounts]);
 
-  // Eagerly fetch agent counts for all partners when filtering by agent status
+  // Eagerly fetch agent counts for all partners when filtering OR sorting by agent count.
+  // Without this, sort-by-assigned-agents keeps re-ordering as lazy per-page fetches land,
+  // which pulls new rows onto the page, triggers more fetches, and makes the table "act up".
   useEffect(() => {
-    if (!filters.agentFilter || partners.length === 0) return;
+    const needAll = Boolean(filters.agentFilter) || sortConfig.key === "assigned_agents";
+    if (!needAll || partners.length === 0) return;
     const missing = partners.filter((p) => agentCounts[p.id] === undefined);
     if (missing.length === 0) return;
     let cancelled = false;
@@ -419,7 +434,41 @@ const PartnerProfilesContent = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [filters.agentFilter, partners, agentCounts]);
+  }, [filters.agentFilter, sortConfig.key, partners, agentCounts]);
+
+  // Eagerly fetch stove counts for all partners when sorting by that column, same reason.
+  useEffect(() => {
+    if (sortConfig.key !== "total_stoves" || partners.length === 0) return;
+    const missing = partners.filter((p) => stoveCounts[p.id] === undefined);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const ids = missing.map((p) => p.id);
+      try {
+        const counts = {};
+        ids.forEach((id) => { counts[id] = 0; });
+        const BATCH = 50;
+        for (let i = 0; i < ids.length; i += BATCH) {
+          if (cancelled) return;
+          const slice = ids.slice(i, i + BATCH);
+          const { data } = await supabase
+            .from("stove_ids_base")
+            .select("organization_id")
+            .in("organization_id", slice)
+            .eq("is_archived", false);
+          (data || []).forEach((r) => {
+            counts[r.organization_id] = (counts[r.organization_id] || 0) + 1;
+          });
+        }
+        if (cancelled) return;
+        setStoveCounts((prev) => ({ ...prev, ...counts }));
+      } catch {
+        // ignore; lazy per-page effect will retry
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [sortConfig.key, partners, stoveCounts]);
+
 
   const hasActiveFilters = filters.search !== "" || filters.state !== "" || filters.agentFilter !== "";
 
@@ -676,11 +725,30 @@ const PartnerProfilesContent = () => {
         {/* Pagination footer */}
         {filtered.length > 0 && (
           <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-white">
-            <p className="text-sm text-gray-600">
-              Showing <span className="font-medium">{startRecord}</span> to{" "}
-              <span className="font-medium">{endRecord}</span> of{" "}
-              <span className="font-medium">{filtered.length}</span> partners
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-gray-600">
+                Showing <span className="font-medium">{startRecord}</span> to{" "}
+                <span className="font-medium">{endRecord}</span> of{" "}
+                <span className="font-medium">{filtered.length}</span> partners
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Rows per page</span>
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}
+                >
+                  <SelectTrigger className="h-8 w-[72px] text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <SelectItem key={n} value={String(n)} className="text-sm">{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             {totalPages > 1 && (
               <div className="flex items-center gap-1">
                 <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(1)} disabled={currentPage === 1}>

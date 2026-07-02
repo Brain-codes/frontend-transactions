@@ -181,24 +181,31 @@ export async function updateUser(
       }
     }
 
-    // Update the profile
-    const { data: updatedUser, error: updateError } = await supabase
-      .from("profiles")
-      .update(validatedData)
-      .eq("id", userId)
-      .select("id, full_name, email, phone, role, status, created_at")
-      .single();
+    // Separate password from profile-updatable fields
+    const { password: newPassword, ...profileUpdates } = validatedData;
 
-    if (updateError) {
-      console.error("❌ Error updating user:", updateError);
-      throw new Error(`Database error: ${updateError.message}`);
+    // Update the profile (only if there are profile-level fields to update)
+    let updatedUser: any = existingUser;
+    if (Object.keys(profileUpdates).length > 0) {
+      const { data: profileRow, error: updateError } = await supabase
+        .from("profiles")
+        .update(profileUpdates)
+        .eq("id", userId)
+        .select("id, full_name, email, phone, role, status, created_at")
+        .single();
+
+      if (updateError) {
+        console.error("❌ Error updating user:", updateError);
+        throw new Error(`Database error: ${updateError.message}`);
+      }
+      updatedUser = profileRow;
     }
 
     // If email was updated, update it in Auth as well
-    if (validatedData.email) {
+    if (profileUpdates.email) {
       const { error: authUpdateError } =
         await supabase.auth.admin.updateUserById(userId, {
-          email: validatedData.email,
+          email: profileUpdates.email,
         });
 
       if (authUpdateError) {
@@ -208,6 +215,19 @@ export async function updateUser(
         );
       }
     }
+
+    // If password was provided, update it in Auth
+    if (newPassword) {
+      const { error: pwError } = await supabase.auth.admin.updateUserById(userId, {
+        password: newPassword,
+      });
+      if (pwError) {
+        console.error("❌ Failed to update password:", pwError.message);
+        throw new Error(`Failed to update password: ${pwError.message}`);
+      }
+      console.log("🔑 Password updated for user:", userId);
+    }
+
 
     console.log("✅ User updated successfully:", updatedUser.id);
 
