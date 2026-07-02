@@ -41,7 +41,17 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams, m
         .from("acsl_agent_states")
         .select("agent_id")
         .eq("state", orgRow.state);
-      (stateRows || []).forEach((r: any) => directIds.add(r.agent_id));
+      const stateAgentIds = (stateRows || []).map((r: any) => r.agent_id as string);
+      if (stateAgentIds.length > 0) {
+        // A state assignment only grants the whole state when the agent has no
+        // specific partner assignments — those take precedence.
+        const { data: withDirectRows } = await supabase
+          .from("acsl_agent_organizations")
+          .select("agent_id")
+          .in("agent_id", stateAgentIds);
+        const hasDirect = new Set<string>((withDirectRows || []).map((r: any) => r.agent_id as string));
+        stateAgentIds.forEach((id: string) => { if (!hasDirect.has(id)) directIds.add(id); });
+      }
     }
 
     filteredAgentIds = [...directIds];
@@ -126,7 +136,11 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams, m
     if (!agentStates[r.agent_id])    agentStates[r.agent_id]    = [];
     if (!agentAllOrgIds[r.agent_id]) agentAllOrgIds[r.agent_id] = new Set();
     agentStates[r.agent_id].push(r.state);
-    (stateToOrgIds[r.state] || []).forEach((oid) => agentAllOrgIds[r.agent_id].add(oid));
+    // Direct partner assignments take precedence: a state only expands to all
+    // of its orgs when the agent has no specific partners assigned.
+    if (!agentDirectIds[r.agent_id]?.size) {
+      (stateToOrgIds[r.state] || []).forEach((oid) => agentAllOrgIds[r.agent_id].add(oid));
+    }
   });
 
   // 4: stove counts for all orgs across the page — 1 RPC call
@@ -400,9 +414,11 @@ export async function getAgentOrganizations(supabase: any, agentId: string, sear
     stateAssignmentMap[r.state] = { id: r.id, assigned_at: r.assigned_at, assigned_by: r.assigned_by };
   });
 
-  // Resolve states → organizations (excluding already-direct orgs)
+  // Resolve states → organizations. Direct partner assignments take
+  // precedence: a state only expands to every org in it when the agent has
+  // no specific partners assigned.
   let stateOrgs: any[] = [];
-  if (assignedStates.length > 0) {
+  if (assignedStates.length > 0 && directOrgs.length === 0) {
     const { data: stateOrgRows } = await supabase
       .from("organizations")
       .select("id, partner_name, branch, state, contact_person, contact_phone, email")

@@ -48,9 +48,12 @@ export async function resolveAssignedOrgIds(
     (s: any) => s.state
   );
 
-  // 3. Resolve states → org IDs
+  // 3. Resolve states → org IDs. Direct partner assignments take precedence:
+  // a state only expands to every org in it when the agent has no specific
+  // partners assigned. Assigning a state + specific partners scopes the agent
+  // to just those partners (the state merely narrowed the selection in the UI).
   let stateResolvedOrgIds: string[] = [];
-  if (assignedStates.length > 0) {
+  if (assignedStates.length > 0 && directOrgIds.length === 0) {
     const { data: stateOrgs } = await supabase
       .from("organizations")
       .select("id")
@@ -73,13 +76,24 @@ export async function resolveAssignedOrgIds(
     const [{ data: subOrgAssignments }, { data: subStateAssignments }] = await Promise.all([
       supabase
         .from("acsl_agent_organizations")
-        .select("organization_id")
+        .select("agent_id, organization_id")
         .in("agent_id", subordinateIds),
-      supabase.from("acsl_agent_states").select("state").in("agent_id", subordinateIds),
+      supabase.from("acsl_agent_states").select("agent_id, state").in("agent_id", subordinateIds),
     ]);
 
-    const subDirectOrgIds: string[] = (subOrgAssignments || []).map((a: any) => a.organization_id);
-    const subStates: string[] = (subStateAssignments || []).map((s: any) => s.state);
+    // Same precedence rule per subordinate: their states only expand to whole
+    // orgs-in-state when that subordinate has no direct partner assignments.
+    const subDirectByAgent: Record<string, string[]> = {};
+    (subOrgAssignments || []).forEach((a: any) => {
+      (subDirectByAgent[a.agent_id] ??= []).push(a.organization_id);
+    });
+    const subStates: string[] = [
+      ...new Set<string>(
+        ((subStateAssignments || []) as any[])
+          .filter((s: any) => !(subDirectByAgent[s.agent_id]?.length))
+          .map((s: any) => s.state as string)
+      ),
+    ];
 
     let subStateResolvedOrgIds: string[] = [];
     if (subStates.length > 0) {
@@ -90,6 +104,7 @@ export async function resolveAssignedOrgIds(
       subStateResolvedOrgIds = (subStateOrgs || []).map((o: any) => o.id);
     }
 
+    const subDirectOrgIds: string[] = Object.values(subDirectByAgent).flat();
     subordinateOrgIds = [...new Set([...subDirectOrgIds, ...subStateResolvedOrgIds])];
   }
 
