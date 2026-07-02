@@ -24,7 +24,7 @@ This app is **one application** with **one UI, one navigation system, one compon
 
 | Module / Menu | Super Admin | ACSL Agent Manager | ACSL Agent | Partner | Partner Agent |
 |---|---|---|---|---|---|
-| Dashboard | Global dashboard | Assigned partners + ACSL agents | Assigned partners | Own organization | Own sales |
+| Dashboard | Global dashboard | Assigned partners + ACSL agents | Assigned partners | Own organization | Org's stove inventory + own sales (see note below) |
 | User Management → User Manager | All users | ACSL agents + assigned partner users | No Access | Own Partner Agents | No Access |
 | User Management → User Groups | Full access | No Access | No Access | No Access | No Access |
 | Partner Management | All partners | Assigned partners | Assigned partners | No Access | No Access |
@@ -50,6 +50,10 @@ Legend: **Full access** = complete module access • **No Access / Hidden** = me
 - **Partners**: in User Management, can create **only** Partner Agent users; the role dropdown is locked to "Partner Agent" and the partner's own organization is preselected in the form (no picker choice).
 - **Only Super Admin** has access to: User Groups, Map, Settings.
 - **ACSL Agent Managers**: can access records for ACSL agents and partners assigned to them (their own scope), plus records for partners assigned to those partners.
+- **Partner Agent dashboard scope is split by data type, not a single blanket rule** — a partner agent is created *under* a partner and inherits that partner's stove ledger, but their own sales are personal:
+  - **Stove inventory** (`stovesReceived`, `availableStoves`): scoped to the **whole partner organization** the agent belongs to — same stove IDs the partner themselves sees. The agent didn't personally receive stoves; the org did, and every agent under that org shares visibility into it.
+  - **Sales-derived numbers** (`stovesSold`, financial summary — expected receivable / amount received / outstanding balance, sales-by-model, sales-by-state): scoped to **sales attributed to that specific agent only** (`sold_on_behalf_of = agent`), not the whole organization's sales. An agent does not see sales made by other agents under the same partner.
+  - Implemented in `supabase/functions/super-admin-agent-dashboard/index.ts` — stove counts query `stove_ids` by `organization_id`; sales counts/financials query `sales` by `sold_on_behalf_of`.
 
 ## Per-role sidebar/nav summary
 

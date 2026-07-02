@@ -28,19 +28,31 @@ serve(async (req) => {
     const isOwnSalesScope = userRole === "partner_agent" || userRole === "agent";
 
     if (isOwnSalesScope) {
-      const [soldCumulativeResult, salesResult] = await Promise.all([
+      // Stove inventory (received/available) belongs to the partner organization —
+      // a partner agent inherits visibility into their org's whole stove ledger,
+      // same as the partner they're tied to. Sales-derived numbers (sold count,
+      // financials, sales model, by-state) are attributed to the agent personally
+      // via sold_on_behalf_of (the selling agent, not created_by the record's
+      // actual creator — defaults to the creator on self-sales).
+      const [receivedResult, soldCumulativeResult, salesResult] = await Promise.all([
+        organizationId
+          ? supabase
+              .from("stove_ids")
+              .select("*", { count: "exact", head: true })
+              .eq("organization_id", organizationId)
+              .lt("created_at", endOfYear)
+          : Promise.resolve({ count: 0 }),
+
         supabase
           .from("sales")
           .select("*", { count: "exact", head: true })
-          .eq("created_by", userId)
-          .eq("is_archived", false)
+          .eq("sold_on_behalf_of", userId)
           .lt("sales_date", endOfYear),
 
         supabase
           .from("sales")
           .select("amount, total_paid, is_installment, state_backup, payment_model_id")
-          .eq("created_by", userId)
-          .eq("is_archived", false)
+          .eq("sold_on_behalf_of", userId)
           .gte("sales_date", startDate)
           .lt("sales_date", endOfYear),
       ]);
@@ -77,6 +89,7 @@ serve(async (req) => {
         .map(([model, count]) => ({ model, count, percentage: totalSales > 0 ? (count / totalSales) * 100 : 0 }))
         .sort((a, b) => b.count - a.count);
 
+      const stovesReceived = receivedResult.count ?? 0;
       const stovesSold = soldCumulativeResult.count ?? 0;
 
       return withCors(
@@ -84,11 +97,9 @@ serve(async (req) => {
           JSON.stringify({
             success: true,
             data: {
-              // Individual agents have no separate inventory ledger — their
-              // "received" allocation is represented by what they've sold.
-              stovesReceived: stovesSold,
+              stovesReceived,
               stovesSold,
-              availableStoves: 0,
+              availableStoves: Math.max(0, stovesReceived - stovesSold),
               expectedReceivable,
               amountReceived,
               outstandingBalance: expectedReceivable - amountReceived,
