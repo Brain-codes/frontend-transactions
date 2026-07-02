@@ -278,7 +278,7 @@ const DashboardContent = ({
           <div className="flex items-center gap-2 flex-wrap pr-4">
             {role === "acsl_agent" && (
               <Link
-                href="/partners"
+                href="/partners/profiles"
                 className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-1.5 hover:border-[#07376a] transition-all"
               >
                 <span className="text-xs font-medium text-gray-500">My Assigned Partners</span>
@@ -483,7 +483,7 @@ const DashboardContent = ({
           {canCreateSale && (
             <div className="flex justify-end">
               <Link
-                href="/sales?create=true"
+                href="/sales/create"
                 className="flex items-center justify-center gap-2 bg-[#07376a] text-white px-6 py-2.5 rounded-lg hover:bg-[#052a51] transition-colors text-sm font-semibold w-full sm:w-auto"
               >
                 <Plus className="h-4 w-4" />
@@ -767,13 +767,21 @@ const DashboardContent = ({
                             centerValue={received}
                             centerLabel="STOVES RECEIVED"
                           />
-                          <Donut
-                            title="Sales by Models"
-                            data={modelChartData}
-                            total={totalModelSales}
-                            centerValue={totalModelSales}
-                            centerLabel="TOTAL SALES"
-                          />
+                          <div>
+                            <Donut
+                              title="Sales by Models"
+                              data={modelChartData}
+                              total={totalModelSales}
+                              centerValue={totalModelSales}
+                              centerLabel="TOTAL SALES"
+                            />
+                            {role === "acsl_agent_manager" && data?.teamSalesCount != null && (
+                              <p className="mt-2 text-right text-xs text-gray-600">
+                                <span className="font-semibold text-gray-800">Actual Sale(s) by Team:</span>{" "}
+                                <span className="font-bold text-[#4a5d0f]">{Number(data.teamSalesCount).toLocaleString()}</span>
+                              </p>
+                            )}
+                          </div>
                         </div>
                       );
                     })()}

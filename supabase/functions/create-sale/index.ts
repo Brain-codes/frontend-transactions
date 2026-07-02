@@ -167,10 +167,12 @@ Deno.serve(async (req) => {
     }
 
     // ── Amount validation ─────────────────────────────────────────────────────
-    // Installment sales derive their amount from the payment model below, so the
-    // client-supplied `amount` is only validated for the direct-payment path.
+    // The sales amount is the operator-entered value for both direct and
+    // installment sales. For installment sales the payment model's fixed price is
+    // only a default the client pre-fills — the operator may edit it upward — so
+    // the amount is always required and validated here.
     const AMOUNT_CEILING = 900_000_000; // ₦900,000,000 upper bound
-    if (!isInstallment) {
+    {
       const parsedAmount = Number(amount);
       if (amount === null || amount === undefined || Number.isNaN(parsedAmount)) {
         return jsonError("Amount is required and must be a number", 400);
@@ -282,8 +284,11 @@ Deno.serve(async (req) => {
         return jsonError("This payment model is no longer active");
       }
 
-      // Use model's fixed price as the sale amount
-      saleAmount = paymentModel.fixed_price;
+      // The sales amount is operator-editable. Honor the client-supplied `amount`
+      // (validated above); the model's fixed price is only used as a fallback when
+      // the client did not send an amount.
+      const parsedSaleAmount = Number(amount);
+      saleAmount = Number.isNaN(parsedSaleAmount) ? paymentModel.fixed_price : parsedSaleAmount;
 
       // Open-ended, optional down payment. The initial payment is whatever the
       // customer actually pays — taken from `initialPaymentAmount`, falling back
@@ -307,9 +312,8 @@ Deno.serve(async (req) => {
     }
 
     // ── Amount received validation ────────────────────────────────────────────
-    // Sales amount is the model's fixed price (the floor). Amount received is what
-    // the customer actually pays and is open-ended — it may be above the sales
-    // amount. Only reject clearly invalid values (non-numeric / negative).
+    // Amount received is what the customer actually pays. It cannot be negative
+    // and cannot exceed the sales amount.
     if (amountReceived !== null && amountReceived !== undefined && String(amountReceived).trim() !== "") {
       const parsedReceived = Number(amountReceived);
       if (Number.isNaN(parsedReceived)) {
@@ -317,6 +321,9 @@ Deno.serve(async (req) => {
       }
       if (parsedReceived < 0) {
         return jsonError("Amount received cannot be negative", 400);
+      }
+      if (parsedReceived > saleAmount) {
+        return jsonError("Amount received cannot be greater than the sales amount", 400);
       }
     }
 

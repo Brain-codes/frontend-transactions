@@ -70,16 +70,28 @@ const EndUserRecordsContent = () => {
     try {
       setLoading(true);
       setError("");
-      const result = await salesAdvancedService.getSalesData(
-        { limit: 5000, responseFormat: "format2" },
-        "POST",
-        "EndUserRecords"
-      );
-      if (result.success) {
-        setAllSales(result.data || []);
-      } else {
-        setError(result.error || "Failed to fetch data");
-      }
+      // The edge function caps limit at 500, so page through until all
+      // role-scoped records are loaded (server enforces row scoping per role).
+      const PAGE_LIMIT = 500;
+      const MAX_PAGES = 40;
+      let page = 1;
+      let records = [];
+      let totalPages = 1;
+      do {
+        const result = await salesAdvancedService.getSalesData(
+          { page, limit: PAGE_LIMIT, responseFormat: "format2" },
+          "POST",
+          "EndUserRecords"
+        );
+        if (!result.success) {
+          setError(result.error || "Failed to fetch data");
+          return;
+        }
+        records = records.concat(result.data || []);
+        totalPages = result.pagination?.totalPages || 1;
+        page += 1;
+      } while (page <= totalPages && page <= MAX_PAGES);
+      setAllSales(records);
     } catch (err) {
       setError(err.message || "An error occurred");
     } finally {

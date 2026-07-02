@@ -7,6 +7,7 @@ export interface AuthResult {
   userId: string;
   userOrgId: string | null;
   assignedOrgIds?: string[]; // populated for acsl_agent (formerly super_admin_agent)
+  teamAgentIds?: string[]; // populated for acsl_agent_manager: self + subordinate acsl_agents
 }
 
 export async function authenticateUser(supabase: any): Promise<AuthResult> {
@@ -75,10 +76,26 @@ export async function authenticateUser(supabase: any): Promise<AuthResult> {
     );
   }
 
+  // A manager must see every sale their team recorded, even for a partner org
+  // that only their subordinate — not the manager themselves — is formally
+  // assigned to. Org-based scoping alone can miss that, so also resolve the
+  // team's agent IDs to match sales by attribution (sold_on_behalf_of).
+  let teamAgentIds: string[] | undefined;
+  if (userRole === "acsl_agent_manager") {
+    const { data: subordinates } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("manager_id", userData.user.id)
+      .eq("role", "acsl_agent");
+    teamAgentIds = [userData.user.id, ...(subordinates || []).map((s: any) => s.id)];
+    console.log(`✅ Manager team: ${teamAgentIds.length} agents (self + subordinates)`);
+  }
+
   return {
     userRole,
     userId: userData.user.id,
     userOrgId,
     assignedOrgIds,
+    teamAgentIds,
   };
 }

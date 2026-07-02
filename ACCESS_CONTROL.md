@@ -54,7 +54,9 @@ Legend: **Full access** = complete module access • **No Access / Hidden** = me
   - **Stove inventory** (`stovesReceived`, `availableStoves`): scoped to the **whole owning scope** — for a Partner Agent, their partner organization's stove IDs; for an ACSL Agent, the combined stove IDs across every partner assigned to them (`resolveAssignedOrgIds`). Neither role personally "receives" stoves — the org/partners do, and everyone under that scope shares visibility into it.
   - **Sales-derived numbers** (`stovesSold`, financial summary — expected receivable / amount received / outstanding balance, sales-by-model, sales-by-state): scoped to **sales attributed to that specific individual only** (`sold_on_behalf_of = them`), not every sale within their scope. A Partner Agent does not see another agent's sales under the same partner; an ACSL Agent does not see sales made by other agents/agents' teams across their assigned partners.
   - **ACSL Agent Manager is the exception** — a manager is tracking their whole team's performance, so their sales figures stay aggregated across every org assigned to them (directly or inherited from their subordinate ACSL agents), not filtered down to their own personal sales.
-  - Implemented in `supabase/functions/super-admin-agent-dashboard/index.ts`: stove counts always query `stove_ids` by the owning organization scope; sales counts/financials query `sales` by `sold_on_behalf_of` for `partner_agent`/`agent`/`acsl_agent`, and by `organization_id IN (assignedOrgIds)` for `acsl_agent_manager`.
+  - **Manager scope is org assignment OR team attribution, not org assignment alone.** A subordinate ACSL agent can be individually assigned a partner org that isn't (yet, or ever) formally assigned to the manager — the manager must still see that agent's sales. So a manager's sales queries match `organization_id IN (assignedOrgIds)` **OR** `sold_on_behalf_of IN (self, subordinate agent IDs)`. Org-only scoping silently hides a subordinate's sales whenever the org assignment lives only on the agent, not the manager — this happened for real (a manager couldn't see their agent's monthly sales) and is fixed in both `supabase/functions/super-admin-agent-dashboard/index.ts` (KPI numbers) and `supabase/functions/get-sales-advanced/build-query.ts` (Monthly Sales chart, Manage Sales list) — both resolve `teamAgentIds` (self + `profiles` where `manager_id = manager` and `role = 'acsl_agent'`) and OR it into the org filter.
+  - Implemented in `supabase/functions/super-admin-agent-dashboard/index.ts`: stove counts always query `stove_ids` by the owning organization scope; sales counts/financials query `sales` by `sold_on_behalf_of` for `partner_agent`/`agent`/`acsl_agent`, and by `organization_id IN (assignedOrgIds) OR sold_on_behalf_of IN (teamAgentIds)` for `acsl_agent_manager`.
+  - **Every `sales` query in every scope must exclude cancelled sales (`is_archived = true`)**, and attribution filters must fall back to `created_by` when `sold_on_behalf_of` is `NULL` (older rows). Missing either of these caused a real bug: a sale cancelled by Super Admin ("incorrect record") and then re-entered correctly was double-counted in the ACSL Agent Manager's aggregated view (org-wide query had no `is_archived` filter at all), while the ACSL Agent who re-entered it saw 0 sales / no payment model (the strict `sold_on_behalf_of` equality excluded the row when that column wasn't populated). Both are now handled by a shared `personalSalesFilter` helper in that function — reuse it (or its pattern) for any new sales-derived dashboard scope instead of writing a fresh `.eq(...)` chain.
 
 ## Per-role sidebar/nav summary
 
@@ -106,6 +108,23 @@ All sales list surfaces (`/sales`, cancelled sales, financial reports, Stove Use
 - `partner_agent` / `agent` → **own sales only**: rows where `created_by = them` **or** `sold_on_behalf_of = them` (covers both self-created sales and sales recorded on their behalf), regardless of any client filter.
 
 Frontend uses **one fetch path for every role** (`UnifiedSalesContent.loadSales` → `salesAdvancedService.getSalesData`). The old fork — a separate service call per role, with the agent's "own sales" scoping done by the *client* passing `createdBy` — was removed; the client no longer participates in scoping.
+
+## Stove Users Data scoping (implemented)
+
+`/end-user-records` ("Stove Users Data" in the sidebar) is one shared page (`EndUserRecordsContent`) for every role:
+
+- **Route access**: all five roles have `end-user-records` in `PERMISSIONS`, and the page is gated by `routeKey="end-user-records"` on `ProtectedRoute`, so any future role without the route is rejected even on direct URL entry. Sidebar visibility comes from the same `canRoute` check.
+- **Row scoping is entirely server-side** — the page fetches through the same `get-sales-advanced` edge function as Manage Sales, so the matrix row is enforced by `applyOrganizationFilters`: super_admin → all records; `acsl_agent` / `acsl_agent_manager` → assigned partners' records (`resolveAssignedOrgIds`); `partner` → own organization's records; `partner_agent` / `agent` → own sales records (`created_by` or `sold_on_behalf_of`). The client sends no role-specific filters.
+- The edge function caps each response at 500 rows, so the page fetches page-by-page until `pagination.totalPages` is exhausted — otherwise large scopes (super admin, big partners) silently lose records past 500.
+- The Details modal (`AdminSalesDetailModal`) is shared; its `viewFrom="superAdmin"` prop only selects the list-data field shape and hides the Record Payment button — it grants no extra capability.
+
+## Purchases from ACSL / Stove Transfer History scoping (implemented)
+
+`/stove-transfer-history` is gated by `routeKey="stove-transfer-history"` (super_admin, acsl_agent_manager, acsl_agent, partner — no partner_agent). The **`get-transfer-history`** edge function was previously super-admin-only (403 for everyone else); it now authenticates all four roles and scopes rows server-side on `stove_transfer_history.organization_id`:
+
+- `super_admin` → all transfers.
+- `acsl_agent` / `acsl_agent_manager` → transfers of assigned partner orgs only (`resolveAssignedOrgIds`); zero assignments → zero rows.
+- `partner` (and legacy `admin`) → own organization's transfers only.
 
 ## Data scoping
 

@@ -242,6 +242,11 @@ const UserManagementPage = () => {
   const [selectedPartnerIds, setSelectedPartnerIds] = useState(new Set());
   const [selectedStates, setSelectedStates] = useState(new Set());
 
+  // States assigned to the current caller. ACSL Agent Managers may only assign
+  // users to states within their own jurisdiction, so the state picker is
+  // scoped to these instead of the full country list. Empty for super admins.
+  const [callerAssignedStates, setCallerAssignedStates] = useState([]);
+
   // ACSL Agent cascade: managers in selected states
   const [acslManagers, setAcslManagers] = useState([]); // [{id, full_name, email, states:Set, orgIds:Set}]
   const [managersLoading, setManagersLoading] = useState(false);
@@ -347,6 +352,28 @@ const UserManagementPage = () => {
   };
 
   useEffect(() => { fetchUsers(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load the caller manager's own assigned states so the create/edit state
+  // picker can be restricted to their jurisdiction.
+  useEffect(() => {
+    if (!isAcslAgentManager || !user?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await superAdminAgentService.getAgentStates(user.id);
+        const list = res?.data || res?.states || res || [];
+        const names = normalizeStateNames(list);
+        if (!cancelled) setCallerAssignedStates(names);
+      } catch {
+        if (!cancelled) setCallerAssignedStates([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAcslAgentManager, user?.id]);
+
+  // States the caller is permitted to assign a new user to. Managers are scoped
+  // to their own jurisdiction; super admins get the full national list.
+  const assignableStates = isAcslAgentManager ? callerAssignedStates : NIGERIAN_STATES;
 
   // Auto-open the Edit view when navigated in with ?edit=<userId> (e.g. from Agents Profile "Manage Agent")
   const router = useRouter();
@@ -1606,13 +1633,13 @@ const UserManagementPage = () => {
                       (o.branch || "").toLowerCase().includes(q)
                     )
                   : partnersInStates;
-                const allStatesSelected = selectedStates.size === NIGERIAN_STATES.length;
+                const allStatesSelected = assignableStates.length > 0 && selectedStates.size === assignableStates.length;
                 const toggleState = (s) => setSelectedStates((prev) => {
                   const next = new Set(prev);
                   if (next.has(s)) next.delete(s); else next.add(s);
                   return next;
                 });
-                const toggleAllStates = () => setSelectedStates(allStatesSelected ? new Set() : new Set(NIGERIAN_STATES));
+                const toggleAllStates = () => setSelectedStates(allStatesSelected ? new Set() : new Set(assignableStates));
                 const selectAllVisible = () => setSelectedPartnerIds((prev) => {
                   const next = new Set(prev);
                   visiblePartners.forEach((p) => next.add(p.id));
@@ -1625,7 +1652,7 @@ const UserManagementPage = () => {
                 });
                 const sq = stateSearch.trim().toLowerCase();
                 const filteredStates = sq
-                  ? NIGERIAN_STATES.filter((s) => s.toLowerCase().includes(sq))
+                  ? assignableStates.filter((s) => s.toLowerCase().includes(sq))
                   : [];
                 const hasStates = selectedStates.size > 0;
                 return (
@@ -1636,7 +1663,7 @@ const UserManagementPage = () => {
                         <Label className="text-sm font-semibold text-[#4a5d0f] flex items-center gap-1.5">
                           Assign User to State
                           <span className="text-xs text-gray-500 font-normal">
-                            ({selectedStates.size} of {NIGERIAN_STATES.length} selected)
+                            ({selectedStates.size} of {assignableStates.length} selected)
                           </span>
                         </Label>
                         <label className="flex items-center gap-1.5 text-xs text-[#4a5d0f] font-medium cursor-pointer select-none">
@@ -1815,16 +1842,16 @@ const UserManagementPage = () => {
 
               {/* ACSL Agent — Cascade: States → Managers in those states → Partners of those managers */}
               {needsAcslAgentCascade(userForm.role) && (() => {
-                const allStatesSelected = selectedStates.size === NIGERIAN_STATES.length;
+                const allStatesSelected = assignableStates.length > 0 && selectedStates.size === assignableStates.length;
                 const toggleState = (s) => setSelectedStates((prev) => {
                   const next = new Set(prev);
                   if (next.has(s)) next.delete(s); else next.add(s);
                   return next;
                 });
                 const toggleAllStates = () =>
-                  setSelectedStates(allStatesSelected ? new Set() : new Set(NIGERIAN_STATES));
+                  setSelectedStates(allStatesSelected ? new Set() : new Set(assignableStates));
                 const sq = stateSearch.trim().toLowerCase();
-                const filteredStates = sq ? NIGERIAN_STATES.filter((s) => s.toLowerCase().includes(sq)) : [];
+                const filteredStates = sq ? assignableStates.filter((s) => s.toLowerCase().includes(sq)) : [];
                 const hasStates = selectedStates.size > 0;
 
                 // Managers whose assigned states overlap with the selected states
@@ -1901,7 +1928,7 @@ const UserManagementPage = () => {
                         <Label className="text-sm font-semibold text-[#4a5d0f]">
                           Assign User to State
                           <span className="text-xs text-gray-500 font-normal ml-1">
-                            ({selectedStates.size} of {NIGERIAN_STATES.length} selected)
+                            ({selectedStates.size} of {assignableStates.length} selected)
                           </span>
                         </Label>
                         <label className="flex items-center gap-1.5 text-xs text-[#4a5d0f] font-medium cursor-pointer select-none">

@@ -12,7 +12,8 @@ export async function buildQuery(
   userRole: string,
   userOrgId: string | null,
   assignedOrgIds?: string[],
-  userId?: string
+  userId?: string,
+  teamAgentIds?: string[]
 ): Promise<QueryResult> {
   console.log("🔍 Building optimized sales query with joins...");
 
@@ -38,7 +39,7 @@ export async function buildQuery(
   let query = supabase.from("sales").select(selectFields, { count: "exact" });
 
   // Apply all filters
-  query = applyAllFilters(query, filters, userRole, userOrgId, assignedOrgIds, userId);
+  query = applyAllFilters(query, filters, userRole, userOrgId, assignedOrgIds, userId, teamAgentIds);
 
   console.log("🚀 Executing optimized query with joins...");
 
@@ -152,10 +153,11 @@ function applyAllFilters(
   userRole: string,
   userOrgId: string | null,
   assignedOrgIds?: string[],
-  userId?: string
+  userId?: string,
+  teamAgentIds?: string[]
 ) {
   // Apply filters in order of selectivity (most selective first)
-  query = applyOrganizationFilters(query, filters, userRole, userOrgId, assignedOrgIds, userId);
+  query = applyOrganizationFilters(query, filters, userRole, userOrgId, assignedOrgIds, userId, teamAgentIds);
   query = applyDateFilters(query, filters);
   query = applyStoveFilters(query, filters);
   query = applyStatusFilters(query, filters);
@@ -282,7 +284,8 @@ function applyOrganizationFilters(
   userRole: string,
   userOrgId: string | null,
   assignedOrgIds?: string[],
-  userId?: string
+  userId?: string,
+  teamAgentIds?: string[]
 ) {
   console.log("🏢 Applying organization filters...");
 
@@ -303,9 +306,8 @@ function applyOrganizationFilters(
     // honored only within the assigned scope (intersection), never beyond it.
     console.log(`🔗 ${userRole}: scoped to ${assignedOrgIds?.length || 0} assigned orgs`);
     const scope = assignedOrgIds || [];
-    if (scope.length === 0) {
-      query = query.eq("organization_id", NO_MATCH_ID);
-    } else if (filters.organizationId) {
+    const team = userRole === "acsl_agent_manager" ? teamAgentIds || [] : [];
+    if (filters.organizationId) {
       query = scope.includes(filters.organizationId)
         ? query.eq("organization_id", filters.organizationId)
         : query.eq("organization_id", NO_MATCH_ID);
@@ -314,6 +316,20 @@ function applyOrganizationFilters(
       query = allowed.length
         ? query.in("organization_id", allowed)
         : query.eq("organization_id", NO_MATCH_ID);
+    } else if (team.length > 0) {
+      // Manager: every org formally assigned to the team, PLUS any sale
+      // attributed to a team member — a subordinate can record a sale for a
+      // partner that's only assigned to them, not the manager, and the manager
+      // must still see it. Attribution matches EITHER sold_on_behalf_of OR
+      // created_by, because sold_on_behalf_of is NULL on older rows where only
+      // the creator was stamped.
+      const teamList = team.join(",");
+      const teamClause = `sold_on_behalf_of.in.(${teamList}),created_by.in.(${teamList})`;
+      query = scope.length
+        ? query.or(`organization_id.in.(${scope.join(",")}),${teamClause}`)
+        : query.or(teamClause);
+    } else if (scope.length === 0) {
+      query = query.eq("organization_id", NO_MATCH_ID);
     } else {
       query = query.in("organization_id", scope);
     }
