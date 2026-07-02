@@ -1,8 +1,9 @@
 // Agreement Images Service for user agreement image operations
 import { createClientComponentClient } from "@/lib/supabaseClient";
+import { supabaseUrl } from "@/lib/supabaseConfig";
 import tokenManager from "../../utils/tokenManager";
 
-const API_BASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const API_BASE_URL = supabaseUrl;
 const API_FUNCTIONS_URL = `${API_BASE_URL}/functions/v1`;
 
 class AgreementImagesService {
