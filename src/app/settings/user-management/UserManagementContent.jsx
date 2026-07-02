@@ -343,14 +343,30 @@ const UserManagementPage = () => {
     editedFromParamRef.current = editId;
     (async () => {
       try {
-        const { data, error } = await supabase
+        // Try RLS-scoped profiles read first
+        let userRow = null;
+        const { data: profileRow } = await supabase
           .from("profiles")
-          .select("id, full_name, email, phone, role")
+          .select("id, full_name, email, phone, role, organization_id")
           .eq("id", editId)
           .maybeSingle();
-        if (error) throw error;
-        if (data) {
-          await openEditView(data);
+        if (profileRow) {
+          userRow = profileRow;
+        } else {
+          // Fallback: fetch via manage-users edge function (service role, bypasses RLS)
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            const res = await fetch(`${supabaseFunctionsUrl}/manage-users/${editId}`, {
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            });
+            const json = await res.json().catch(() => ({}));
+            if (res.ok) {
+              userRow = json?.data || json?.user || json;
+            }
+          }
+        }
+        if (userRow && userRow.id) {
+          await openEditView(userRow);
         } else {
           toast({ variant: "error", title: "User not found" });
         }
@@ -367,6 +383,7 @@ const UserManagementPage = () => {
         }
       }
     })();
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]);
 
