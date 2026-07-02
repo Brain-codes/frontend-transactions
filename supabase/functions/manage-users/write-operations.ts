@@ -5,11 +5,21 @@ import {
   validateUpdateData,
   generateRandomPassword,
 } from "./validate.ts";
+import {
+  creatableRolesFor,
+  isManagerRole,
+  isPartnerRole,
+  userInScope,
+  ORG_USER_ROLES,
+  CallerContext,
+  CallerScope,
+} from "./scope.ts";
 
 export async function createUser(
   supabase: any,
   userData: any,
-  adminId: string
+  caller: CallerContext,
+  scope: CallerScope
 ) {
   console.log("➕ Creating new user...");
 
@@ -17,6 +27,30 @@ export async function createUser(
     // Validate input data
     const validatedData = validateUserData(userData);
     console.log("✅ User data validated");
+
+    // Enforce caller-based role rules (ACCESS_CONTROL.md User Manager form rules):
+    // managers create acsl_agent/partner/partner_agent; partners create partner_agent only.
+    if (!creatableRolesFor(caller.role).includes(validatedData.role)) {
+      throw new Error(`Unauthorized: You cannot create ${validatedData.role} users`);
+    }
+
+    // Partners can only create agents inside their own organization.
+    if (isPartnerRole(caller.role)) {
+      validatedData.organization_id = caller.organizationId;
+      if (!validatedData.organization_id) {
+        throw new Error("validation: Your account has no organization to assign agents to");
+      }
+    }
+
+    // Managers can only bind org-scoped users to partners assigned to them.
+    if (
+      isManagerRole(caller.role) &&
+      ORG_USER_ROLES.includes(validatedData.role) &&
+      scope.type === "manager" &&
+      (!validatedData.organization_id || !scope.orgIds.includes(validatedData.organization_id))
+    ) {
+      throw new Error("Unauthorized: Selected partner is not assigned to you");
+    }
 
     // Generate password if needed
     let password = validatedData.password;
@@ -66,14 +100,19 @@ export async function createUser(
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // Explicitly set role + organization_id (trigger may default role).
+    // ACSL agents created by a manager report to that manager.
+    const profilePatch: any = {
+      full_name: validatedData.full_name,
+      phone: validatedData.phone,
+      role: validatedData.role,
+      organization_id: validatedData.organization_id,
+    };
+    if (isManagerRole(caller.role) && validatedData.role === "acsl_agent") {
+      profilePatch.manager_id = caller.id;
+    }
     const { error: patchError } = await supabase
       .from("profiles")
-      .update({
-        full_name: validatedData.full_name,
-        phone: validatedData.phone,
-        role: validatedData.role,
-        organization_id: validatedData.organization_id,
-      })
+      .update(profilePatch)
       .eq("id", createdUser.user?.id);
     if (patchError) {
       console.warn("⚠️ Could not finalize profile fields:", patchError.message);
@@ -136,7 +175,8 @@ export async function updateUser(
   supabase: any,
   userId: string,
   updateData: any,
-  adminId: string
+  caller: CallerContext,
+  scope: CallerScope
 ) {
   console.log("✏️ Updating user:", userId);
 
@@ -148,7 +188,7 @@ export async function updateUser(
     // Check if the user exists (any role allowed)
     const { data: existingUser, error: checkError } = await supabase
       .from("profiles")
-      .select("id, role, email")
+      .select("id, role, email, organization_id, manager_id")
       .eq("id", userId)
       .single();
 
@@ -158,6 +198,37 @@ export async function updateUser(
       }
       console.error("❌ Error checking user:", checkError);
       throw new Error(`Database error: ${checkError.message}`);
+    }
+
+    // Target must be inside the caller's scope (managers: own agents +
+    // assigned partners' users; partners: own organization's agents).
+    if (!userInScope(scope, existingUser, caller.id)) {
+      throw new Error("User not found");
+    }
+
+    // Non-super-admin callers cannot move users to roles they cannot create,
+    // and cannot re-bind users to organizations outside their scope.
+    if (caller.role !== "super_admin") {
+      if (
+        validatedData.role !== undefined &&
+        validatedData.role !== existingUser.role &&
+        !creatableRolesFor(caller.role).includes(validatedData.role)
+      ) {
+        throw new Error(`Unauthorized: You cannot assign the ${validatedData.role} role`);
+      }
+      if (validatedData.organization_id !== undefined && scope.type !== "all") {
+        const allowedOrgIds = scope.orgIds;
+        if (
+          validatedData.organization_id !== null &&
+          !allowedOrgIds.includes(validatedData.organization_id)
+        ) {
+          throw new Error("Unauthorized: Selected partner is not assigned to you");
+        }
+        // Partners can never detach an agent from their own organization.
+        if (isPartnerRole(caller.role)) {
+          validatedData.organization_id = caller.organizationId;
+        }
+      }
     }
 
     console.log("🔍 User found, proceeding with update");

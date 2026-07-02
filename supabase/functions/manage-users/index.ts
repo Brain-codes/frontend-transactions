@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withCors } from "./cors.ts";
 import { handleUserRoute } from "./route-handler.ts";
+import { ALLOWED_CALLER_ROLES } from "./scope.ts";
 
 serve(async (req) => {
   console.log("🚀 User Management API started");
@@ -37,7 +38,7 @@ serve(async (req) => {
       errorMessage = "Request timeout - operation took too long";
       statusCode = 408;
     } else if (error.message.includes("Unauthorized")) {
-      errorMessage = "Access denied - Super Admin privileges required";
+      errorMessage = "Access denied - insufficient privileges";
       statusCode = 403;
     } else if (error.message.includes("validation")) {
       errorMessage = error.message;
@@ -110,7 +111,7 @@ async function executeMainLogic(req: Request) {
     console.log("👤 Fetching user profile...");
     const { data: userProfile, error: profileError } = await supabase
       .from("profiles")
-      .select("id, role, full_name, email, status")
+      .select("id, role, full_name, email, status, organization_id")
       .eq("id", userId)
       .single();
 
@@ -122,12 +123,11 @@ async function executeMainLogic(req: Request) {
     console.log("👤 User role:", userProfile.role);
     console.log("📊 User status:", userProfile.status);
 
-    // Check if user is super_admin
-    if (userProfile.role !== "super_admin") {
+    // Per RBAC matrix: super_admin (all users), acsl_agent_manager (scoped),
+    // partner (own partner agents). All other roles have no User Manager access.
+    if (!ALLOWED_CALLER_ROLES.includes(userProfile.role)) {
       console.log("❌ Insufficient permissions");
-      throw new Error(
-        "Unauthorized: Access denied. Super Admin role required."
-      );
+      throw new Error("Unauthorized: Access denied for this role.");
     }
 
     // Check if user account is active
@@ -136,8 +136,14 @@ async function executeMainLogic(req: Request) {
       throw new Error("Unauthorized: Your account is not active.");
     }
 
-    // Handle the user route with the authenticated super admin
-    const result = await handleUserRoute(req, supabase, userId);
+    const caller = {
+      id: userId,
+      role: userProfile.role,
+      organizationId: userProfile.organization_id || null,
+    };
+
+    // Handle the user route with the authenticated caller (row scoping applied per role)
+    const result = await handleUserRoute(req, supabase, caller);
 
     // Prepare response
     const responseTime = Date.now() - startTime;

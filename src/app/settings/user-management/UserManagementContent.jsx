@@ -132,14 +132,15 @@ const getRoleLabel = (role) => {
 };
 
 const HIDDEN_USER_MANAGEMENT_ROLES = new Set(["partner", "admin"]);
-const USER_MANAGEMENT_QUERY_ROLES = [
-  "super_admin",
-  "acsl_agent_manager",
-  "acsl_agent",
-  "partner_agent",
-  "agent",
-  "super_admin_agent",
-];
+
+// Roles listed/filtered per caller (RBAC matrix: manager sees ACSL agents +
+// assigned partner users; partner sees own partner agents). The backend
+// enforces row scoping — this just avoids pointless requests and filter options.
+const QUERY_ROLES_BY_CALLER = {
+  super_admin: ["super_admin", "acsl_agent_manager", "acsl_agent", "partner_agent", "agent", "super_admin_agent"],
+  acsl_agent_manager: ["acsl_agent", "super_admin_agent", "partner_agent", "agent"],
+  partner: ["partner_agent", "agent"],
+};
 
 const isVisibleUserManagementRole = (role) => !HIDDEN_USER_MANAGEMENT_ROLES.has(role);
 
@@ -173,11 +174,18 @@ const UserManagementPage = () => {
   const callerCreatableRoles = isSuperAdmin
     ? ["super_admin", "acsl_agent_manager", "acsl_agent", "partner", "partner_agent", "agent"]
     : isAcslAgentManager
-    ? ["acsl_agent", "partner", "partner_agent"]
+    ? ["acsl_agent", "partner_agent"]
     : isPartner
     ? ["partner_agent"]
     : [];
   const callerOrgId = user?.user_metadata?.organization_id || user?.app_metadata?.organization_id || null;
+  const callerQueryRoles = isSuperAdmin
+    ? QUERY_ROLES_BY_CALLER.super_admin
+    : isAcslAgentManager
+    ? QUERY_ROLES_BY_CALLER.acsl_agent_manager
+    : isPartner
+    ? QUERY_ROLES_BY_CALLER.partner
+    : [];
 
 
   const [loading, setLoading] = useState(false);
@@ -273,8 +281,8 @@ const UserManagementPage = () => {
       };
 
       const visibleRoles = currentFilters.role
-        ? [currentFilters.role].filter(isVisibleUserManagementRole)
-        : USER_MANAGEMENT_QUERY_ROLES;
+        ? [currentFilters.role].filter((r) => isVisibleUserManagementRole(r) && callerQueryRoles.includes(r))
+        : callerQueryRoles;
 
       if (visibleRoles.length === 0) {
         setUsers([]);
@@ -343,14 +351,30 @@ const UserManagementPage = () => {
     editedFromParamRef.current = editId;
     (async () => {
       try {
-        const { data, error } = await supabase
+        // Try RLS-scoped profiles read first
+        let userRow = null;
+        const { data: profileRow } = await supabase
           .from("profiles")
-          .select("id, full_name, email, phone, role")
+          .select("id, full_name, email, phone, role, organization_id")
           .eq("id", editId)
           .maybeSingle();
-        if (error) throw error;
-        if (data) {
-          await openEditView(data);
+        if (profileRow) {
+          userRow = profileRow;
+        } else {
+          // Fallback: fetch via manage-users edge function (service role, bypasses RLS)
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            const res = await fetch(`${supabaseFunctionsUrl}/manage-users/${editId}`, {
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            });
+            const json = await res.json().catch(() => ({}));
+            if (res.ok) {
+              userRow = json?.data || json?.user || json;
+            }
+          }
+        }
+        if (userRow && userRow.id) {
+          await openEditView(userRow);
         } else {
           toast({ variant: "error", title: "User not found" });
         }
@@ -367,6 +391,7 @@ const UserManagementPage = () => {
         }
       }
     })();
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]);
 
@@ -691,8 +716,18 @@ const UserManagementPage = () => {
     if (allOrgs.length > 0) return allOrgs;
     setOrgsLoading(true);
     try {
-      const result = await organizationsService.getAllOrganizations();
-      const orgs = result.data || [];
+      let orgs;
+      if (isAcslAgentManager) {
+        // RLS on `organizations` only exposes a user's own org to direct reads,
+        // which is empty for managers. Load their partner catalog from the
+        // scoped assignments endpoint instead (direct + state-resolved orgs).
+        const result = await superAdminAgentService.getAgentOrganizations(user.id);
+        orgs = result?.data || result?.organizations || result || [];
+      } else {
+        const result = await organizationsService.getAllOrganizations();
+        orgs = result.data || [];
+      }
+      if (!Array.isArray(orgs)) orgs = [];
       setAllOrgs(orgs);
       return orgs;
     } catch {
@@ -765,8 +800,13 @@ const UserManagementPage = () => {
     if (shouldLoadOrgs) {
       await ensureOrganizationsLoaded();
     }
-    if (needsAcslAgentCascade(role) && acslManagers.length === 0) {
-      await loadAcslManagers();
+    if (needsAcslAgentCascade(role)) {
+      const managers = acslManagers.length > 0 ? acslManagers : await loadAcslManagers();
+      // A manager creating an ACSL Agent is always that agent's manager —
+      // preselect themselves (the scoped managers list only contains them).
+      if (isAcslAgentManager) {
+        setSelectedManagerIds(new Set(managers.map((m) => m.id)));
+      }
     }
   };
 
@@ -788,14 +828,16 @@ const UserManagementPage = () => {
   useEffect(() => {
     if (userForm.role !== "acsl_agent") return;
     if (hydratingRef.current) return;
+    const selectedManagers = acslManagers.filter((m) => selectedManagerIds.has(m.id));
     const allowedOrgIds = new Set();
-    acslManagers
-      .filter((m) => selectedManagerIds.has(m.id))
-      .forEach((m) => m.orgIds.forEach((id) => allowedOrgIds.add(id)));
-    // Limit to partners that are also in selected states (if any)
+    selectedManagers.forEach((m) => m.orgIds.forEach((id) => allowedOrgIds.add(id)));
+    // Managers also cover every org in their assigned states (matches
+    // resolveAssignedOrgIds semantics). Limit to selected states (if any).
+    const coveredByManager = (o) =>
+      allowedOrgIds.has(o.id) || (!!o.state && selectedManagers.some((m) => m.states.has(o.state)));
     const inStateOrgIds = new Set(
       allOrgs
-        .filter((o) => allowedOrgIds.has(o.id) && (selectedStates.size === 0 || (o.state && selectedStates.has(o.state))))
+        .filter((o) => coveredByManager(o) && (selectedStates.size === 0 || (o.state && selectedStates.has(o.state))))
         .map((o) => o.id)
     );
     // Keep saved/manual selections that are still valid. Do not auto-add every
@@ -1108,7 +1150,7 @@ const UserManagementPage = () => {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <ProtectedRoute allowedRoles={["super_admin", "acsl_agent", "super_admin_agent"]}>
+    <ProtectedRoute allowedRoles={["super_admin", "acsl_agent_manager", "partner", "admin"]}>
       <DashboardLayout currentRoute="settings" title="User Management">
         <div className="p-6 space-y-5">
 
@@ -1162,13 +1204,11 @@ const UserManagementPage = () => {
               </SelectTrigger>
               <SelectContent className="text-xs">
                 <SelectItem value="all" className="text-xs">All Roles</SelectItem>
-                <SelectItem value="super_admin" className="text-xs">Super Admin</SelectItem>
-                <SelectItem value="acsl_agent_manager" className="text-xs">ACSL Agent Manager</SelectItem>
-                <SelectItem value="acsl_agent" className="text-xs">ACSL Agent</SelectItem>
-                
-                
-                <SelectItem value="partner_agent" className="text-xs">Partner Agent</SelectItem>
-                <SelectItem value="agent" className="text-xs">Agent</SelectItem>
+                {["super_admin", "acsl_agent_manager", "acsl_agent", "partner_agent", "agent"]
+                  .filter((r) => callerQueryRoles.includes(r))
+                  .map((r) => (
+                    <SelectItem key={r} value={r} className="text-xs">{getRoleLabel(r)}</SelectItem>
+                  ))}
               </SelectContent>
             </Select>
 
@@ -1797,13 +1837,18 @@ const UserManagementPage = () => {
                   });
                 const clearAllManagers = () => setSelectedManagerIds(new Set());
 
-                // Partners belonging to selected managers AND in selected states
+                // Partners belonging to selected managers AND in selected states.
+                // A manager covers their directly assigned orgs plus every org in
+                // their assigned states (same semantics as resolveAssignedOrgIds).
+                const selectedManagers = acslManagers.filter((m) => selectedManagerIds.has(m.id));
                 const allowedOrgIds = new Set();
-                acslManagers
-                  .filter((m) => selectedManagerIds.has(m.id))
-                  .forEach((m) => m.orgIds.forEach((id) => allowedOrgIds.add(id)));
+                selectedManagers.forEach((m) => m.orgIds.forEach((id) => allowedOrgIds.add(id)));
+                const coveredByManagerState = (o) =>
+                  !!o.state && selectedManagers.some((m) => m.states.has(o.state));
                 const partnersOfManagers = allOrgs.filter(
-                  (o) => allowedOrgIds.has(o.id) && (selectedStates.size === 0 || (o.state && selectedStates.has(o.state)))
+                  (o) =>
+                    (allowedOrgIds.has(o.id) || coveredByManagerState(o)) &&
+                    (selectedStates.size === 0 || (o.state && selectedStates.has(o.state)))
                 );
                 const pq = partnerSearch.trim().toLowerCase();
                 const visiblePartners = pq
@@ -1889,8 +1934,9 @@ const UserManagementPage = () => {
                       )}
                     </div>
 
-                    {/* Step 2 — Managers in selected states */}
-                    {hasStates && (
+                    {/* Step 2 — Managers in selected states (hidden for manager
+                        callers: the new agent reports to them automatically) */}
+                    {hasStates && !isAcslAgentManager && (
                       <div className="space-y-3 border border-gray-200 rounded-lg p-4 bg-white">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
                           <Label className="text-sm font-semibold text-[#4a5d0f]">

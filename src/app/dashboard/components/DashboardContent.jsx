@@ -41,7 +41,6 @@ import {
   CreditCard,
   Wallet,
   AlertCircle,
-  ClipboardList,
   Loader2,
   Plus,
   ChevronRight,
@@ -181,6 +180,9 @@ const DashboardContent = ({
   activeCard = null, onCardClick = null,
 }) => {
   const isSuperAdmin = role === "super_admin";
+  // Roles that can drill into a KPI's underlying record list from this same view.
+  const supportsDrilldown = role === "acsl_agent" || role === "acsl_agent_manager" || role === "partner";
+  const canCreateSale = role === "acsl_agent" || role === "partner_agent" || role === "agent";
 
   const byState = data?.byState ?? [];
   const salesModelData = data?.salesModelData ?? [];
@@ -476,8 +478,19 @@ const DashboardContent = ({
             <p className="text-gray-500 text-xs">Loading dashboard…</p>
           </div>
         </div>
-      ) : isSuperAdmin ? (
+      ) : (
         <div className="space-y-8 px-4 pt-2">
+          {canCreateSale && (
+            <div className="flex justify-end">
+              <Link
+                href="/sales?create=true"
+                className="flex items-center justify-center gap-2 bg-[#07376a] text-white px-6 py-2.5 rounded-lg hover:bg-[#052a51] transition-colors text-sm font-semibold w-full sm:w-auto"
+              >
+                <Plus className="h-4 w-4" />
+                Create Sales
+              </Link>
+            </div>
+          )}
           {/* Section A — Stove Inventory Doughnut + Financial KPIs */}
           <div className="space-y-4">
             {(() => {
@@ -792,12 +805,8 @@ const DashboardContent = ({
                             ? `${kpi.destPath}?${kpi.destParam}=${encodeURIComponent(partnerName)}`
                             : kpi.destPath
                           : undefined;
-                        return (
-                          <Link
-                            key={kpi.key}
-                            href={href ?? "#"}
-                            className={`relative overflow-hidden rounded-xl p-4 cursor-pointer block group bg-gradient-to-br ${kpi.gradient} text-white transition-transform hover:-translate-y-0.5`}
-                          >
+                        const tileBody = (
+                          <>
                             <div className="absolute -right-6 -bottom-6 opacity-15 pointer-events-none">
                               <kpi.icon className="h-24 w-24" />
                             </div>
@@ -815,6 +824,20 @@ const DashboardContent = ({
                                 <kpi.icon className="h-4 w-4" />
                               </div>
                             </div>
+                          </>
+                        );
+                        const isActive = activeCard === kpi.key;
+                        const tileClassName = `relative overflow-hidden rounded-xl p-4 cursor-pointer block group bg-gradient-to-br ${kpi.gradient} text-white transition-transform hover:-translate-y-0.5 ${isActive ? "ring-2 ring-white/60" : ""}`;
+                        // Roles that can drill into the underlying record list stay on this
+                        // page and toggle the drilldown table; everyone else navigates away.
+                        return supportsDrilldown && onCardClick ? (
+                          <div key={kpi.key} onClick={() => onCardClick(kpi.key)} className={tileClassName}>
+                            {tileBody}
+                            <ChevronDown className={`absolute bottom-3 right-3 h-3.5 w-3.5 text-white/60 group-hover:text-white transition-colors ${isActive ? "rotate-180" : ""}`} />
+                          </div>
+                        ) : (
+                          <Link key={kpi.key} href={href ?? "#"} className={tileClassName}>
+                            {tileBody}
                             <ChevronRight className="absolute bottom-3 right-3 h-3.5 w-3.5 text-white/60 group-hover:text-white transition-colors" />
                           </Link>
                         );
@@ -930,83 +953,6 @@ const DashboardContent = ({
             })()}
           </div>
 
-        </div>
-      ) : (
-        /* Non-super-admin view */
-        <div className={(role === "acsl_agent" || role === "partner_agent") ? "" : "rounded-lg border bg-gray-50 overflow-hidden"}>
-          {(role !== "acsl_agent" && role !== "partner_agent") && (
-            <div className="py-2 px-4 text-white font-semibold text-base flex items-center justify-between" style={{ backgroundColor: DARK_NAVY }}>
-              <span>Sales Report</span>
-              <Link
-                href="/sales"
-                className="flex items-center gap-1 bg-white/10 border border-white/30 text-white hover:bg-white/20 text-xs px-2.5 py-1 rounded-md transition-colors"
-              >
-                <ClipboardList className="h-3 w-3" />
-                Manage Sales
-              </Link>
-            </div>
-          )}
-          {(role === "acsl_agent" || role === "partner_agent") && (
-            <div className="flex justify-end mb-4">
-              <Link
-                href="/sales?create=true"
-                className="flex items-center justify-center gap-2 bg-[#07376a] text-white px-6 py-2.5 rounded-lg hover:bg-[#052a51] transition-colors text-sm font-semibold w-full sm:w-auto"
-              >
-                <Plus className="h-4 w-4" />
-                Create Sales
-              </Link>
-            </div>
-          )}
-          <div className={(role === "acsl_agent" || role === "partner_agent") ? "space-y-4" : "p-4 space-y-4"}>
-            {[KPI_CONFIG.slice(0, 3), KPI_CONFIG.slice(3)].map((row, rowIdx) => (
-              <div key={rowIdx} className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {row.map((kpi) => {
-                  const raw = data?.[kpi.key] ?? 0;
-                  const display = kpi.currency ? formatCurrency(raw) : raw.toLocaleString();
-                  const sub = kpi.sub ?? `FY ${year ?? yearLabel}`;
-                  const isActive = activeCard === kpi.key;
-                  const isClickable = (role === "partner" || role === "acsl_agent" || role === "acsl_agent_manager") && !!onCardClick && raw > 0;
-                  return isActive ? (
-                    <div
-                      key={kpi.key}
-                      onClick={() => onCardClick(kpi.key)}
-                      className={`relative overflow-hidden rounded-lg border-transparent px-4 py-3 cursor-pointer transition-all bg-gradient-to-br ${kpi.gradient} ring-2 ring-white/40`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="mt-0.5 min-w-0 flex-1 pr-2">
-                          <p className="text-2xl font-bold text-white tracking-tight leading-tight break-all">{display}</p>
-                          <p className="text-xs font-semibold text-white/80 mt-0.5">{kpi.label}</p>
-                          <p className="text-xs text-white/60">{sub}</p>
-                        </div>
-                        <div className="rounded-lg p-2 bg-white/20 text-white shrink-0">
-                          <kpi.icon className="h-4 w-4" />
-                        </div>
-                      </div>
-                      <ChevronDown className="absolute bottom-2 right-2 h-3.5 w-3.5 text-white/70" />
-                    </div>
-                  ) : (
-                    <div
-                      key={kpi.key}
-                      onClick={isClickable ? () => onCardClick(kpi.key) : undefined}
-                      className={`relative overflow-hidden rounded-lg border bg-white px-4 py-3 transition-all group ${isClickable ? "cursor-pointer" : ""}`}
-                    >
-                      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${kpi.gradient}`} />
-                      <div className="flex items-start justify-between">
-                        <div className="mt-0.5 min-w-0 flex-1 pr-2">
-                          <p className="text-2xl font-bold text-gray-900 tracking-tight leading-tight break-all">{display}</p>
-                          <p className="text-xs font-semibold text-gray-500 mt-0.5">{kpi.label}</p>
-                          <p className="text-xs text-gray-400">{sub}</p>
-                        </div>
-                        <div className={`rounded-lg p-2 bg-gradient-to-br ${kpi.gradient} text-white shrink-0`}>
-                          <kpi.icon className="h-4 w-4" />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
         </div>
       )}
     </div>

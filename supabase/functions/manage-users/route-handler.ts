@@ -3,16 +3,20 @@
 import { getUser, getUsers } from "./read-operations.ts";
 import { createUser, updateUser } from "./write-operations.ts";
 import { deleteUser } from "./delete-operations.ts";
+import { CallerContext, resolveCallerScope } from "./scope.ts";
 
 export async function handleUserRoute(
   req: Request,
   supabase: any,
-  adminId: string
+  caller: CallerContext
 ) {
   // Parse URL to get user ID if present
   const url = new URL(req.url);
   const pathParts = url.pathname.split("/").filter(Boolean);
   const userId = pathParts[pathParts.length - 1];
+
+  // Resolve the caller's row-level scope once; every operation enforces it.
+  const scope = await resolveCallerScope(supabase, caller);
 
   // Route to appropriate CRUD operation
   const method = req.method.toUpperCase();
@@ -21,16 +25,16 @@ export async function handleUserRoute(
     case "GET":
       if (userId && userId !== "manage-users") {
         // Get single user
-        return await getUser(supabase, userId);
+        return await getUser(supabase, userId, caller, scope);
       } else {
         // Get all users with pagination
-        return await getUsers(supabase, url.searchParams);
+        return await getUsers(supabase, url.searchParams, caller, scope);
       }
 
     case "POST":
       // Create new user
       const createData = await req.json();
-      return await createUser(supabase, createData, adminId);
+      return await createUser(supabase, createData, caller, scope);
 
     case "PUT":
     case "PATCH":
@@ -39,14 +43,14 @@ export async function handleUserRoute(
         throw new Error("User ID is required for update operations");
       }
       const updateData = await req.json();
-      return await updateUser(supabase, userId, updateData, adminId);
+      return await updateUser(supabase, userId, updateData, caller, scope);
 
     case "DELETE":
       // Delete user
       if (!userId || userId === "manage-users") {
         throw new Error("User ID is required for delete operation");
       }
-      return await deleteUser(supabase, userId, adminId);
+      return await deleteUser(supabase, userId, caller, scope);
 
     default:
       throw new Error(`Method ${method} not allowed`);

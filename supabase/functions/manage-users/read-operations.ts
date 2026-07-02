@@ -1,6 +1,18 @@
 // Read operations for users
 
-export async function getUsers(supabase: any, searchParams: URLSearchParams) {
+import {
+  applyScopeToListQuery,
+  userInScope,
+  CallerContext,
+  CallerScope,
+} from "./scope.ts";
+
+export async function getUsers(
+  supabase: any,
+  searchParams: URLSearchParams,
+  caller: CallerContext,
+  scope: CallerScope
+) {
   console.log("📋 Fetching users list...");
 
   try {
@@ -51,6 +63,10 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
     }
 
     query = query.not("role", "eq", "partner").not("role", "eq", "admin");
+
+    // Row-level scope: managers see their ACSL agents + assigned partners' users;
+    // partners see only their own organization's agents. Same shape, different filter.
+    query = applyScopeToListQuery(query, scope, caller.id);
 
     // Apply status filter
     if (status && ["active", "disabled"].includes(status)) {
@@ -163,14 +179,19 @@ export async function getUsers(supabase: any, searchParams: URLSearchParams) {
   }
 }
 
-export async function getUser(supabase: any, userId: string) {
+export async function getUser(
+  supabase: any,
+  userId: string,
+  caller: CallerContext,
+  scope: CallerScope
+) {
   console.log("🔍 Fetching single user:", userId);
 
   try {
     // Query for single user by ID (any role)
     const { data: user, error: userError } = await supabase
       .from("profiles")
-      .select("id, full_name, email, phone, role, status, created_at, last_login")
+      .select("id, full_name, email, phone, role, status, created_at, last_login, organization_id, manager_id")
       .eq("id", userId)
       .single();
 
@@ -180,6 +201,10 @@ export async function getUser(supabase: any, userId: string) {
       }
       console.error("❌ Error fetching user:", userError);
       throw new Error(`Database error: ${userError.message}`);
+    }
+
+    if (!userInScope(scope, user, caller.id)) {
+      throw new Error("User not found");
     }
 
     console.log("✅ User found:", user.id);
