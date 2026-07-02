@@ -110,7 +110,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 // Public origin used to build absolute URLs for canonical + social share tags.
 // Set VITE_SITE_URL in your deploy env; falls back to the placeholder below.
 const SITE_URL = (
-  import.meta.env.VITE_SITE_URL || "https://sales-monitoring.atmosfair.app"
+  import.meta.env.VITE_SITE_URL || "https://sales.atmosfair.com.ng"
 ).replace(/\/$/, "");
 
 const SITE_NAME = "Atmosfair Sales Monitoring";
