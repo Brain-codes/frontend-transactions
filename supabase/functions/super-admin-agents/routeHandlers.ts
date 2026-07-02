@@ -7,6 +7,7 @@ import { setAgentOrganizations, removeAgentOrganization } from "./organizationOp
 import { getAgentStates, setAgentStates, removeAgentState } from "./stateOptions.ts";
 import { authenticateSuperAdmin, authenticateReadAccess, authenticateManagerOrAdmin } from "./authenticate.ts";
 import { getKpiStats } from "./kpiStats.ts";
+import { resolveAssignedOrgIds } from "../_shared/resolveAssignedOrgIds.ts";
 
 export async function handleRoute(req: Request, supabase: any) {
   const url = new URL(req.url);
@@ -38,7 +39,21 @@ export async function handleRoute(req: Request, supabase: any) {
 
   // ── GET /super-admin-agents  (list)
   if (method === "GET" && !agentId) {
-    const auth = await authenticateManagerOrAdmin(supabase, authHeader);
+    const auth = await authenticateReadAccess(supabase, authHeader);
+    if (["acsl_agent", "super_admin_agent"].includes(auth.userRole)) {
+      // Plain ACSL agents may only list agents for a single organization
+      // within their assigned scope (Performance Report → Partners tab
+      // shows which agents serve each of their assigned partners).
+      const organizationId = url.searchParams.get("organization_id");
+      if (!organizationId) {
+        throw new Error("Unauthorized: organization_id is required for this role");
+      }
+      const { assignedOrgIds } = await resolveAssignedOrgIds(supabase, auth.userId);
+      if (!assignedOrgIds.includes(organizationId)) {
+        throw new Error("Unauthorized: organization is not in your assigned scope");
+      }
+      return await listAgents(supabase, url.searchParams, null);
+    }
     // acsl_agent_manager only sees agents they created (manager_id = their ID)
     const managerFilter = auth.userRole === "acsl_agent_manager" ? auth.userId : null;
     return await listAgents(supabase, url.searchParams, managerFilter);

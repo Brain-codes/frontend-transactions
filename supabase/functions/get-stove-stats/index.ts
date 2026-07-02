@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { resolveAssignedOrgIds } from "../_shared/resolveAssignedOrgIds.ts";
+
+const ACSL_SCOPED_ROLES = ["acsl_agent", "acsl_agent_manager", "super_admin_agent"];
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,10 +49,15 @@ serve(async (req) => {
 
     if (
       !profile ||
-      (profile.role !== "super_admin" && profile.role !== "admin" && profile.role !== "partner")
+      (profile.role !== "super_admin" &&
+        profile.role !== "admin" &&
+        profile.role !== "partner" &&
+        !ACSL_SCOPED_ROLES.includes(profile.role))
     ) {
       throw new Error("Insufficient permissions");
     }
+
+    const isAcslScoped = ACSL_SCOPED_ROLES.includes(profile.role);
 
     // Get query parameters
     const url = new URL(req.url);
@@ -72,9 +80,23 @@ serve(async (req) => {
       organizationIds = [profile.organization_id];
     }
 
+    // ACSL agents/managers: scope to assigned orgs (intersect with any requested subset)
+    if (isAcslScoped) {
+      const { assignedOrgIds } = await resolveAssignedOrgIds(supabase, user.id);
+      organizationIds = organizationIds.length > 0
+        ? organizationIds.filter((id: string) => assignedOrgIds.includes(id))
+        : assignedOrgIds;
+      if (organizationIds.length === 0) {
+        return new Response(
+          JSON.stringify({ success: true, data: { available: 0, sold: 0, total: 0, performing_partners: 0 } }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
+        );
+      }
+    }
+
     // Resolve org IDs for total/available/sold stats (includes registration date filter)
     const hasOrgFilters = dateFrom || dateTo || partnerType || search || stateFilter;
-    if (hasOrgFilters && profile.role === "super_admin") {
+    if (hasOrgFilters && (profile.role === "super_admin" || isAcslScoped)) {
       let orgQuery = supabase.from("organizations").select("id");
       if (dateFrom) orgQuery = orgQuery.gte("created_at", dateFrom);
       if (dateTo)   orgQuery = orgQuery.lte("created_at", dateTo + "T23:59:59");
@@ -145,8 +167,8 @@ serve(async (req) => {
       totalQuery     = totalQuery.in("organization_id", organizationIds);
       availableQuery = availableQuery.in("organization_id", organizationIds);
       soldQuery      = soldQuery.in("organization_id", organizationIds);
-    } else if (hasOrgFilters) {
-      // Filters were active but no orgs matched — return zeros
+    } else if (hasOrgFilters || isAcslScoped) {
+      // Filters were active (or the caller is org-scoped) but no orgs matched — return zeros
       return new Response(
         JSON.stringify({ success: true, data: { available: 0, sold: 0, total: 0, performing_partners: 0 } }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },

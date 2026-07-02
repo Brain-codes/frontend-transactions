@@ -24,7 +24,7 @@ This app is **one application** with **one UI, one navigation system, one compon
 
 | Module / Menu | Super Admin | ACSL Agent Manager | ACSL Agent | Partner | Partner Agent |
 |---|---|---|---|---|---|
-| Dashboard | Global dashboard | Assigned partners + ACSL agents | Assigned partners | Own organization | Own sales |
+| Dashboard | Global dashboard | Assigned partners + ACSL agents | Assigned partners' stove inventory + own sales (see note below) | Own organization | Org's stove inventory + own sales (see note below) |
 | User Management → User Manager | All users | ACSL agents + assigned partner users | No Access | Own Partner Agents | No Access |
 | User Management → User Groups | Full access | No Access | No Access | No Access | No Access |
 | Partner Management | All partners | Assigned partners | Assigned partners | No Access | No Access |
@@ -50,13 +50,18 @@ Legend: **Full access** = complete module access • **No Access / Hidden** = me
 - **Partners**: in User Management, can create **only** Partner Agent users; the role dropdown is locked to "Partner Agent" and the partner's own organization is preselected in the form (no picker choice).
 - **Only Super Admin** has access to: User Groups, Map, Settings.
 - **ACSL Agent Managers**: can access records for ACSL agents and partners assigned to them (their own scope), plus records for partners assigned to those partners.
+- **Partner Agent and (plain) ACSL Agent dashboard scope is split by data type, not a single blanket rule** — both are "created under" a scope-owner (a partner org, or a set of assigned partners) and inherit that owner's stove ledger, but their own sales stay personal:
+  - **Stove inventory** (`stovesReceived`, `availableStoves`): scoped to the **whole owning scope** — for a Partner Agent, their partner organization's stove IDs; for an ACSL Agent, the combined stove IDs across every partner assigned to them (`resolveAssignedOrgIds`). Neither role personally "receives" stoves — the org/partners do, and everyone under that scope shares visibility into it.
+  - **Sales-derived numbers** (`stovesSold`, financial summary — expected receivable / amount received / outstanding balance, sales-by-model, sales-by-state): scoped to **sales attributed to that specific individual only** (`sold_on_behalf_of = them`), not every sale within their scope. A Partner Agent does not see another agent's sales under the same partner; an ACSL Agent does not see sales made by other agents/agents' teams across their assigned partners.
+  - **ACSL Agent Manager is the exception** — a manager is tracking their whole team's performance, so their sales figures stay aggregated across every org assigned to them (directly or inherited from their subordinate ACSL agents), not filtered down to their own personal sales.
+  - Implemented in `supabase/functions/super-admin-agent-dashboard/index.ts`: stove counts always query `stove_ids` by the owning organization scope; sales counts/financials query `sales` by `sold_on_behalf_of` for `partner_agent`/`agent`/`acsl_agent`, and by `organization_id IN (assignedOrgIds)` for `acsl_agent_manager`.
 
 ## Per-role sidebar/nav summary
 
 - **super_admin** — everything.
 - **acsl_agent_manager** — everything except Map, Settings, User Groups.
 - **acsl_agent** — like manager, minus User Management and ACSL Agents Profile (Agent Management → ACSL Agents).
-- **partner** — no Partner Management, no ACSL Agents Profile, no Performance Report, no Map, no Settings, no User Groups. Still sees User Manager, Partner Agents Profile, Sales, Stove Users Data, Track Stoves.
+- **partner** — no Partner Management, no ACSL Agents Profile, no Map, no Settings, no User Groups. Performance Report shows the **Partners tab only** (own organization). Still sees User Manager, Partner Agents Profile, Sales, Stove Users Data, Track Stoves.
 - **partner_agent / agent** — Dashboard, Sales, Sell Stove, Stove Manager, Stove Users Data, Sales Monitoring App only.
 
 ## User Manager (create-user) form rules
@@ -65,6 +70,42 @@ Legend: **Full access** = complete module access • **No Access / Hidden** = me
 - **Partner caller**: role is locked to `Partner Agent`; the partner/org picker is preselected to their own organization (no other choice).
 - **ACSL Manager caller**: can create `ACSL Agent` or `Partner Agent`.
 - **Only Super Admin** can create `Partner` users — the Partner option is hidden from the User Group dropdown for every other caller.
+
+## Partner Management scoping (implemented)
+
+- `/partners/profiles` (Partner Management) and `/partners` (Track Performance) are gated by `routeKey` on `ProtectedRoute`, driven by the `PERMISSIONS` route map — `partner` and `partner_agent` are rejected even on direct URL entry (`requireAdminAccess` alone is not enough, since every role has admin-area access).
+- The `manage-organizations` edge function authenticates `super_admin` plus `acsl_agent` / `acsl_agent_manager` (and legacy `super_admin_agent`). Non-super-admin roles are **read-only** (GET only) and every read is filtered server-side to `resolveAssignedOrgIds` (direct + state + subordinate-inherited assignments). Writes (create/update/delete/CSV import) remain super-admin only.
+- `get-stove-stats` applies the same assignment scoping for ACSL roles; a scoped caller with zero assignments gets zeros, never global stats.
+- Both Partner Management screens use one fetch path for every role — the server decides the rows; there is **no client-side filtering of a super-admin dataset** (the old `assignedOrgIds` client filter was removed, since it never worked and isn't security).
+- Row actions on Partner Profiles are permission flags on the shared table: `Details` for all roles with the route, `Credentials` behind `can("credentials")`, `Edit` behind `can("edit-any-partner")` (both super-admin-only), matching the read-only "Assigned partners" access of ACSL roles.
+
+## Agent Management scoping (implemented)
+
+- `/agents` (Performance Report tabs), `/agents/profiles` (Agent Management → ACSL Agents), and `/agents/partner-agents-profiles` (Agent Management → Partner Agents) are gated by `routeKey` on `ProtectedRoute` (`agents`, `agents-profiles`, `partner-agents-profiles`), so roles outside the `PERMISSIONS` route map are rejected even on direct URL entry:
+  - `agents-profiles` (ACSL Agents): `super_admin` + `acsl_agent_manager` only.
+  - `partner-agents-profiles` (Partner Agents): `super_admin`, `acsl_agent_manager`, `acsl_agent`, `partner`. `partner_agent` has no Agent Management access at all.
+- Both profile pages share one fetch path for every role — the `manage-users` edge function; the server decides the rows via `scope.ts`:
+  - `super_admin` → all users; `acsl_agent_manager` → own subordinate ACSL agents (`manager_id`) + agents of assigned partners; `acsl_agent` → agents of assigned partners only (via `resolveAssignedOrgIds`); `partner` → agents of their own organization.
+  - `acsl_agent` callers are **read-only** (GET only) in `manage-users` — writes are rejected in the route handler before dispatch.
+
+## Performance Report scoping (implemented)
+
+`/agents` renders the Performance Report as two tabs on one shared page (`src/app/agents/page.tsx`); the page is gated by `routeKey="agents"`, so `partner_agent`/`agent` are rejected even on direct URL entry.
+
+- **ACSL Agents tab** (`SuperAdminAgentsContent`): shown only when `can("manage-acsl-agents")` (super_admin) or `can("manage-acsl-agents-scoped")` (acsl_agent_manager). Hidden for `acsl_agent` and `partner` per the matrix. The agent list comes from the `manage-users` edge function, which scopes rows server-side (`scope.ts`): super_admin → all, manager → own subordinate ACSL agents + agents of assigned partners. Per-agent performance stats (assigned/collected/in-stock) are derived only from the agents the server returned — there is no separate client-side role filter.
+- **Partners tab** (`PartnersContent`): shared by every role with the `agents` route. The partner list comes from `manage-organizations` and KPI numbers from `get-stove-stats`; both scope server-side: super_admin → all orgs; `acsl_agent` / `acsl_agent_manager` → `resolveAssignedOrgIds` (read-only); `partner` (and legacy `admin`) → **own organization only** (read-only, forced to `profiles.organization_id`; zero rows if none). Writes on `manage-organizations` remain super-admin only regardless of tab.
+- The old fork where a `partner` caller got a mislabeled "ACSL Agents" tab rendering a separate `PartnerAgentsContent` component was removed (the component was deleted; Agent Management → Partner Agents lives at `/agents/partner-agents-profiles` with its own scoping). Every role now renders the same tab components; only tab visibility and server-side row scoping differ.
+
+## Manage Sales scoping (implemented)
+
+All sales list surfaces (`/sales`, cancelled sales, financial reports, Stove Users Data / end-user records, dashboard sales tables) fetch through the **`get-sales-advanced`** edge function, and row scoping is enforced **server-side** in `supabase/functions/get-sales-advanced/build-query.ts` (`applyOrganizationFilters`):
+
+- `super_admin` → all sales; client org filters are optional narrowing.
+- `acsl_agent` / `acsl_agent_manager` → sales of **assigned partners only** (`resolveAssignedOrgIds`: direct + state + manager's subordinate-inherited assignments). Client-supplied org filters are intersected with the assigned scope — they can narrow it, never widen it. Zero assignments → zero rows, never global.
+- `partner` (and legacy `admin`) → locked to `profiles.organization_id`; client org filters cannot escape it. No org on profile → zero rows.
+- `partner_agent` / `agent` → **own sales only**: rows where `created_by = them` **or** `sold_on_behalf_of = them` (covers both self-created sales and sales recorded on their behalf), regardless of any client filter.
+
+Frontend uses **one fetch path for every role** (`UnifiedSalesContent.loadSales` → `salesAdvancedService.getSalesData`). The old fork — a separate service call per role, with the agent's "own sales" scoping done by the *client* passing `createdBy` — was removed; the client no longer participates in scoping.
 
 ## Data scoping
 

@@ -206,6 +206,12 @@ export async function updateUser(
       throw new Error("User not found");
     }
 
+    // A non-super-admin caller's own row is in scope only so read cascades
+    // work — self-service edits go through the Profile page, never here.
+    if (caller.role !== "super_admin" && userId === caller.id) {
+      throw new Error("Unauthorized: You cannot edit your own account from User Management");
+    }
+
     // Non-super-admin callers cannot move users to roles they cannot create,
     // and cannot re-bind users to organizations outside their scope.
     if (caller.role !== "super_admin") {

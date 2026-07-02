@@ -1146,25 +1146,8 @@ export default function PartnersContent() {
   const { toast, toasts, removeToast } = useToast();
   const { can, isSuperAdmin } = usePermissions();
 
-  // Scope: super_admin sees all partners; ACSL agents/managers see only their assignments.
-  const scopedToAssigned = !isSuperAdmin;
-  const [assignedOrgIds, setAssignedOrgIds] = useState(null); // null = not loaded yet
-  const [assignedLoading, setAssignedLoading] = useState(scopedToAssigned);
-  useEffect(() => {
-    if (!scopedToAssigned) { setAssignedOrgIds(null); setAssignedLoading(false); return; }
-    if (!user?.id) return;
-    let cancelled = false;
-    setAssignedLoading(true);
-    superAdminAgentService.getAgentOrganizations(user.id)
-      .then((res) => {
-        if (cancelled) return;
-        const ids = new Set((res?.data || []).map((o) => o.id || o.organization_id).filter(Boolean));
-        setAssignedOrgIds(ids);
-      })
-      .catch(() => { if (!cancelled) setAssignedOrgIds(new Set()); })
-      .finally(() => { if (!cancelled) setAssignedLoading(false); });
-    return () => { cancelled = true; };
-  }, [scopedToAssigned, user?.id]);
+  // Row scoping (all partners vs. assigned partners) is enforced server-side
+  // by manage-organizations / get-stove-stats — one shared fetch path per role.
 
   const ORG_CACHE_KEY = "partners_organizations_cache";
   const ORG_CACHE_TIMESTAMP_KEY = "partners_organizations_cache_timestamp";
@@ -1486,7 +1469,6 @@ export default function PartnersContent() {
   };
 
   const filteredOrgs = organizationsData.filter((o) => {
-    if (scopedToAssigned && assignedOrgIds && !assignedOrgIds.has(o.id)) return false;
     if (filters.assigned_agents === "assigned") return orgAgentsData[o.id] !== undefined && orgAgentsData[o.id].length > 0;
     if (filters.assigned_agents === "unassigned") return orgAgentsData[o.id] !== undefined && orgAgentsData[o.id].length === 0;
     return true;

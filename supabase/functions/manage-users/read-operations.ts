@@ -42,7 +42,7 @@ export async function getUsers(
     // views, not User Management, so keep partner/admin rows out here.
     let query = supabase
       .from("profiles")
-      .select("id, full_name, email, phone, role, status, created_at, last_login, organization_id", {
+      .select("id, full_name, email, phone, role, status, created_at, last_login, organization_id, manager_id", {
         count: "exact",
       });
 
@@ -114,9 +114,27 @@ export async function getUsers(
       (orgs || []).forEach((o: any) => orgMap.set(o.id, o));
     }
 
+    // Batch-fetch supervisor names for ACSL agent rows, so the frontend never
+    // has to infer supervisors from other rows in the (possibly scoped) list.
+    const managerIds = Array.from(
+      new Set((users || []).map((u: any) => u.manager_id).filter(Boolean))
+    );
+    const managerMap = new Map<string, string>();
+    if (managerIds.length > 0) {
+      const { data: managers } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", managerIds);
+      (managers || []).forEach((m: any) => managerMap.set(m.id, m.full_name));
+    }
+
     // Fetch assigned_organizations_count + assigned_states_count for each SAA user
     const usersWithCounts = await Promise.all(
-      (users || []).map(async (user: any) => {
+      (users || []).map(async (u: any) => {
+        const user = {
+          ...u,
+          manager_name: u.manager_id ? managerMap.get(u.manager_id) ?? null : null,
+        };
         if (user.role === "acsl_agent" || user.role === "super_admin_agent") {
           const [{ count: orgCount }, { count: stateCount }] = await Promise.all([
             supabase

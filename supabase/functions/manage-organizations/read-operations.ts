@@ -76,8 +76,20 @@ export async function getOrganization(supabase: any, organizationId: string) {
 export async function getOrganizations(
   supabase: any,
   searchParams: URLSearchParams,
+  allowedOrgIds: string[] | null = null,
 ) {
   console.log("🔍 Getting all organizations with admin users...");
+
+  // Scoped roles with no assignments see an empty (but identically shaped) result
+  if (allowedOrgIds && allowedOrgIds.length === 0) {
+    const limitEmpty = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
+    const offsetEmpty = parseInt(searchParams.get("offset") || "0");
+    return {
+      data: [],
+      pagination: { limit: limitEmpty, offset: offsetEmpty, total: 0, totalPages: 0 },
+      message: "No organizations found",
+    };
+  }
 
   const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
   const offset = parseInt(searchParams.get("offset") || "0");
@@ -110,6 +122,7 @@ export async function getOrganizations(
 
   // Helper to apply shared filters to any query
   const applyFilters = (q: any) => {
+    if (allowedOrgIds) q = q.in("id", allowedOrgIds);
     if (search) q = q.or(`partner_name.ilike.%${search}%,partner_id.ilike.%${search}%`);
     if (status) q = q.eq("status", status);
     if (partnerType) q = q.ilike("partner_type", partnerType);

@@ -49,7 +49,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import PageHeader from "../../components/PageHeader";
-import organizationsService from "../../services/organizationsService";
+import { usePermissions } from "../../hooks/usePermissions";
+import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import PartnerDetailModal from "../../partners/components/PartnerDetailModal";
 import EditPartnerModal from "../../partners/components/EditPartnerModal";
@@ -158,6 +159,7 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const PartnerProfilesContent = () => {
   const { toast, toasts, removeToast } = useToast();
+  const { can } = usePermissions();
   const [loading, setLoading] = useState(false);
   const [partners, setPartners] = useState([]);
   const [filters, setFilters] = useState({ search: "", state: "", agentFilter: "" });
@@ -230,15 +232,43 @@ const PartnerProfilesContent = () => {
 
 
 
+  // Single fetch path for every role: manage-organizations enforces row
+  // scoping server-side (all partners for super_admin, assigned partners
+  // for ACSL agents/managers) and returns an identical shape.
   const loadPartners = async () => {
     setLoading(true);
-    const res = await organizationsService.getAllOrganizations();
-    if (res.success) {
-      setPartners(res.data);
-    } else {
-      toast({ variant: "error", title: "Failed to load partners", description: res.error });
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { Authorization: `Bearer ${session.access_token}` };
+      const limit = 100;
+      let offset = 0;
+      let total = Infinity;
+      const all = [];
+      while (offset < total) {
+        const params = new URLSearchParams({
+          limit: String(limit),
+          offset: String(offset),
+          include_admin_users: "false",
+          sortBy: "partner_name",
+          sortOrder: "asc",
+        });
+        const res = await fetch(`${supabaseFunctionsUrl}/manage-organizations?${params}`, { headers });
+        const result = await res.json();
+        if (!res.ok || result.success === false) {
+          throw new Error(result.error || result.message || "Failed to load partners");
+        }
+        const rows = result.data || [];
+        all.push(...rows);
+        total = result.pagination?.total ?? all.length;
+        offset += limit;
+        if (rows.length === 0) break;
+      }
+      setPartners(all);
+    } catch (err) {
+      toast({ variant: "error", title: "Failed to load partners", description: err.message });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -680,6 +710,7 @@ const PartnerProfilesContent = () => {
                             <TooltipContent>View partner details</TooltipContent>
                           </Tooltip>
 
+                          {can("credentials") && (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button
@@ -697,7 +728,9 @@ const PartnerProfilesContent = () => {
                             </TooltipTrigger>
                             <TooltipContent>View login credentials</TooltipContent>
                           </Tooltip>
+                          )}
 
+                          {can("edit-any-partner") && (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button
@@ -711,6 +744,7 @@ const PartnerProfilesContent = () => {
                             </TooltipTrigger>
                             <TooltipContent>Edit partner</TooltipContent>
                           </Tooltip>
+                          )}
                         </TooltipProvider>
                       </div>
 

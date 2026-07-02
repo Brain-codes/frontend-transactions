@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withCors } from "./cors.ts";
-import { authenticateSuperAdmin } from "./authenticate.ts";
+import { authenticateOrganizationAccess } from "./authenticate.ts";
 import { handleOrganizationRoute } from "./route-handler.ts";
+import { resolveAssignedOrgIds } from "../_shared/resolveAssignedOrgIds.ts";
 
 serve(async (req) => {
   console.log("🚀 Organizations Management API started");
@@ -87,17 +88,36 @@ async function executeMainLogic(req: Request) {
       }
     );
 
-    // Authenticate super admin using user client
-    console.log("🔐 Authenticating super admin...");
-    const { userId, userRole } = await authenticateSuperAdmin(userSupabase);
-    console.log(`✅ Authenticated super admin: ${userId}`);
+    // Authenticate caller using user client
+    console.log("🔐 Authenticating caller...");
+    const { userId, userRole, isSuperAdmin, isOwnOrgReader, organizationId } =
+      await authenticateOrganizationAccess(userSupabase);
+    console.log(`✅ Authenticated ${userRole}: ${userId}`);
+
+    // Non-super-admin roles are read-only. ACSL agents/managers are scoped to
+    // their assigned organizations; partners to their own organization.
+    // Writes remain super-admin only.
+    let allowedOrgIds: string[] | null = null;
+    if (!isSuperAdmin) {
+      if (req.method.toUpperCase() !== "GET") {
+        throw new Error("Unauthorized: Super admin privileges required");
+      }
+      if (isOwnOrgReader) {
+        allowedOrgIds = organizationId ? [organizationId] : [];
+      } else {
+        const resolved = await resolveAssignedOrgIds(serviceSupabase, userId);
+        allowedOrgIds = resolved.assignedOrgIds;
+      }
+      console.log(`🔒 Scoped read access: ${allowedOrgIds.length} allowed orgs`);
+    }
 
     // Handle the organization route - pass both clients
     const result = await handleOrganizationRoute(
       req,
       serviceSupabase,
       userId,
-      userRole
+      userRole,
+      allowedOrgIds
     );
 
     // Prepare response

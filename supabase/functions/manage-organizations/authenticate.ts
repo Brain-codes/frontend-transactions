@@ -1,7 +1,13 @@
-// Authentication module for super admin operations
+// Authentication module for organization management operations.
+// Super admins get full access; ACSL agents/managers get read-only access
+// scoped to their assigned organizations (resolved by the caller); partners
+// get read-only access scoped to their own organization.
 
-export async function authenticateSuperAdmin(supabase: any) {
-  console.log("🔐 Authenticating super admin...");
+const READ_SCOPED_ROLES = ["acsl_agent", "acsl_agent_manager", "super_admin_agent"];
+const OWN_ORG_ROLES = ["partner", "admin"];
+
+export async function authenticateOrganizationAccess(supabase: any) {
+  console.log("🔐 Authenticating organization access...");
 
   // Get user from JWT token
   const { data: userData, error: authError } = await supabase.auth.getUser();
@@ -28,13 +34,14 @@ export async function authenticateSuperAdmin(supabase: any) {
 
   console.log(`👤 User role: ${profile.role}`);
 
-  // Check if user is super admin
-  if (profile.role !== "super_admin") {
-    console.log("❌ Access denied: User is not super admin");
+  const isSuperAdmin = profile.role === "super_admin";
+  const isScopedReader = READ_SCOPED_ROLES.includes(profile.role);
+  const isOwnOrgReader = OWN_ORG_ROLES.includes(profile.role);
+
+  if (!isSuperAdmin && !isScopedReader && !isOwnOrgReader) {
+    console.log("❌ Access denied for role:", profile.role);
     throw new Error("Unauthorized: Super admin privileges required");
   }
-
-  console.log("✅ Super admin authenticated successfully");
 
   return {
     userId: profile.id,
@@ -42,5 +49,7 @@ export async function authenticateSuperAdmin(supabase: any) {
     userName: profile.full_name,
     userEmail: profile.email,
     organizationId: profile.organization_id,
+    isSuperAdmin,
+    isOwnOrgReader,
   };
 }

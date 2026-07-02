@@ -2,6 +2,7 @@
 //
 // - super_admin           → all users
 // - acsl_agent_manager    → ACSL agents reporting to them + users of assigned partners
+// - acsl_agent            → partner agents of assigned partners (read-only)
 // - partner (admin)       → partner agents of their own organization
 // - everyone else         → no access
 //
@@ -18,6 +19,7 @@ export interface CallerContext {
 export type CallerScope =
   | { type: "all" }
   | { type: "manager"; orgIds: string[] }
+  | { type: "acsl_agent"; orgIds: string[] }
   | { type: "partner"; orgIds: string[] };
 
 export const PARTNER_ROLES = ["partner", "admin"];
@@ -27,11 +29,18 @@ export const ACSL_AGENT_ROLES = ["acsl_agent", "super_admin_agent"];
 export const ALLOWED_CALLER_ROLES = [
   "super_admin",
   "acsl_agent_manager",
+  // ACSL agents get read-only access so Agent Management → Partner Agents can
+  // list agents of their assigned partners (RBAC matrix). Writes stay blocked.
+  ...ACSL_AGENT_ROLES,
   ...PARTNER_ROLES,
 ];
 
 export function isManagerRole(role: string): boolean {
   return role === "acsl_agent_manager";
+}
+
+export function isAcslAgentRole(role: string): boolean {
+  return ACSL_AGENT_ROLES.includes(role);
 }
 
 export function isPartnerRole(role: string): boolean {
@@ -47,6 +56,10 @@ export async function resolveCallerScope(
     const { assignedOrgIds } = await resolveAssignedOrgIds(supabase, caller.id);
     return { type: "manager", orgIds: assignedOrgIds };
   }
+  if (isAcslAgentRole(caller.role)) {
+    const { assignedOrgIds } = await resolveAssignedOrgIds(supabase, caller.id);
+    return { type: "acsl_agent", orgIds: assignedOrgIds };
+  }
   if (isPartnerRole(caller.role)) {
     return {
       type: "partner",
@@ -60,7 +73,7 @@ export async function resolveCallerScope(
 export function applyScopeToListQuery(query: any, scope: CallerScope, callerId: string) {
   if (scope.type === "all") return query;
 
-  if (scope.type === "partner") {
+  if (scope.type === "partner" || scope.type === "acsl_agent") {
     if (scope.orgIds.length === 0) return query.eq("role", "__none__");
     return query
       .in("role", ORG_USER_ROLES)
@@ -88,7 +101,7 @@ export function userInScope(
   callerId: string
 ): boolean {
   if (scope.type === "all") return true;
-  if (scope.type === "partner") {
+  if (scope.type === "partner" || scope.type === "acsl_agent") {
     return (
       ORG_USER_ROLES.includes(profile.role) &&
       !!profile.organization_id &&

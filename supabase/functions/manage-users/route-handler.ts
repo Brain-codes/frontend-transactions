@@ -21,6 +21,11 @@ export async function handleUserRoute(
   // Route to appropriate CRUD operation
   const method = req.method.toUpperCase();
 
+  // ACSL agents are read-only callers (Agent Management → Partner Agents list).
+  if (scope.type === "acsl_agent" && method !== "GET") {
+    throw new Error("Unauthorized: Access denied for this role.");
+  }
+
   switch (method) {
     case "GET":
       if (userId && userId !== "manage-users") {

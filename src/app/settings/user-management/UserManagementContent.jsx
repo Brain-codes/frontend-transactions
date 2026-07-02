@@ -77,6 +77,7 @@ import { downloadTableAsCSV } from "@/utils/csvExportUtils";
 import AssignOrganizationsModal from "../../super-admin-agents/components/AssignOrganizationsModal";
 import organizationsService from "../../services/organizationsService";
 import superAdminAgentService from "../../services/superAdminAgentService";
+import profileService from "../../services/profileService";
 
 
 // Nigerian states (36 + FCT)
@@ -178,7 +179,13 @@ const UserManagementPage = () => {
     : isPartner
     ? ["partner_agent"]
     : [];
-  const callerOrgId = user?.user_metadata?.organization_id || user?.app_metadata?.organization_id || null;
+  // organization_id lives on the profiles row (cached by profileService), not
+  // in the auth token metadata — read it from there first.
+  const callerOrgId =
+    profileService.getOrganizationId() ||
+    user?.user_metadata?.organization_id ||
+    user?.app_metadata?.organization_id ||
+    null;
   const callerQueryRoles = isSuperAdmin
     ? QUERY_ROLES_BY_CALLER.super_admin
     : isAcslAgentManager
@@ -845,6 +852,15 @@ const UserManagementPage = () => {
     // expands their assignment beyond the partners explicitly selected.
     setSelectedPartnerIds((prev) => new Set(Array.from(prev).filter((id) => inStateOrgIds.has(id))));
   }, [selectedManagerIds, selectedStates, acslManagers, allOrgs, userForm.role]);
+
+  // Partner callers open the create form with the role already preset (no role
+  // change event fires), so load the org catalog for the locked partner chip.
+  useEffect(() => {
+    if (showCreateModal && needsPartnerAssignment(userForm.role) && allOrgs.length === 0) {
+      ensureOrganizationsLoaded();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCreateModal, userForm.role]);
 
 
 
@@ -2077,6 +2093,9 @@ const UserManagementPage = () => {
               {needsPartnerAssignment(userForm.role) && (() => {
                 const isSingleSelect = userForm.role === "partner" || isOrganizationBoundAgentRole(userForm.role);
                 const isPartnerAgentRole = userForm.role === "partner_agent";
+                // Partner callers can only create agents under their own org —
+                // the picker is preselected and locked (no add/remove/search).
+                const lockedToCallerOrg = isPartner;
                 const selectedPartnerOrgs = allOrgs.filter((o) => selectedPartnerIds.has(o.id));
                 const query = partnerSearch.trim().toLowerCase();
                 // For partner_agent: only show results when the user has typed something.
@@ -2100,7 +2119,9 @@ const UserManagementPage = () => {
                   <div className="space-y-2 border border-[#eef3c4] rounded-md p-3 bg-[#f9fbed]">
                     <Label className="text-sm font-semibold text-[#4a5d0f]">
                       {isPartnerAgentRole ? "Assign Partner" : "Assign Partners"}{" "}
-                      <span className="text-gray-400 font-normal text-xs">(optional)</span>
+                      <span className="text-gray-400 font-normal text-xs">
+                        {lockedToCallerOrg ? "(your organization)" : "(optional)"}
+                      </span>
                     </Label>
 
                     {/* Selected partner chip(s) — always visible when something is selected */}
@@ -2113,27 +2134,30 @@ const UserManagementPage = () => {
                           >
                             <span className="truncate max-w-[220px]">{org.partner_name}</span>
                             {org.state && <span className="text-[#4a5d0f]/60">· {org.state}</span>}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedPartnerIds((prev) => {
-                                  const next = new Set(prev);
-                                  next.delete(org.id);
-                                  return next;
-                                });
-                              }}
-                              className="ml-0.5 text-[#4a5d0f]/70 hover:text-[#4a5d0f]"
-                              aria-label="Remove partner"
-                            >
-                              ×
-                            </button>
+                            {!lockedToCallerOrg && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedPartnerIds((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(org.id);
+                                    return next;
+                                  });
+                                }}
+                                className="ml-0.5 text-[#4a5d0f]/70 hover:text-[#4a5d0f]"
+                                aria-label="Remove partner"
+                              >
+                                ×
+                              </button>
+                            )}
                           </span>
                         ))}
                       </div>
                     )}
 
-                    {/* Hide search for partner_agent once a partner is selected */}
-                    {(!isPartnerAgentRole || selectedPartnerOrgs.length === 0) && (
+                    {/* Hide search for partner_agent once a partner is selected,
+                        and entirely for partner callers (org is locked) */}
+                    {!lockedToCallerOrg && (!isPartnerAgentRole || selectedPartnerOrgs.length === 0) && (
                       <>
                         <div className="relative">
                           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />

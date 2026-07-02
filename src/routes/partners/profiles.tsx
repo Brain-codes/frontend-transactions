@@ -8,7 +8,7 @@ const PartnerProfilesContent = lazy(
 
 function PartnerProfilesPage() {
   return (
-    <ProtectedRoute requireAdminAccess>
+    <ProtectedRoute requireAdminAccess routeKey="partners-profiles">
       <Suspense fallback={<div className="p-6 text-gray-500">Loading...</div>}>
         <PartnerProfilesContent />
       </Suspense>
