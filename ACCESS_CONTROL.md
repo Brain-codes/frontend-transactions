@@ -63,7 +63,8 @@ Legend: **Full access** = complete module access • **No Access / Hidden** = me
 
 - Role dropdown options are filtered based on the caller's own role.
 - **Partner caller**: role is locked to `Partner Agent`; the partner/org picker is preselected to their own organization (no other choice).
-- **ACSL Manager caller**: can create `ACSL Agent`, `Partner`, or `Partner Agent`.
+- **ACSL Manager caller**: can create `ACSL Agent` or `Partner Agent`.
+- **Only Super Admin** can create `Partner` users — the Partner option is hidden from the User Group dropdown for every other caller.
 
 ## Data scoping
 
