@@ -950,12 +950,11 @@ const SystemStovesModal = ({ isOpen, onClose, mode }) => {
             const slice = userIds.slice(i, i + UBATCH);
             const { data: profs, error: pErr } = await supabase
               .from("profiles")
-              .select("id,full_name,first_name,last_name,role")
+              .select("id,full_name,role")
               .in("id", slice);
             if (pErr) throw pErr;
             (profs || []).forEach((p) => {
-              const name = p.full_name || [p.first_name, p.last_name].filter(Boolean).join(" ").trim() || "—";
-              sellerMap[p.id] = { name, role: p.role || "" };
+              sellerMap[p.id] = { name: p.full_name || "—", role: p.role || "" };
             });
           }
         }
