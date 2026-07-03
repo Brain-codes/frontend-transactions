@@ -1,0 +1,8 @@
+# Keep our de-Lovabled versions of these files on merges from a Lovable upstream.
+# Requires the local "ours" merge driver to be registered once:
+#   git config merge.ours.driver true
+# (scripts/setup-merge-drivers.sh does this for you)
+vite.config.ts merge=ours
+bunfig.toml merge=ours
+.env.example merge=ours
+.gitignore merge=ours

@@ -9,7 +9,7 @@ lerna-debug.log*
 
 node_modules
 
-# Env files (never commit secrets — they sync to Lovable)
+# Env files (never commit secrets)
 .env
 .env.*
 !.env.example
@@ -20,6 +20,7 @@ dist-ssr
 .vinxi
 .tanstack/**
 .nitro
+.vercel
 *.local
 .next
 

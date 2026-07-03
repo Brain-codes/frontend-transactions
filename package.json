@@ -9,6 +9,8 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
+    "check:upstream-clean": "bash scripts/check-upstream-clean.sh",
+    "setup:merge-drivers": "bash scripts/setup-merge-drivers.sh",
     "format": "prettier --write ."
   },
   "dependencies": {
@@ -82,7 +84,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@lovable.dev/vite-tanstack-config": "2.6.4",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
