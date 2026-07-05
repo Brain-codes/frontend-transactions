@@ -25,7 +25,7 @@ const FALLBACK = {
   version: "1.0.0",
   release_notes: "Initial release of the Atmosfair Sales Monitoring App.",
   base_url: "",
-  apk_path: "/downloads/sales-monitoring-app.apk",
+  apk_path: "/downloads/sales-monitoring-app-v1-0-7.apk",
   is_force_update: false,
   size: "~45 MB",
   requires: "Android 8.0+",
@@ -111,7 +111,7 @@ export default function SalesMonitoringAppPage() {
   const handleDownload = () => {
     const link = document.createElement("a");
     link.href = downloadUrl;
-    link.download = "Atmosfair-Sales-Monitoring-App.apk";
+    link.download = "Atmosfair-sales-monitoring-app-v1-0-7.apk";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

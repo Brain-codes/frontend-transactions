@@ -137,8 +137,8 @@ const TopNavigation = ({
             className="hidden sm:inline-flex items-center gap-2 text-gray-700 hover:bg-gray-50 shadow-none"
           >
             <a
-              href="/downloads/sales-monitoring-app.apk"
-              download="Atmosfair-Sales-Monitoring-App.apk"
+              href="/downloads/sales-monitoring-app-v1-0-7.apk"
+              download="Atmosfair-sales-monitoring-app-v1-0-7.apk"
             >
               <Smartphone className="h-4 w-4" />
               <span>Sales Monitoring App</span>
