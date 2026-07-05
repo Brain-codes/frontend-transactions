@@ -3,7 +3,7 @@ import StoveManagementContent from "./components/StoveManagementContent";
 
 export default function StoveManagementPage() {
   return (
-    <ProtectedRoute requireAdminAccess>
+    <ProtectedRoute requireAdminAccess routeKey="stove-management">
       <StoveManagementContent />
     </ProtectedRoute>
   );

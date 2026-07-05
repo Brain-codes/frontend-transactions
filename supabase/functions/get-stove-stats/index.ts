@@ -3,6 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { resolveAssignedOrgIds } from "../_shared/resolveAssignedOrgIds.ts";
 
 const ACSL_SCOPED_ROLES = ["acsl_agent", "acsl_agent_manager", "super_admin_agent"];
+// Partner-org-scoped roles: locked to their own organization's stove ledger.
+const ORG_SCOPED_ROLES = ["admin", "partner", "partner_agent", "agent", "agent_user"];
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -50,8 +52,7 @@ serve(async (req) => {
     if (
       !profile ||
       (profile.role !== "super_admin" &&
-        profile.role !== "admin" &&
-        profile.role !== "partner" &&
+        !ORG_SCOPED_ROLES.includes(profile.role) &&
         !ACSL_SCOPED_ROLES.includes(profile.role))
     ) {
       throw new Error("Insufficient permissions");
@@ -70,13 +71,8 @@ serve(async (req) => {
     const search      = url.searchParams.get("search") || "";
     const stateFilter = url.searchParams.get("state") || "";
 
-    // For admin users, force filter to their organization only
-    if (profile.role === "admin" && profile.organization_id) {
-      organizationIds = [profile.organization_id];
-    }
-
-    // For partner users, force filter to their organization only
-    if (profile.role === "partner" && profile.organization_id) {
+    // Partner / Partner Agent / Agent: force filter to their organization only
+    if (ORG_SCOPED_ROLES.includes(profile.role) && profile.organization_id) {
       organizationIds = [profile.organization_id];
     }
 

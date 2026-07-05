@@ -74,7 +74,7 @@ serve(async (req) => {
     console.log("🏢 User organization:", userProfile.organization_id);
 
     // Check if user has permission
-    if (!["partner", "admin", "super_admin", "acsl_agent", "acsl_agent_manager", "super_admin_agent"].includes(userProfile.role)) {
+    if (!["partner", "admin", "super_admin", "acsl_agent", "acsl_agent_manager", "super_admin_agent", "partner_agent", "agent", "agent_user"].includes(userProfile.role)) {
       console.log("❌ Insufficient permissions");
       throw new Error(
         "Unauthorized: Access denied. Admin or Super Admin role required."

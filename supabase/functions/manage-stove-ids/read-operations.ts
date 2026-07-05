@@ -1,5 +1,11 @@
 // Read operations for stove ID management
 
+// Roles scoped to a single organization (their own org's stoves).
+// Partner Agent / Agent see their partner organization's stove ledger ("Assigned stoves").
+const ORG_SCOPED_ROLES = ["partner", "admin", "partner_agent", "agent", "agent_user"];
+// Roles scoped to a set of assigned partner orgs (resolveAssignedOrgIds).
+const ACSL_SCOPED_ROLES = ["acsl_agent", "acsl_agent_manager", "super_admin_agent"];
+
 export async function getStoveIds(
   supabase: any,
   userRole: string,
@@ -65,13 +71,14 @@ export async function getStoveIds(
   );
 
   // Apply role-based filtering
-  if ((userRole === "partner" || userRole === "admin") && organizationId) {
-    console.log(`🔒 Partner user - filtering by organization: ${organizationId}`);
+  if (ORG_SCOPED_ROLES.includes(userRole) && organizationId) {
+    // Partner + Partner Agent / Agent: scope to their own organization's stoves.
+    console.log(`🔒 Org-scoped user (${userRole}) - filtering by organization: ${organizationId}`);
     query = query.eq("organization_id", organizationId);
   } else if (userRole === "super_admin") {
     console.log("🔓 Super admin - accessing all stove IDs");
-  } else if (userRole === "acsl_agent" || userRole === "super_admin_agent") {
-    // SAA: scope to their assigned orgs; intersect with client-provided org filter
+  } else if (ACSL_SCOPED_ROLES.includes(userRole)) {
+    // ACSL agent / manager: scope to their assigned orgs; intersect with client-provided org filter
     const effectiveOrgIds =
       allowedOrgIds && allowedOrgIds.length > 0
         ? organizationIds.length > 0
@@ -84,7 +91,7 @@ export async function getStoveIds(
         pagination: { page, page_size: pageSize, total_count: 0, total_pages: 0 },
       };
     }
-    console.log(`🔒 SAA - filtering by assigned orgs: ${effectiveOrgIds.join(",")}`);
+    console.log(`🔒 ACSL - filtering by assigned orgs: ${effectiveOrgIds.join(",")}`);
     query = query.in("organization_id", effectiveOrgIds);
   } else {
     throw new Error("Unauthorized: Invalid role or missing organization");
@@ -248,13 +255,13 @@ export async function getGroupedBySalesReference(
   `).eq("is_archived", false);
 
   // Apply role-based filtering
-  if ((userRole === "partner" || userRole === "admin") && organizationId) {
+  if (ORG_SCOPED_ROLES.includes(userRole) && organizationId) {
     query = query.eq("organization_id", organizationId);
   } else if (userRole === "super_admin") {
     if (organizationIds.length > 0) {
       query = query.in("organization_id", organizationIds);
     }
-  } else if (userRole === "acsl_agent" || userRole === "super_admin_agent") {
+  } else if (ACSL_SCOPED_ROLES.includes(userRole)) {
     const effectiveOrgIds =
       allowedOrgIds && allowedOrgIds.length > 0
         ? organizationIds.length > 0
@@ -384,13 +391,13 @@ export async function getStoveIdById(
   }
 
   // Check authorization
-  if ((userRole === "partner" || userRole === "admin") && data.organization_id !== organizationId) {
+  if (ORG_SCOPED_ROLES.includes(userRole) && data.organization_id !== organizationId) {
     throw new Error(
       "Unauthorized: You can only view stove IDs from your organization"
     );
   }
   if (
-    (userRole === "acsl_agent" || userRole === "super_admin_agent") &&
+    ACSL_SCOPED_ROLES.includes(userRole) &&
     allowedOrgIds &&
     !allowedOrgIds.includes(data.organization_id)
   ) {
