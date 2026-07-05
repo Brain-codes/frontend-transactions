@@ -40,8 +40,19 @@ const SimpleTooltip = ({ children, text }) => {
 };
 
 export default function StoveManagementContent() {
-  const { supabase, user, isSuperAdmin, isAdmin, isAcslAgent, getStoredProfile } = useAuth();
+  const {
+    supabase, user, isSuperAdmin, isAdmin, isAcslAgent,
+    isAcslAgentManager, isPartnerAgent, isAgent, getStoredProfile,
+  } = useAuth();
   const { can } = usePermissions();
+
+  // Track Stoves scoping is expressed as two shared behaviours, not per-role forks:
+  //  • ACSL-scoped (ACSL Agent + Manager): "assigned partners" dropdown, server resolves
+  //    the assigned/subordinate-inherited org set via resolveAssignedOrgIds.
+  //  • Org-scoped (Partner + Partner Agent + Agent): locked to their own organization's
+  //    stove ledger ("Assigned stoves"); no org picker.
+  const isAcslScoped = isAcslAgent || isAcslAgentManager;
+  const isOrgScoped = isAdmin || isPartnerAgent || isAgent;
   const { toast, toasts, removeToast } = useToast();
 
   const userProfile = getStoredProfile();
@@ -76,7 +87,7 @@ export default function StoveManagementContent() {
 
   // Super admin / partner: grouped org search
   const [organizations, setOrganizations] = useState([]);
-  const [selectedOrgIds, setSelectedOrgIds] = useState(isAdmin && !isSuperAdmin && adminOrgId ? [adminOrgId] : []);
+  const [selectedOrgIds, setSelectedOrgIds] = useState(isOrgScoped && !isSuperAdmin && adminOrgId ? [adminOrgId] : []);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [orgSearch, setOrgSearch] = useState("");
   const [openOrgPopover, setOpenOrgPopover] = useState(false);
@@ -115,17 +126,17 @@ export default function StoveManagementContent() {
 
   // ── Load assigned orgs for ACSL agent ─────────────────────────────────────
   useEffect(() => {
-    if (!isAcslAgent || !user?.id) return;
+    if (!isAcslScoped || !user?.id) return;
     superAdminAgentService.getAgentOrganizations(user.id).then((r) => {
       const orgs = r.data || [];
       setAssignedOrgs(orgs);
       setAssignedOrgIds(orgs.map((o) => o.id));
     }).catch(() => {});
-  }, [isAcslAgent, user?.id]);
+  }, [isAcslScoped, user?.id]);
 
   // ── Fetch all orgs (super admin / partner) ────────────────────────────────
   const fetchOrganizations = async (searchTerm = "") => {
-    if (isAdmin && !isSuperAdmin) return;
+    if (isOrgScoped && !isSuperAdmin) return;
     setLoadingOrgs(true);
     try {
       const cachedData = getCachedOrganizations();
@@ -238,30 +249,40 @@ export default function StoveManagementContent() {
 
   // Helper: call fetchStoveIds with current component state
   const fetchStoveIdsCurrent = (page = 1) =>
-    fetchStoveIds(page, pagination.page_size, filters, selectedOrgIds, showArchived, sortBy, sortDir, isAcslAgent, acslOrgFilter, assignedOrgIds);
+    fetchStoveIds(page, pagination.page_size, filters, selectedOrgIds, showArchived, sortBy, sortDir, isAcslScoped, acslOrgFilter, assignedOrgIds);
 
   // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (isAcslAgent) return; // ACSL uses the assignedOrgIds effect below
+    if (isAcslScoped) {
+      // ACSL Agent / Manager: fetch immediately with an empty client org list — the
+      // server resolves the full assigned/subordinate-inherited scope via
+      // resolveAssignedOrgIds. This must not wait on assignedOrgIds (the "All Partners"
+      // dropdown data), which can legitimately be empty for a manager whose access is
+      // inherited from subordinate agents. The [assignedOrgIds] effect below re-narrows
+      // once that dropdown data arrives.
+      fetchStoveIds(1, pagination.page_size, filters, [], false, sortBy, sortDir, true, "all", []);
+      fetchStats([]);
+      return;
+    }
 
     const cached = getCachedOrganizations();
     if (cached?.length > 0) setOrganizations(cached);
     else fetchOrganizations();
 
-    fetchStats(isAdmin && !isSuperAdmin && adminOrgId ? [adminOrgId] : []);
+    fetchStats(isOrgScoped && !isSuperAdmin && adminOrgId ? [adminOrgId] : []);
     fetchStoveIds(1, 10, filters, selectedOrgIds, showArchived, sortBy, sortDir, false, "all", []);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── ACSL: fire once assigned orgs are loaded ──────────────────────────────
+  // ── ACSL: re-narrow once assigned orgs (dropdown data) are loaded ──────────
   useEffect(() => {
-    if (!isAcslAgent || assignedOrgIds.length === 0) return;
+    if (!isAcslScoped || assignedOrgIds.length === 0) return;
     fetchStoveIds(1, pagination.page_size, filters, selectedOrgIds, false, sortBy, sortDir, true, acslOrgFilter, assignedOrgIds);
     fetchStats(assignedOrgIds);
   }, [assignedOrgIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── ACSL: re-fetch when their filters change ──────────────────────────────
   useEffect(() => {
-    if (!isAcslAgent || assignedOrgIds.length === 0) return;
+    if (!isAcslScoped) return;
     fetchStoveIds(1, pagination.page_size, filters, selectedOrgIds, false, sortBy, sortDir, true, acslOrgFilter, assignedOrgIds);
   }, [acslOrgFilter, filters.stove_id, filters.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -269,7 +290,7 @@ export default function StoveManagementContent() {
   const handleSelectOrganization = (orgIds) => {
     setSelectedOrgIds(orgIds);
     fetchStats(orgIds);
-    fetchStoveIds(1, pagination.page_size, filters, orgIds, showArchived, sortBy, sortDir, isAcslAgent, acslOrgFilter, assignedOrgIds);
+    fetchStoveIds(1, pagination.page_size, filters, orgIds, showArchived, sortBy, sortDir, isAcslScoped, acslOrgFilter, assignedOrgIds);
   };
 
   const getSelectedOrgName = () => {
@@ -284,21 +305,21 @@ export default function StoveManagementContent() {
   };
 
   const handlePageChange = (newPage) =>
-    fetchStoveIds(newPage, pagination.page_size, filters, selectedOrgIds, showArchived, sortBy, sortDir, isAcslAgent, acslOrgFilter, assignedOrgIds);
+    fetchStoveIds(newPage, pagination.page_size, filters, selectedOrgIds, showArchived, sortBy, sortDir, isAcslScoped, acslOrgFilter, assignedOrgIds);
   const handlePageSizeChange = (newSize) => {
     const size = parseInt(newSize);
     setPagination((prev) => ({ ...prev, page_size: size }));
-    fetchStoveIds(1, size, filters, selectedOrgIds, showArchived, sortBy, sortDir, isAcslAgent, acslOrgFilter, assignedOrgIds);
+    fetchStoveIds(1, size, filters, selectedOrgIds, showArchived, sortBy, sortDir, isAcslScoped, acslOrgFilter, assignedOrgIds);
   };
   const handleFilterChange = (field, value) => {
     const newFilters = { ...filters, [field]: value };
     setFilters(newFilters);
-    if (!isAcslAgent) fetchStoveIds(1, pagination.page_size, newFilters, selectedOrgIds, showArchived, sortBy, sortDir, false, acslOrgFilter, assignedOrgIds);
+    if (!isAcslScoped) fetchStoveIds(1, pagination.page_size, newFilters, selectedOrgIds, showArchived, sortBy, sortDir, false, acslOrgFilter, assignedOrgIds);
   };
   const handleClearFilters = () => {
     const cleared = { stove_id: "", status: "", branch: "", state: "", date_from: "", date_to: "" };
     setFilters(cleared);
-    if (isAcslAgent) {
+    if (isAcslScoped) {
       setAcslOrgFilter("all");
     } else {
       if (isSuperAdmin) { handleSelectOrganization([]); setOrgSearch(""); const c = getCachedOrganizations(); if (c?.length) setOrganizations(c); }
@@ -307,8 +328,8 @@ export default function StoveManagementContent() {
   };
 
   const hasActiveFilters = Object.values(filters).some((v) => v !== "") ||
-    (!isAcslAgent && isSuperAdmin && selectedOrgIds.length > 0) ||
-    (isAcslAgent && acslOrgFilter !== "all") ||
+    (!isAcslScoped && isSuperAdmin && selectedOrgIds.length > 0) ||
+    (isAcslScoped && acslOrgFilter !== "all") ||
     showArchived;
 
   const handleViewStove = async (stove) => {
@@ -356,7 +377,7 @@ export default function StoveManagementContent() {
       setShowArchiveModal(false);
       setStoveToArchive(null);
       setArchiveNote("");
-      fetchStoveIds(pagination.page, pagination.page_size, filters, selectedOrgIds, showArchived, sortBy, sortDir, isAcslAgent, acslOrgFilter, assignedOrgIds);
+      fetchStoveIds(pagination.page, pagination.page_size, filters, selectedOrgIds, showArchived, sortBy, sortDir, isAcslScoped, acslOrgFilter, assignedOrgIds);
       fetchStats(selectedOrgIds);
     } catch (err) {
       toast({ variant: "error", title: err.message });
@@ -367,12 +388,12 @@ export default function StoveManagementContent() {
 
   const handleSortByChange = (val) => {
     setSortBy(val);
-    fetchStoveIds(1, pagination.page_size, filters, selectedOrgIds, showArchived, val, sortDir, isAcslAgent, acslOrgFilter, assignedOrgIds);
+    fetchStoveIds(1, pagination.page_size, filters, selectedOrgIds, showArchived, val, sortDir, isAcslScoped, acslOrgFilter, assignedOrgIds);
   };
   const toggleSortDir = () => {
     const newDir = sortDir === "asc" ? "desc" : "asc";
     setSortDir(newDir);
-    fetchStoveIds(1, pagination.page_size, filters, selectedOrgIds, showArchived, sortBy, newDir, isAcslAgent, acslOrgFilter, assignedOrgIds);
+    fetchStoveIds(1, pagination.page_size, filters, selectedOrgIds, showArchived, sortBy, newDir, isAcslScoped, acslOrgFilter, assignedOrgIds);
   };
 
   const formatDate = (dateString) => {
@@ -413,7 +434,7 @@ export default function StoveManagementContent() {
   };
 
   // Table column count for colspan
-  const colSpan = isSuperAdmin ? 9 : isAcslAgent ? 6 : 7;
+  const colSpan = isSuperAdmin ? 9 : isAcslScoped ? 6 : 7;
 
   return (
     <DashboardLayout currentRoute="stove-management" title="Track Stoves">
@@ -481,7 +502,7 @@ export default function StoveManagementContent() {
             )}
 
             {/* ACSL agent: assigned partner dropdown */}
-            {isAcslAgent && (
+            {isAcslScoped && (
               <Select value={acslOrgFilter} onValueChange={setAcslOrgFilter}>
                 <SelectTrigger className="bg-white h-9 text-sm w-[180px]"><SelectValue placeholder="All Partners" /></SelectTrigger>
                 <SelectContent>
@@ -512,7 +533,7 @@ export default function StoveManagementContent() {
             </Select>
 
             {/* Super admin / partner: state filter */}
-            {!isAcslAgent && (
+            {!isAcslScoped && (
               <Select value={filters.state || "all"} onValueChange={(v) => handleFilterChange("state", v === "all" ? "" : v)}>
                 <SelectTrigger className="bg-white h-9 text-sm w-[150px]"><SelectValue placeholder="All States" /></SelectTrigger>
                 <SelectContent>
@@ -535,7 +556,7 @@ export default function StoveManagementContent() {
             )}
 
             {/* Super admin / partner: date range */}
-            {!isAcslAgent && (
+            {!isAcslScoped && (
               <>
                 <Input type="date" value={filters.date_from} onChange={(e) => handleFilterChange("date_from", e.target.value)} className="bg-white h-9 text-sm w-[145px]" />
                 <Input type="date" value={filters.date_to} onChange={(e) => handleFilterChange("date_to", e.target.value)} className="bg-white h-9 text-sm w-[145px]" />
@@ -618,7 +639,7 @@ export default function StoveManagementContent() {
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold text-gray-600">Total: <span className="text-[#4a5d0f]">{pagination.total_count}</span></p>
               {/* Super admin / partner: CSV download */}
-              {!isAcslAgent && (
+              {!isAcslScoped && (
                 <Button
                   size="sm" variant="outline" className="h-7 px-2 text-sm flex items-center gap-1"
                   onClick={() => {
@@ -653,7 +674,7 @@ export default function StoveManagementContent() {
                 <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Stove ID</TableHead>
                   {/* Sales Reference: super admin / partner */}
-                  {!isAcslAgent && <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Sales Reference</TableHead>}
+                  {!isAcslScoped && <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Sales Reference</TableHead>}
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Status</TableHead>
                   {/* Partner/Branch/State columns: super admin sees all orgs */}
                   {isSuperAdmin && (
@@ -664,7 +685,7 @@ export default function StoveManagementContent() {
                     </>
                   )}
                   {/* ACSL agent: partner column (they have multiple assigned partners) */}
-                  {isAcslAgent && <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Partner</TableHead>}
+                  {isAcslScoped && <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Partner</TableHead>}
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Date Sold</TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Sold To</TableHead>
                   <TableHead className="text-center text-white font-semibold text-sm whitespace-nowrap">Action</TableHead>
@@ -697,7 +718,7 @@ export default function StoveManagementContent() {
                       return (
                         <TableRow key={stove.id || stove.stove_id} className={`${idx % 2 === 0 ? "bg-white" : "bg-[#f4f7e3]"} hover:bg-[#eef3c4]`}>
                           <TableCell className="font-mono font-medium text-gray-900 text-sm">{stove.stove_id}</TableCell>
-                          {!isAcslAgent && <TableCell className="text-sm">{stove.sales_reference || "—"}</TableCell>}
+                          {!isAcslScoped && <TableCell className="text-sm">{stove.sales_reference || "—"}</TableCell>}
                           <TableCell>
                             <Badge className={stove.status === "sold"
                               ? "bg-blue-100 text-blue-800 border-blue-200 text-sm"
@@ -712,14 +733,14 @@ export default function StoveManagementContent() {
                               <TableCell className="text-sm text-gray-600">{stove.location || "N/A"}</TableCell>
                             </>
                           )}
-                          {isAcslAgent && <TableCell className="text-sm text-gray-600">{stove.organization_name || "—"}</TableCell>}
+                          {isAcslScoped && <TableCell className="text-sm text-gray-600">{stove.organization_name || "—"}</TableCell>}
                           <TableCell className="text-sm text-gray-600">
                             {stove.status === "sold" ? formatDate(stove.sale_date || stove.date_sold) : "—"}
                           </TableCell>
                           <TableCell className="text-sm text-gray-600">{stove.sold_to || "—"}</TableCell>
                           <TableCell className="text-center">
                             <div className="flex items-center justify-center gap-2">
-                              {stove.status === "sold" && !isAcslAgent && (
+                              {stove.status === "sold" && !isAcslScoped && (
                                 <Button
                                   size="sm"
                                   onClick={() => handleViewStove(stove)}
@@ -777,7 +798,7 @@ export default function StoveManagementContent() {
       </div>
 
       {/* Sale detail modal — super admin / partner only */}
-      {!isAcslAgent && (
+      {!isAcslScoped && (
         <AdminSalesDetailModal
           open={showSaleModal}
           onClose={() => { setShowSaleModal(false); setSelectedSale(null); }}
