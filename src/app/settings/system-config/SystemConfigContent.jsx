@@ -328,7 +328,7 @@ const SystemConfigPage = () => {
   // ── Landing: two-card nav (no sub-panel selected) ─────────────────
   if (!activeSubPanel) {
     return (
-      <ProtectedRoute requireSuperAdmin={true}>
+      <ProtectedRoute requireSuperAdmin={true} routeKey="settings-system-config">
         <DashboardLayout currentRoute="settings" title="Settings">
           <div className="max-w-4xl mx-auto p-6 space-y-6">
             <PageHeader icon={SlidersHorizontal} title="Settings" />
@@ -377,7 +377,7 @@ const SystemConfigPage = () => {
   // ── Email sub-panel ─────────────────────────────────────────────
   if (activeSubPanel === "email-settings") {
     return (
-      <ProtectedRoute requireSuperAdmin={true}>
+      <ProtectedRoute requireSuperAdmin={true} routeKey="settings-system-config">
         <DashboardLayout currentRoute="settings" title="Email Settings">
           <div className="max-w-4xl mx-auto p-6">
             <EmailNotificationSettings onBack={() => setActiveSubPanel(null)} />
@@ -389,7 +389,7 @@ const SystemConfigPage = () => {
 
   // ── System Config sub-panel ─────────────────────────────────────
   return (
-    <ProtectedRoute requireSuperAdmin={true}>
+    <ProtectedRoute requireSuperAdmin={true} routeKey="settings-system-config">
       <DashboardLayout currentRoute="settings" title="System Configuration">
         <div className="max-w-4xl mx-auto p-6 space-y-6">
           <div className="flex items-center gap-3">

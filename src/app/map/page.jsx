@@ -356,7 +356,7 @@ export default function HeatmapPage() {
   ].sort();
 
   return (
-    <ProtectedRoute requireSuperAdmin={true}>
+    <ProtectedRoute requireSuperAdmin={true} routeKey="map">
       <DashboardLayout currentRoute="map" title="Sales Heatmap Analytics">
         <div className="p-6 space-y-6">
           <PageHeader

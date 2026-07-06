@@ -433,7 +433,7 @@ const CredentialsPage = () => {
   const hasPartnerFilters = partnerSearch !== "" || partnerTypeFilter !== "all";
 
   return (
-    <ProtectedRoute requireSuperAdmin={true}>
+    <ProtectedRoute requireSuperAdmin={true} routeKey="settings-credentials">
       <DashboardLayout currentRoute="settings" title="Credentials Management">
         <div className="p-6 space-y-5">
           <PageHeader

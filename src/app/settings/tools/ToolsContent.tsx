@@ -883,7 +883,7 @@ const ToolsContentInner = () => {
 };
 
 const ToolsContent = () => (
-  <ProtectedRoute requireSuperAdmin>
+  <ProtectedRoute requireSuperAdmin routeKey="settings-tools">
     <DashboardLayout currentRoute="settings-tools" title="Tools">
       <ToolsContentInner />
     </DashboardLayout>
