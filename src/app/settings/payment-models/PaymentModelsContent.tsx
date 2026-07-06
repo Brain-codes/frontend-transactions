@@ -333,7 +333,7 @@ export default function PaymentModelsPage() {
     new Date(dateStr).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
   return (
-    <ProtectedRoute requireSuperAdmin>
+    <ProtectedRoute requireSuperAdmin routeKey="settings-payment-models">
       <DashboardLayout currentRoute="settings" title="Payment Models">
         <div className="p-6 space-y-5">
           <PageHeader
