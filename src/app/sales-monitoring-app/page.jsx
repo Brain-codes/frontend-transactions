@@ -12,7 +12,6 @@ import {
   Lock,
   Upload,
   AlertCircle,
-  Smartphone,
   Monitor,
   ArrowLeft,
   CheckCircle,
@@ -53,11 +52,39 @@ const DATA_SAFETY = [
   { icon: Trash2, title: "You can request that data be deleted", sub: null },
 ];
 
+// Drop screenshot images into `public/screenshots/` using these exact
+// filenames and they'll appear automatically — no code change needed. Until a
+// file exists, a labelled gradient placeholder is shown instead.
+const SCREENSHOTS = [
+  { label: "Dashboard", src: "/screenshots/dashboard.png", bg: "from-blue-900 to-blue-700" },
+  { label: "Sales Record", src: "/screenshots/sales-record.png", bg: "from-indigo-900 to-indigo-700" },
+  { label: "Agent View", src: "/screenshots/agent-view.png", bg: "from-cyan-900 to-cyan-700" },
+  { label: "Stove Manager", src: "/screenshots/stove-manager.png", bg: "from-teal-900 to-teal-700" },
+  { label: "Offline Sync", src: "/screenshots/offline-sync.png", bg: "from-slate-800 to-slate-600" },
+];
+
 const REVIEWS = [
   { initials: "OA", bg: "bg-blue-600", name: "Organisation Admin", stars: 5, date: "Jun 1, 2026", body: "Very smooth experience for managing sales in the field. The offline mode is a lifesaver in areas with poor connectivity." },
   { initials: "SA", bg: "bg-purple-600", name: "Sales Agent", stars: 5, date: "May 28, 2026", body: "Simple and intuitive. Recording a new sale takes less than a minute. Sync works perfectly when I get back to a good network." },
   { initials: "PA", bg: "bg-teal-600", name: "Partner Agent", stars: 4, date: "May 20, 2026", body: "Great app overall. Would love to see stove transfer history visible in-app. Otherwise very solid." },
 ];
+
+function Screenshot({ label, src, bg }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className={`relative flex-shrink-0 w-40 h-72 rounded-2xl overflow-hidden bg-gradient-to-b ${bg} flex flex-col items-center justify-end p-4 border border-gray-200`}>
+      {!failed && (
+        <img
+          src={src}
+          alt={`${label} screenshot`}
+          onError={() => setFailed(true)}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      )}
+      {failed && <span className="text-white/70 text-xs font-medium">{label}</span>}
+    </div>
+  );
+}
 
 function StarRow({ count }) {
   return (
@@ -143,8 +170,12 @@ export default function SalesMonitoringAppPage() {
           )}
 
           <div className="flex flex-col md:flex-row gap-6 items-start">
-            <div className="flex-shrink-0 w-28 h-28 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-xl">
-              <Smartphone className="h-14 w-14 text-white" />
+            <div className="flex-shrink-0 w-28 h-28 rounded-2xl bg-white flex items-center justify-center shadow-xl overflow-hidden">
+              <img
+                src="/logo_icon.png"
+                alt="Atmosfair Sales Monitoring App icon"
+                className="w-full h-full object-contain p-2"
+              />
             </div>
 
             <div className="flex-1 min-w-0">
@@ -209,14 +240,9 @@ export default function SalesMonitoringAppPage() {
 
             {/* Screenshots placeholder */}
             <div className="flex gap-3 overflow-x-auto pb-3 mb-10">
-              {["Dashboard", "Sales Record", "Agent View", "Stove Manager", "Offline Sync"].map((label, i) => {
-                const bgs = ["from-blue-900 to-blue-700", "from-indigo-900 to-indigo-700", "from-cyan-900 to-cyan-700", "from-teal-900 to-teal-700", "from-slate-800 to-slate-600"];
-                return (
-                  <div key={i} className={`flex-shrink-0 w-40 h-72 rounded-2xl bg-gradient-to-b ${bgs[i]} flex flex-col items-center justify-end p-4 border border-gray-200`}>
-                    <span className="text-white/70 text-xs font-medium">{label}</span>
-                  </div>
-                );
-              })}
+              {SCREENSHOTS.map((shot) => (
+                <Screenshot key={shot.label} {...shot} />
+              ))}
             </div>
 
             {/* About */}

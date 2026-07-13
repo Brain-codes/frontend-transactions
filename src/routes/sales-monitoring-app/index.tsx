@@ -1,27 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { lazy } from "react";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-const Page = lazy(() => import("@/app/sales-monitoring-app/page"));
-
+// The download page moved to the shorter, public `/app` route. This route is
+// kept only to permanently redirect anyone holding the old link.
 export const Route = createFileRoute("/sales-monitoring-app/")({
-  head: () => ({
-    meta: [
-      { title: "Sales Monitoring App — Download for Android | Atmosfair" },
-      {
-        name: "description",
-        content:
-          "Download the Atmosfair Sales Monitoring Android app. Real-time sales tracking, offline-first recording, and automatic sync for field agents.",
-      },
-      {
-        property: "og:title",
-        content: "Sales Monitoring App — Download for Android | Atmosfair",
-      },
-      {
-        property: "og:description",
-        content:
-          "Real-time sales tracking, offline-first recording, and automatic sync for field agents.",
-      },
-    ],
-  }),
-  component: Page,
+  beforeLoad: () => {
+    throw redirect({ to: "/app", replace: true });
+  },
 });

@@ -22,6 +22,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/login",
   "/unauthorized",
   "/download",
+  "/app",
   "/sales-monitoring-app",
 ];
 

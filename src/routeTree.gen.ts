@@ -28,6 +28,7 @@ import { Route as EndUserRecordsIndexRouteImport } from './routes/end-user-recor
 import { Route as DownloadIndexRouteImport } from './routes/download/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AgreementImagesIndexRouteImport } from './routes/agreement-images/index'
 import { Route as AgentsIndexRouteImport } from './routes/agents/index'
 import { Route as AgentIndexRouteImport } from './routes/agent/index'
@@ -162,6 +163,11 @@ const DocsIndexRoute = DocsIndexRouteImport.update({
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/dashboard/',
   path: '/dashboard/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/app/',
+  path: '/app/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgreementImagesIndexRoute = AgreementImagesIndexRouteImport.update({
@@ -386,6 +392,7 @@ export interface FileRoutesByFullPath {
   '/agent/': typeof AgentIndexRoute
   '/agents/': typeof AgentsIndexRoute
   '/agreement-images/': typeof AgreementImagesIndexRoute
+  '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/download/': typeof DownloadIndexRoute
@@ -446,6 +453,7 @@ export interface FileRoutesByTo {
   '/agent': typeof AgentIndexRoute
   '/agents': typeof AgentsIndexRoute
   '/agreement-images': typeof AgreementImagesIndexRoute
+  '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/docs': typeof DocsIndexRoute
   '/download': typeof DownloadIndexRoute
@@ -507,6 +515,7 @@ export interface FileRoutesById {
   '/agent/': typeof AgentIndexRoute
   '/agents/': typeof AgentsIndexRoute
   '/agreement-images/': typeof AgreementImagesIndexRoute
+  '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/download/': typeof DownloadIndexRoute
@@ -569,6 +578,7 @@ export interface FileRouteTypes {
     | '/agent/'
     | '/agents/'
     | '/agreement-images/'
+    | '/app/'
     | '/dashboard/'
     | '/docs/'
     | '/download/'
@@ -629,6 +639,7 @@ export interface FileRouteTypes {
     | '/agent'
     | '/agents'
     | '/agreement-images'
+    | '/app'
     | '/dashboard'
     | '/docs'
     | '/download'
@@ -689,6 +700,7 @@ export interface FileRouteTypes {
     | '/agent/'
     | '/agents/'
     | '/agreement-images/'
+    | '/app/'
     | '/dashboard/'
     | '/docs/'
     | '/download/'
@@ -750,6 +762,7 @@ export interface RootRouteChildren {
   AgentIndexRoute: typeof AgentIndexRoute
   AgentsIndexRoute: typeof AgentsIndexRoute
   AgreementImagesIndexRoute: typeof AgreementImagesIndexRoute
+  AppIndexRoute: typeof AppIndexRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
   DownloadIndexRoute: typeof DownloadIndexRoute
@@ -934,6 +947,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard/'
       preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/': {
+      id: '/app/'
+      path: '/app'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agreement-images/': {
@@ -1222,6 +1242,7 @@ const rootRouteChildren: RootRouteChildren = {
   AgentIndexRoute: AgentIndexRoute,
   AgentsIndexRoute: AgentsIndexRoute,
   AgreementImagesIndexRoute: AgreementImagesIndexRoute,
+  AppIndexRoute: AppIndexRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
   DownloadIndexRoute: DownloadIndexRoute,
