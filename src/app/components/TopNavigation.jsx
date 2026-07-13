@@ -139,7 +139,8 @@ const TopNavigation = ({
             <a href="/app">
               <Smartphone className="h-4 w-4 flex-shrink-0" />
               <span className="whitespace-nowrap text-xs sm:text-sm">
-                Sales Monitoring App
+                <span className="sm:hidden">App</span>
+                <span className="hidden sm:inline">Sales Monitoring App</span>
               </span>
             </a>
           </Button>
