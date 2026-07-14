@@ -173,15 +173,15 @@ const CreateSalesForm = ({
   // Only IDs that belong to the selected partner org and are not sold are returned.
   useEffect(() => {
     if (isEditMode) return; // edit mode locks the stove id
-    const orgId = getActiveOrgId();
-    if (!orgId) {
+    const orgIds = getActiveOrgIds();
+    if (!orgIds.length) {
       setFilteredStoves([]);
       return;
     }
     let cancelled = false;
     setStoveSearching(true);
     const handle = setTimeout(async () => {
-      const res = await adminSalesService.searchStoveIds(orgId, stoveSearchTerm, 25);
+      const res = await adminSalesService.searchStoveIds(orgIds, stoveSearchTerm, 25);
       if (cancelled) return;
       setFilteredStoves(res.success ? (res.data || []) : []);
       setStoveSearching(false);
@@ -192,6 +192,7 @@ const CreateSalesForm = ({
       setStoveSearching(false);
     };
   }, [stoveSearchTerm, formData.partnerName, formData.retailerBranch, isEditMode]);
+
 
   // Validate the typed stove id against the partner's available stoves (debounced).
   useEffect(() => {
