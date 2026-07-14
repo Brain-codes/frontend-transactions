@@ -151,6 +151,24 @@ const CreateSalesForm = ({
     return sessionOrg || profileService.getOrganizationId() || null;
   };
 
+  // Helper: resolve ALL org row ids that share the picked partner/state/branch.
+  // Duplicate org rows for the same partner+branch exist from legacy imports,
+  // so we search stove_ids across every matching row.
+  const getActiveOrgIds = () => {
+    try {
+      const raw = typeof sessionStorage !== "undefined"
+        ? sessionStorage.getItem("saa_selected_org_ids")
+        : null;
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr) && arr.length) return arr;
+      }
+    } catch (_) { /* ignore */ }
+    const single = getActiveOrgId();
+    return single ? [single] : [];
+  };
+
+
   // AJAX search: pull stove IDs as the user types (debounced).
   // Only IDs that belong to the selected partner org and are not sold are returned.
   useEffect(() => {
