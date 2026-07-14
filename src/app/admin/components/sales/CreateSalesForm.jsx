@@ -357,6 +357,7 @@ const CreateSalesForm = ({
           // Super admins always pick a partner explicitly on each new sale
           if (userRole === "super_admin" && typeof sessionStorage !== "undefined") {
             sessionStorage.removeItem("saa_selected_org_id");
+            sessionStorage.removeItem("saa_selected_org_ids");
             sessionStorage.removeItem("saa_selected_org_name");
           }
 
@@ -722,6 +723,7 @@ const CreateSalesForm = ({
         // Clean up SAA org selection from sessionStorage
         if (typeof sessionStorage !== "undefined") {
           sessionStorage.removeItem("saa_selected_org_id");
+            sessionStorage.removeItem("saa_selected_org_ids");
         }
         setSuccess(true);
         if (onSuccess) {
@@ -848,6 +850,7 @@ const CreateSalesForm = ({
     resetStoveSelection();
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.removeItem("saa_selected_org_id");
+            sessionStorage.removeItem("saa_selected_org_ids");
     }
 
     setBranchesLoading(true);
@@ -895,6 +898,7 @@ const CreateSalesForm = ({
     resetStoveSelection();
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.removeItem("saa_selected_org_id");
+            sessionStorage.removeItem("saa_selected_org_ids");
     }
     const branches = partnerBranches.filter((r) => r.state === stateValue);
     if (branches.length === 1) finalizeBranchPick(branches[0]);
