@@ -797,9 +797,23 @@ const CreateSalesForm = ({
   );
 
   const finalizeBranchPick = (org) => {
+    // Also include duplicate org rows that share the same partner+state+branch
+    // so stove IDs attached to any of them are discoverable.
+    const siblingIds = Array.from(new Set(
+      (partnerBranches || [])
+        .filter((r) =>
+          (r.partner_name || "") === (org.partner_name || "") &&
+          (r.state || "") === (org.state || "") &&
+          (r.branch || "") === (org.branch || ""),
+        )
+        .map((r) => r.id)
+        .concat([org.id])
+        .filter(Boolean),
+    ));
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.setItem("saa_selected_org_id", org.id);
       sessionStorage.setItem("saa_selected_org_name", org.partner_name || "");
+      sessionStorage.setItem("saa_selected_org_ids", JSON.stringify(siblingIds));
     }
     handleInputChange("partnerName", org.partner_name || "");
     handleInputChange("retailerBranch", org.branch || "");
@@ -807,6 +821,7 @@ const CreateSalesForm = ({
     fetchAvailableStoves();
     // Payment models are global — no need to refetch per partner.
   };
+
 
   const resetStoveSelection = () => {
     setAvailableStoves([]);
