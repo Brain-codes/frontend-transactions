@@ -151,19 +151,37 @@ const CreateSalesForm = ({
     return sessionOrg || profileService.getOrganizationId() || null;
   };
 
+  // Helper: resolve ALL org row ids that share the picked partner/state/branch.
+  // Duplicate org rows for the same partner+branch exist from legacy imports,
+  // so we search stove_ids across every matching row.
+  const getActiveOrgIds = () => {
+    try {
+      const raw = typeof sessionStorage !== "undefined"
+        ? sessionStorage.getItem("saa_selected_org_ids")
+        : null;
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr) && arr.length) return arr;
+      }
+    } catch (_) { /* ignore */ }
+    const single = getActiveOrgId();
+    return single ? [single] : [];
+  };
+
+
   // AJAX search: pull stove IDs as the user types (debounced).
   // Only IDs that belong to the selected partner org and are not sold are returned.
   useEffect(() => {
     if (isEditMode) return; // edit mode locks the stove id
-    const orgId = getActiveOrgId();
-    if (!orgId) {
+    const orgIds = getActiveOrgIds();
+    if (!orgIds.length) {
       setFilteredStoves([]);
       return;
     }
     let cancelled = false;
     setStoveSearching(true);
     const handle = setTimeout(async () => {
-      const res = await adminSalesService.searchStoveIds(orgId, stoveSearchTerm, 25);
+      const res = await adminSalesService.searchStoveIds(orgIds, stoveSearchTerm, 25);
       if (cancelled) return;
       setFilteredStoves(res.success ? (res.data || []) : []);
       setStoveSearching(false);
@@ -175,12 +193,13 @@ const CreateSalesForm = ({
     };
   }, [stoveSearchTerm, formData.partnerName, formData.retailerBranch, isEditMode]);
 
+
   // Validate the typed stove id against the partner's available stoves (debounced).
   useEffect(() => {
     if (isEditMode) return;
-    const orgId = getActiveOrgId();
+    const orgIds = getActiveOrgIds();
     const term = (stoveSearchTerm || "").trim();
-    if (!orgId || !term) {
+    if (!orgIds.length || !term) {
       setStoveValidity("idle");
       setStoveValidityMessage("");
       return;
@@ -189,7 +208,7 @@ const CreateSalesForm = ({
     setStoveValidity("checking");
     setStoveValidityMessage("");
     const handle = setTimeout(async () => {
-      const res = await adminSalesService.validateStoveId(orgId, term);
+      const res = await adminSalesService.validateStoveId(orgIds, term);
       if (cancelled) return;
       if (res.success && res.valid) {
         setStoveValidity("valid");
@@ -211,6 +230,7 @@ const CreateSalesForm = ({
       clearTimeout(handle);
     };
   }, [stoveSearchTerm, formData.partnerName, formData.retailerBranch, isEditMode]);
+
 
 
 
@@ -337,6 +357,7 @@ const CreateSalesForm = ({
           // Super admins always pick a partner explicitly on each new sale
           if (userRole === "super_admin" && typeof sessionStorage !== "undefined") {
             sessionStorage.removeItem("saa_selected_org_id");
+            sessionStorage.removeItem("saa_selected_org_ids");
             sessionStorage.removeItem("saa_selected_org_name");
           }
 
@@ -702,6 +723,7 @@ const CreateSalesForm = ({
         // Clean up SAA org selection from sessionStorage
         if (typeof sessionStorage !== "undefined") {
           sessionStorage.removeItem("saa_selected_org_id");
+            sessionStorage.removeItem("saa_selected_org_ids");
         }
         setSuccess(true);
         if (onSuccess) {
@@ -777,9 +799,23 @@ const CreateSalesForm = ({
   );
 
   const finalizeBranchPick = (org) => {
+    // Also include duplicate org rows that share the same partner+state+branch
+    // so stove IDs attached to any of them are discoverable.
+    const siblingIds = Array.from(new Set(
+      (partnerBranches || [])
+        .filter((r) =>
+          (r.partner_name || "") === (org.partner_name || "") &&
+          (r.state || "") === (org.state || "") &&
+          (r.branch || "") === (org.branch || ""),
+        )
+        .map((r) => r.id)
+        .concat([org.id])
+        .filter(Boolean),
+    ));
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.setItem("saa_selected_org_id", org.id);
       sessionStorage.setItem("saa_selected_org_name", org.partner_name || "");
+      sessionStorage.setItem("saa_selected_org_ids", JSON.stringify(siblingIds));
     }
     handleInputChange("partnerName", org.partner_name || "");
     handleInputChange("retailerBranch", org.branch || "");
@@ -787,6 +823,7 @@ const CreateSalesForm = ({
     fetchAvailableStoves();
     // Payment models are global — no need to refetch per partner.
   };
+
 
   const resetStoveSelection = () => {
     setAvailableStoves([]);
@@ -813,6 +850,7 @@ const CreateSalesForm = ({
     resetStoveSelection();
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.removeItem("saa_selected_org_id");
+            sessionStorage.removeItem("saa_selected_org_ids");
     }
 
     setBranchesLoading(true);
@@ -860,6 +898,7 @@ const CreateSalesForm = ({
     resetStoveSelection();
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.removeItem("saa_selected_org_id");
+            sessionStorage.removeItem("saa_selected_org_ids");
     }
     const branches = partnerBranches.filter((r) => r.state === stateValue);
     if (branches.length === 1) finalizeBranchPick(branches[0]);

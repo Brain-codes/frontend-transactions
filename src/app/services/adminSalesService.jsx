@@ -80,16 +80,21 @@ class AdminSalesService {
     }
   }
 
-  // Search stove IDs for a partner (AJAX). Returns up to `limit` matches.
+  // Search stove IDs for a partner (AJAX). Accepts a single orgId or an array.
   async searchStoveIds(organizationId, term = "", limit = 20) {
     try {
-      if (!organizationId) {
+      const ids = Array.isArray(organizationId)
+        ? organizationId.filter(Boolean)
+        : organizationId
+          ? [organizationId]
+          : [];
+      if (!ids.length) {
         return { success: true, data: [], error: null };
       }
       let query = this.supabase
         .from("stove_ids")
         .select("id, stove_id, status, organization_id")
-        .eq("organization_id", organizationId)
+        .in("organization_id", ids)
         .eq("is_archived", false)
         .neq("status", "sold")
         .order("stove_id", { ascending: true })
@@ -105,26 +110,33 @@ class AdminSalesService {
     }
   }
 
-  // Validate that a given stove_id exists, is available, and belongs to the partner org.
+  // Validate a stove ID exists, is available, and belongs to any of the orgs.
   async validateStoveId(organizationId, stoveId) {
     try {
-      if (!organizationId || !stoveId) {
+      const ids = Array.isArray(organizationId)
+        ? organizationId.filter(Boolean)
+        : organizationId
+          ? [organizationId]
+          : [];
+      if (!ids.length || !stoveId) {
         return { success: true, valid: false, data: null, error: null };
       }
       const { data, error } = await this.supabase
         .from("stove_ids")
         .select("id, stove_id, status, organization_id, is_archived")
-        .eq("organization_id", organizationId)
+        .in("organization_id", ids)
         .eq("stove_id", stoveId.trim())
-        .maybeSingle();
+        .limit(1);
       if (error) throw error;
-      const valid = !!data && data.is_archived === false && data.status !== "sold";
-      return { success: true, valid, data: data || null, error: null };
+      const row = (data && data[0]) || null;
+      const valid = !!row && row.is_archived === false && row.status !== "sold";
+      return { success: true, valid, data: row, error: null };
     } catch (error) {
       console.error("Error validating stove ID:", error);
       return { success: false, valid: false, data: null, error: error.message || "Failed to validate stove ID" };
     }
   }
+
 
 
 
