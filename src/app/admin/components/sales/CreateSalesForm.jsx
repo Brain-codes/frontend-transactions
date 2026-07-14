@@ -197,9 +197,9 @@ const CreateSalesForm = ({
   // Validate the typed stove id against the partner's available stoves (debounced).
   useEffect(() => {
     if (isEditMode) return;
-    const orgId = getActiveOrgId();
+    const orgIds = getActiveOrgIds();
     const term = (stoveSearchTerm || "").trim();
-    if (!orgId || !term) {
+    if (!orgIds.length || !term) {
       setStoveValidity("idle");
       setStoveValidityMessage("");
       return;
@@ -208,7 +208,7 @@ const CreateSalesForm = ({
     setStoveValidity("checking");
     setStoveValidityMessage("");
     const handle = setTimeout(async () => {
-      const res = await adminSalesService.validateStoveId(orgId, term);
+      const res = await adminSalesService.validateStoveId(orgIds, term);
       if (cancelled) return;
       if (res.success && res.valid) {
         setStoveValidity("valid");
@@ -230,6 +230,7 @@ const CreateSalesForm = ({
       clearTimeout(handle);
     };
   }, [stoveSearchTerm, formData.partnerName, formData.retailerBranch, isEditMode]);
+
 
 
 
