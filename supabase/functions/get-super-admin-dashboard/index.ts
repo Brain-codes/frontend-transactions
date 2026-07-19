@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { countInChunks, selectInChunks } from "../_shared/chunkedQuery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -80,65 +81,56 @@ serve(async (req) => {
       return query.or(orParts);
     };
 
-    // Resolve partner names from organization_ids (grouped partner may span multiple orgs)
+    // Resolve partner names from organization_ids (grouped partner may span
+    // multiple orgs). The org list can be large when a super admin filters by
+    // many partners, so chunk it to keep the request URL small.
     let partnerNames: string[] | null = null;
     if (organizationIds) {
-      const { data: orgs } = await serviceClient
-        .from("organizations")
-        .select("partner_name")
-        .in("id", organizationIds);
+      const { data: orgs } = await selectInChunks(organizationIds, (c) =>
+        serviceClient.from("organizations").select("partner_name").in("id", c)
+      );
       partnerNames = orgs ? [...new Set(orgs.map((o: any) => o.partner_name).filter(Boolean))] : null;
     }
 
-    const buildSalesQuery = (query: any) => {
-      // Exclude cancelled/archived sales from all dashboard metrics
+    // Base sales filters EXCLUDING partner_name (applied per-chunk when large).
+    const buildSalesBase = (query: any) => {
       query = query.eq("is_archived", false);
-      if (partnerNames?.length) query = query.in("partner_name", partnerNames);
       if (stateFilter) query = query.ilike("state_backup", stateFilter);
       if (branchFilter) query = query.eq("retailer_branch", branchFilter);
       return query;
     };
 
-    const buildStovesReceivedQuery = (query: any) => {
-      if (organizationIds) query = query.in("organization_id", organizationIds);
-      return query;
-    };
+    // Stoves received count — chunk over organizationIds when present.
+    const receivedPromise = organizationIds
+      ? countInChunks(organizationIds, (c) =>
+          applyPeriod(
+            serviceClient.from("stove_ids").select("*", { count: "exact", head: true }).not("organization_id", "is", null),
+            "transfer_sales_date"
+          ).in("organization_id", c)
+        )
+      : applyPeriod(
+          serviceClient.from("stove_ids").select("*", { count: "exact", head: true }).not("organization_id", "is", null),
+          "transfer_sales_date"
+        );
+
+    // Sold cumulative count + sales rows — chunk over partnerNames when present.
+    const soldPromise = partnerNames?.length
+      ? countInChunks(partnerNames, (c) =>
+          applyPeriod(buildSalesBase(serviceClient.from("sales").select("*", { count: "exact", head: true })), "sales_date").in("partner_name", c)
+        )
+      : applyPeriod(buildSalesBase(serviceClient.from("sales").select("*", { count: "exact", head: true })), "sales_date");
+
+    const salesCols = "id, amount, total_paid, state_backup, partner_name, retailer_branch, payment_model_id, created_by";
+    const salesPromise = partnerNames?.length
+      ? selectInChunks(partnerNames, (c) =>
+          applyPeriod(buildSalesBase(serviceClient.from("sales").select(salesCols)), "sales_date").in("partner_name", c)
+        )
+      : applyPeriod(buildSalesBase(serviceClient.from("sales").select(salesCols)), "sales_date");
 
     const [receivedResult, soldCumulativeResult, salesResult] = await Promise.all([
-      buildStovesReceivedQuery(
-        applyPeriod(
-          serviceClient
-            .from("stove_ids")
-            .select("*", { count: "exact", head: true })
-            .not("organization_id", "is", null),
-          // Count by the ERP sale/transfer date (transfer_sales_date), NOT
-          // created_at (when the row synced into monitoring). This makes
-          // "Stoves Received By Partners" tally with the ERP's "Stoves
-          // Transferred for Monitoring", which is also sale-date based.
-          // NOTE: raw row count (NOT distinct) — the ERP counts re-transferred
-          // stoves once per transfer event too, so monitoring must keep the
-          // matching duplicate rows for the totals to tally.
-          "transfer_sales_date"
-        )
-      ),
-
-      buildSalesQuery(
-        applyPeriod(
-          serviceClient
-            .from("sales")
-            .select("*", { count: "exact", head: true }),
-          "sales_date"
-        )
-      ),
-
-      buildSalesQuery(
-        applyPeriod(
-          serviceClient
-            .from("sales")
-            .select("id, amount, total_paid, state_backup, partner_name, retailer_branch, payment_model_id, created_by"),
-          "sales_date"
-        )
-      ),
+      receivedPromise,
+      soldPromise,
+      salesPromise,
     ]);
 
     if (salesResult.error) throw new Error("Failed to fetch sales data");

@@ -40,6 +40,14 @@ class AdminSalesService {
     return headers;
   }
 
+  // Normalize an org id param that may be a single id or an array of ids
+  // (legacy duplicate org rows share the same partner+state+branch, so a stove
+  // can live on any one of them). Returns a de-duped array of non-empty ids.
+  _orgIdList(organizationId) {
+    const arr = Array.isArray(organizationId) ? organizationId : [organizationId];
+    return Array.from(new Set(arr.filter(Boolean)));
+  }
+
   // Get available stove IDs for creating new sales - queries Supabase directly
   async getAvailableStoveIds(organizationId = null, status = "available") {
     try {
@@ -50,8 +58,11 @@ class AdminSalesService {
         .order("stove_id", { ascending: true })
         .limit(2000);
 
-      if (organizationId) {
-        query = query.eq("organization_id", organizationId);
+      const orgIds = this._orgIdList(organizationId);
+      if (orgIds.length === 1) {
+        query = query.eq("organization_id", orgIds[0]);
+      } else if (orgIds.length > 1) {
+        query = query.in("organization_id", orgIds);
       }
       if (status) {
         // "available" = anything not sold
@@ -83,17 +94,21 @@ class AdminSalesService {
   // Search stove IDs for a partner (AJAX). Returns up to `limit` matches.
   async searchStoveIds(organizationId, term = "", limit = 20) {
     try {
-      if (!organizationId) {
+      const orgIds = this._orgIdList(organizationId);
+      if (orgIds.length === 0) {
         return { success: true, data: [], error: null };
       }
       let query = this.supabase
         .from("stove_ids")
         .select("id, stove_id, status, organization_id")
-        .eq("organization_id", organizationId)
         .eq("is_archived", false)
         .neq("status", "sold")
         .order("stove_id", { ascending: true })
         .limit(limit);
+      query =
+        orgIds.length === 1
+          ? query.eq("organization_id", orgIds[0])
+          : query.in("organization_id", orgIds);
       const t = (term || "").trim();
       if (t) query = query.ilike("stove_id", `%${t}%`);
       const { data, error } = await query;
@@ -108,15 +123,21 @@ class AdminSalesService {
   // Validate that a given stove_id exists, is available, and belongs to the partner org.
   async validateStoveId(organizationId, stoveId) {
     try {
-      if (!organizationId || !stoveId) {
+      const orgIds = this._orgIdList(organizationId);
+      if (orgIds.length === 0 || !stoveId) {
         return { success: true, valid: false, data: null, error: null };
       }
-      const { data, error } = await this.supabase
+      let query = this.supabase
         .from("stove_ids")
         .select("id, stove_id, status, organization_id, is_archived")
-        .eq("organization_id", organizationId)
-        .eq("stove_id", stoveId.trim())
-        .maybeSingle();
+        .eq("stove_id", stoveId.trim());
+      query =
+        orgIds.length === 1
+          ? query.eq("organization_id", orgIds[0])
+          : query.in("organization_id", orgIds);
+      // With duplicate org rows a serial can resolve to >1 row; take the first
+      // usable one rather than erroring on a non-single result.
+      const { data, error } = await query.limit(1).maybeSingle();
       if (error) throw error;
       const valid = !!data && data.is_archived === false && data.status !== "sold";
       return { success: true, valid, data: data || null, error: null };

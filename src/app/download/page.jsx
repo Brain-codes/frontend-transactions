@@ -1,7 +1,8 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Image from "@/compat/Image";
 import Link from "@/compat/Link";
+import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,11 +18,65 @@ import {
   AlertCircle,
 } from "lucide-react";
 
+// Fallback used only if the release edge function can't be reached — points at
+// the newest APK actually committed to /public/downloads.
+const FALLBACK_APK_URL = "/downloads/sales-monitoring-app-v1-0-8.apk";
+
 const DownloadPage = () => {
+  // Live release info (version + real APK URL), same source the mobile app's
+  // in-app update flow uses (manage-app-release). Keeps this page from serving a
+  // stale/broken hardcoded APK.
+  const [release, setRelease] = useState(null);
+  const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${supabaseFunctionsUrl}/manage-app-release`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setRelease(data);
+      } catch {
+        // Network/edge-function failure — leave release null so the fallback
+        // static APK is used on download.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Resolve the real download URL: prefer the live release (base_url + apk_path,
+  // mirrors AppReleaseInfo.downloadUrl in the mobile app); otherwise fall back
+  // to the newest static APK in /public/downloads.
+  const resolveApkUrl = () => {
+    if (release?.apk_path) {
+      const base = release.base_url ?? "";
+      const path = release.apk_path.startsWith("/")
+        ? release.apk_path
+        : `/${release.apk_path}`;
+      return `${base}${path}`;
+    }
+    return FALLBACK_APK_URL;
+  };
+
   const handleDownload = () => {
-    // Replace this with your actual APK download URL
-    const apkUrl = "/downloads/atmosfair-admin.apk";
-    window.location.href = apkUrl;
+    // Trigger the download via a programmatic anchor rather than
+    // `window.location.href`. Under the SPA catch-all rewrite, a plain
+    // navigation could be swallowed by the client router; an <a download> click
+    // reliably hands the URL to the browser's downloader.
+    const url = resolveApkUrl();
+    setDownloading(true);
+    const a = document.createElement("a");
+    a.href = url;
+    a.setAttribute("download", "");
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    // Brief guard so double-taps don't fire two downloads.
+    setTimeout(() => setDownloading(false), 1500);
   };
 
   const features = [
@@ -109,14 +164,22 @@ const DownloadPage = () => {
             <div className="text-center mb-8">
               <Button
                 onClick={handleDownload}
+                disabled={downloading}
                 size="lg"
                 className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg"
               >
                 <Download className="mr-3 h-6 w-6" />
-                Download APK File
+                {downloading ? "Starting download…" : "Download APK File"}
               </Button>
               <p className="text-sm text-muted-foreground mt-4">
-                Version 1.0.0 • Last updated: November 2025
+                {release?.version
+                  ? `Version ${release.version}`
+                  : "Latest version"}
+                {release?.updated_at
+                  ? ` • Last updated: ${new Date(
+                      release.updated_at
+                    ).toLocaleDateString()}`
+                  : ""}
               </p>
             </div>
 

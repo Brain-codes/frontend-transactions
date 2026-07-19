@@ -1,4 +1,5 @@
 // Read operations for stove ID management
+import { selectInChunks, paginatedSelectInChunks } from "../_shared/chunkedQuery.ts";
 
 // Roles scoped to a single organization (their own org's stoves).
 // Partner Agent / Agent see their partner organization's stove ledger ("Assigned stoves").
@@ -42,9 +43,47 @@ export async function getStoveIds(
     )}, branch=${branchFilter}, state=${stateFilter}, dateFrom=${dateFrom}, dateTo=${dateTo}, showArchived=${showArchived}`
   );
 
-  // Build the base query
-  let query = supabase.from("stove_ids").select(
-    `
+  const salesReferenceFilter = searchParams.get("sales_reference") || "";
+
+  // Ordering config
+  const sortByParam = searchParams.get("sort_by") || "created_at";
+  const sortDirParam = searchParams.get("sort_dir") || "desc";
+  const ascending = sortDirParam === "asc";
+  const sortColumnMap: Record<string, string> = {
+    stove_id: "stove_id",
+    date_sold: "created_at",
+    created_at: "created_at",
+    status: "status",
+    sales_reference: "sales_reference",
+  };
+  const sortColumn = sortColumnMap[sortByParam] || "created_at";
+
+  // ACSL agents/managers scope to their assigned orgs (intersected with any
+  // client-provided org filter). This list can be hundreds of orgs, so it is
+  // applied per-chunk rather than inlined into one request URL.
+  const isAcsl = ACSL_SCOPED_ROLES.includes(userRole);
+  let acslOrgIds: string[] = [];
+  if (isAcsl) {
+    acslOrgIds =
+      allowedOrgIds && allowedOrgIds.length > 0
+        ? organizationIds.length > 0
+          ? organizationIds.filter((id) => allowedOrgIds!.includes(id))
+          : allowedOrgIds
+        : [];
+    if (acslOrgIds.length === 0) {
+      return {
+        data: [],
+        pagination: { page, page_size: pageSize, total_count: 0, total_pages: 0 },
+      };
+    }
+  } else if (!ORG_SCOPED_ROLES.includes(userRole) && userRole !== "super_admin") {
+    throw new Error("Unauthorized: Invalid role or missing organization");
+  }
+
+  // Factory: fresh, fully-filtered builder EXCEPT ACSL org scope + order/range.
+  const buildQuery = () => {
+    let query = supabase.from("stove_ids").select(
+      `
       id,
       stove_id,
       sale_id,
@@ -67,110 +106,68 @@ export async function getStoveIds(
         created_at
       )
     `,
-    { count: "exact" }
-  );
+      { count: "exact" }
+    );
 
-  // Apply role-based filtering
-  if (ORG_SCOPED_ROLES.includes(userRole) && organizationId) {
-    // Partner + Partner Agent / Agent: scope to their own organization's stoves.
-    console.log(`🔒 Org-scoped user (${userRole}) - filtering by organization: ${organizationId}`);
-    query = query.eq("organization_id", organizationId);
-  } else if (userRole === "super_admin") {
-    console.log("🔓 Super admin - accessing all stove IDs");
-  } else if (ACSL_SCOPED_ROLES.includes(userRole)) {
-    // ACSL agent / manager: scope to their assigned orgs; intersect with client-provided org filter
-    const effectiveOrgIds =
-      allowedOrgIds && allowedOrgIds.length > 0
-        ? organizationIds.length > 0
-          ? organizationIds.filter((id) => allowedOrgIds!.includes(id))
-          : allowedOrgIds
-        : [];
-    if (effectiveOrgIds.length === 0) {
-      return {
-        data: [],
-        pagination: { page, page_size: pageSize, total_count: 0, total_pages: 0 },
-      };
+    // Role-based filtering (ACSL org scope applied separately per chunk)
+    if (ORG_SCOPED_ROLES.includes(userRole) && organizationId) {
+      query = query.eq("organization_id", organizationId);
     }
-    console.log(`🔒 ACSL - filtering by assigned orgs: ${effectiveOrgIds.join(",")}`);
-    query = query.in("organization_id", effectiveOrgIds);
-  } else {
-    throw new Error("Unauthorized: Invalid role or missing organization");
-  }
 
-  // Apply archive filter - default to showing only non-archived
-  if (!showArchived) {
-    query = query.eq("is_archived", false);
-  } else {
-    // If showArchived is true, we might want to show ONLY archived or BOTH.
-    // Usually, "Show Archived" means show everything including archived,
-    // or specifically just the archived ones.
-    // The user said: "until when i click my filter to show archived stove that is when it will show"
-    // I'll assume showArchived=true means show ONLY archived stove IDs.
-    query = query.eq("is_archived", true);
-  }
+    // Archive filter - default to showing only non-archived
+    query = query.eq("is_archived", showArchived ? true : false);
 
-  // Apply filters
-  if (stoveIdFilter) {
-    query = query.ilike("stove_id", `%${stoveIdFilter}%`);
-  }
+    if (stoveIdFilter) query = query.ilike("stove_id", `%${stoveIdFilter}%`);
+    if (salesReferenceFilter) query = query.ilike("sales_reference", `%${salesReferenceFilter}%`);
+    if (statusFilter) query = query.eq("status", statusFilter);
 
-  const salesReferenceFilter = searchParams.get("sales_reference") || "";
-  if (salesReferenceFilter) {
-    query = query.ilike("sales_reference", `%${salesReferenceFilter}%`);
-  }
+    // Organization filters (super_admin only)
+    if (organizationIds.length > 0 && userRole === "super_admin") {
+      query = query.in("organization_id", organizationIds);
+    }
+    if (organizationName && userRole === "super_admin") {
+      query = query.ilike("organizations.partner_name", `%${organizationName}%`);
+    }
+    if (branchFilter && userRole === "super_admin") {
+      query = query.ilike("organizations.branch", `%${branchFilter}%`);
+    }
+    if (stateFilter && userRole === "super_admin") {
+      query = query.ilike("organizations.state", `%${stateFilter}%`);
+    }
+    if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
+    if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
 
-  if (statusFilter) {
-    query = query.eq("status", statusFilter);
-  }
-
-  // Filter by organization IDs (for grouped organization selection — super_admin only)
-  if (organizationIds.length > 0 && userRole === "super_admin") {
-    query = query.in("organization_id", organizationIds);
-  }
-
-  // Legacy organization name filter (fallback)
-  if (organizationName && userRole === "super_admin") {
-    query = query.ilike("organizations.partner_name", `%${organizationName}%`);
-  }
-
-  if (branchFilter && userRole === "super_admin") {
-    query = query.ilike("organizations.branch", `%${branchFilter}%`);
-  }
-
-  if (stateFilter && userRole === "super_admin") {
-    query = query.ilike("organizations.state", `%${stateFilter}%`);
-  }
-
-  if (dateFrom) {
-    // Start of day: 2026-01-13 00:00:00
-    query = query.gte("created_at", `${dateFrom}T00:00:00`);
-  }
-
-  if (dateTo) {
-    // End of day: 2026-01-13 23:59:59
-    query = query.lte("created_at", `${dateTo}T23:59:59`);
-  }
-
-  // Apply ordering
-  const sortByParam = searchParams.get("sort_by") || "created_at";
-  const sortDirParam = searchParams.get("sort_dir") || "desc";
-  const ascending = sortDirParam === "asc";
-
-  const sortColumnMap: Record<string, string> = {
-    stove_id: "stove_id",
-    date_sold: "created_at",
-    created_at: "created_at",
-    status: "status",
-    sales_reference: "sales_reference",
+    return query;
   };
-  const sortColumn = sortColumnMap[sortByParam] || "created_at";
 
-  query = query
-    .order(sortColumn, { ascending })
-    .range(offset, offset + pageSize - 1);
+  let data: any[];
+  let error: any;
+  let count: number;
 
-  // Execute query
-  const { data, error, count } = await query;
+  if (isAcsl) {
+    const compare = (a: any, b: any) => {
+      const av = a?.[sortColumn], bv = b?.[sortColumn];
+      let c = av == null && bv == null ? 0 : av == null ? 1 : bv == null ? -1 : av < bv ? -1 : av > bv ? 1 : 0;
+      if (!ascending) c = -c;
+      if (c !== 0) return c;
+      return a?.id < b?.id ? -1 : a?.id > b?.id ? 1 : 0;
+    };
+    const res = await paginatedSelectInChunks(
+      acslOrgIds,
+      (c) => buildQuery().in("organization_id", c).order(sortColumn, { ascending }),
+      { offset, limit: pageSize, compare },
+    );
+    data = res.data;
+    count = res.count;
+    error = res.error;
+  } else {
+    const r = await buildQuery()
+      .order(sortColumn, { ascending })
+      .range(offset, offset + pageSize - 1);
+    data = r.data;
+    error = r.error;
+    count = r.count || 0;
+  }
 
   if (error) {
     console.error("❌ Error fetching stove IDs:", error);
@@ -232,7 +229,7 @@ export async function getGroupedBySalesReference(
 
   const organizationIds = searchParams.get("organization_ids")?.split(",").filter(Boolean) || [];
 
-  let query = supabase.from("stove_ids").select(`
+  const buildGroupedQuery = () => supabase.from("stove_ids").select(`
     id,
     stove_id,
     organization_id,
@@ -252,15 +249,22 @@ export async function getGroupedBySalesReference(
       sales_date,
       created_at
     )
-  `).eq("is_archived", false);
+  `).eq("is_archived", false)
+    .order("sales_reference", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true });
+
+  let data: any[];
+  let error: any;
 
   // Apply role-based filtering
   if (ORG_SCOPED_ROLES.includes(userRole) && organizationId) {
-    query = query.eq("organization_id", organizationId);
+    const r = await buildGroupedQuery().eq("organization_id", organizationId);
+    data = r.data; error = r.error;
   } else if (userRole === "super_admin") {
-    if (organizationIds.length > 0) {
-      query = query.in("organization_id", organizationIds);
-    }
+    const r = organizationIds.length > 0
+      ? await buildGroupedQuery().in("organization_id", organizationIds)
+      : await buildGroupedQuery();
+    data = r.data; error = r.error;
   } else if (ACSL_SCOPED_ROLES.includes(userRole)) {
     const effectiveOrgIds =
       allowedOrgIds && allowedOrgIds.length > 0
@@ -269,12 +273,15 @@ export async function getGroupedBySalesReference(
           : allowedOrgIds
         : [];
     if (effectiveOrgIds.length === 0) return { data: [] };
-    query = query.in("organization_id", effectiveOrgIds);
+    // Chunk the (potentially large) assigned-org list; results are re-grouped
+    // and re-sorted in JS below, so per-chunk order is irrelevant.
+    const r = await selectInChunks(effectiveOrgIds, (c) =>
+      buildGroupedQuery().in("organization_id", c)
+    );
+    data = r.data; error = r.error;
   } else {
     throw new Error("Unauthorized: Invalid role or missing organization");
   }
-
-  const { data, error } = await query.order("sales_reference", { ascending: true, nullsFirst: false }).order("created_at", { ascending: true });
 
   if (error) {
     console.error("❌ Error fetching grouped stove IDs:", error);

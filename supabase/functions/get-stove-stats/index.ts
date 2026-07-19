@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { resolveAssignedOrgIds } from "../_shared/resolveAssignedOrgIds.ts";
+import { countInChunks, selectInChunks } from "../_shared/chunkedQuery.ts";
 
 const ACSL_SCOPED_ROLES = ["acsl_agent", "acsl_agent_manager", "super_admin_agent"];
 // Partner-org-scoped roles: locked to their own organization's stove ledger.
@@ -124,19 +125,21 @@ serve(async (req) => {
       performingOrgIds = organizationIds;
     }
 
-    // Get stove ID statistics using count for better performance and no row limit
-    let totalQuery = supabase
+    // Base builders for stove ID statistics (count-only for performance).
+    // Org scoping is applied per-chunk to keep request URLs small (an ACSL agent
+    // can be scoped to hundreds of orgs, which would otherwise overflow the URL).
+    const baseTotal = () => supabase
       .from("stove_ids")
       .select("*", { count: "exact", head: true })
       .eq("is_archived", false);
 
-    let availableQuery = supabase
+    const baseAvailable = () => supabase
       .from("stove_ids")
       .select("*", { count: "exact", head: true })
       .eq("status", "available")
       .eq("is_archived", false);
 
-    let soldQuery = supabase
+    const baseSold = () => supabase
       .from("stove_ids")
       .select("*", { count: "exact", head: true })
       .eq("status", "sold")
@@ -151,19 +154,14 @@ serve(async (req) => {
 
     // Query sales table for distinct org IDs with at least 1 sale in the window
     // sales.sales_date is the authoritative sale date field
-    let performingOrgsQuery = supabase
+    const basePerformingOrgs = () => supabase
       .from("sales")
       .select("organization_id")
       .eq("is_archived", false)
       .gte("sales_date", performingFrom)
       .lte("sales_date", performingTo);
 
-    // Filter total/available/sold by resolved org IDs (includes registration date filter)
-    if (organizationIds.length > 0) {
-      totalQuery     = totalQuery.in("organization_id", organizationIds);
-      availableQuery = availableQuery.in("organization_id", organizationIds);
-      soldQuery      = soldQuery.in("organization_id", organizationIds);
-    } else if (hasOrgFilters || isAcslScoped) {
+    if (organizationIds.length === 0 && (hasOrgFilters || isAcslScoped)) {
       // Filters were active (or the caller is org-scoped) but no orgs matched — return zeros
       return new Response(
         JSON.stringify({ success: true, data: { available: 0, sold: 0, total: 0, performing_partners: 0 } }),
@@ -171,17 +169,22 @@ serve(async (req) => {
       );
     }
 
-    // Filter performing_partners by non-date org IDs only (sale_date handles the time window)
-    if (performingOrgIds.length > 0) {
-      performingOrgsQuery = performingOrgsQuery.in("organization_id", performingOrgIds);
-    }
+    const hasOrgScope = organizationIds.length > 0;
 
-    // Execute all queries in parallel
+    // Execute all queries in parallel, chunking org-scoped ones.
     const [totalResult, availableResult, soldResult, performingOrgsResult] = await Promise.all([
-      totalQuery,
-      availableQuery,
-      soldQuery,
-      performingOrgsQuery,
+      hasOrgScope
+        ? countInChunks(organizationIds, (c) => baseTotal().in("organization_id", c))
+        : baseTotal(),
+      hasOrgScope
+        ? countInChunks(organizationIds, (c) => baseAvailable().in("organization_id", c))
+        : baseAvailable(),
+      hasOrgScope
+        ? countInChunks(organizationIds, (c) => baseSold().in("organization_id", c))
+        : baseSold(),
+      performingOrgIds.length > 0
+        ? selectInChunks(performingOrgIds, (c) => basePerformingOrgs().in("organization_id", c))
+        : basePerformingOrgs(),
     ]);
 
     if (totalResult.error) throw totalResult.error;

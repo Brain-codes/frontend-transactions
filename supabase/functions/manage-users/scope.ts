@@ -69,29 +69,27 @@ export async function resolveCallerScope(
   throw new Error("Unauthorized: Access denied for this role.");
 }
 
-/** Applies the caller's row-level scope to the users list query. */
-export function applyScopeToListQuery(query: any, scope: CallerScope, callerId: string) {
-  if (scope.type === "all") return query;
+/**
+ * Org-id list that must be applied to the scoped list query, or null when the
+ * scope has no org-list filter (super_admin). When this list is large it must
+ * be chunked — see getUsers — so it never overflows the request URL.
+ */
+export function scopeOrgList(scope: CallerScope): string[] | null {
+  if (scope.type === "all") return null;
+  return scope.orgIds;
+}
 
-  if (scope.type === "partner" || scope.type === "acsl_agent") {
-    if (scope.orgIds.length === 0) return query.eq("role", "__none__");
-    return query
-      .in("role", ORG_USER_ROLES)
-      .in("organization_id", scope.orgIds);
-  }
-
-  // Manager: own subordinate ACSL agents + agents of assigned partner orgs
-  // (+ their own row, so the create-form manager cascade can resolve them).
-  const branches = [
+/**
+ * A manager's non-org OR-branches: their subordinate ACSL agents + their own
+ * row. These match acsl_agent/manager roles only, so they are ROLE-DISJOINT
+ * from org-user rows (partner_agent/agent) — letting us run them as a separate
+ * query whose count sums cleanly with the org-scoped chunks.
+ */
+export function managerNonOrgBranches(callerId: string): string[] {
+  return [
     `and(role.in.(${ACSL_AGENT_ROLES.join(",")}),manager_id.eq.${callerId})`,
     `and(role.eq.acsl_agent_manager,id.eq.${callerId})`,
   ];
-  if (scope.orgIds.length > 0) {
-    branches.push(
-      `and(role.in.(${ORG_USER_ROLES.join(",")}),organization_id.in.(${scope.orgIds.join(",")}))`
-    );
-  }
-  return query.or(branches.join(","));
 }
 
 /** Whether a single target profile is inside the caller's scope. */

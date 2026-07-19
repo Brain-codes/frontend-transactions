@@ -125,7 +125,7 @@ export default function SalesMonitoringAppPage() {
   useEffect(() => {
     fetch(`${FUNCTIONS_URL}/manage-app-release`)
       .then((r) => r.json())
-      .then((data) => setRelease(data))
+      .then((data) => setRelease(data))®
       .catch(() => setRelease(null))
       .finally(() => setLoading(false));
   }, []);

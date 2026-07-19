@@ -1,6 +1,7 @@
 // CRUD operations for organizations
 
 // Read operations for organizations with admin user information
+import { selectInChunks, paginatedSelectInChunks } from "../_shared/chunkedQuery.ts";
 
 export async function getOrganization(supabase: any, organizationId: string) {
   console.log(`🔍 Getting organization with admin user: ${organizationId}`);
@@ -120,9 +121,10 @@ export async function getOrganizations(
   // Validate sortOrder
   const actualSortOrder = sortOrder === "asc" ? "asc" : "desc";
 
-  // Helper to apply shared filters to any query
+  // Helper to apply shared filters to any query. Org scoping (allowedOrgIds,
+  // which can be hundreds of orgs for an ACSL agent) is applied SEPARATELY, in
+  // chunks, so it never overflows the request URL — see scoped helpers below.
   const applyFilters = (q: any) => {
-    if (allowedOrgIds) q = q.in("id", allowedOrgIds);
     if (search) q = q.or(`partner_name.ilike.%${search}%,partner_id.ilike.%${search}%`);
     if (status) q = q.eq("status", status);
     if (partnerType) q = q.ilike("partner_type", partnerType);
@@ -135,10 +137,13 @@ export async function getOrganizations(
 
   // ── Stove-based sort path ──────────────────────────────────────────────────
   if (isStoveSort) {
-    // Step 1: get all matching org IDs (no pagination limit)
-    const { data: allIdRows, error: idsError } = await applyFilters(
-      supabase.from("organizations").select("id")
-    );
+    // Step 1: get all matching org IDs (no pagination limit). Scope by
+    // allowedOrgIds in chunks to keep the request URL small.
+    const { data: allIdRows, error: idsError } = allowedOrgIds
+      ? await selectInChunks(allowedOrgIds, (c) =>
+          applyFilters(supabase.from("organizations").select("id")).in("id", c)
+        )
+      : await applyFilters(supabase.from("organizations").select("id"));
     if (idsError) throw new Error(`Failed to fetch org IDs: ${idsError.message}`);
 
     const allOrgIds: string[] = (allIdRows || []).map((r: any) => r.id);
@@ -169,11 +174,10 @@ export async function getOrganizations(
         }
       }
     } catch (_) {
-      // fallback: query stove_ids table directly
-      const { data: stoveRows } = await supabase
-        .from("stove_ids")
-        .select("organization_id, status")
-        .in("organization_id", allOrgIds);
+      // fallback: query stove_ids table directly (chunk the org list)
+      const { data: stoveRows } = await selectInChunks(allOrgIds, (c) =>
+        supabase.from("stove_ids").select("organization_id, status").in("organization_id", c)
+      );
       for (const row of stoveRows || []) {
         const id = row.organization_id;
         if (!countsByOrg[id]) countsByOrg[id] = { total: 0, sold: 0, available: 0 };
@@ -225,8 +229,7 @@ export async function getOrganizations(
   }
 
   // ── Normal sort path ───────────────────────────────────────────────────────
-  let query = supabase.from("organizations").select(
-    `
+  const orgSelectColumns = `
       id,
       partner_id,
       partner_name,
@@ -242,18 +245,40 @@ export async function getOrganizations(
       updated_at,
       created_by,
       updated_by
-    `,
-    { count: "exact" },
-  );
+    `;
+  let query = supabase.from("organizations").select(orgSelectColumns, { count: "exact" });
 
-  query = applyFilters(query);
+  let organizations: any[];
+  let error: any;
+  let count: number;
 
-  // Apply sorting and pagination with validated parameters
-  query = query
-    .order(actualSortBy, { ascending: actualSortOrder === "asc" })
-    .range(offset, offset + limit - 1);
-
-  const { data: organizations, error, count } = await query;
+  if (allowedOrgIds) {
+    // Scoped caller: chunk the (potentially huge) org list, merge + sort + page.
+    const asc = actualSortOrder === "asc";
+    const compare = (a: any, b: any) => {
+      const av = a?.[actualSortBy], bv = b?.[actualSortBy];
+      let c = av == null && bv == null ? 0 : av == null ? 1 : bv == null ? -1 : av < bv ? -1 : av > bv ? 1 : 0;
+      if (!asc) c = -c;
+      if (c !== 0) return c;
+      return a?.id < b?.id ? -1 : a?.id > b?.id ? 1 : 0;
+    };
+    const res = await paginatedSelectInChunks(
+      allowedOrgIds,
+      (c) => applyFilters(supabase.from("organizations").select(orgSelectColumns, { count: "exact" })).in("id", c).order(actualSortBy, { ascending: asc }),
+      { offset, limit, compare },
+    );
+    organizations = res.data;
+    count = res.count;
+    error = res.error;
+  } else {
+    query = applyFilters(query)
+      .order(actualSortBy, { ascending: actualSortOrder === "asc" })
+      .range(offset, offset + limit - 1);
+    const r = await query;
+    organizations = r.data;
+    error = r.error;
+    count = r.count || 0;
+  }
 
   if (error) {
     throw new Error(`Failed to fetch organizations: ${error.message}`);
