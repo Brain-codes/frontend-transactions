@@ -1458,17 +1458,36 @@ const CreateSalesForm = ({
 
         {/* Terms & Conditions */}
         <div className={`bg-[#fafafa] rounded-xl p-5 ${errors.termsAccepted ? "border border-red-400" : "border border-gray-100"}`}>
-          <h3 className="text-base font-semibold text-gray-900 mb-4">Terms &amp; Conditions *</h3>
-          <p className="text-sm text-muted-foreground mt-1 mb-3">All items below must be acknowledged before submitting.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
-            {[
+          {(() => {
+            const termsItems = [
               { key: "poaGoverned", label: "PoA / UNFCCC governed — stove subsidised by Carbon Credits" },
               { key: "monitoring", label: "Agreed to cooperate for monitoring purposes" },
               { key: "noResell", label: "Agreed not to resell the stove" },
               { key: "emissionReductions", label: "Ceded emission reductions to atmosfair gGmbH" },
               { key: "noExport", label: "Agreed not to take stove outside Nigeria" },
               { key: "demonstration", label: "Received demonstration for efficient firewood usage" },
-            ].map(({ key, label }) => (
+            ];
+            const allAccepted = termsItems.every(({ key }) => formData.termsAccepted?.[key]);
+            return (
+              <>
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <h3 className="text-base font-semibold text-gray-900">Terms &amp; Conditions *</h3>
+            <button
+              type="button"
+              onClick={() =>
+                handleInputChange(
+                  "termsAccepted",
+                  termsItems.reduce((acc, { key }) => ({ ...acc, [key]: !allAccepted }), {})
+                )
+              }
+              className="text-sm font-medium text-brand hover:underline shrink-0"
+            >
+              {allAccepted ? "Clear all" : "Accept all"}
+            </button>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1 mb-3">All items below must be acknowledged before submitting.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+            {termsItems.map(({ key, label }) => (
               <label key={key} className="flex items-start gap-2 cursor-pointer group">
                 <input
                   type="checkbox"
@@ -1481,6 +1500,9 @@ const CreateSalesForm = ({
             ))}
           </div>
           {errors.termsAccepted && <p className="text-sm text-red-500 mt-2">{errors.termsAccepted}</p>}
+              </>
+            );
+          })()}
         </div>
 
         {/* Images & Signature */}
