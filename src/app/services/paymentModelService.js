@@ -298,7 +298,24 @@ class PaymentModelService {
       .order("payment_date", { ascending: false });
     if (error) throw new Error(error.message);
 
-    const payments = data || [];
+    let payments = data || [];
+
+    // Attach recorder profile (full_name/email) for the "Recorded By" column.
+    const recorderIds = Array.from(
+      new Set(payments.map((p) => p.recorded_by).filter(Boolean)),
+    );
+    if (recorderIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", recorderIds);
+      const byId = new Map((profiles || []).map((p) => [p.id, p]));
+      payments = payments.map((p) => ({
+        ...p,
+        recorder: byId.get(p.recorded_by) || null,
+      }));
+    }
+
     const total_paid = payments.reduce(
       (acc, p) => acc + Number(p.amount || 0),
       0,
