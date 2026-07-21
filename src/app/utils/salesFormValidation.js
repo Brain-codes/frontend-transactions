@@ -94,9 +94,11 @@ export const validateSalesForm = (formData) => {
   }
 
   // Image validation
-  if (!formData.stoveImageId) {
-    errors.stoveImage = "Stove photo is required";
-  }
+  // Stove photo is now OPTIONAL (was required). A sale can be submitted without
+  // it; the backend records the sale as pending/incomplete when it's missing.
+  // if (!formData.stoveImageId) {
+  //   errors.stoveImage = "Stove photo is required";
+  // }
 
   // TEMP: agreement document not required for now — re-enable later
   // if (!formData.agreementImageId) {
@@ -217,10 +219,8 @@ export const fieldValidators = {
     return null;
   },
 
-  stoveImage: (stoveImageId) => {
-    if (!stoveImageId) {
-      return "Stove photo is required";
-    }
+  stoveImage: () => {
+    // Stove photo is optional — never blocks submission.
     return null;
   },
 

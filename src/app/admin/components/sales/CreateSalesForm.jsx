@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import DateRangePicker from "@/app/components/ui/date-range-picker";
 import GooglePlacesInput from "@/app/components/ui/google-places-input";
-import { lgaAndStates } from "../../../constants";
+import { getGeoData, getGeoDataSync } from "@/lib/geoDataService";
 import adminSalesService from "../../../services/adminSalesService";
 import profileService from "../../../services/profileService";
 import { validateSalesForm } from "../../../utils/salesFormValidation";
@@ -103,7 +103,13 @@ const CreateSalesForm = ({
   const [errors, setErrors] = useState({});
 
   // Installment payment state
+  // `paymentModels` is the full active catalogue, fetched once. The picker is
+  // narrowed to the selected partner's entitlements via `orgPaymentModelIds`.
   const [paymentModels, setPaymentModels] = useState([]);
+  // Sales model IDs the selected partner is tied to. `null` = unknown (no
+  // partner picked yet, or the row predates the field) and shows every model;
+  // an empty array is a real answer meaning full payment only.
+  const [orgPaymentModelIds, setOrgPaymentModelIds] = useState(null);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [isInstallment, setIsInstallment] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState("");
@@ -140,41 +146,52 @@ const CreateSalesForm = ({
   // Determine if this is edit mode
   const isEditMode = mode === "edit" && initialData;
 
-  // Get states from constants
-  const nigerianStates = Object.keys(lgaAndStates).sort();
+  // Centralized states + LGAs (geo-data edge fn → cache → bundled fallback).
+  // Seed synchronously from cache/bundled so the first render has data, then
+  // refresh from the network.
+  const [geoData, setGeoData] = useState(() => getGeoDataSync());
+  useEffect(() => {
+    let alive = true;
+    getGeoData().then((d) => {
+      if (alive) setGeoData(d);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const nigerianStates = geoData.states;
+  const lgaAndStates = geoData.lgas;
 
-  // Helper: resolve the currently active partner organization id
-  const getActiveOrgId = () => {
-    const sessionOrg = typeof sessionStorage !== "undefined"
-      ? sessionStorage.getItem("saa_selected_org_id")
-      : null;
-    return sessionOrg || profileService.getOrganizationId() || null;
-  };
-
-  // Helper: resolve ALL org row ids that share the picked partner/state/branch.
-  // Duplicate org rows for the same partner+branch exist from legacy imports,
-  // so we search stove_ids across every matching row.
+  // Helper: resolve the currently active partner organization id(s).
+  // Legacy duplicate org rows share the same partner+state+branch, so a stove
+  // can live on any one of them — we search/validate across the full set.
   const getActiveOrgIds = () => {
-    try {
-      const raw = typeof sessionStorage !== "undefined"
-        ? sessionStorage.getItem("saa_selected_org_ids")
-        : null;
+    if (typeof sessionStorage !== "undefined") {
+      const raw = sessionStorage.getItem("saa_selected_org_ids");
       if (raw) {
-        const arr = JSON.parse(raw);
-        if (Array.isArray(arr) && arr.length) return arr;
+        try {
+          const ids = JSON.parse(raw);
+          if (Array.isArray(ids) && ids.length > 0) return ids;
+        } catch {
+          /* fall through to single-id resolution */
+        }
       }
-    } catch (_) { /* ignore */ }
-    const single = getActiveOrgId();
-    return single ? [single] : [];
+      const single = sessionStorage.getItem("saa_selected_org_id");
+      if (single) return [single];
+    }
+    const profileOrg = profileService.getOrganizationId();
+    return profileOrg ? [profileOrg] : [];
   };
 
+  // Single-id accessor kept for callers (e.g. createSale) that need exactly one.
+  const getActiveOrgId = () => getActiveOrgIds()[0] || null;
 
   // AJAX search: pull stove IDs as the user types (debounced).
   // Only IDs that belong to the selected partner org and are not sold are returned.
   useEffect(() => {
     if (isEditMode) return; // edit mode locks the stove id
     const orgIds = getActiveOrgIds();
-    if (!orgIds.length) {
+    if (orgIds.length === 0) {
       setFilteredStoves([]);
       return;
     }
@@ -193,13 +210,12 @@ const CreateSalesForm = ({
     };
   }, [stoveSearchTerm, formData.partnerName, formData.retailerBranch, isEditMode]);
 
-
   // Validate the typed stove id against the partner's available stoves (debounced).
   useEffect(() => {
     if (isEditMode) return;
     const orgIds = getActiveOrgIds();
     const term = (stoveSearchTerm || "").trim();
-    if (!orgIds.length || !term) {
+    if (orgIds.length === 0 || !term) {
       setStoveValidity("idle");
       setStoveValidityMessage("");
       return;
@@ -230,7 +246,6 @@ const CreateSalesForm = ({
       clearTimeout(handle);
     };
   }, [stoveSearchTerm, formData.partnerName, formData.retailerBranch, isEditMode]);
-
 
 
 
@@ -276,7 +291,10 @@ const CreateSalesForm = ({
           );
         } else {
           const { data: { session } } = await supabase.auth.getSession();
-          const params = new URLSearchParams({ limit: "100", offset: "0" });
+          // Cap raised from 100 → 500 so legitimately distinct partner_name
+          // variants (e.g. "…(Amina Sales Model)") aren't pushed off the initial
+          // list before the user searches.
+          const params = new URLSearchParams({ limit: "500", offset: "0" });
           if (partnerSearch.trim()) params.set("search", partnerSearch.trim());
           const res = await fetch(
             `${SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
@@ -435,23 +453,19 @@ const CreateSalesForm = ({
     try {
       setStovesLoading(true);
 
-      // Get organization ID from stored profile (or SAA sessionStorage fallback)
-      const organizationId =
-        profileService.getOrganizationId() ||
-        (typeof sessionStorage !== "undefined"
-          ? sessionStorage.getItem("saa_selected_org_id")
-          : null);
+      // Resolve org id(s) — across all duplicate rows of the picked partner.
+      const organizationIds = getActiveOrgIds();
 
-      if (!organizationId) {
+      if (organizationIds.length === 0) {
         // No org context yet — partner picker is shown; wait for selection
         setNeedsPartnerSelection(true);
         setStovesLoading(false);
         return;
       }
 
-      // Fetch stoves with organization ID and "available" status
+      // Fetch stoves across the partner's org id(s) with "available" status
       const response = await adminSalesService.getAvailableStoveIds(
-        organizationId,
+        organizationIds,
         "available"
       );
 
@@ -468,9 +482,28 @@ const CreateSalesForm = ({
     }
   };
 
+  // The catalogue narrowed to what this partner may actually sell. Resolved
+  // locally so no per-partner request is ever made.
+  const visiblePaymentModels = useMemo(() => {
+    if (!orgPaymentModelIds) return paymentModels;
+    const allowed = new Set(orgPaymentModelIds);
+    return paymentModels.filter((m) => allowed.has(m.id));
+  }, [paymentModels, orgPaymentModelIds]);
+
+  // Two different empty states, worth distinguishing: the partner genuinely has
+  // no models, versus it references models this catalogue can't resolve (the
+  // model is inactive, or was created after we loaded).
+  const partnerHasNoPaymentModels =
+    orgPaymentModelIds !== null && orgPaymentModelIds.length === 0;
+  const partnerModelsUnresolved =
+    orgPaymentModelIds !== null &&
+    orgPaymentModelIds.length > 0 &&
+    visiblePaymentModels.length === 0 &&
+    !modelsLoading;
+
   const fetchPaymentModels = async () => {
-    // Payment models are decoupled from partners — always list every active
-    // model so any user can pick any payment type freely regardless of partner.
+    // Fetched once, for every role. Partner entitlements are applied on top of
+    // this list rather than by re-querying per partner.
     try {
       setModelsLoading(true);
       const all = await paymentModelService.getPaymentModels({ status: "active" });
@@ -489,6 +522,31 @@ const CreateSalesForm = ({
     fetchPaymentModels();
   }, [isEditMode]);
 
+
+  // The sync mints sales models on the fly, so a partner can reference a model
+  // that did not exist when this page loaded its catalogue. Rather than show an
+  // empty picker (which reads as "no installment option"), refetch once when we
+  // meet an ID we don't know.
+  const refetchedForUnknownIds = useRef(false);
+  useEffect(() => {
+    if (isEditMode || modelsLoading) return;
+    if (!orgPaymentModelIds || orgPaymentModelIds.length === 0) return;
+    const known = new Set(paymentModels.map((m) => m.id));
+    const hasUnknown = orgPaymentModelIds.some((id) => !known.has(id));
+    if (hasUnknown && !refetchedForUnknownIds.current) {
+      refetchedForUnknownIds.current = true;
+      fetchPaymentModels();
+    }
+  }, [orgPaymentModelIds, paymentModels, modelsLoading, isEditMode]);
+
+  // A model chosen for one partner must not survive into a partner that isn't
+  // entitled to it — create-sale rejects that, so drop it back to full payment.
+  useEffect(() => {
+    if (isEditMode || !isInstallment || !selectedModelId) return;
+    if (!visiblePaymentModels.some((m) => m.id === selectedModelId)) {
+      handlePaymentTypeChange("full_payment");
+    }
+  }, [visiblePaymentModels, selectedModelId, isInstallment, isEditMode]);
 
   // Update selected model details when model ID changes
   useEffect(() => {
@@ -723,7 +781,7 @@ const CreateSalesForm = ({
         // Clean up SAA org selection from sessionStorage
         if (typeof sessionStorage !== "undefined") {
           sessionStorage.removeItem("saa_selected_org_id");
-            sessionStorage.removeItem("saa_selected_org_ids");
+          sessionStorage.removeItem("saa_selected_org_ids");
         }
         setSuccess(true);
         if (onSuccess) {
@@ -758,25 +816,11 @@ const CreateSalesForm = ({
     }
   };
 
-  // Success state - only show if showSuccessState is true and not modal
-  if (success && showSuccessState && !isModal) {
-    return (
-      <div className="h-[70dvh] flex items-center justify-center">
-        <div className="text-center">
-          <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Sale Created Successfully!
-          </h2>
-          <p className="text-gray-600 mb-4">
-            The sale has been recorded and will be processed.
-          </p>
-          <Button onClick={() => router.push("/admin/sales")}>
-            View Sales
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  // NOTE: the success-state early return lives AFTER all hooks (just before the
+  // main return below). Returning here would render fewer hooks than the
+  // previous pass and crash with "Rendered fewer hooks than expected" — which
+  // surfaced as the root "Something went wrong" page after a successful sale on
+  // the full Sell Stove page (showSuccessState && !isModal).
 
   // Distinct partners (by partner_name) shown in the cascade dropdown
   const distinctPartners = useMemo(() => {
@@ -799,31 +843,36 @@ const CreateSalesForm = ({
   );
 
   const finalizeBranchPick = (org) => {
-    // Also include duplicate org rows that share the same partner+state+branch
-    // so stove IDs attached to any of them are discoverable.
-    const siblingIds = Array.from(new Set(
-      (partnerBranches || [])
-        .filter((r) =>
-          (r.partner_name || "") === (org.partner_name || "") &&
-          (r.state || "") === (org.state || "") &&
-          (r.branch || "") === (org.branch || ""),
-        )
-        .map((r) => r.id)
-        .concat([org.id])
-        .filter(Boolean),
-    ));
     if (typeof sessionStorage !== "undefined") {
+      // A partner can have several duplicate org rows for the SAME
+      // partner+state+branch (legacy imports). Record every matching id so stove
+      // search/validation runs across all of them — otherwise a stove attached
+      // to a sibling duplicate row is invisible/unsellable.
+      const norm = (s) => (s || "").toLowerCase().trim();
+      const dupIds = partnerBranches
+        .filter(
+          (r) =>
+            norm(r.partner_name) === norm(org.partner_name) &&
+            norm(r.state) === norm(org.state) &&
+            norm(r.branch) === norm(org.branch),
+        )
+        .map((r) => r.id);
+      const orgIds = Array.from(new Set([org.id, ...dupIds])).filter(Boolean);
       sessionStorage.setItem("saa_selected_org_id", org.id);
+      sessionStorage.setItem("saa_selected_org_ids", JSON.stringify(orgIds));
       sessionStorage.setItem("saa_selected_org_name", org.partner_name || "");
-      sessionStorage.setItem("saa_selected_org_ids", JSON.stringify(siblingIds));
     }
     handleInputChange("partnerName", org.partner_name || "");
     handleInputChange("retailerBranch", org.branch || "");
     setErrors((prev) => ({ ...prev, partnerName: null, state: null, branch: null }));
     fetchAvailableStoves();
-    // Payment models are global — no need to refetch per partner.
+    // Sales models are tied to the partner, but they are never fetched per
+    // partner: the org row already carries the IDs, which we resolve against
+    // the catalogue loaded once on mount.
+    setOrgPaymentModelIds(
+      Array.isArray(org.payment_model_ids) ? org.payment_model_ids : null,
+    );
   };
-
 
   const resetStoveSelection = () => {
     setAvailableStoves([]);
@@ -839,7 +888,10 @@ const CreateSalesForm = ({
   };
 
 
-  const handlePartnerPick = async (partnerName) => {
+  // `picked` is the org row the user clicked, not just its name — it is the
+  // guaranteed-present fallback if the branch lookup below comes back thin.
+  const handlePartnerPick = async (picked) => {
+    const partnerName = picked?.partner_name || "";
     setSelectedPartnerName(partnerName);
     setSelectedState("");
     setPartnerBranches([]);
@@ -848,35 +900,71 @@ const CreateSalesForm = ({
     handleInputChange("partnerName", partnerName);
     handleInputChange("retailerBranch", "");
     resetStoveSelection();
+    // Entitlements belong to the branch that is about to be picked, not to the
+    // partner we just left.
+    setOrgPaymentModelIds(null);
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.removeItem("saa_selected_org_id");
-            sessionStorage.removeItem("saa_selected_org_ids");
+      sessionStorage.removeItem("saa_selected_org_ids");
     }
 
     setBranchesLoading(true);
     try {
-      let rows = [];
+      // Tolerant name match: the dropdown label and the stored partner_name can
+      // differ by case or stray whitespace (e.g. a trailing space, or a double
+      // space, on the Amina variant). A brittle `===` there returns zero rows →
+      // empty state/branch → no org id recorded → the partner's stoves become
+      // unsellable. Normalize both sides before comparing.
+      const norm = (s) => (s || "").toLowerCase().replace(/\s+/g, " ").trim();
+      const target = norm(partnerName);
+      // Start from the rows already loaded — the picked partner is always in
+      // there, so state/branch can never come back empty.
+      let rows = (partners || []).filter((o) => norm(o.partner_name) === target);
+      if (!rows.some((o) => o.id === picked.id)) rows = [picked, ...rows];
+      // Show them immediately, so a failing lookup below still leaves a usable
+      // branch rather than an empty dropdown.
+      setPartnerBranches(rows);
+
+      let fetched = [];
       const isSaaAgent = isSuperAdmin && userRole !== "super_admin";
       if (isSaaAgent) {
         const result = await superAdminAgentService.getAgentOrganizations(userId);
-        rows = (result.data || []).filter((o) => o.partner_name === partnerName);
+        fetched = result.data || [];
       } else {
         const { data: { session } } = await supabase.auth.getSession();
+        // Search on the part of the name before any bracket: the server does a
+        // substring match, so this still reaches every branch, while keeping the
+        // term free of characters that have meaning inside a PostgREST filter.
+        const searchTerm = (partnerName.split("(")[0] || partnerName).trim();
         const params = new URLSearchParams({
           limit: "500",
           offset: "0",
-          search: partnerName,
+          search: searchTerm,
         });
         const res = await fetch(
           `${SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
           { headers: { Authorization: `Bearer ${session.access_token}` } },
         );
         const result = await res.json();
-        if (res.ok) {
-          rows = (result.data || []).filter((o) => o.partner_name === partnerName);
-        }
+        if (res.ok) fetched = result.data || [];
       }
+
+      // Merge the server's branches in, keyed by id so nothing duplicates.
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      for (const o of fetched) {
+        if (norm(o.partner_name) === target) byId.set(o.id, o);
+      }
+      rows = Array.from(byId.values());
       setPartnerBranches(rows);
+
+      if (rows.length === 0) {
+        // Don't leave state/branch silently empty — tell the user why.
+        setErrors((prev) => ({
+          ...prev,
+          partnerName: "No branches configured for this partner",
+        }));
+        return;
+      }
 
       // Auto-select when only one option
       const states = Array.from(new Set(rows.map((r) => r.state).filter(Boolean)));
@@ -898,7 +986,7 @@ const CreateSalesForm = ({
     resetStoveSelection();
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.removeItem("saa_selected_org_id");
-            sessionStorage.removeItem("saa_selected_org_ids");
+      sessionStorage.removeItem("saa_selected_org_ids");
     }
     const branches = partnerBranches.filter((r) => r.state === stateValue);
     if (branches.length === 1) finalizeBranchPick(branches[0]);
@@ -909,8 +997,27 @@ const CreateSalesForm = ({
     if (org) finalizeBranchPick(org);
   };
 
-
-
+  // Success state - only show if showSuccessState is true and not modal.
+  // Placed here (after every hook) so the hook order is identical whether or not
+  // the sale succeeded — see the note where this block used to live.
+  if (success && showSuccessState && !isModal) {
+    return (
+      <div className="h-[70dvh] flex items-center justify-center">
+        <div className="text-center">
+          <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Sale Created Successfully!
+          </h2>
+          <p className="text-gray-600 mb-4">
+            The sale has been recorded and will be processed.
+          </p>
+          <Button onClick={() => router.push("/admin/sales")}>
+            View Sales
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto p-5">
@@ -1005,7 +1112,7 @@ const CreateSalesForm = ({
                             <div
                               key={p.partner_name}
                               className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
-                              onClick={() => handlePartnerPick(p.partner_name)}
+                              onClick={() => handlePartnerPick(p)}
                             >
                               {p.partner_name}
                             </div>
@@ -1265,13 +1372,27 @@ const CreateSalesForm = ({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="full_payment">Full Payment</SelectItem>
-                    {paymentModels.map((model) => (
+                    {visiblePaymentModels.map((model) => (
                       <SelectItem key={model.id} value={model.id}>
                         {model.name} — {formatCurrency(model.fixed_price)} / {model.duration_months} mo
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {partnerHasNoPaymentModels && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    This partner has no sales models assigned, so only full
+                    payment is available.
+                  </p>
+                )}
+                {partnerModelsUnresolved && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    This partner is assigned {orgPaymentModelIds.length} sales
+                    model{orgPaymentModelIds.length === 1 ? "" : "s"} that
+                    could not be loaded — they may be inactive. Only full
+                    payment is available until that is resolved.
+                  </p>
+                )}
               </FormField>
             ) : null}
 
@@ -1442,17 +1563,36 @@ const CreateSalesForm = ({
 
         {/* Terms & Conditions */}
         <div className={`bg-[#fafafa] rounded-xl p-5 ${errors.termsAccepted ? "border border-red-400" : "border border-gray-100"}`}>
-          <h3 className="text-base font-semibold text-gray-900 mb-4">Terms &amp; Conditions *</h3>
-          <p className="text-sm text-muted-foreground mt-1 mb-3">All items below must be acknowledged before submitting.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
-            {[
+          {(() => {
+            const termsItems = [
               { key: "poaGoverned", label: "PoA / UNFCCC governed — stove subsidised by Carbon Credits" },
               { key: "monitoring", label: "Agreed to cooperate for monitoring purposes" },
               { key: "noResell", label: "Agreed not to resell the stove" },
               { key: "emissionReductions", label: "Ceded emission reductions to atmosfair gGmbH" },
               { key: "noExport", label: "Agreed not to take stove outside Nigeria" },
               { key: "demonstration", label: "Received demonstration for efficient firewood usage" },
-            ].map(({ key, label }) => (
+            ];
+            const allAccepted = termsItems.every(({ key }) => formData.termsAccepted?.[key]);
+            return (
+              <>
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <h3 className="text-base font-semibold text-gray-900">Terms &amp; Conditions *</h3>
+            <button
+              type="button"
+              onClick={() =>
+                handleInputChange(
+                  "termsAccepted",
+                  termsItems.reduce((acc, { key }) => ({ ...acc, [key]: !allAccepted }), {})
+                )
+              }
+              className="text-sm font-medium text-brand hover:underline shrink-0"
+            >
+              {allAccepted ? "Clear all" : "Accept all"}
+            </button>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1 mb-3">All items below must be acknowledged before submitting.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+            {termsItems.map(({ key, label }) => (
               <label key={key} className="flex items-start gap-2 cursor-pointer group">
                 <input
                   type="checkbox"
@@ -1465,6 +1605,9 @@ const CreateSalesForm = ({
             ))}
           </div>
           {errors.termsAccepted && <p className="text-sm text-red-500 mt-2">{errors.termsAccepted}</p>}
+              </>
+            );
+          })()}
         </div>
 
         {/* Images & Signature */}
@@ -1473,7 +1616,7 @@ const CreateSalesForm = ({
             <Label className="text-base font-semibold">Images &amp; Documents</Label>
             <div className="space-y-4 mt-2">
               <ImageUploadSection
-                label="Stove Photo *"
+                label="Stove Photo (optional)"
                 preview={stoveImagePreview}
                 uploading={uploadingImages.stove}
                 onUpload={(file) => handleImageUpload(file, "stove")}

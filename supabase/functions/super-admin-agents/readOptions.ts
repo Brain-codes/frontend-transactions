@@ -225,11 +225,13 @@ export async function listAgents(supabase: any, searchParams: URLSearchParams, m
     // Batch-fetch attended stove counts (sold stove_ids per sale_id)
     const allSaleIds = Object.values(salesByAgent).flatMap((s) => s.saleIds);
     const stoveCountBySaleId: Record<string, number> = {};
-    if (allSaleIds.length > 0) {
+    // Batch to keep request URLs small — sale volume can far exceed page size.
+    const SALE_BATCH = 200;
+    for (let i = 0; i < allSaleIds.length; i += SALE_BATCH) {
       const { data: soldStoves } = await supabase
         .from("stove_ids")
         .select("sale_id")
-        .in("sale_id", allSaleIds);
+        .in("sale_id", allSaleIds.slice(i, i + SALE_BATCH));
       (soldStoves || []).forEach((s: any) => {
         if (s.sale_id) stoveCountBySaleId[s.sale_id] = (stoveCountBySaleId[s.sale_id] || 0) + 1;
       });

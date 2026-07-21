@@ -7,103 +7,31 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Helper to find common base name between organization names
-function findBaseName(names: string[]): string {
-  if (names.length === 0) return "";
-  if (names.length === 1) return names[0];
-
-  // Split all names into words
-  const allWords = names.map((name) =>
-    name
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((w) => w.length > 0)
-  );
-
-  // Find common words across all names (excluding location indicators)
-  const locationWords = new Set([
-    "abuja",
-    "lagos",
-    "kano",
-    "ibadan",
-    "port",
-    "harcourt",
-    "kaduna",
-    "benin",
-    "maiduguri",
-    "zaria",
-    "aba",
-    "jos",
-    "ilorin",
-    "oyo",
-    "enugu",
-    "abeokuta",
-    "sokoto",
-    "onitsha",
-    "warri",
-    "ebute",
-    "metta",
-    "yaba",
-    "surulere",
-    "ikeja",
-    "lekki",
-    "vi",
-    "island",
-    "mainland",
-    "north",
-    "south",
-    "east",
-    "west",
-    "central",
-    "branch",
-    "office",
-    "hq",
-    "headquarters",
-  ]);
-
-  const firstWords = allWords[0];
-  const commonWords = firstWords.filter((word) => {
-    // Skip if it's a location word
-    if (locationWords.has(word)) return false;
-
-    // Check if this word appears in all other names
-    return allWords.slice(1).every((words) => words.includes(word));
-  });
-
-  // If we have common words, use them as the base name
-  if (commonWords.length > 0) {
-    // Return the common words in the order they appear in the first name
-    const baseWords: string[] = [];
-    for (const word of firstWords) {
-      if (commonWords.includes(word)) {
-        baseWords.push(word);
-      }
-    }
-
-    // Capitalize first letter of each word
-    return baseWords
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" ");
-  }
-
-  // If no common words, return the shortest name as base
-  return names.reduce((shortest, current) =>
-    current.length < shortest.length ? current : shortest
-  );
-}
-
-// Group organizations by similarity
+// Group organizations by EXACT (case/whitespace-normalized) partner_name.
+//
+// We deliberately do NOT fuzzy-merge names that merely "look similar". An older
+// version ran a second pass that merged any two partner names sharing ≥50% of
+// their words, then picked one label via a findBaseName() heuristic. That silently
+// hid legitimately distinct partners — e.g. "Swali Global Multi Concept" and
+// "Swali Global Multi Concept (Amina Sales Model)" collapsed into one, dropping the
+// Amina variant (and all its stoves) from every screen that reads this function.
+//
+// partner_name is authoritative: a parenthetical suffix, payment-model tag, or
+// spelling difference IS a different partner record with its own stove inventory.
+// Rows with the identical name are still grouped (their branches roll up under one
+// entry). If genuine duplicates appear afterward, the fix is a data cleanup in the
+// organizations table — not re-introducing fuzzy grouping here.
 function groupOrganizations(organizations: any[]): any[] {
   const groups: Map<string, any> = new Map();
 
-  // First pass: create groups based on exact matches
   for (const org of organizations) {
-    const key = org.partner_name.toLowerCase().trim();
+    const key = (org.partner_name || "").toLowerCase().trim();
     if (!groups.has(key)) {
       groups.set(key, {
         base_name: org.partner_name,
         branches: [],
         organization_ids: [],
+        branch_count: 0,
       });
     }
 
@@ -116,65 +44,11 @@ function groupOrganizations(organizations: any[]): any[] {
       partner_type: org.partner_type,
     });
     group.organization_ids.push(org.id);
+    group.branch_count = group.branches.length;
   }
 
-  // Second pass: merge similar organizations
-  const groupKeys = Array.from(groups.keys());
-  const merged: Set<string> = new Set();
-  const finalGroups: Map<string, any> = new Map();
-
-  for (let i = 0; i < groupKeys.length; i++) {
-    const key1 = groupKeys[i];
-    if (merged.has(key1)) continue;
-
-    const similarKeys = [key1];
-    const words1 = key1.split(/\s+/).filter((w) => w.length > 2);
-
-    // Find similar organization names
-    for (let j = i + 1; j < groupKeys.length; j++) {
-      const key2 = groupKeys[j];
-      if (merged.has(key2)) continue;
-
-      const words2 = key2.split(/\s+/).filter((w) => w.length > 2);
-
-      // Calculate similarity: count common words (length > 2)
-      const common = words1.filter((w) => words2.includes(w));
-
-      // If more than 50% of words match, consider them similar
-      const minWords = Math.min(words1.length, words2.length);
-      if (common.length >= Math.ceil(minWords * 0.5) && minWords > 1) {
-        similarKeys.push(key2);
-        merged.add(key2);
-      }
-    }
-
-    merged.add(key1);
-
-    // Merge all similar organizations
-    const allBranches: any[] = [];
-    const allOrgIds: string[] = [];
-    const allNames: string[] = [];
-
-    for (const key of similarKeys) {
-      const group = groups.get(key)!;
-      allBranches.push(...group.branches);
-      allOrgIds.push(...group.organization_ids);
-      allNames.push(group.base_name);
-    }
-
-    // Find the best base name
-    const baseName = findBaseName(allNames);
-
-    finalGroups.set(baseName, {
-      base_name: baseName,
-      branches: allBranches,
-      organization_ids: allOrgIds,
-      branch_count: allBranches.length,
-    });
-  }
-
-  // Convert to array and sort alphabetically
-  return Array.from(finalGroups.values()).sort((a, b) =>
+  // Sort alphabetically by base_name (unchanged response shape).
+  return Array.from(groups.values()).sort((a, b) =>
     a.base_name.localeCompare(b.base_name)
   );
 }

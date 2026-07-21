@@ -1,6 +1,7 @@
 // CRUD operations for organizations
 
 // Read operations for organizations with admin user information
+import { selectInChunks, paginatedSelectInChunks } from "../_shared/chunkedQuery.ts";
 
 export async function getOrganization(supabase: any, organizationId: string) {
   console.log(`🔍 Getting organization with admin user: ${organizationId}`);
@@ -64,9 +65,24 @@ export async function getOrganization(supabase: any, organizationId: string) {
     console.warn("Could not fetch admin user:", adminError);
   }
 
+  // Sales models assigned to this partner, as bare IDs — see the bulk read in
+  // getOrganizations for why clients resolve them locally.
+  let paymentModelIds: string[] | null = null;
+  try {
+    const { data: modelLinks, error: modelLinksError } = await supabase
+      .from("organization_payment_models")
+      .select("payment_model_id")
+      .eq("organization_id", organizationId);
+
+    if (modelLinksError) throw modelLinksError;
+    paymentModelIds = (modelLinks || []).map((l: any) => l.payment_model_id);
+  } catch (modelError) {
+    console.warn("Could not fetch payment model assignments:", modelError);
+  }
+
   return {
     data: {
-      organization,
+      organization: { ...organization, payment_model_ids: paymentModelIds },
       admin_user: adminUser,
     },
     message: "Organization retrieved successfully",
@@ -120,10 +136,19 @@ export async function getOrganizations(
   // Validate sortOrder
   const actualSortOrder = sortOrder === "asc" ? "asc" : "desc";
 
-  // Helper to apply shared filters to any query
+  // Helper to apply shared filters to any query. Org scoping (allowedOrgIds,
+  // which can be hundreds of orgs for an ACSL agent) is applied SEPARATELY, in
+  // chunks, so it never overflows the request URL — see scoped helpers below.
   const applyFilters = (q: any) => {
-    if (allowedOrgIds) q = q.in("id", allowedOrgIds);
-    if (search) q = q.or(`partner_name.ilike.%${search}%,partner_id.ilike.%${search}%`);
+    if (search) {
+      // The value goes into a raw PostgREST `or()` expression, where `(`, `)`,
+      // `,` and `.` are syntax. An unescaped partner name like
+      // "Swali Global Multi Concept (Amina Sales Model)" gets mis-parsed and the
+      // search silently matches the wrong set. Double-quoting makes PostgREST
+      // treat the whole thing as a literal.
+      const s = search.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      q = q.or(`partner_name.ilike."%${s}%",partner_id.ilike."%${s}%"`);
+    }
     if (status) q = q.eq("status", status);
     if (partnerType) q = q.ilike("partner_type", partnerType);
     if (stateFilter) q = q.ilike("state", stateFilter);
@@ -135,10 +160,13 @@ export async function getOrganizations(
 
   // ── Stove-based sort path ──────────────────────────────────────────────────
   if (isStoveSort) {
-    // Step 1: get all matching org IDs (no pagination limit)
-    const { data: allIdRows, error: idsError } = await applyFilters(
-      supabase.from("organizations").select("id")
-    );
+    // Step 1: get all matching org IDs (no pagination limit). Scope by
+    // allowedOrgIds in chunks to keep the request URL small.
+    const { data: allIdRows, error: idsError } = allowedOrgIds
+      ? await selectInChunks(allowedOrgIds, (c) =>
+          applyFilters(supabase.from("organizations").select("id")).in("id", c)
+        )
+      : await applyFilters(supabase.from("organizations").select("id"));
     if (idsError) throw new Error(`Failed to fetch org IDs: ${idsError.message}`);
 
     const allOrgIds: string[] = (allIdRows || []).map((r: any) => r.id);
@@ -169,11 +197,10 @@ export async function getOrganizations(
         }
       }
     } catch (_) {
-      // fallback: query stove_ids table directly
-      const { data: stoveRows } = await supabase
-        .from("stove_ids")
-        .select("organization_id, status")
-        .in("organization_id", allOrgIds);
+      // fallback: query stove_ids table directly (chunk the org list)
+      const { data: stoveRows } = await selectInChunks(allOrgIds, (c) =>
+        supabase.from("stove_ids").select("organization_id, status").in("organization_id", c)
+      );
       for (const row of stoveRows || []) {
         const id = row.organization_id;
         if (!countsByOrg[id]) countsByOrg[id] = { total: 0, sold: 0, available: 0 };
@@ -225,8 +252,7 @@ export async function getOrganizations(
   }
 
   // ── Normal sort path ───────────────────────────────────────────────────────
-  let query = supabase.from("organizations").select(
-    `
+  const orgSelectColumns = `
       id,
       partner_id,
       partner_name,
@@ -242,18 +268,40 @@ export async function getOrganizations(
       updated_at,
       created_by,
       updated_by
-    `,
-    { count: "exact" },
-  );
+    `;
+  let query = supabase.from("organizations").select(orgSelectColumns, { count: "exact" });
 
-  query = applyFilters(query);
+  let organizations: any[];
+  let error: any;
+  let count: number;
 
-  // Apply sorting and pagination with validated parameters
-  query = query
-    .order(actualSortBy, { ascending: actualSortOrder === "asc" })
-    .range(offset, offset + limit - 1);
-
-  const { data: organizations, error, count } = await query;
+  if (allowedOrgIds) {
+    // Scoped caller: chunk the (potentially huge) org list, merge + sort + page.
+    const asc = actualSortOrder === "asc";
+    const compare = (a: any, b: any) => {
+      const av = a?.[actualSortBy], bv = b?.[actualSortBy];
+      let c = av == null && bv == null ? 0 : av == null ? 1 : bv == null ? -1 : av < bv ? -1 : av > bv ? 1 : 0;
+      if (!asc) c = -c;
+      if (c !== 0) return c;
+      return a?.id < b?.id ? -1 : a?.id > b?.id ? 1 : 0;
+    };
+    const res = await paginatedSelectInChunks(
+      allowedOrgIds,
+      (c) => applyFilters(supabase.from("organizations").select(orgSelectColumns, { count: "exact" })).in("id", c).order(actualSortBy, { ascending: asc }),
+      { offset, limit, compare },
+    );
+    organizations = res.data;
+    count = res.count;
+    error = res.error;
+  } else {
+    query = applyFilters(query)
+      .order(actualSortBy, { ascending: actualSortOrder === "asc" })
+      .range(offset, offset + limit - 1);
+    const r = await query;
+    organizations = r.data;
+    error = r.error;
+    count = r.count || 0;
+  }
 
   if (error) {
     throw new Error(`Failed to fetch organizations: ${error.message}`);
@@ -312,6 +360,44 @@ export async function getOrganizations(
       organizationsWithAdmins = organizations.map((org: any) => ({
         ...org,
         admin_user: null,
+      }));
+    }
+  }
+
+  // Attach each organization's assigned sales models as a bare ID list.
+  // Clients (web + mobile) already hold the full payment_models catalogue, so
+  // they resolve these IDs locally at point of sale — one bulk query here
+  // replaces a per-partner lookup, and the list caches offline on mobile.
+  if (organizations && organizations.length > 0) {
+    try {
+      const orgIds = organizations.map((org: any) => org.id);
+
+      const { data: modelLinks, error: modelLinksError } = await supabase
+        .from("organization_payment_models")
+        .select("organization_id, payment_model_id")
+        .in("organization_id", orgIds);
+
+      if (modelLinksError) throw modelLinksError;
+
+      const modelMap = new Map<string, string[]>();
+      for (const link of modelLinks || []) {
+        const list = modelMap.get(link.organization_id) || [];
+        list.push(link.payment_model_id);
+        modelMap.set(link.organization_id, list);
+      }
+
+      organizationsWithAdmins = organizationsWithAdmins.map((org: any) => ({
+        ...org,
+        payment_model_ids: modelMap.get(org.id) || [],
+      }));
+    } catch (modelError) {
+      console.error("Error fetching payment model assignments:", modelError);
+      // An empty list means "no installment models" downstream, which would
+      // silently hide models the partner really has. Send null so clients can
+      // tell a genuine empty assignment apart from a failed lookup.
+      organizationsWithAdmins = organizationsWithAdmins.map((org: any) => ({
+        ...org,
+        payment_model_ids: null,
       }));
     }
   }

@@ -1,88 +1,140 @@
-# Payment Models: decoupling from partners
+# Payment models ↔ partners
 
-**Audience:** whoever maintains `sales-monitoring-web` (web app + Supabase edge functions).
-**Status:** behaviour change requested by product. No destructive schema migration required.
-**Date:** 2026-06-28
+**Audience:** whoever maintains `sales-monitoring-web`, the mobile app, and the Supabase edge functions.
+**Status:** current. Supersedes the June 2026 decoupling described at the bottom.
+**Date:** 2026-07-21
 
-## Summary of the change
+## Where things stand
 
-**Before:** a payment model had to be *assigned to a partner* (organization) via the
-`organization_payment_models` join table. At point of sale, the user could only pick
-from the models assigned to that partner, and `create-sale` **rejected** the sale if
-the org wasn't linked to the chosen model.
+Sales models are **tied to a partner**, and the **external application is the source
+of truth**. A super admin no longer assigns them.
 
-**After:** **every partner can use every active payment model.** Payment models are no
-longer assigned to partners. At point of sale the user selects any active payment model
-directly; there is no per-partner filtering and no assignment step.
+Every sync payload carries the partner's full entitlement list, and the sync mirrors
+it onto `organization_payment_models`. At point of sale, a partner may only use the
+models assigned to them.
 
-## Why no schema migration is needed
+This reverses the June 2026 decoupling (kept at the bottom for history). It is *not*
+a return to the original design: the assignment now comes from the CSV, not from a
+super admin screen.
 
-`payment_models` already exposes an `authenticated_read_active` RLS policy (SELECT),
-so any authenticated user can already read all active models. Decoupling is therefore a
-**logic change**, not a data-model change.
+## The CSV contract
 
-`organization_payment_models` is **left in place** (non-destructive) but is **no longer
-used for gating**. It can be ignored, or dropped later once the web UI stops referencing
-it. Do **not** drop it as part of this change if the web "assign model to partner" screen
-still reads it — just stop enforcing it.
+`external-csv-sync` reads three new columns (all optional):
 
-## Required edge-function change — `create-sale`
+| Column | Meaning |
+|---|---|
+| `Partner Sales Models` | The partner's full entitlement list. Authoritative when present. |
+| `Order Sales Model` | The model used for *this* transfer's sale. Also grants entitlement. |
+| `Order Sales Model Duration` | Duration in months for the above. |
 
-In `supabase/functions/create-sale/index.ts`, the installment branch currently verifies
-org↔model assignment and rejects otherwise:
+**Both columns grant entitlement**, because the ERP does not always populate the
+list — a real payload (Atmosfair, 21 Jul 2026) sent
+`Order Sales Model = "Direct Community Engagement Sales Model"` with
+`Partner Sales Models = "N/A"`. Reading only the list left that partner with no
+models and no installment option at point of sale.
 
-```ts
-// REMOVE THIS BLOCK — no longer gate by org assignment
-const { data: orgModelLink, error: linkError } = await supabase
-  .from("organization_payment_models")
-  .select("id")
-  .eq("organization_id", organizationId)
-  .eq("payment_model_id", paymentModelId)
-  .maybeSingle();
-if (linkError || !orgModelLink) {
-  return jsonError("This organization does not have access to the selected payment model", 403);
-}
+| `Partner Sales Models` | Behaviour |
+|---|---|
+| Present | List **∪** order model, **authoritative** — models absent from it are revoked. |
+| `N/A` / empty | Order model only, **additive** — it is assigned, and nothing is ever revoked. One order is not evidence of the partner's full set. |
+| Both empty | No-op. |
+
+`Partner Sales Models` is a `;`-separated list of `Name (Nm)`:
+
+```
+"Hakimi Sales Model (6m); Amina Sales Model (12m)"
 ```
 
-Keep everything else (fetch the model, check `is_active`, use `fixed_price`, validate
-`min_down_payment`). The net effect: any active payment model is accepted for any org.
+`external-sync` (the JSON sibling) accepts the same thing on
+`organization_data.partner_sales_models`, either as that string or as
+`[{ name, duration_months }]`.
+
+### Resolution rules
+
+1. Each entry is matched against `payment_models` on **normalized name + `duration_months`**
+   (case- and whitespace-insensitive). Name alone is not enough — "Amina (6m)" and
+   "Amina (12m)" are different models.
+2. **No match → a stub model is created** with the given name and duration and
+   `fixed_price = 0`, `min_down_payment = 0`, `is_active = true`. A partner is
+   therefore never blocked from selling by a missing model. The sync logs a
+   `warn` so a super admin can fill in the pricing.
+   Zero pricing is safe today because **the sale amount is operator-entered** in
+   both clients and `create-sale` honours it; `fixed_price` is only a fallback
+   when the client sends no amount. This changes once the external app starts
+   sending amounts — see *Coming next*.
+3. The set is then **reconciled**: models present are assigned; models absent are
+   unassigned **only when `Partner Sales Models` was supplied** (see the table
+   above). The external app owns the set only when it states the set.
+4. **An absent or empty cell means "nothing was said", not "revoke everything"** —
+   existing assignments are left untouched.
+5. Entitlements are applied even when the partner is `manually_edited`; that flag
+   guards contact details only.
+6. The whole step is non-fatal — a failure is logged and stove ID processing
+   continues.
+
+## How clients read it — never per partner
+
+There are hundreds of thousands of partners, so fetching models per partner is not
+an option, and the mobile app must work offline. Both clients therefore:
+
+1. Load the **full active catalogue once** (`GET payment-models`) and cache it.
+2. Read the partner's **`payment_model_ids`** — a bare ID array now returned on every
+   organization row by `manage-organizations` (both the list and single-org reads).
+3. **Resolve the IDs against the cached catalogue in memory** at point of sale.
+
+No extra request is made when a partner is selected, online or offline.
+
+`payment_model_ids` distinguishes three states, and clients must not conflate them:
+
+| Value | Meaning | Client behaviour |
+|---|---|---|
+| `[...]` | These models | Show exactly these |
+| `[]` | Genuinely none assigned | **Full payment only**, with an explanatory note |
+| `null` | Unknown — lookup failed, or an older cached row | Fall back to showing every model |
+
+## Server-side enforcement — `create-sale`
+
+Client-side filtering is cosmetic on its own, so the installment branch verifies the
+org↔model link again and returns 403 otherwise:
+
+> `This partner is not assigned the "<name>" sales model`
+
+The sale `amount` remains operator-entered (see the request contract below).
 
 ## Installment request contract — `create-sale`
-
-When creating an installment sale, the request body **must** use these exact field
-names. `create-sale` reads only these; any other name (e.g. `downPayment`,
-`initialPayment`, `firstPayment`, `downPaymentAmount`, `amountReceived`) is ignored
-and the down payment is treated as `0`.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `isInstallment` | boolean | yes | Must be `true` to enter the installment path. |
-| `paymentModelId` | uuid | yes | Must reference an **active** payment model. |
-| `initialPaymentAmount` | number | yes | The down payment. Must be `> 0` and `>= min_down_payment`, and `<= fixed_price`. |
+| `paymentModelId` | uuid | yes | Must be **active** and **assigned to the partner**. |
+| `initialPaymentAmount` | number | no | The down payment. Optional and open-ended; falls back to `amountReceived`, then `0`. |
 | `initialPaymentMethod` | string | no | Defaults to `"cash"`. |
 | `initialPaymentProofImageId` | uuid | no | Empty string is normalized to `null`. |
 
-Notes:
-- For installment sales the sale `amount` is taken from the model's `fixed_price`;
-  the client-supplied `amount` is ignored.
-- A missing/zero/non-numeric `initialPaymentAmount` returns
-  `"A down payment (initialPaymentAmount) is required for installment sales"` (400),
-  **not** the minimum-down-payment message.
+`amount` is the operator-entered sale amount and is honoured as sent. The model's
+`fixed_price` is used only when no amount is supplied.
 
-## Required web UI changes (informational)
+## Migration
 
-- **Point of sale:** list **all active** payment models (`GET payment-models`) instead of
-  `organization-payment-models/{orgId}`. Remove the per-partner filtering.
-- **Admin "assign payment model to partner" screen:** no longer required for sales to work.
-  Can be hidden/removed at the team's discretion. Sales no longer depend on it.
+`20260721_sales_models_from_external_sync.sql` drops `NOT NULL` from
+`organization_payment_models.assigned_by` and `payment_models.created_by`. The sync
+authenticates with an app token and has no acting user, so `NULL` there means
+"written by the external sync" rather than attributing machine writes to a person.
+It also indexes `organization_payment_models.organization_id`, which the sync and
+both reads hit constantly.
 
-## Mobile app behaviour (already implemented)
+## Coming next
 
-The mobile app reads payment models from the global `payment-models` endpoint and lets the
-seller pick any active model at point of sale — no org filtering. See
-`lib/features/sales/...` and `docs/memory.md`.
+The external application will start sending the **sales model amount**. When it does,
+stub models stop being zero-priced and `fixed_price` becomes meaningful — revisit
+rule 2 above and decide whether the operator may still edit the amount.
 
-## Rollback
+---
 
-Re-introduce the `organization_payment_models` check block in `create-sale` and restore the
-org-filtered selection in the UI. No data was destroyed.
+## History: the June 2026 decoupling (reversed)
+
+Between 2026-06-28 and 2026-07-21, every partner could use every active payment
+model. `organization_payment_models` was left in place but unused for gating, the
+`create-sale` org↔model check was removed, and both clients listed all active
+models. That is no longer the behaviour. The table was never dropped, so no data
+was lost in either direction.

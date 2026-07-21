@@ -35,6 +35,10 @@ interface ExternalSyncRequest {
     address?: string;
     state?: string;
     branch?: string;
+    /// Every sales model this partner is entitled to. Accepts either the CSV
+    /// string form ("Hakimi Sales Model (6m); Amina Sales Model (12m)") or an
+    /// explicit list. Authoritative — omit it to leave assignments untouched.
+    partner_sales_models?: string | Array<{ name: string; duration_months?: number | null }>;
   };
   stove_ids?: Array<{ stove_id: string; factory: string; sales_reference?: string }> | string[];
   sales_date?: string;
@@ -565,6 +569,203 @@ async function validateExternalToken(
   }
 }
 
+// ─── Sales model entitlements ────────────────────────────────────────────────
+//
+// Kept in step with the copy in `external-csv-sync/index.ts` — both sync paths
+// must resolve and assign sales models identically.
+
+interface ParsedSalesModel {
+  name: string;
+  duration_months: number | null;
+}
+
+/// Normalized key for matching an incoming model name against `payment_models.name`.
+function normalizeModelName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function isBlankValue(value: string | undefined | null): boolean {
+  if (!value) return true;
+  return ["n/a", "na", "null", "undefined", "none", "-", "nil", "n.a", ""].includes(
+    value.trim().toLowerCase(),
+  );
+}
+
+/// Accepts the CSV string form ("Hakimi Sales Model (6m); Amina Sales Model (12m)")
+/// or an explicit list, and normalizes both to `ParsedSalesModel[]`.
+function parsePartnerSalesModels(
+  value: string | Array<{ name: string; duration_months?: number | null }> | undefined,
+): ParsedSalesModel[] {
+  if (!value) return [];
+
+  const raw: ParsedSalesModel[] = [];
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      if (!item?.name || isBlankValue(item.name)) continue;
+      raw.push({ name: item.name.trim(), duration_months: item.duration_months ?? null });
+    }
+  } else {
+    for (const rawEntry of value.split(/[;|]/)) {
+      const entry = rawEntry.trim();
+      if (!entry || isBlankValue(entry)) continue;
+      const match = entry.match(/^(.*?)\s*\(\s*(\d+)\s*m?(?:onths?)?\s*\)$/i);
+      const name = (match ? match[1] : entry).trim();
+      if (!name) continue;
+      raw.push({ name, duration_months: match ? parseInt(match[2], 10) : null });
+    }
+  }
+
+  const seen = new Set<string>();
+  return raw.filter((m) => {
+    const key = `${normalizeModelName(m.name)}|${m.duration_months ?? ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/// Mirrors the partner's sales models onto `organization_payment_models`. The
+/// external application is authoritative: listed models are assigned, omitted
+/// ones unassigned. Unmatched names create a zero-priced stub model so a
+/// partner is never blocked from selling — the sale amount is operator-entered
+/// anyway, and a super admin fills in pricing later.
+/// Merges the partner's entitlement list with the model used by this order.
+/// The list, when present, is authoritative (omissions are revoked); an order
+/// model on its own can only ADD — one order is not evidence of the full set.
+function resolveEntitlements(orgData: any): {
+  models: ParsedSalesModel[];
+  authoritative: boolean;
+} {
+  const listed = parsePartnerSalesModels(orgData.partner_sales_models);
+  const orderName = typeof orgData.order_sales_model === "string" &&
+      !isBlankValue(orgData.order_sales_model)
+    ? orgData.order_sales_model.trim()
+    : null;
+  const orderDuration = Number.parseInt(orgData.order_sales_model_duration, 10);
+  const ordered: ParsedSalesModel[] = orderName
+    ? [{
+      name: orderName,
+      duration_months: Number.isNaN(orderDuration) ? null : orderDuration,
+    }]
+    : [];
+
+  const merged: ParsedSalesModel[] = [];
+  const seen = new Set<string>();
+  for (const m of [...listed, ...ordered]) {
+    const key = `${normalizeModelName(m.name)}|${m.duration_months ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(m);
+  }
+
+  return { models: merged, authoritative: listed.length > 0 };
+}
+
+async function syncPartnerSalesModels(
+  supabase: any,
+  organizationId: string,
+  partnerName: string,
+  models: ParsedSalesModel[],
+  authoritative: boolean,
+  entries: LogEntry[],
+): Promise<{ assigned: number; created: number; removed: number } | null> {
+  // Nothing supplied means "the external app said nothing", which must not be
+  // read as "revoke everything".
+  if (models.length === 0) return null;
+
+  entries.push(mkEntry("sales-models", "info", `Resolving ${models.length} sales model(s) for ${partnerName}${authoritative ? "" : " (from this order only — additive)"}`));
+
+  const { data: allModels, error: modelsError } = await supabase
+    .from("payment_models")
+    .select("id, name, duration_months");
+  if (modelsError) throw modelsError;
+
+  const byKey = new Map<string, string>();
+  for (const m of allModels || []) {
+    byKey.set(`${normalizeModelName(m.name)}|${m.duration_months ?? ""}`, m.id);
+  }
+
+  const resolvedIds: string[] = [];
+  let created = 0;
+
+  for (const model of models) {
+    const key = `${normalizeModelName(model.name)}|${model.duration_months ?? ""}`;
+    const existingId = byKey.get(key);
+    if (existingId) {
+      resolvedIds.push(existingId);
+      continue;
+    }
+
+    const { data: stub, error: stubError } = await supabase
+      .from("payment_models")
+      .insert({
+        name: model.name,
+        description: `Auto-created by external sync on ${new Date().toISOString().slice(0, 10)} — pricing needs review`,
+        duration_months: model.duration_months ?? 0,
+        fixed_price: 0,
+        min_down_payment: 0,
+        is_active: true,
+      })
+      .select("id")
+      .single();
+
+    if (stubError) {
+      entries.push(mkEntry("sales-models", "error", `Could not create sales model "${model.name}": ${stubError.message}`));
+      continue;
+    }
+
+    byKey.set(key, stub.id);
+    resolvedIds.push(stub.id);
+    created++;
+    entries.push(mkEntry("sales-models", "warn", `Sales model "${model.name}" (${model.duration_months ?? "?"}m) did not exist — created with zero pricing, needs super admin review`));
+  }
+
+  if (resolvedIds.length === 0) {
+    entries.push(mkEntry("sales-models", "error", `No sales models could be resolved for ${partnerName} — leaving existing assignments untouched`));
+    return null;
+  }
+
+  const { data: currentLinks, error: linksError } = await supabase
+    .from("organization_payment_models")
+    .select("payment_model_id")
+    .eq("organization_id", organizationId);
+  if (linksError) throw linksError;
+
+  const currentIds = new Set<string>((currentLinks || []).map((l: any) => l.payment_model_id));
+  const desiredIds = new Set<string>(resolvedIds);
+
+  const toAdd = [...desiredIds].filter((id) => !currentIds.has(id));
+  // Only a full `partner_sales_models` list may revoke. A lone order model adds.
+  const toRemove = authoritative
+    ? [...currentIds].filter((id) => !desiredIds.has(id))
+    : [];
+
+  if (toAdd.length > 0) {
+    const { error: insertError } = await supabase
+      .from("organization_payment_models")
+      .insert(toAdd.map((payment_model_id) => ({
+        organization_id: organizationId,
+        payment_model_id,
+        assigned_at: new Date().toISOString(),
+      })));
+    if (insertError) throw insertError;
+  }
+
+  if (toRemove.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("organization_payment_models")
+      .delete()
+      .eq("organization_id", organizationId)
+      .in("payment_model_id", toRemove);
+    if (deleteError) throw deleteError;
+  }
+
+  const totalAssigned = authoritative ? desiredIds.size : currentIds.size + toAdd.length;
+  entries.push(mkEntry("sales-models", "success", `${partnerName}: ${totalAssigned} sales model(s) assigned (${toAdd.length} added, ${toRemove.length} removed, ${created} newly created)`));
+
+  return { assigned: totalAssigned, created, removed: toRemove.length };
+}
+
 // ─── Organization sync ────────────────────────────────────────────────────────
 
 async function processOrganizationSync(
@@ -686,6 +887,19 @@ async function processOrganizationSync(
     }
   }
 
+  // Sales model entitlements. Applied even when the partner is `manually_edited`
+  // (that flag guards contact details only), and non-fatal so a failure here
+  // never costs us the stove IDs.
+  let salesModelResult: { assigned: number; created: number; removed: number } | null = null;
+  try {
+    const { models, authoritative } = resolveEntitlements(orgData);
+    salesModelResult = await syncPartnerSalesModels(
+      supabase, organization.id, orgData.partner_name, models, authoritative, entries,
+    );
+  } catch (modelError) {
+    entries.push(mkEntry("sales-models", "error", `Sales model sync failed for ${orgData.partner_name}: ${(modelError as Error).message}`));
+  }
+
   // Process stove IDs
   const stoveIdResults: StoveIdResult[] = [];
 
@@ -769,6 +983,7 @@ async function processOrganizationSync(
       ? { created: true, username: userCredentials?.username, email: userCredentials?.isInternalEmail ? undefined : userCredentials?.email, password: userCredentials?.password, is_internal_email: userCredentials?.isInternalEmail, login_identifier: userCredentials?.username || userCredentials?.email }
       : { created: false, reason: existingOrg ? "Organization already exists" : "User creation failed" },
     stove_ids: stoveIdResults,
+    sales_models: salesModelResult,
     summary: {
       organization_action: existingOrg ? "updated" : "created",
       user_created: userCreated,

@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withCors } from "./cors.ts";
 import { authenticate } from "./authenticate.ts";
 import { resolveAssignedOrgIds } from "../_shared/resolveAssignedOrgIds.ts";
+import { countInChunks, paginatedSelectInChunks } from "../_shared/chunkedQuery.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -46,20 +47,36 @@ serve(async (req) => {
       );
     }
 
-    // Fetch stove IDs across all assigned orgs
-    let dataQuery = supabase
-      .from("stove_ids")
-      .select(
-        `id, stove_id, status, created_at, sale_id, organization_id,
-         sales!left (id, sales_date, created_at)`
-      )
-      .in("organization_id", orgIds)
-      .range(pageOffset, pageOffset + pageLimit - 1)
-      .order("stove_id", { ascending: true });
+    // Fetch stove IDs across all assigned orgs. Org scoping is chunked (an agent
+    // can manage hundreds of orgs, which would overflow the request URL). The
+    // per-chunk builder applies all filters + order but NOT range.
+    const buildData = (c: string[]) => {
+      let q = supabase
+        .from("stove_ids")
+        .select(
+          `id, stove_id, status, created_at, sale_id, organization_id,
+           sales!left (id, sales_date, created_at)`,
+          { count: "exact" }
+        )
+        .in("organization_id", c)
+        .order("stove_id", { ascending: true });
+      if (status) q = q.eq("status", status);
+      return q;
+    };
 
-    if (status) dataQuery = dataQuery.eq("status", status);
+    // Order matches the DB sort (stove_id asc) so merged pages are consistent.
+    const compareStove = (a: any, b: any) => {
+      const av = a?.stove_id, bv = b?.stove_id;
+      const c = av == null && bv == null ? 0 : av == null ? 1 : bv == null ? -1 : av < bv ? -1 : av > bv ? 1 : 0;
+      if (c !== 0) return c;
+      return a?.id < b?.id ? -1 : a?.id > b?.id ? 1 : 0;
+    };
 
-    const { data, error } = await dataQuery;
+    const { data, error } = await paginatedSelectInChunks(
+      orgIds,
+      buildData,
+      { offset: pageOffset, limit: pageLimit, compare: compareStove },
+    );
 
     if (error) {
       return withCors(
@@ -80,22 +97,17 @@ serve(async (req) => {
       sale_date: item.sales?.sales_date || item.sales?.created_at || null,
     }));
 
-    // Aggregate counts (unfiltered by status for totals)
+    // Aggregate counts (unfiltered by status for totals), chunked over orgIds.
     const [totalResult, availResult, soldResult] = await Promise.all([
-      supabase
-        .from("stove_ids")
-        .select("id", { count: "exact", head: true })
-        .in("organization_id", orgIds),
-      supabase
-        .from("stove_ids")
-        .select("id", { count: "exact", head: true })
-        .in("organization_id", orgIds)
-        .eq("status", "available"),
-      supabase
-        .from("stove_ids")
-        .select("id", { count: "exact", head: true })
-        .in("organization_id", orgIds)
-        .eq("status", "sold"),
+      countInChunks(orgIds, (c) =>
+        supabase.from("stove_ids").select("id", { count: "exact", head: true }).in("organization_id", c)
+      ),
+      countInChunks(orgIds, (c) =>
+        supabase.from("stove_ids").select("id", { count: "exact", head: true }).in("organization_id", c).eq("status", "available")
+      ),
+      countInChunks(orgIds, (c) =>
+        supabase.from("stove_ids").select("id", { count: "exact", head: true }).in("organization_id", c).eq("status", "sold")
+      ),
     ]);
 
     // Total for pagination uses the status-filtered count when a filter is active

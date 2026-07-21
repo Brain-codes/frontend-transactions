@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { resolveAssignedOrgIds } from "../_shared/resolveAssignedOrgIds.ts";
+import { paginatedSelectInChunks } from "../_shared/chunkedQuery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -74,25 +75,55 @@ serve(async (req) => {
   const date_to = url.searchParams.get("date_to");
   const sort_order = url.searchParams.get("sort_order") === "asc" ? true : false;
 
-  let query = supabase
-    .from("stove_transfer_history")
-    .select("*", { count: "exact" })
-    .order("transfer_date", { ascending: sort_order })
-    .range(offset, offset + limit - 1);
+  // Build the query WITHOUT org scoping/range; org scoping (a potentially huge
+  // ACSL org list) is applied per-chunk to keep request URLs small.
+  const buildBase = () => {
+    let q = supabase
+      .from("stove_transfer_history")
+      .select("*", { count: "exact" })
+      .order("transfer_date", { ascending: sort_order });
 
-  if (scopeOrgIds) query = query.in("organization_id", scopeOrgIds);
+    if (search.trim()) {
+      const term = `%${search.trim()}%`;
+      q = q.or(
+        `partner_name.ilike.${term},partner_id.ilike.${term},transaction_id.ilike.${term},state.ilike.${term}`,
+      );
+    }
+    if (source) q = q.eq("source", source);
+    if (date_from) q = q.gte("transfer_date", date_from);
+    if (date_to) q = q.lte("transfer_date", date_to);
+    return q;
+  };
 
-  if (search.trim()) {
-    const term = `%${search.trim()}%`;
-    query = query.or(
-      `partner_name.ilike.${term},partner_id.ilike.${term},transaction_id.ilike.${term},state.ilike.${term}`,
+  let data: any[];
+  let count: number;
+  let fetchError: any;
+
+  if (scopeOrgIds) {
+    // Sort matches the DB order (transfer_date, direction per sort_order) so the
+    // merged page across chunks is identical to a single query. Ties break on id.
+    const compare = (a: any, b: any) => {
+      const av = a?.transfer_date, bv = b?.transfer_date;
+      let c = av == null && bv == null ? 0 : av == null ? 1 : bv == null ? -1 : av < bv ? -1 : av > bv ? 1 : 0;
+      if (!sort_order) c = -c; // descending
+      if (c !== 0) return c;
+      return a?.id < b?.id ? -1 : a?.id > b?.id ? 1 : 0;
+    };
+    const res = await paginatedSelectInChunks(
+      scopeOrgIds,
+      (c) => buildBase().in("organization_id", c),
+      { offset, limit, compare },
     );
+    data = res.data;
+    count = res.count;
+    fetchError = res.error;
+  } else {
+    const res = await buildBase().range(offset, offset + limit - 1);
+    data = res.data ?? [];
+    count = res.count ?? 0;
+    fetchError = res.error;
   }
-  if (source) query = query.eq("source", source);
-  if (date_from) query = query.gte("transfer_date", date_from);
-  if (date_to) query = query.lte("transfer_date", date_to);
 
-  const { data, count, error: fetchError } = await query;
   if (fetchError) return jsonError(`Failed to fetch transfer history: ${fetchError.message}`, 500);
 
   return withCors(

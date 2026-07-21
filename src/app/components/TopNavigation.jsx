@@ -134,14 +134,14 @@ const TopNavigation = ({
             variant="ghost"
             size="sm"
             asChild
-            className="hidden sm:inline-flex items-center gap-2 text-gray-700 hover:bg-gray-50 shadow-none"
+            className="inline-flex items-center gap-2 px-2 sm:px-3 text-gray-700 hover:bg-gray-50 shadow-none"
           >
-            <a
-              href="/downloads/sales-monitoring-app-v1-0-7.apk"
-              download="Atmosfair-sales-monitoring-app-v1-0-7.apk"
-            >
-              <Smartphone className="h-4 w-4" />
-              <span>Sales Monitoring App</span>
+            <a href="/app">
+              <Smartphone className="h-4 w-4 flex-shrink-0" />
+              <span className="whitespace-nowrap text-xs sm:text-sm">
+                <span className="sm:hidden">App</span>
+                <span className="hidden sm:inline">Sales Monitoring App</span>
+              </span>
             </a>
           </Button>
 

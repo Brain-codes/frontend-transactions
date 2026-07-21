@@ -28,6 +28,7 @@ import { Route as EndUserRecordsIndexRouteImport } from './routes/end-user-recor
 import { Route as DownloadIndexRouteImport } from './routes/download/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AgreementImagesIndexRouteImport } from './routes/agreement-images/index'
 import { Route as AgentsIndexRouteImport } from './routes/agents/index'
 import { Route as AgentIndexRouteImport } from './routes/agent/index'
@@ -57,6 +58,7 @@ import { Route as AdminSystemConfigIndexRouteImport } from './routes/admin/syste
 import { Route as AdminSettingsIndexRouteImport } from './routes/admin/settings/index'
 import { Route as AdminSalesIndexRouteImport } from './routes/admin/sales/index'
 import { Route as AdminPartnerAgentsIndexRouteImport } from './routes/admin/partner-agents/index'
+import { Route as AdminLogsIndexRouteImport } from './routes/admin/logs/index'
 import { Route as AdminCredentialsIndexRouteImport } from './routes/admin/credentials/index'
 import { Route as AdminBranchesIndexRouteImport } from './routes/admin/branches/index'
 import { Route as AdminAppConfigIndexRouteImport } from './routes/admin/app-config/index'
@@ -162,6 +164,11 @@ const DocsIndexRoute = DocsIndexRouteImport.update({
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/dashboard/',
   path: '/dashboard/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/app/',
+  path: '/app/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgreementImagesIndexRoute = AgreementImagesIndexRouteImport.update({
@@ -321,6 +328,11 @@ const AdminPartnerAgentsIndexRoute = AdminPartnerAgentsIndexRouteImport.update({
   path: '/admin/partner-agents/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLogsIndexRoute = AdminLogsIndexRouteImport.update({
+  id: '/admin/logs/',
+  path: '/admin/logs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminCredentialsIndexRoute = AdminCredentialsIndexRouteImport.update({
   id: '/admin/credentials/',
   path: '/admin/credentials/',
@@ -386,6 +398,7 @@ export interface FileRoutesByFullPath {
   '/agent/': typeof AgentIndexRoute
   '/agents/': typeof AgentsIndexRoute
   '/agreement-images/': typeof AgreementImagesIndexRoute
+  '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/download/': typeof DownloadIndexRoute
@@ -409,6 +422,7 @@ export interface FileRoutesByFullPath {
   '/admin/app-config/': typeof AdminAppConfigIndexRoute
   '/admin/branches/': typeof AdminBranchesIndexRoute
   '/admin/credentials/': typeof AdminCredentialsIndexRoute
+  '/admin/logs/': typeof AdminLogsIndexRoute
   '/admin/partner-agents/': typeof AdminPartnerAgentsIndexRoute
   '/admin/sales/': typeof AdminSalesIndexRoute
   '/admin/settings/': typeof AdminSettingsIndexRoute
@@ -446,6 +460,7 @@ export interface FileRoutesByTo {
   '/agent': typeof AgentIndexRoute
   '/agents': typeof AgentsIndexRoute
   '/agreement-images': typeof AgreementImagesIndexRoute
+  '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/docs': typeof DocsIndexRoute
   '/download': typeof DownloadIndexRoute
@@ -469,6 +484,7 @@ export interface FileRoutesByTo {
   '/admin/app-config': typeof AdminAppConfigIndexRoute
   '/admin/branches': typeof AdminBranchesIndexRoute
   '/admin/credentials': typeof AdminCredentialsIndexRoute
+  '/admin/logs': typeof AdminLogsIndexRoute
   '/admin/partner-agents': typeof AdminPartnerAgentsIndexRoute
   '/admin/sales': typeof AdminSalesIndexRoute
   '/admin/settings': typeof AdminSettingsIndexRoute
@@ -507,6 +523,7 @@ export interface FileRoutesById {
   '/agent/': typeof AgentIndexRoute
   '/agents/': typeof AgentsIndexRoute
   '/agreement-images/': typeof AgreementImagesIndexRoute
+  '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/download/': typeof DownloadIndexRoute
@@ -530,6 +547,7 @@ export interface FileRoutesById {
   '/admin/app-config/': typeof AdminAppConfigIndexRoute
   '/admin/branches/': typeof AdminBranchesIndexRoute
   '/admin/credentials/': typeof AdminCredentialsIndexRoute
+  '/admin/logs/': typeof AdminLogsIndexRoute
   '/admin/partner-agents/': typeof AdminPartnerAgentsIndexRoute
   '/admin/sales/': typeof AdminSalesIndexRoute
   '/admin/settings/': typeof AdminSettingsIndexRoute
@@ -569,6 +587,7 @@ export interface FileRouteTypes {
     | '/agent/'
     | '/agents/'
     | '/agreement-images/'
+    | '/app/'
     | '/dashboard/'
     | '/docs/'
     | '/download/'
@@ -592,6 +611,7 @@ export interface FileRouteTypes {
     | '/admin/app-config/'
     | '/admin/branches/'
     | '/admin/credentials/'
+    | '/admin/logs/'
     | '/admin/partner-agents/'
     | '/admin/sales/'
     | '/admin/settings/'
@@ -629,6 +649,7 @@ export interface FileRouteTypes {
     | '/agent'
     | '/agents'
     | '/agreement-images'
+    | '/app'
     | '/dashboard'
     | '/docs'
     | '/download'
@@ -652,6 +673,7 @@ export interface FileRouteTypes {
     | '/admin/app-config'
     | '/admin/branches'
     | '/admin/credentials'
+    | '/admin/logs'
     | '/admin/partner-agents'
     | '/admin/sales'
     | '/admin/settings'
@@ -689,6 +711,7 @@ export interface FileRouteTypes {
     | '/agent/'
     | '/agents/'
     | '/agreement-images/'
+    | '/app/'
     | '/dashboard/'
     | '/docs/'
     | '/download/'
@@ -712,6 +735,7 @@ export interface FileRouteTypes {
     | '/admin/app-config/'
     | '/admin/branches/'
     | '/admin/credentials/'
+    | '/admin/logs/'
     | '/admin/partner-agents/'
     | '/admin/sales/'
     | '/admin/settings/'
@@ -750,6 +774,7 @@ export interface RootRouteChildren {
   AgentIndexRoute: typeof AgentIndexRoute
   AgentsIndexRoute: typeof AgentsIndexRoute
   AgreementImagesIndexRoute: typeof AgreementImagesIndexRoute
+  AppIndexRoute: typeof AppIndexRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
   DownloadIndexRoute: typeof DownloadIndexRoute
@@ -773,6 +798,7 @@ export interface RootRouteChildren {
   AdminAppConfigIndexRoute: typeof AdminAppConfigIndexRoute
   AdminBranchesIndexRoute: typeof AdminBranchesIndexRoute
   AdminCredentialsIndexRoute: typeof AdminCredentialsIndexRoute
+  AdminLogsIndexRoute: typeof AdminLogsIndexRoute
   AdminPartnerAgentsIndexRoute: typeof AdminPartnerAgentsIndexRoute
   AdminSalesIndexRoute: typeof AdminSalesIndexRoute
   AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute
@@ -934,6 +960,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard/'
       preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/': {
+      id: '/app/'
+      path: '/app'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agreement-images/': {
@@ -1139,6 +1172,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPartnerAgentsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/logs/': {
+      id: '/admin/logs/'
+      path: '/admin/logs'
+      fullPath: '/admin/logs/'
+      preLoaderRoute: typeof AdminLogsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/credentials/': {
       id: '/admin/credentials/'
       path: '/admin/credentials'
@@ -1222,6 +1262,7 @@ const rootRouteChildren: RootRouteChildren = {
   AgentIndexRoute: AgentIndexRoute,
   AgentsIndexRoute: AgentsIndexRoute,
   AgreementImagesIndexRoute: AgreementImagesIndexRoute,
+  AppIndexRoute: AppIndexRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
   DownloadIndexRoute: DownloadIndexRoute,
@@ -1245,6 +1286,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminAppConfigIndexRoute: AdminAppConfigIndexRoute,
   AdminBranchesIndexRoute: AdminBranchesIndexRoute,
   AdminCredentialsIndexRoute: AdminCredentialsIndexRoute,
+  AdminLogsIndexRoute: AdminLogsIndexRoute,
   AdminPartnerAgentsIndexRoute: AdminPartnerAgentsIndexRoute,
   AdminSalesIndexRoute: AdminSalesIndexRoute,
   AdminSettingsIndexRoute: AdminSettingsIndexRoute,

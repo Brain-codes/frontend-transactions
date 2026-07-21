@@ -1,5 +1,7 @@
 @import "tailwindcss" source(none);
 @source "../src";
+/* Force-scan the private (gitignored) admin logs page so its Tailwind classes are generated */
+@source "../src/app/admin/logs";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));

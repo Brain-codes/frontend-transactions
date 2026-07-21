@@ -1,4 +1,4 @@
-// Central Supabase configuration for the independent (non-Lovable-Cloud) Supabase project.
+// Central Supabase configuration for the project's Supabase instance.
 //
 // VITE_* values are public — they ship in the browser bundle. The URL and the
 // anon/publishable key are NOT secrets; only the service-role key is. To keep the

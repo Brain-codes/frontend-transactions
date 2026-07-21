@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withCors } from "./cors.ts";
 import { authenticate } from "./authenticate.ts";
 import { resolveAssignedOrgIds } from "../_shared/resolveAssignedOrgIds.ts";
+import { countInChunks, selectInChunks } from "../_shared/chunkedQuery.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -150,7 +151,6 @@ serve(async (req) => {
     // org that's only assigned to the subordinate — not the manager — so the
     // team's own sales are matched by attribution (sold_on_behalf_of) in
     // addition to the org-based scope.
-    let teamOrClause: string | null = null;
     // Attribution-only clause (no org) — used to count sales actually sold by
     // the manager or an ACSL agent on their team, as opposed to org-wide sales.
     let teamAttributionClause: string | null = null;
@@ -165,55 +165,70 @@ serve(async (req) => {
       // is the fallback for older rows where sold_on_behalf_of was never set.
       const teamList = teamIds.join(",");
       teamAttributionClause = `sold_on_behalf_of.in.(${teamList}),created_by.in.(${teamList})`;
-      teamOrClause = `organization_id.in.(${assignedOrgIds.join(",")}),${teamAttributionClause}`;
     }
+
+    // Fetch scoped sales rows respecting attribution mode, chunking any large
+    // org list so request URLs stay small. `applyExtra` adds the date window.
+    // Rows are deduped by id (org scope + team attribution can overlap).
+    const fetchScopedSales = async (
+      selectCols: string,
+      applyExtra: (q: any) => any,
+    ): Promise<any[]> => {
+      const cols = selectCols.includes("id") ? selectCols : `id, ${selectCols}`;
+      if (isPersonalSalesAttribution) {
+        const { data } = await applyExtra(
+          personalSalesFilter(supabase.from("sales").select(cols)),
+        );
+        return data || [];
+      }
+      // Org-scoped rows (chunked)
+      const orgRes = await selectInChunks(assignedOrgIds, (c) =>
+        applyExtra(
+          supabase.from("sales").select(cols).eq("is_archived", false).in("organization_id", c),
+        ),
+      );
+      let rows = orgRes.data || [];
+      // Manager: also include team-attributed sales outside the org scope.
+      if (teamAttributionClause) {
+        const { data: attrData } = await applyExtra(
+          supabase.from("sales").select(cols).eq("is_archived", false).or(teamAttributionClause),
+        );
+        const seen = new Set<any>(rows.map((r: any) => r.id));
+        for (const r of attrData || []) {
+          if (r?.id != null && seen.has(r.id)) continue;
+          if (r?.id != null) seen.add(r.id);
+          rows.push(r);
+        }
+      }
+      return rows;
+    };
 
     // Balance-sheet stove counts: cumulative as of end of selected year.
     // created_at is used for received (no transfer-date column); sales_date
     // is authoritative for sold. Financial metrics remain year-specific.
     // Every sales query excludes cancelled sales (is_archived = true) — a
     // cancelled-then-corrected sale must count once, not twice.
-    const [receivedResult, soldCumulativeResult, salesResult] = await Promise.all([
-      supabase
-        .from("stove_ids")
-        .select("*", { count: "exact", head: true })
-        .in("organization_id", assignedOrgIds)
-        .lt("created_at", endOfYear),
+    const [receivedResult, soldCumulativeRows, sales] = await Promise.all([
+      // Stove inventory is org-only (no attribution) — chunk the org count.
+      countInChunks(assignedOrgIds, (c) =>
+        supabase
+          .from("stove_ids")
+          .select("*", { count: "exact", head: true })
+          .in("organization_id", c)
+          .lt("created_at", endOfYear)
+      ),
 
-      isPersonalSalesAttribution
-        ? personalSalesFilter(
-            supabase.from("sales").select("*", { count: "exact", head: true })
-          ).lt("sales_date", endOfYear)
-        : (teamOrClause
-            ? supabase.from("sales").select("*", { count: "exact", head: true }).eq("is_archived", false).or(teamOrClause)
-            : supabase.from("sales").select("*", { count: "exact", head: true }).eq("is_archived", false).in("organization_id", assignedOrgIds)
-          ).lt("sales_date", endOfYear),
+      // Sold cumulative: distinct sale rows up to end of year (count = length).
+      fetchScopedSales("id", (q: any) => q.lt("sales_date", endOfYear)),
 
-      isPersonalSalesAttribution
-        ? personalSalesFilter(
-            supabase
-              .from("sales")
-              .select("amount, total_paid, is_installment, state_backup, payment_model_id")
-          )
-            .gte("sales_date", startDate)
-            .lt("sales_date", endOfYear)
-        : (teamOrClause
-            ? supabase
-                .from("sales")
-                .select("amount, total_paid, is_installment, state_backup, payment_model_id")
-                .eq("is_archived", false)
-                .or(teamOrClause)
-            : supabase
-                .from("sales")
-                .select("amount, total_paid, is_installment, state_backup, payment_model_id")
-                .eq("is_archived", false)
-                .in("organization_id", assignedOrgIds)
-          )
-            .gte("sales_date", startDate)
-            .lt("sales_date", endOfYear),
+      // Sales in the selected year for financial + breakdown aggregation.
+      fetchScopedSales(
+        "amount, total_paid, is_installment, state_backup, payment_model_id",
+        (q: any) => q.gte("sales_date", startDate).lt("sales_date", endOfYear),
+      ),
     ]);
 
-    const sales = salesResult.data || [];
+    const stovesSoldCount = soldCumulativeRows.length;
     const expectedReceivable = sales.reduce((s, r) => s + (Number(r.amount) || 0), 0);
     // Outright sales are fully paid on the spot; only installment sales use total_paid
     const amountReceived = sales.reduce((s, r) => {
@@ -268,8 +283,8 @@ serve(async (req) => {
           success: true,
           data: {
             stovesReceived: receivedResult.count ?? 0,
-            stovesSold: soldCumulativeResult.count ?? 0,
-            availableStoves: Math.max(0, (receivedResult.count ?? 0) - (soldCumulativeResult.count ?? 0)),
+            stovesSold: stovesSoldCount,
+            availableStoves: Math.max(0, (receivedResult.count ?? 0) - stovesSoldCount),
             expectedReceivable,
             amountReceived,
             outstandingBalance: expectedReceivable - amountReceived,

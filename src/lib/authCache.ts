@@ -10,7 +10,7 @@ export type CachedUser = {
   user_metadata?: Record<string, any>;
 } | null;
 
-const ROLE_CACHE_KEY = "lovable.auth.cachedRole";
+const ROLE_CACHE_KEY = "app.auth.cachedRole";
 
 function readSupabaseSessionRaw(): any | null {
   if (typeof window === "undefined") return null;

@@ -1,11 +1,14 @@
 // Read operations for users
 
 import {
-  applyScopeToListQuery,
   userInScope,
+  scopeOrgList,
+  managerNonOrgBranches,
+  ORG_USER_ROLES,
   CallerContext,
   CallerScope,
 } from "./scope.ts";
+import { chunkArray, IN_CHUNK_SIZE } from "../_shared/chunkedQuery.ts";
 
 export async function getUsers(
   supabase: any,
@@ -38,14 +41,6 @@ export async function getUsers(
       sortOrder,
     });
 
-    // Build base query. Partner organization profiles are managed in Partner
-    // views, not User Management, so keep partner/admin rows out here.
-    let query = supabase
-      .from("profiles")
-      .select("id, full_name, email, phone, role, status, created_at, last_login, organization_id, manager_id", {
-        count: "exact",
-      });
-
     const ALL_ROLES = [
       "super_admin",
       "acsl_agent_manager",
@@ -54,46 +49,97 @@ export async function getUsers(
       "agent",
       "super_admin_agent",
     ];
-    if (role && ALL_ROLES.includes(role)) {
-      query = query.eq("role", role);
-      console.log("🔍 Showing users with role:", role);
-    } else {
-      query = query.in("role", ALL_ROLES);
-      console.log("🔍 Showing all manageable users");
-    }
-
-    query = query.not("role", "eq", "partner").not("role", "eq", "admin");
-
-    // Row-level scope: managers see their ACSL agents + assigned partners' users;
-    // partners see only their own organization's agents. Same shape, different filter.
-    query = applyScopeToListQuery(query, scope, caller.id);
-
-    // Apply status filter
-    if (status && ["active", "disabled"].includes(status)) {
-      query = query.eq("status", status);
-      console.log("🔍 Status filter applied:", status);
-    }
-
-    // Apply search filter
-    if (search.trim()) {
-      query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
-      console.log("🔍 Search filter applied:", search);
-    }
-
-    // Apply sorting
     const ascending = sortOrder.toLowerCase() === "asc";
-    query = query.order(sortBy, { ascending });
 
-    // Apply pagination
-    query = query.range(offset, offset + limit - 1);
+    // Base query factory: all filters EXCEPT row-level org scope + pagination.
+    // A factory (not a single builder) is required because org scoping may be
+    // applied across several chunked queries to avoid oversized request URLs.
+    const buildBase = () => {
+      // Partner organization profiles are managed in Partner views, not User
+      // Management, so keep partner/admin rows out here.
+      let q = supabase
+        .from("profiles")
+        .select("id, full_name, email, phone, role, status, created_at, last_login, organization_id, manager_id", {
+          count: "exact",
+        });
 
-    // Execute query
-    const { data: users, error: usersError, count } = await query;
+      if (role && ALL_ROLES.includes(role)) {
+        q = q.eq("role", role);
+      } else {
+        q = q.in("role", ALL_ROLES);
+      }
+      q = q.not("role", "eq", "partner").not("role", "eq", "admin");
 
+      if (status && ["active", "disabled"].includes(status)) {
+        q = q.eq("status", status);
+      }
+      if (search.trim()) {
+        q = q.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
+      }
+      return q.order(sortBy, { ascending });
+    };
+
+    // Assemble the set of disjoint sub-queries ("thunks") that together produce
+    // the scoped, filtered rows. Each thunk returns a builder WITHOUT range.
+    const orgList = scopeOrgList(scope);
+    const thunks: Array<() => any> = [];
+
+    if (orgList === null) {
+      // super_admin: no org-level scoping.
+      thunks.push(() => buildBase());
+    } else if (scope.type === "manager") {
+      // Manager: subordinate ACSL agents + self (role-disjoint from org users)…
+      thunks.push(() => buildBase().or(managerNonOrgBranches(caller.id).join(",")));
+      // …plus org users of each assigned partner org, chunked.
+      for (const c of chunkArray(orgList, IN_CHUNK_SIZE)) {
+        thunks.push(() => buildBase().in("role", ORG_USER_ROLES).in("organization_id", c));
+      }
+    } else {
+      // partner / acsl_agent: org users of scoped orgs only.
+      if (orgList.length === 0) {
+        // No assignments → deliberately match nothing.
+        thunks.push(() => buildBase().eq("role", "__none__"));
+      } else {
+        for (const c of chunkArray(orgList, IN_CHUNK_SIZE)) {
+          thunks.push(() => buildBase().in("role", ORG_USER_ROLES).in("organization_id", c));
+        }
+      }
+    }
+
+    // Sub-queries are disjoint by construction (distinct role sets / org sets),
+    // so counts sum exactly. Each fetches its own top (offset+limit) rows; the
+    // global page is a subset of their union, so we merge, sort, and slice.
+    const top = offset + limit;
+    const compare = (a: any, b: any) => {
+      const av = a?.[sortBy], bv = b?.[sortBy];
+      let c = av == null && bv == null ? 0 : av == null ? 1 : bv == null ? -1 : av < bv ? -1 : av > bv ? 1 : 0;
+      if (!ascending) c = -c;
+      if (c !== 0) return c;
+      return a?.id < b?.id ? -1 : a?.id > b?.id ? 1 : 0;
+    };
+
+    const results = await Promise.all(thunks.map((t) => t().range(0, top - 1)));
+    const usersError = results.find((r: any) => r.error)?.error;
     if (usersError) {
       console.error("❌ Error fetching users:", usersError);
       throw new Error(`Database error: ${usersError.message}`);
     }
+
+    const seen = new Set<any>();
+    const mergedUsers: any[] = [];
+    let count = 0;
+    for (const r of results) {
+      count += r.count || 0;
+      for (const row of r.data || []) {
+        if (row?.id != null) {
+          if (seen.has(row.id)) continue;
+          seen.add(row.id);
+        }
+        mergedUsers.push(row);
+      }
+    }
+    mergedUsers.sort(compare);
+    const users = mergedUsers.slice(offset, offset + limit);
 
     // Batch-fetch organizations for partner_agent/agent rows
     const orgIds = Array.from(

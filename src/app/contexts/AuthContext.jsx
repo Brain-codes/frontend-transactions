@@ -19,7 +19,7 @@ const getKnownAuthStorageKeys = () => {
       key.startsWith("sb-") ||
       key === "user_profile" ||
       key === "transaction_app_token" ||
-      key === "lovable.auth.cachedRole"
+      key === "app.auth.cachedRole"
   );
 };
 

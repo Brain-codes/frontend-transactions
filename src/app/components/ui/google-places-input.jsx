@@ -2,16 +2,15 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { MapPin, X, Loader2 } from "lucide-react";
 
-const SCRIPT_ID = "lovable-gmaps-places-script";
+const SCRIPT_ID = "gmaps-places-script";
 const CALLBACK_NAME = "__gmInitPlaces";
 
 // Resolve API key from env. Supports VITE_GOOGLE_MAPS_API_KEY (project default)
-// and the Lovable-managed connector browser key as a fallback.
+// with VITE_GOOGLE_PLACES_API_KEY as a fallback.
 function resolveMapsKey() {
   return (
     import.meta.env.VITE_GOOGLE_MAPS_API_KEY ||
     import.meta.env.VITE_GOOGLE_PLACES_API_KEY ||
-    import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY ||
     ""
   );
 }

@@ -265,10 +265,6 @@ Deno.serve(async (req) => {
     if (isInstallment && paymentModelId) {
       console.log("💳 Installment mode: validating payment model", paymentModelId);
 
-      // Payment models are decoupled from partners — any active model is allowed.
-
-
-
       // Fetch model details
       const { data: paymentModel, error: modelError } = await supabase
         .from("payment_models")
@@ -282,6 +278,24 @@ Deno.serve(async (req) => {
 
       if (!paymentModel.is_active) {
         return jsonError("This payment model is no longer active");
+      }
+
+      // Sales models are tied to a partner again, sourced from the external
+      // sync (`Partner Sales Models`) rather than assigned by a super admin.
+      // The clients already filter the picker to the partner's models; this is
+      // the server-side enforcement that makes that filtering real.
+      const { data: orgModelLink, error: linkError } = await supabase
+        .from("organization_payment_models")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .eq("payment_model_id", paymentModelId)
+        .maybeSingle();
+
+      if (linkError || !orgModelLink) {
+        return jsonError(
+          `This partner is not assigned the "${paymentModel.name}" sales model`,
+          403,
+        );
       }
 
       // The sales amount is operator-editable. Honor the client-supplied `amount`
@@ -327,14 +341,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Validate required image IDs — reject empty strings (Flutter must upload before submitting)
-    if (!stoveImageId || String(stoveImageId).trim() === "") {
-      return jsonError("Stove image is required", 400);
-    }
-    // TEMP: agreement image not required for now — re-enable later
-    // if (!agreementImageId || String(agreementImageId).trim() === "") {
-    //   return jsonError("Agreement image is required", 400);
-    // }
+    // Stove image is now OPTIONAL (previously rejected when missing). The sale
+    // is still accepted; it simply won't reach "completed" status without it
+    // (see status evaluation below). Normalize empty string to null so the uuid
+    // column doesn't reject "" with a 22P02 error.
+    const safeStoveImageId =
+      stoveImageId && String(stoveImageId).trim() !== ""
+        ? stoveImageId
+        : null;
     // Agreement image is optional — normalize empty string to null so the
     // uuid column doesn't reject "" with a 22P02 error.
     const safeAgreementImageId =
@@ -421,10 +435,7 @@ const hasSignature =
   signature !== undefined &&
   String(signature).trim() !== "";
 
-const hasStoveImage =
-  stoveImageId !== null &&
-  stoveImageId !== undefined &&
-  String(stoveImageId).trim() !== "";
+const hasStoveImage = safeStoveImageId !== null;
 
 // Agreement image is optional
 let saleStatus = "incomplete";
@@ -474,7 +485,7 @@ console.log("📋 Sale status evaluation:", {
           created_by: userId,
           organization_id: organizationId,
           address_id: address.id,
-          stove_image_id: stoveImageId,
+          stove_image_id: safeStoveImageId,
           agreement_image_id: safeAgreementImageId,
           is_installment: !!installmentData,
           payment_model_id: installmentData?.modelId || null,
