@@ -58,7 +58,6 @@ import { Route as AdminSystemConfigIndexRouteImport } from './routes/admin/syste
 import { Route as AdminSettingsIndexRouteImport } from './routes/admin/settings/index'
 import { Route as AdminSalesIndexRouteImport } from './routes/admin/sales/index'
 import { Route as AdminPartnerAgentsIndexRouteImport } from './routes/admin/partner-agents/index'
-import { Route as AdminLogsIndexRouteImport } from './routes/admin/logs/index'
 import { Route as AdminCredentialsIndexRouteImport } from './routes/admin/credentials/index'
 import { Route as AdminBranchesIndexRouteImport } from './routes/admin/branches/index'
 import { Route as AdminAppConfigIndexRouteImport } from './routes/admin/app-config/index'
@@ -328,11 +327,6 @@ const AdminPartnerAgentsIndexRoute = AdminPartnerAgentsIndexRouteImport.update({
   path: '/admin/partner-agents/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminLogsIndexRoute = AdminLogsIndexRouteImport.update({
-  id: '/admin/logs/',
-  path: '/admin/logs/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminCredentialsIndexRoute = AdminCredentialsIndexRouteImport.update({
   id: '/admin/credentials/',
   path: '/admin/credentials/',
@@ -422,7 +416,6 @@ export interface FileRoutesByFullPath {
   '/admin/app-config/': typeof AdminAppConfigIndexRoute
   '/admin/branches/': typeof AdminBranchesIndexRoute
   '/admin/credentials/': typeof AdminCredentialsIndexRoute
-  '/admin/logs/': typeof AdminLogsIndexRoute
   '/admin/partner-agents/': typeof AdminPartnerAgentsIndexRoute
   '/admin/sales/': typeof AdminSalesIndexRoute
   '/admin/settings/': typeof AdminSettingsIndexRoute
@@ -484,7 +477,6 @@ export interface FileRoutesByTo {
   '/admin/app-config': typeof AdminAppConfigIndexRoute
   '/admin/branches': typeof AdminBranchesIndexRoute
   '/admin/credentials': typeof AdminCredentialsIndexRoute
-  '/admin/logs': typeof AdminLogsIndexRoute
   '/admin/partner-agents': typeof AdminPartnerAgentsIndexRoute
   '/admin/sales': typeof AdminSalesIndexRoute
   '/admin/settings': typeof AdminSettingsIndexRoute
@@ -547,7 +539,6 @@ export interface FileRoutesById {
   '/admin/app-config/': typeof AdminAppConfigIndexRoute
   '/admin/branches/': typeof AdminBranchesIndexRoute
   '/admin/credentials/': typeof AdminCredentialsIndexRoute
-  '/admin/logs/': typeof AdminLogsIndexRoute
   '/admin/partner-agents/': typeof AdminPartnerAgentsIndexRoute
   '/admin/sales/': typeof AdminSalesIndexRoute
   '/admin/settings/': typeof AdminSettingsIndexRoute
@@ -611,7 +602,6 @@ export interface FileRouteTypes {
     | '/admin/app-config/'
     | '/admin/branches/'
     | '/admin/credentials/'
-    | '/admin/logs/'
     | '/admin/partner-agents/'
     | '/admin/sales/'
     | '/admin/settings/'
@@ -673,7 +663,6 @@ export interface FileRouteTypes {
     | '/admin/app-config'
     | '/admin/branches'
     | '/admin/credentials'
-    | '/admin/logs'
     | '/admin/partner-agents'
     | '/admin/sales'
     | '/admin/settings'
@@ -735,7 +724,6 @@ export interface FileRouteTypes {
     | '/admin/app-config/'
     | '/admin/branches/'
     | '/admin/credentials/'
-    | '/admin/logs/'
     | '/admin/partner-agents/'
     | '/admin/sales/'
     | '/admin/settings/'
@@ -798,7 +786,6 @@ export interface RootRouteChildren {
   AdminAppConfigIndexRoute: typeof AdminAppConfigIndexRoute
   AdminBranchesIndexRoute: typeof AdminBranchesIndexRoute
   AdminCredentialsIndexRoute: typeof AdminCredentialsIndexRoute
-  AdminLogsIndexRoute: typeof AdminLogsIndexRoute
   AdminPartnerAgentsIndexRoute: typeof AdminPartnerAgentsIndexRoute
   AdminSalesIndexRoute: typeof AdminSalesIndexRoute
   AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute
@@ -1172,13 +1159,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPartnerAgentsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/logs/': {
-      id: '/admin/logs/'
-      path: '/admin/logs'
-      fullPath: '/admin/logs/'
-      preLoaderRoute: typeof AdminLogsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin/credentials/': {
       id: '/admin/credentials/'
       path: '/admin/credentials'
@@ -1286,7 +1266,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminAppConfigIndexRoute: AdminAppConfigIndexRoute,
   AdminBranchesIndexRoute: AdminBranchesIndexRoute,
   AdminCredentialsIndexRoute: AdminCredentialsIndexRoute,
-  AdminLogsIndexRoute: AdminLogsIndexRoute,
   AdminPartnerAgentsIndexRoute: AdminPartnerAgentsIndexRoute,
   AdminSalesIndexRoute: AdminSalesIndexRoute,
   AdminSettingsIndexRoute: AdminSettingsIndexRoute,
@@ -1317,13 +1296,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
