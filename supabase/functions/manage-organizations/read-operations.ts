@@ -65,9 +65,24 @@ export async function getOrganization(supabase: any, organizationId: string) {
     console.warn("Could not fetch admin user:", adminError);
   }
 
+  // Sales models assigned to this partner, as bare IDs — see the bulk read in
+  // getOrganizations for why clients resolve them locally.
+  let paymentModelIds: string[] | null = null;
+  try {
+    const { data: modelLinks, error: modelLinksError } = await supabase
+      .from("organization_payment_models")
+      .select("payment_model_id")
+      .eq("organization_id", organizationId);
+
+    if (modelLinksError) throw modelLinksError;
+    paymentModelIds = (modelLinks || []).map((l: any) => l.payment_model_id);
+  } catch (modelError) {
+    console.warn("Could not fetch payment model assignments:", modelError);
+  }
+
   return {
     data: {
-      organization,
+      organization: { ...organization, payment_model_ids: paymentModelIds },
       admin_user: adminUser,
     },
     message: "Organization retrieved successfully",
@@ -125,7 +140,15 @@ export async function getOrganizations(
   // which can be hundreds of orgs for an ACSL agent) is applied SEPARATELY, in
   // chunks, so it never overflows the request URL — see scoped helpers below.
   const applyFilters = (q: any) => {
-    if (search) q = q.or(`partner_name.ilike.%${search}%,partner_id.ilike.%${search}%`);
+    if (search) {
+      // The value goes into a raw PostgREST `or()` expression, where `(`, `)`,
+      // `,` and `.` are syntax. An unescaped partner name like
+      // "Swali Global Multi Concept (Amina Sales Model)" gets mis-parsed and the
+      // search silently matches the wrong set. Double-quoting makes PostgREST
+      // treat the whole thing as a literal.
+      const s = search.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      q = q.or(`partner_name.ilike."%${s}%",partner_id.ilike."%${s}%"`);
+    }
     if (status) q = q.eq("status", status);
     if (partnerType) q = q.ilike("partner_type", partnerType);
     if (stateFilter) q = q.ilike("state", stateFilter);
@@ -337,6 +360,44 @@ export async function getOrganizations(
       organizationsWithAdmins = organizations.map((org: any) => ({
         ...org,
         admin_user: null,
+      }));
+    }
+  }
+
+  // Attach each organization's assigned sales models as a bare ID list.
+  // Clients (web + mobile) already hold the full payment_models catalogue, so
+  // they resolve these IDs locally at point of sale — one bulk query here
+  // replaces a per-partner lookup, and the list caches offline on mobile.
+  if (organizations && organizations.length > 0) {
+    try {
+      const orgIds = organizations.map((org: any) => org.id);
+
+      const { data: modelLinks, error: modelLinksError } = await supabase
+        .from("organization_payment_models")
+        .select("organization_id, payment_model_id")
+        .in("organization_id", orgIds);
+
+      if (modelLinksError) throw modelLinksError;
+
+      const modelMap = new Map<string, string[]>();
+      for (const link of modelLinks || []) {
+        const list = modelMap.get(link.organization_id) || [];
+        list.push(link.payment_model_id);
+        modelMap.set(link.organization_id, list);
+      }
+
+      organizationsWithAdmins = organizationsWithAdmins.map((org: any) => ({
+        ...org,
+        payment_model_ids: modelMap.get(org.id) || [],
+      }));
+    } catch (modelError) {
+      console.error("Error fetching payment model assignments:", modelError);
+      // An empty list means "no installment models" downstream, which would
+      // silently hide models the partner really has. Send null so clients can
+      // tell a genuine empty assignment apart from a failed lookup.
+      organizationsWithAdmins = organizationsWithAdmins.map((org: any) => ({
+        ...org,
+        payment_model_ids: null,
       }));
     }
   }

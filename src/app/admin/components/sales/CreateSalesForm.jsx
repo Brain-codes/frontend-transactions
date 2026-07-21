@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import DateRangePicker from "@/app/components/ui/date-range-picker";
 import GooglePlacesInput from "@/app/components/ui/google-places-input";
-import { lgaAndStates } from "../../../constants";
+import { getGeoData, getGeoDataSync } from "@/lib/geoDataService";
 import adminSalesService from "../../../services/adminSalesService";
 import profileService from "../../../services/profileService";
 import { validateSalesForm } from "../../../utils/salesFormValidation";
@@ -103,7 +103,13 @@ const CreateSalesForm = ({
   const [errors, setErrors] = useState({});
 
   // Installment payment state
+  // `paymentModels` is the full active catalogue, fetched once. The picker is
+  // narrowed to the selected partner's entitlements via `orgPaymentModelIds`.
   const [paymentModels, setPaymentModels] = useState([]);
+  // Sales model IDs the selected partner is tied to. `null` = unknown (no
+  // partner picked yet, or the row predates the field) and shows every model;
+  // an empty array is a real answer meaning full payment only.
+  const [orgPaymentModelIds, setOrgPaymentModelIds] = useState(null);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [isInstallment, setIsInstallment] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState("");
@@ -140,8 +146,21 @@ const CreateSalesForm = ({
   // Determine if this is edit mode
   const isEditMode = mode === "edit" && initialData;
 
-  // Get states from constants
-  const nigerianStates = Object.keys(lgaAndStates).sort();
+  // Centralized states + LGAs (geo-data edge fn → cache → bundled fallback).
+  // Seed synchronously from cache/bundled so the first render has data, then
+  // refresh from the network.
+  const [geoData, setGeoData] = useState(() => getGeoDataSync());
+  useEffect(() => {
+    let alive = true;
+    getGeoData().then((d) => {
+      if (alive) setGeoData(d);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const nigerianStates = geoData.states;
+  const lgaAndStates = geoData.lgas;
 
   // Helper: resolve the currently active partner organization id(s).
   // Legacy duplicate org rows share the same partner+state+branch, so a stove
@@ -463,9 +482,28 @@ const CreateSalesForm = ({
     }
   };
 
+  // The catalogue narrowed to what this partner may actually sell. Resolved
+  // locally so no per-partner request is ever made.
+  const visiblePaymentModels = useMemo(() => {
+    if (!orgPaymentModelIds) return paymentModels;
+    const allowed = new Set(orgPaymentModelIds);
+    return paymentModels.filter((m) => allowed.has(m.id));
+  }, [paymentModels, orgPaymentModelIds]);
+
+  // Two different empty states, worth distinguishing: the partner genuinely has
+  // no models, versus it references models this catalogue can't resolve (the
+  // model is inactive, or was created after we loaded).
+  const partnerHasNoPaymentModels =
+    orgPaymentModelIds !== null && orgPaymentModelIds.length === 0;
+  const partnerModelsUnresolved =
+    orgPaymentModelIds !== null &&
+    orgPaymentModelIds.length > 0 &&
+    visiblePaymentModels.length === 0 &&
+    !modelsLoading;
+
   const fetchPaymentModels = async () => {
-    // Payment models are decoupled from partners — always list every active
-    // model so any user can pick any payment type freely regardless of partner.
+    // Fetched once, for every role. Partner entitlements are applied on top of
+    // this list rather than by re-querying per partner.
     try {
       setModelsLoading(true);
       const all = await paymentModelService.getPaymentModels({ status: "active" });
@@ -484,6 +522,31 @@ const CreateSalesForm = ({
     fetchPaymentModels();
   }, [isEditMode]);
 
+
+  // The sync mints sales models on the fly, so a partner can reference a model
+  // that did not exist when this page loaded its catalogue. Rather than show an
+  // empty picker (which reads as "no installment option"), refetch once when we
+  // meet an ID we don't know.
+  const refetchedForUnknownIds = useRef(false);
+  useEffect(() => {
+    if (isEditMode || modelsLoading) return;
+    if (!orgPaymentModelIds || orgPaymentModelIds.length === 0) return;
+    const known = new Set(paymentModels.map((m) => m.id));
+    const hasUnknown = orgPaymentModelIds.some((id) => !known.has(id));
+    if (hasUnknown && !refetchedForUnknownIds.current) {
+      refetchedForUnknownIds.current = true;
+      fetchPaymentModels();
+    }
+  }, [orgPaymentModelIds, paymentModels, modelsLoading, isEditMode]);
+
+  // A model chosen for one partner must not survive into a partner that isn't
+  // entitled to it — create-sale rejects that, so drop it back to full payment.
+  useEffect(() => {
+    if (isEditMode || !isInstallment || !selectedModelId) return;
+    if (!visiblePaymentModels.some((m) => m.id === selectedModelId)) {
+      handlePaymentTypeChange("full_payment");
+    }
+  }, [visiblePaymentModels, selectedModelId, isInstallment, isEditMode]);
 
   // Update selected model details when model ID changes
   useEffect(() => {
@@ -803,7 +866,12 @@ const CreateSalesForm = ({
     handleInputChange("retailerBranch", org.branch || "");
     setErrors((prev) => ({ ...prev, partnerName: null, state: null, branch: null }));
     fetchAvailableStoves();
-    // Payment models are global — no need to refetch per partner.
+    // Sales models are tied to the partner, but they are never fetched per
+    // partner: the org row already carries the IDs, which we resolve against
+    // the catalogue loaded once on mount.
+    setOrgPaymentModelIds(
+      Array.isArray(org.payment_model_ids) ? org.payment_model_ids : null,
+    );
   };
 
   const resetStoveSelection = () => {
@@ -820,7 +888,10 @@ const CreateSalesForm = ({
   };
 
 
-  const handlePartnerPick = async (partnerName) => {
+  // `picked` is the org row the user clicked, not just its name — it is the
+  // guaranteed-present fallback if the branch lookup below comes back thin.
+  const handlePartnerPick = async (picked) => {
+    const partnerName = picked?.partner_name || "";
     setSelectedPartnerName(partnerName);
     setSelectedState("");
     setPartnerBranches([]);
@@ -829,6 +900,9 @@ const CreateSalesForm = ({
     handleInputChange("partnerName", partnerName);
     handleInputChange("retailerBranch", "");
     resetStoveSelection();
+    // Entitlements belong to the branch that is about to be picked, not to the
+    // partner we just left.
+    setOrgPaymentModelIds(null);
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.removeItem("saa_selected_org_id");
       sessionStorage.removeItem("saa_selected_org_ids");
@@ -836,34 +910,51 @@ const CreateSalesForm = ({
 
     setBranchesLoading(true);
     try {
-      let rows = [];
       // Tolerant name match: the dropdown label and the stored partner_name can
-      // differ by case or stray whitespace (e.g. a trailing space on the Amina
-      // variant). A brittle `===` there returns zero rows → empty state/branch →
-      // no org id recorded → the partner's stoves become unsellable. Normalize
-      // both sides before comparing.
-      const norm = (s) => (s || "").toLowerCase().trim();
+      // differ by case or stray whitespace (e.g. a trailing space, or a double
+      // space, on the Amina variant). A brittle `===` there returns zero rows →
+      // empty state/branch → no org id recorded → the partner's stoves become
+      // unsellable. Normalize both sides before comparing.
+      const norm = (s) => (s || "").toLowerCase().replace(/\s+/g, " ").trim();
       const target = norm(partnerName);
+      // Start from the rows already loaded — the picked partner is always in
+      // there, so state/branch can never come back empty.
+      let rows = (partners || []).filter((o) => norm(o.partner_name) === target);
+      if (!rows.some((o) => o.id === picked.id)) rows = [picked, ...rows];
+      // Show them immediately, so a failing lookup below still leaves a usable
+      // branch rather than an empty dropdown.
+      setPartnerBranches(rows);
+
+      let fetched = [];
       const isSaaAgent = isSuperAdmin && userRole !== "super_admin";
       if (isSaaAgent) {
         const result = await superAdminAgentService.getAgentOrganizations(userId);
-        rows = (result.data || []).filter((o) => norm(o.partner_name) === target);
+        fetched = result.data || [];
       } else {
         const { data: { session } } = await supabase.auth.getSession();
+        // Search on the part of the name before any bracket: the server does a
+        // substring match, so this still reaches every branch, while keeping the
+        // term free of characters that have meaning inside a PostgREST filter.
+        const searchTerm = (partnerName.split("(")[0] || partnerName).trim();
         const params = new URLSearchParams({
           limit: "500",
           offset: "0",
-          search: partnerName,
+          search: searchTerm,
         });
         const res = await fetch(
           `${SUPABASE_URL}/functions/v1/manage-organizations?${params}`,
           { headers: { Authorization: `Bearer ${session.access_token}` } },
         );
         const result = await res.json();
-        if (res.ok) {
-          rows = (result.data || []).filter((o) => norm(o.partner_name) === target);
-        }
+        if (res.ok) fetched = result.data || [];
       }
+
+      // Merge the server's branches in, keyed by id so nothing duplicates.
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      for (const o of fetched) {
+        if (norm(o.partner_name) === target) byId.set(o.id, o);
+      }
+      rows = Array.from(byId.values());
       setPartnerBranches(rows);
 
       if (rows.length === 0) {
@@ -1021,7 +1112,7 @@ const CreateSalesForm = ({
                             <div
                               key={p.partner_name}
                               className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
-                              onClick={() => handlePartnerPick(p.partner_name)}
+                              onClick={() => handlePartnerPick(p)}
                             >
                               {p.partner_name}
                             </div>
@@ -1281,13 +1372,27 @@ const CreateSalesForm = ({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="full_payment">Full Payment</SelectItem>
-                    {paymentModels.map((model) => (
+                    {visiblePaymentModels.map((model) => (
                       <SelectItem key={model.id} value={model.id}>
                         {model.name} — {formatCurrency(model.fixed_price)} / {model.duration_months} mo
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {partnerHasNoPaymentModels && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    This partner has no sales models assigned, so only full
+                    payment is available.
+                  </p>
+                )}
+                {partnerModelsUnresolved && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    This partner is assigned {orgPaymentModelIds.length} sales
+                    model{orgPaymentModelIds.length === 1 ? "" : "s"} that
+                    could not be loaded — they may be inactive. Only full
+                    payment is available until that is resolved.
+                  </p>
+                )}
               </FormField>
             ) : null}
 

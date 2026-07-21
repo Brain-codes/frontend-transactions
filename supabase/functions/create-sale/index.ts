@@ -265,10 +265,6 @@ Deno.serve(async (req) => {
     if (isInstallment && paymentModelId) {
       console.log("💳 Installment mode: validating payment model", paymentModelId);
 
-      // Payment models are decoupled from partners — any active model is allowed.
-
-
-
       // Fetch model details
       const { data: paymentModel, error: modelError } = await supabase
         .from("payment_models")
@@ -282,6 +278,24 @@ Deno.serve(async (req) => {
 
       if (!paymentModel.is_active) {
         return jsonError("This payment model is no longer active");
+      }
+
+      // Sales models are tied to a partner again, sourced from the external
+      // sync (`Partner Sales Models`) rather than assigned by a super admin.
+      // The clients already filter the picker to the partner's models; this is
+      // the server-side enforcement that makes that filtering real.
+      const { data: orgModelLink, error: linkError } = await supabase
+        .from("organization_payment_models")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .eq("payment_model_id", paymentModelId)
+        .maybeSingle();
+
+      if (linkError || !orgModelLink) {
+        return jsonError(
+          `This partner is not assigned the "${paymentModel.name}" sales model`,
+          403,
+        );
       }
 
       // The sales amount is operator-editable. Honor the client-supplied `amount`
