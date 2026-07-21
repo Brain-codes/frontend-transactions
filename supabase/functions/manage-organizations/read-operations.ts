@@ -147,7 +147,9 @@ export async function getOrganizations(
       // search silently matches the wrong set. Double-quoting makes PostgREST
       // treat the whole thing as a literal.
       const s = search.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-      q = q.or(`partner_name.ilike."%${s}%",partner_id.ilike."%${s}%"`);
+      // Inside quoted PostgREST values, the ilike wildcard is `*` (converted
+      // to `%` server-side). Using `%` inside quotes matches a literal percent.
+      q = q.or(`partner_name.ilike."*${s}*",partner_id.ilike."*${s}*"`);
     }
     if (status) q = q.eq("status", status);
     if (partnerType) q = q.ilike("partner_type", partnerType);

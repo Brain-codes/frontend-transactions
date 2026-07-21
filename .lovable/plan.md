@@ -1,54 +1,57 @@
-## Why the stove doesn't show up
+# Fix: Selecting "Swali Global Multi Concept (Amina Sales Model)" in Sales Form shows no state, no branch, no stoves
 
-The Sell Stove search (`adminSalesService.searchStoveIds`) only returns rows from `stove_ids` where **all** of these are true:
+## Root cause
 
-1. `organization_id` = the selected partner's org (Swali Global Multi Concept)
-2. `is_archived = false`
-3. `status <> 'sold'`
-4. `stove_id ILIKE %term%`
+`CreateSalesForm.handlePartnerPick` calls `manage-organizations?search=<partnerName>` to load that partner's org rows (state + branch + org IDs). The edge function (`supabase/functions/manage-organizations/read-operations.ts`, line 126) applies the search as:
 
-If serial `101109216` is missing from the dropdown, exactly one of (1)–(3) is false for that row (or the row doesn't exist at all). The payment model (Amina Sales Model) has no effect on visibility — it's applied later in the form.
-
-## Step 1 — Diagnose (read-only)
-
-Run a diagnostic against `stove_ids` for that serial and join to `organizations` to see the truth:
-
-```sql
-select s.stove_id, s.status, s.is_archived, s.organization_id, o.name as current_partner
-from public.stove_ids s
-left join public.organizations o on o.id = s.organization_id
-where s.stove_id = '101109216';
-
-select id, name from public.organizations
-where name ilike '%swali%global%';
+```ts
+q = q.or(`partner_name.ilike.%${search}%,partner_id.ilike.%${search}%`);
 ```
 
-Three likely outcomes:
+PostgREST's `.or()` filter is a mini-DSL where parentheses `(` `)` are **grouping delimiters**, and commas separate alternatives. When the search string is `Swali Global Multi Concept (Amina Sales Model)`, the raw parens inside the value break the parser — the whole filter is malformed and PostgREST returns 0 rows.
 
-- **A. Row is assigned to a different partner** → transfer it to Swali Global.
-- **B. `status = 'sold'`** (leftover from a previous sale/import) → reset to `available`.
-- **C. `is_archived = true`** → un-archive it.
-- **D. No row exists** → add it to `stove_ids` under Swali Global as `available`.
+Effect chain:
 
-## Step 2 — Fix (one migration matching the diagnosis)
+1. `handlePartnerPick` gets `rows = []` → `setPartnerBranches([])` → State/Branch dropdowns render empty.
+2. `finalizeBranchPick` never fires → `saa_selected_org_ids` never written → `getActiveOrgIds()` returns nothing → stove search filters on an empty org-id set → stove `101109216` is never found.
 
-I'll ship a single migration that covers whichever case applies. Example for the most common case (wrong org / not available):
+The Partner Profiles list works because it uses a different endpoint (`get-organizations-grouped`) that does not use `.or()` on the search value.
 
-```sql
-update public.stove_ids
-set organization_id = (select id from public.organizations where name = 'Swali Global Multi Concept'),
-    status = 'available',
-    is_archived = false,
-    updated_at = now()
-where stove_id = '101109216';
-```
+## Change
 
-For case D I'd `insert` a new row instead. I will not run this until Step 1 confirms which case we're in.
+### 1) `supabase/functions/manage-organizations/read-operations.ts`
 
-## Step 3 — Verify
+Replace the unsafe `.or()` search with a parens-safe equivalent. Two acceptable options; pick option A because we already fall back to a single-column ilike on `partner_name` when `partner_id` looks non-numeric:
 
-Reload `/sales/create`, pick Swali Global Multi Concept + Amina Sales Model, type `101109216` in the Stove Serial search, and confirm it appears and validates as "Valid stove ID for this partner."
+- Option A — split into two safe filters using PostgREST's quoted-value syntax for `.or()`:
+  ```ts
+  if (search) {
+    const escaped = search.replace(/"/g, '\\"'); // escape double-quotes for PostgREST quoted value
+    q = q.or(`partner_name.ilike."*${escaped}*",partner_id.ilike."*${escaped}*"`);
+  }
+  ```
+  PostgREST uses `*` as ilike wildcard when the value is inside `"..."`, and quoted values treat parens/commas as literals.
 
-## Note
+- Option B — drop the `.or()` for the common case and use two-column combined WHERE via `.ilike()` on `partner_name` only (since `partner_id` is a short code, users rarely paste the full "Amina" name into it):
+  ```ts
+  if (search) q = q.ilike("partner_name", `%${search}%`);
+  ```
 
-If serial `101109216` genuinely belongs to another partner in your records, please confirm before I reassign it — a reassignment moves ownership permanently.
+Ship Option A so the `partner_id` search still works.
+
+### 2) `src/app/admin/components/sales/CreateSalesForm.jsx` (defensive)
+
+After `handlePartnerPick` returns zero rows for a partner name that was picked from the dropdown, surface an inline error under the Partner input: "No branches configured for this partner — please contact an administrator." This prevents future silent failures if a partner has no `organizations` rows.
+
+No other client code changes needed — once the edge function returns the Amina row, State (Kano) → Branch (Main Branch) will auto-select (both single-value), `saa_selected_org_ids` gets populated with all org IDs sharing that partner+state+branch, and stove `101109216` becomes findable and sellable via the existing multi-org search path.
+
+## Verification
+
+1. On `/sales/create`, pick "Swali Global Multi Concept (Amina Sales Model)" from the partner dropdown.
+2. State should auto-fill to "Kano", Branch should auto-fill to "Main Branch".
+3. Type `101109216` in the Stove ID search — the ID should appear as available and validate as "Valid stove ID for this partner."
+4. Also verify the previous test partner (no parens in name) still loads correctly — a plain "Swali Global Multi Concept" pick must still work.
+
+## Out of scope for this turn
+
+The related complaint that this Amina variant does not appear in the "Track Stove IDs" partner filter is caused by a different function (`get-organizations-grouped` fuzzy-merges near-duplicate partner names). That fix is a separate change and will be planned separately if you want it addressed next.
