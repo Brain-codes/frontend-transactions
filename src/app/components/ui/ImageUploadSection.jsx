@@ -1,8 +1,8 @@
-
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Upload, FileText, Loader2, Camera } from "lucide-react";
+import CameraCaptureModal from "./CameraCaptureModal";
 
 const ImageUploadSection = ({
   label,
@@ -17,16 +17,18 @@ const ImageUploadSection = ({
   enableCamera = false,
 }) => {
   const fileInputRef = useRef(null);
-  const cameraInputRef = useRef(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file && onUpload) {
       onUpload(file);
     }
-    // reset so selecting the same file again still fires onChange
     e.target.value = "";
   };
+
+  const openFilePicker = () => fileInputRef.current?.click();
+  const openCamera = () => setCameraOpen(true);
 
   return (
     <div className="space-y-2">
@@ -68,7 +70,7 @@ const ImageUploadSection = ({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => cameraInputRef.current?.click()}
+                  onClick={openCamera}
                   disabled={uploading}
                 >
                   {uploading ? (
@@ -82,7 +84,7 @@ const ImageUploadSection = ({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={openFilePicker}
                 disabled={uploading}
               >
                 {uploading ? (
@@ -103,7 +105,7 @@ const ImageUploadSection = ({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => cameraInputRef.current?.click()}
+                    onClick={openCamera}
                     disabled={uploading}
                   >
                     {uploading ? (
@@ -117,7 +119,7 @@ const ImageUploadSection = ({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={openFilePicker}
                   disabled={uploading}
                 >
                   {uploading ? (
@@ -141,18 +143,18 @@ const ImageUploadSection = ({
           className="hidden"
           onChange={handleFileSelect}
         />
-        {enableCamera && (
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handleFileSelect}
-          />
-        )}
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {enableCamera && (
+        <CameraCaptureModal
+          open={cameraOpen}
+          onOpenChange={setCameraOpen}
+          onCapture={(file) => onUpload?.(file)}
+          onFallbackUpload={openFilePicker}
+          title={label ? `Take Photo — ${label}` : "Take Photo"}
+        />
+      )}
     </div>
   );
 };
