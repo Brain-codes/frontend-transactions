@@ -7,6 +7,23 @@
 import { isValidSignature } from "./signatureUtils";
 
 /**
+ * The three phone formats the business accepts:
+ *   08031234567 · 2348031234567 · +2348031234567
+ * Separators people naturally type (spaces, dashes, brackets) are stripped
+ * before matching, so "0803 123 4567" passes rather than being rejected.
+ *
+ * Mirrors `PhoneUtils.isValidNigerianPhone` in the mobile app — keep in step.
+ */
+export const PHONE_FORMAT_MESSAGE =
+  "Use 08031234567, 2348031234567 or +2348031234567";
+
+export const isValidNigerianPhone = (value) => {
+  const v = String(value ?? "").trim().replace(/[\s\-().]/g, "");
+  if (!v) return false;
+  return /^0\d{10}$/.test(v) || /^234\d{10}$/.test(v) || /^\+234\d{10}$/.test(v);
+};
+
+/**
  * Validates the sales form data
  * @param {Object} formData - The form data to validate
  * @returns {Object} - Object containing validation errors (empty if valid)
@@ -32,6 +49,8 @@ export const validateSalesForm = (formData) => {
   // Contact phone validation
   if (!formData.contactPhone.trim()) {
     errors.contactPhone = "Contact phone number is required";
+  } else if (!isValidNigerianPhone(formData.contactPhone)) {
+    errors.contactPhone = PHONE_FORMAT_MESSAGE;
   }
 
   // End user first name validation
@@ -57,6 +76,8 @@ export const validateSalesForm = (formData) => {
   // Phone validation
   if (!formData.phone.trim()) {
     errors.phone = "End user phone number is required";
+  } else if (!isValidNigerianPhone(formData.phone)) {
+    errors.phone = PHONE_FORMAT_MESSAGE;
   }
 
   // Amount validation
@@ -160,6 +181,9 @@ export const fieldValidators = {
     if (!value?.trim()) {
       return "Contact phone number is required";
     }
+    if (!isValidNigerianPhone(value)) {
+      return PHONE_FORMAT_MESSAGE;
+    }
     return null;
   },
 
@@ -187,6 +211,9 @@ export const fieldValidators = {
   phone: (value) => {
     if (!value?.trim()) {
       return "End user phone number is required";
+    }
+    if (!isValidNigerianPhone(value)) {
+      return PHONE_FORMAT_MESSAGE;
     }
     return null;
   },

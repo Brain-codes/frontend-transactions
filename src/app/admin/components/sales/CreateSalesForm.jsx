@@ -179,9 +179,13 @@ const CreateSalesForm = ({
         if (currentId) q = q.neq("id", currentId);
         const { data } = await q;
         if (token !== phoneCheckTokenRef.current) return;
-        const clash = (data || []).find(
-          (r) => String(r.phone ?? "").replace(/\D+/g, "") === digits,
-        );
+        // Last-10 comparison, matching create-sale and the mobile app: the same
+        // subscriber can be stored as 0803… or 234803… and both must collide.
+        const tailKey = digits.slice(-10);
+        const clash = (data || []).find((r) => {
+          const rowDigits = String(r.phone ?? "").replace(/\D+/g, "");
+          return rowDigits.length >= 10 && rowDigits.slice(-10) === tailKey;
+        });
         setErrors((prev) => {
           if (clash) {
             return {
