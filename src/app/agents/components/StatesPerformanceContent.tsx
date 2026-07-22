@@ -864,7 +864,7 @@ export default function StatesPerformanceContent() {
           label="States"
           value={filtered.length}
           tone="blue"
-          sub={`${filtered.filter((r) => agentCoveredStates.has(r.state)).length} of ${filtered.length} covered by an agent`}
+          sub={`${formatNumber(filtered.filter((r) => agentCoveredStates.has(r.state)).length)} of ${formatNumber(filtered.length)} covered by an agent`}
         />
 
         <Kpi icon={Building2} label="Partners" value={totals.partners} tone="orange" />
