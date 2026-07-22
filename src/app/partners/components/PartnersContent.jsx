@@ -1816,7 +1816,7 @@ export default function PartnersContent() {
                   ) : (
                     displayedOrgs.map((org, idx) => (
                       <React.Fragment key={org.id}>
-                        <TableRow className="hover:bg-[#eef3c4] text-gray-700" style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f4f7e3" }}>
+                        <TableRow className="hover:bg-[#eef3c4] text-gray-700 bg-white">
                           <TableCell className="text-sm font-medium text-gray-900">{org.partner_name}</TableCell>
                           <TableCell className="text-sm">{org.state || "N/A"}</TableCell>
                           <TableCell className="text-sm">{org.branch || "N/A"}</TableCell>
