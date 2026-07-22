@@ -899,8 +899,8 @@ export default function StatesPerformanceContent() {
 
       {/* Agents in State Modal */}
       <Dialog open={agentModalOpen} onOpenChange={(open) => !open && closeAgentModal()}>
-        <DialogContent className="max-w-4xl p-0">
-          <DialogHeader className="border-b bg-[#4a5d0f] px-6 py-4">
+        <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] p-0 flex flex-col overflow-hidden">
+          <DialogHeader className="border-b bg-[#4a5d0f] px-6 py-4 shrink-0">
             <div className="flex items-center justify-between">
               <div>
                 <DialogTitle className="text-base font-semibold text-white">
@@ -919,8 +919,8 @@ export default function StatesPerformanceContent() {
             </div>
           </DialogHeader>
 
-          <div className="space-y-3 p-5">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col flex-1 min-h-0 space-y-3 p-5 overflow-hidden">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <div className="relative min-w-[220px] flex-1">
                 <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
                 <Input
@@ -939,7 +939,7 @@ export default function StatesPerformanceContent() {
               </Button>
             </div>
 
-            <div className="overflow-hidden rounded-lg border border-[#e5e7eb]">
+            <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-[#e5e7eb]">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-[#eef3c4] hover:bg-[#eef3c4]">
@@ -995,7 +995,7 @@ export default function StatesPerformanceContent() {
               </Table>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#e5e7eb] pt-3 text-xs text-gray-600">
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#e5e7eb] pt-3 text-xs text-gray-600 shrink-0">
               <div>
                 Showing {agentModalAgents.length === 0 ? 0 : agentModalStart + 1}–
                 {Math.min(agentModalStart + agentModalPageSize, agentModalAgents.length)} of {agentModalAgents.length} agents
