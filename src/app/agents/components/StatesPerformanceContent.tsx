@@ -1260,7 +1260,7 @@ export default function StatesPerformanceContent() {
                           </sup>
                         </TableCell>
                         <TableCell className="text-center align-top">
-                          <Pill tone="slate">{a.statesCovered.length}</Pill>
+                          <Pill tone="slate">{formatNumber(a.statesCovered.length)}</Pill>
                         </TableCell>
                         <TableCell className="align-top text-gray-700">
                           <div className="flex flex-wrap gap-1">
@@ -1275,13 +1275,13 @@ export default function StatesPerformanceContent() {
                           </div>
                         </TableCell>
                         <TableCell className="text-center align-top">
-                          <Pill tone="emerald">{a.stovesRecorded}</Pill>
+                          <Pill tone="emerald">{formatNumber(a.stovesRecorded)}</Pill>
                         </TableCell>
                         <TableCell className="text-center align-top">
-                          <Pill tone="slate">{agentModalRow?.stoves ?? 0}</Pill>
+                          <Pill tone="slate">{formatNumber(agentModalRow?.stoves ?? 0)}</Pill>
                         </TableCell>
                         <TableCell className="text-center align-top">
-                          <Pill tone="rose">{agentModalRow?.notSold ?? 0}</Pill>
+                          <Pill tone="rose">{formatNumber(agentModalRow?.notSold ?? 0)}</Pill>
                         </TableCell>
                       </TableRow>
                     ))
