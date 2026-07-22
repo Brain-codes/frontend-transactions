@@ -186,6 +186,10 @@ export default function StatesPerformanceContent() {
   const [agentModalSearch, setAgentModalSearch] = useState("");
   const [agentModalPage, setAgentModalPage] = useState(1);
   const [agentModalPageSize, setAgentModalPageSize] = useState(10);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useRealtimeRefresh("states", REALTIME_STATE_TABLES);
+  useRefreshListener("states", () => setReloadKey((k) => k + 1));
 
   useEffect(() => {
     let cancelled = false;
