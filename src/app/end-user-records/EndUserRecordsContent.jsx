@@ -434,7 +434,7 @@ const EndUserRecordsContent = () => {
                     paginatedSales.map((sale, idx) => (
                       <TableRow
                         key={sale.id}
-                        className={`${idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]"} hover:bg-gray-50`}
+                        className="bg-white hover:bg-gray-50"
                       >
                         <TableCell className="py-2 px-2 whitespace-nowrap align-top">
                           {formatDate(sale.sales_date || sale.created_at)}
