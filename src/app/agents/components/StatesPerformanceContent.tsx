@@ -170,6 +170,10 @@ export default function StatesPerformanceContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<StateRow[]>([]);
+  // Set of states that appear in at least one ACSL agent's partner-derived
+  // assignments — same rule as Agents Performance's "States Assigned" badge.
+  const [agentCoveredStates, setAgentCoveredStates] = useState<Set<string>>(new Set());
+
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("sold");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
