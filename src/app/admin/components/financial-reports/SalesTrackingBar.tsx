@@ -7,8 +7,10 @@ export type TrackingKey = "none" | "due30" | "due14" | "due7" | "dueToday" | "ov
 interface Props {
   active: TrackingKey;
   counts: Record<Exclude<TrackingKey, "none">, number>;
+  totalCount: number;
   onChange: (key: TrackingKey) => void;
 }
+
 
 const chips: Array<{
   key: Exclude<TrackingKey, "none">;
