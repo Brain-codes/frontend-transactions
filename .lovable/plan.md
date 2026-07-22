@@ -1,24 +1,24 @@
 ## Goal
-Validate End User Phone in real time on the sales form — flag duplicates as the user types, not on blur or submit.
+Validate Nigerian phone number format on both **Contact Phone** and **End User Phone** fields on the sales form. Accept only:
+- `08031234567` (11 digits, starts with 0)
+- `+2348031234567` (starts with +234)
+- `2348031234567` (13 digits, starts with 234)
 
-## Changes
+## Format rule
+Digits-only normalization must yield either:
+- 11 digits starting with `0` followed by `[7-9][0-1]` (Nigerian mobile prefixes 70/71/80/81/90/91), or
+- 13 digits starting with `234` followed by `[7-9][0-1]`.
 
-**`src/app/admin/components/sales/CreateSalesForm.jsx`**
+Regex on the raw input: `/^(?:0|\+?234)[7-9][0-1]\d{8}$/` after stripping spaces/dashes.
 
-1. Remove the current `onBlur` duplicate check on the phone Input.
-2. Add a debounced live check (≈300ms) that runs whenever `formData.phone` changes:
-   - Normalize to digits-only; skip if fewer than 7 digits.
-   - Query `sales` via Supabase: `ilike("phone", "%<last10digits>%")`, excluding the current sale id in edit mode.
-   - Match strictly on digits-only equality.
-   - If a clash is found, set `errors.phone` to: `"A customer with this phone number already exists (sale <transaction_id>)."`
-   - If clear, clear `errors.phone`.
-3. Race-guard with a ref/token so a stale response can't overwrite a newer result; cancel timer on unmount and when input changes.
-4. Show a subtle inline status under the field while checking (e.g. "Checking…") and, when a duplicate is confirmed, the red error message (existing `FormField` error slot already renders it).
-5. Block submit while a duplicate is flagged (guard in the existing submit validator using the same live-error state).
+## Changes — `src/app/admin/components/sales/CreateSalesForm.jsx`
 
-No server changes — the existing `create-sale` 409 duplicate check stays as the authoritative backstop.
+1. Add a helper `isValidNgPhone(raw)` near the top of the component.
+2. **On change** (via `handleInputChange` or an inline check for these two fields): when the field is non-empty and fails the format check, set the field error to:
+   `"Enter a valid phone number (e.g. 08031234567, +2348031234567, or 2348031234567)."`
+   When it passes, clear that format error.
+3. **Live duplicate check (End User Phone)**: only run the debounced Supabase duplicate query when the format is valid — otherwise skip the query and keep the format error.
+4. **Submit validation**: in the existing validator (around line 728), reject submit if either phone fails the format check, with the same message.
+5. Contact Phone gets the format check only (no uniqueness requirement).
 
-## Technical notes
-- Use `useEffect` keyed on `formData.phone` with `setTimeout` + cleanup for debounce.
-- Use `getSupabase()` (already imported) for the query.
-- Preserve edit-mode exclusion via `initialData?.id`.
+No server / edge function changes.
