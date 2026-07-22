@@ -107,9 +107,9 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
         <Table className="text-sm w-full table-fixed">
           <TableHeader className="bg-[#4a5d0f]">
             <TableRow className="hover:bg-[#4a5d0f]">
-              <TableHead className="text-white font-semibold py-2 px-2 w-[7%]">Trans #</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-2 w-[6%]">Trans #</TableHead>
               <TableHead
-                className="text-white font-semibold py-2 px-2 w-[7%] cursor-pointer select-none"
+                className="text-white font-semibold py-2 px-2 w-[6%] cursor-pointer select-none"
                 onClick={onToggleSort}
               >
                 <div className="flex items-center gap-1">
@@ -120,12 +120,12 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                <TableHead className="text-white font-semibold py-2 px-2 w-[7%]">State</TableHead>
                <TableHead className="text-white font-semibold py-2 px-2 w-[11%]">Partner</TableHead>
                <TableHead className="text-white font-semibold py-2 px-2 w-[8%]">Stove ID</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-2 w-[9%]">Payment</TableHead>
-                <TableHead className="text-white font-semibold py-2 px-2 text-left w-[7%]">Expected</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-2 text-left w-[7%]">Paid</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-2 text-left w-[7%]">Balance</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-2 w-[10%]">Modified By</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-2 text-right w-[9%]">Actions</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[11%]">Payment</TableHead>
+                 <TableHead className="text-white font-semibold py-2 px-2 text-left w-[7%]">Expected</TableHead>
+                <TableHead className="text-white font-semibold py-2 px-2 text-left w-[7%]">Paid</TableHead>
+                <TableHead className="text-white font-semibold py-2 px-2 text-left w-[7%]">Balance</TableHead>
+                <TableHead className="text-white font-semibold py-2 px-2 w-[10%]">Modified By</TableHead>
+                <TableHead className="text-white font-semibold py-2 px-2 text-right w-[9%]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className={loading ? "opacity-40 [&_tr:last-child]:border-b" : "[&_tr:last-child]:border-b"}>
@@ -141,9 +141,36 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                 <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.partner_name || (sale as any).organizations?.name || "N/A"}</TableCell>
                 <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.stove_serial_no || "N/A"}</TableCell>
                 <TableCell className="py-2 px-2 text-xs break-words align-top">
-                  {sale.is_installment
-                    ? (sale.payment_model?.name || "Installment")
-                    : "Full Payment"}
+                  {sale.is_installment ? (
+                    sale.installment_summary ? (
+                      <div className="space-y-0.5">
+                        <div className="font-medium text-gray-900 leading-tight">
+                          {sale.payment_model?.name || "Installment"}
+                        </div>
+                        <div className="text-[11px] text-gray-600">
+                          {sale.installment_summary.total_installments} installments
+                        </div>
+                        <div className="text-[11px] text-gray-600">
+                          {sale.installment_summary.paid_installments} paid · {sale.installment_summary.left_installments} left
+                        </div>
+                        {sale.installment_summary.left_installments > 0 && sale.installment_summary.next_due_date ? (
+                          <div className="text-[11px] font-medium text-[#4a5d0f]">
+                            Next due: {formatDate(sale.installment_summary.next_due_date)}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] font-medium text-green-700">
+                            Completed
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      sale.payment_model?.name || "Installment"
+                    )
+                  ) : (
+                    <Badge className="bg-[#eef3c4] text-[#4a5d0f] hover:bg-[#eef3c4] text-[10px] px-1.5 py-0">
+                      Full Payment
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell className="py-2 px-2 text-xs text-left break-words align-top">
                   {formatCurrency(sale.amount ?? 0)}

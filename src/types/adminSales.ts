@@ -56,6 +56,13 @@ export interface AdminSales {
     duration_months: number;
     fixed_price: number;
   };
+  installment_summary?: {
+    total_installments: number;
+    paid_installments: number;
+    left_installments: number;
+    next_due_date: string | null;
+    installment_amount?: number;
+  } | null;
 
   // New fields from user agreement form
   retailer_branch?: string;
