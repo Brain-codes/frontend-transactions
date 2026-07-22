@@ -82,9 +82,36 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
   salesModels = [],
   stateList = [],
   lgaList = [],
+  selectedMonth,
+  onMonthChange,
+  yearFilter,
+  onYearFilterChange,
+  availableYears = [],
 }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+
+  const MONTHS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+
+  const yearsForSelect = React.useMemo(() => {
+    const set = new Set<number>(availableYears);
+    set.add(currentYear);
+    return Array.from(set).sort((a, b) => b - a);
+  }, [availableYears, currentYear]);
+
+  const selectedYearNum = yearFilter && yearFilter !== "all" ? Number(yearFilter) : null;
+  const isMonthDisabled = (idx: number) => {
+    if (selectedYearNum === null) return idx > currentMonth; // "all years" — restrict future months of current year
+    if (selectedYearNum < currentYear) return false;
+    if (selectedYearNum === currentYear) return idx > currentMonth;
+    return true; // future year
+  };
+
 
   const range: DateRange | undefined = React.useMemo(() => {
     const from = fromISO(startDate);
