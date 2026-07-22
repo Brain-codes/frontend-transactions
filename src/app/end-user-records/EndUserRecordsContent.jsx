@@ -206,9 +206,16 @@ const EndUserRecordsContent = () => {
     return pages;
   };
 
+  const getModifierName = (s) =>
+    s.updated_by_profile?.full_name ||
+    s.creator?.full_name ||
+    s.created_by_profile?.full_name ||
+    s.sales_agent?.full_name ||
+    "";
+
   const formatModifier = (s) => {
-    const name = s.updated_by_profile?.full_name;
-    const when = s.updated_at ? formatDate(s.updated_at) : null;
+    const name = getModifierName(s);
+    const when = s.updated_at || s.created_at ? formatDate(s.updated_at || s.created_at) : null;
     if (!name && !when) return "—";
     if (name && when) return `${name} · ${when}`;
     return name || when || "—";
@@ -447,18 +454,17 @@ const EndUserRecordsContent = () => {
                           {sale.stove_serial_no || "N/A"}
                         </TableCell>
                         <TableCell className="py-2 px-2 align-top text-xs max-w-[160px] break-words">
-                          {sale.updated_by_profile?.full_name ? (
-                            <div className="flex flex-col leading-tight">
-                              <span className="font-medium">{sale.updated_by_profile.full_name}</span>
-                              {sale.updated_at && (
-                                <span className="text-gray-500">{formatDate(sale.updated_at)}</span>
-                              )}
-                            </div>
-                          ) : sale.updated_at ? (
-                            <span className="text-gray-500">{formatDate(sale.updated_at)}</span>
-                          ) : (
-                            <span className="text-gray-400">—</span>
-                          )}
+                          {(() => {
+                            const name = getModifierName(sale);
+                            const when = sale.updated_at || sale.created_at;
+                            if (!name && !when) return <span className="text-gray-400">—</span>;
+                            return (
+                              <div className="flex flex-col leading-tight">
+                                {name && <span className="font-medium">{name}</span>}
+                                {when && <span className="text-gray-500">{formatDate(when)}</span>}
+                              </div>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell className="py-2 px-2 whitespace-nowrap text-right">
                           <div className="inline-flex items-center gap-2 justify-end">
