@@ -93,7 +93,11 @@ const CancelSaleModal: React.FC<CancelSaleModalProps> = ({
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Reason for cancelling{" "}
-            <span className="text-gray-400 font-normal">(optional)</span>
+            {requireReason ? (
+              <span className="text-red-600 font-normal">(required)</span>
+            ) : (
+              <span className="text-gray-400 font-normal">(optional)</span>
+            )}
           </label>
           <Textarea
             value={reason}
