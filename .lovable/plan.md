@@ -1,24 +1,39 @@
-## Goal
-Validate Nigerian phone number format on both **Contact Phone** and **End User Phone** fields on the sales form. Accept only:
-- `08031234567` (11 digits, starts with 0)
-- `+2348031234567` (starts with +234)
-- `2348031234567` (13 digits, starts with 234)
+# End User Records — Edit action + Last Modified tracking
 
-## Format rule
-Digits-only normalization must yield either:
-- 11 digits starting with `0` followed by `[7-9][0-1]` (Nigerian mobile prefixes 70/71/80/81/90/91), or
-- 13 digits starting with `234` followed by `[7-9][0-1]`.
+## 1. Database (migration)
+Add audit columns to `sales`:
+- `updated_at timestamptz`
+- `updated_by uuid REFERENCES profiles(id) ON DELETE SET NULL`
 
-Regex on the raw input: `/^(?:0|\+?234)[7-9][0-1]\d{8}$/` after stripping spaces/dashes.
+Backfill `updated_at = created_at` for existing rows so the new column shows a sensible date immediately.
 
-## Changes — `src/app/admin/components/sales/CreateSalesForm.jsx`
+## 2. Edge function — `update-sale`
+Create a new function `supabase/functions/update-sale/index.ts` (the client service in `adminSalesService.jsx` already references this URL but the function isn't deployed).
 
-1. Add a helper `isValidNgPhone(raw)` near the top of the component.
-2. **On change** (via `handleInputChange` or an inline check for these two fields): when the field is non-empty and fails the format check, set the field error to:
-   `"Enter a valid phone number (e.g. 08031234567, +2348031234567, or 2348031234567)."`
-   When it passes, clear that format error.
-3. **Live duplicate check (End User Phone)**: only run the debounced Supabase duplicate query when the format is valid — otherwise skip the query and keep the format error.
-4. **Submit validation**: in the existing validator (around line 728), reject submit if either phone fails the format check, with the same message.
-5. Contact Phone gets the format check only (no uniqueness requirement).
+Behavior:
+- Authenticate caller via bearer token, load profile.
+- Authorize by role: allow `super_admin`, `acsl_agent_manager`, and `partner` (partner scoped to `organization_id = caller.organization_id`). Others → 403.
+- Accept editable end-user fields only:
+  `end_user_name, aka, phone, other_phone, contact_person, contact_phone, state_backup, lga_backup, address (street/city + address_id row update)`.
+- Re-run existing Nigerian phone validation + duplicate-phone check (digits-only normalization, ignoring the current sale's `id`).
+- Update the `sales` row and set `updated_at = now()`, `updated_by = caller.id`.
+- Return the refreshed sale.
 
-No server / edge function changes.
+## 3. Frontend — `EndUserRecordsContent.jsx`
+- Gate a new "Edit" button per row using `usePermissions` — visible when role is `super_admin`, `acsl_agent_manager`, or `partner`.
+- Add a new column **Last Modified By** rendering `updated_by_name` + formatted `updated_at` (falls back to "—" when never edited). Insert it before the Actions column, and add it to the CSV export.
+- The `Details` button stays; the new `Edit` button opens a new modal.
+
+## 4. New modal — `EditEndUserModal.jsx`
+- Inputs for all end-user fields listed in §2, prefilled from the sale.
+- Reuses `isValidNgPhone` + `NG_PHONE_FORMAT_MESSAGE` for `phone` and `contact_phone` (live format check).
+- Debounced duplicate lookup on `phone` (excluding current sale id), same UX as `CreateSalesForm`.
+- Save → calls `adminSalesService.updateSale(id, payload)` → on success, refreshes the row in local state and closes.
+
+## 5. Read path — `get-sales-advanced`
+Extend the sales select and response mapping to include `updated_at` and a joined `updated_by_profile(full_name)` so the new column renders without an extra fetch. (Format2 response used by End User Records.)
+
+## Technical notes
+- RLS on `sales`: keep existing policies; writes go through the edge function using service role after role check, matching the pattern used by `create-sale` / `delete-sale`.
+- Partner scoping: enforced in the edge function by comparing `sales.organization_id` to caller's `organization_id`.
+- No changes to sidebar/permissions map required; the row-level gate uses the existing role from `useAuth`.
