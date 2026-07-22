@@ -88,6 +88,15 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
 
           <DropdownMenuSeparator />
 
+          {/* View Details */}
+          <DropdownMenuItem
+            onClick={() => onViewDetails(sale)}
+            className="py-2 px-3 rounded-md hover:!bg-[#4a5d0f] hover:!text-white cursor-pointer"
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            Details
+          </DropdownMenuItem>
+
           {/* Payment History */}
           <DropdownMenuItem
             onClick={() => onViewHistory(sale)}
@@ -166,17 +175,6 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Details button */}
-      {viewFrom !== "agent" && (
-        <Button
-          variant="default"
-          size="sm"
-          className="h-7 text-xs bg-[#4A5D0F] hover:bg-[#3a4a0c] text-white rounded-none"
-          onClick={() => onViewDetails(sale)}
-        >
-          Details
-        </Button>
-      )}
     </div>
   );
 };
