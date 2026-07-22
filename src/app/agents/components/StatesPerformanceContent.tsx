@@ -195,12 +195,17 @@ export default function StatesPerformanceContent() {
           .select("id,state,partner_name,contact_phone,alternative_phone");
         if (oErr) throw oErr;
 
-        // Partner-side agents/profiles with an org
-        const { data: profiles, error: pErr } = await supabase
-          .from("profiles")
-          .select("id,full_name,email,role,organization_id,phone")
-          .in("role", ["partner", "admin", "partner_agent", "agent", "acsl_agent", "acsl_agent_manager"]);
-        if (pErr) throw pErr;
+        // Partner-side + ACSL profiles — prefer manage-users (service role, bypasses RLS)
+        // so the roster and names match the Agents Performance report.
+        let profiles: ProfileLite[] | null = await fetchProfilesViaManageUsers();
+        if (!profiles) {
+          const { data: fallback, error: pErr } = await supabase
+            .from("profiles")
+            .select("id,full_name,email,role,organization_id,phone")
+            .in("role", PROFILE_ROLES_FOR_STATES);
+          if (pErr) throw pErr;
+          profiles = (fallback || []) as ProfileLite[];
+        }
 
         // ACSL agent -> state assignments
         const { data: acslStates, error: aErr } = await supabase
