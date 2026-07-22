@@ -1,22 +1,30 @@
-## Problem
+## Why the two totals differ
 
-On the Agents Performance Report view, "Records to collect", "Records collected", and "Records not collected" columns go blank after changing pages, and only reappear on a full page refresh.
+Both reports count "agents" from different sources:
 
-## Root cause (verified in `SuperAdminAgentsContent.tsx`)
+- **Agents Performance Report** — lists every user with role `acsl_agent` or `acsl_agent_manager` (from `manage-users`). Result: **24**.
+- **States Performance Report** — walks each state and collects unique agent IDs tied to that state via:
+  - `acsl_agent_states` rows (ACSL agent/manager → state), OR
+  - a partner-side profile whose `organization.state` matches.
+  
+  Any ACSL agent/manager with **no `acsl_agent_states` row** (and no partner org state) is invisible to this view. Result: **23** → exactly one ACSL agent/manager currently has no state assignment.
 
-Pagination on this table is client-side (`pageRows = tableFilteredAgents.slice(...)`), but `fetchAgents` still lists `page` and `pageSize` in its `useCallback` dependencies (line 2382). So every page change:
+This is a data-coverage gap, not a counting bug — the two views ask different questions.
 
-1. Re-runs `fetchAgents`, which rebuilds `agents` from scratch via `setAgents(rows)` (line 2360). The new agent objects have no `stove_summary` / `direct_org_ids` yet.
-2. The stove hydration effect is keyed on `agentIdsKey = agents.map(a => a.id).join(",")` (line 2395, effect at 2396–2549). Because the underlying IDs are unchanged, `agentIdsKey` is the same string and the memo returns the same reference — so React skips the effect and the hydrated stove counts are never re-merged.
+## Reconciliation plan
 
-Result: the three stove-related cells stay empty until a hard refresh (which happens to re-run everything from a clean state).
+Make both totals agree by having the States Performance KPI use the same authoritative agent list as the Agents Performance report, and surface any unassigned agents so they're visible instead of silently dropped.
 
-## Fix
+1. In `StatesPerformanceContent.tsx`, also fetch the full ACSL agent/manager roster (same query the Agents Performance view uses — profiles where `role in ('acsl_agent','acsl_agent_manager')`).
+2. Change the **Agents** KPI to show the count of unique agent IDs from that roster ∪ the per-state agent details. This guarantees the KPI matches the 24 shown on the Agents Performance report.
+3. Add a small **"Unassigned"** chip under the Agents KPI (e.g. `1 unassigned`) when roster agents have no state linkage. Clicking it opens a modal listing those agents (name, role, phone) so an admin can assign them via User Management.
+4. Leave per-row (per-state) agent counts unchanged — those still correctly reflect coverage in each state.
+5. Update the CSV export totals row to match the reconciled KPI.
 
-Keep client-side pagination working seamlessly without losing hydrated data.
+No schema changes, no changes to Agents Performance view, no changes to per-state data.
 
-1. In `src/app/agents/components/SuperAdminAgentsContent.tsx`, remove `page` and `pageSize` from the `fetchAgents` `useCallback` deps (line 2382) so paging no longer refetches the full agent list. Pagination is already applied to `tableFilteredAgents`, so no data is lost.
-2. As a safety net, preserve prior enrichment when `fetchAgents` does run (e.g. after a real filter change or a `acsl:user-updated` event): change `setAgents(rows)` to a functional update that copies `stove_summary`, `direct_org_ids`, `assigned_organizations_count`, and `total_partners_count` from the previous entry with the same `id` when present. This avoids a flash of empty cells during the brief window before the hydration effect finishes.
-3. Verify by paging forward/back and changing page size on the Agents Performance table — the three stove columns must remain populated without any refresh, and the KPI totals / sorting must still work.
+## Technical notes
 
-No schema, backend, or UI-layout changes.
+- File: `src/app/agents/components/StatesPerformanceContent.tsx` only.
+- Reuse the existing profiles fetch already in this file (line ~129) — it already pulls the ACSL roles; just build a `Set<string>` of ACSL agent IDs alongside the current per-state aggregation and union it into `totals.agents`.
+- Unassigned = roster IDs not present in any `agentDetails[].id` across `filtered` rows.
