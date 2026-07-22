@@ -4,6 +4,7 @@ import FinancialSummaryCards from "./FinancialSummaryCards";
 import PaymentStatusCards from "./PaymentStatusCards";
 import FinancialReportsFilters from "./FinancialReportsFilters";
 import FinancialReportsTable from "./FinancialReportsTable";
+import SalesTrackingBar, { TrackingKey } from "./SalesTrackingBar";
 import PaymentHistoryModal from "./PaymentHistoryModal";
 import RecordPaymentModal from "../sales/RecordPaymentModal";
 import AdminSalesDetailModal from "../sales/AdminSalesDetailModal";
