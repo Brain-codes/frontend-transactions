@@ -365,13 +365,9 @@ export default function StatesPerformanceContent() {
                     <Pill tone="green">{r.partners}</Pill>
                   </TableCell>
                   <TableCell className="text-center align-top">
-                    <div className="flex flex-col items-center gap-0.5">
-                      <Pill tone="green">{r.agents}</Pill>
-                      <span className="text-[10px] text-gray-500">
-                        {r.partnerAgents} partner · {r.acslAgents} ACSL
-                      </span>
-                    </div>
+                    <Pill tone="green">{r.agents}</Pill>
                   </TableCell>
+
                   <TableCell className="text-center align-top">
                     <Pill tone="slate">{r.stoves}</Pill>
                   </TableCell>
