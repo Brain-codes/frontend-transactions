@@ -163,10 +163,8 @@ export default function UnifiedSalesContent() {
           onCancelSale={handleCancelSale}
           onApproveSale={(isAcslAgent || isAcslAgentManager) ? setApproveSale : undefined}
           viewFrom={viewFrom as any}
-          selectedYear={isSuperAdmin ? selectedYear : undefined}
-          onYearChange={isSuperAdmin ? (v) => setSelectedYear(v ?? CURRENT_YEAR) : undefined}
-          availableYears={isSuperAdmin ? YEARS : undefined}
           onExportReady={(fn) => { exportFnRef.current = fn; }}
+
           onSelectionChange={setSelectedExportCount}
           initialSearchTerm={initialPartnerFilter}
         />
