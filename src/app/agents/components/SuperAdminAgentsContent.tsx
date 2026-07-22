@@ -66,7 +66,6 @@ import {
   ArrowUp,
   ArrowDown,
   Calendar as CalendarIcon,
-  Search,
 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
