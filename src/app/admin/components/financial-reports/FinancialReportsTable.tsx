@@ -195,24 +195,24 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
       <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-end bg-white gap-4">
         {totalPages > 1 && (
           <div className="flex items-center gap-1">
-            <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => onPageChange(1)} disabled={currentPage === 1}>
+            <Button variant="outline" size="sm" className="h-8 w-8 p-0 shadow-none" onClick={() => onPageChange(1)} disabled={currentPage === 1}>
               <ChevronsLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}>
+            <Button variant="outline" size="sm" className="h-8 px-2 shadow-none" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}>
               <ChevronLeft className="h-4 w-4 mr-1" />Prev
             </Button>
             {getVisiblePages().map((p) => (
               <Button key={p} variant={p === currentPage ? "default" : "outline"} size="sm"
-                className={`h-8 w-8 p-0 ${p === currentPage ? "bg-[#4a5d0f] text-white hover:bg-[#4a5d0f]" : ""}`}
+                className={`h-8 w-8 p-0 shadow-none ${p === currentPage ? "bg-[#4a5d0f] text-white hover:bg-[#4a5d0f]" : ""}`}
                 onClick={() => onPageChange(p)}
               >
                 {p}
               </Button>
             ))}
-            <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}>
+            <Button variant="outline" size="sm" className="h-8 px-2 shadow-none" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}>
               Next<ChevronRight className="h-4 w-4 ml-1" />
             </Button>
-            <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages}>
+            <Button variant="outline" size="sm" className="h-8 w-8 p-0 shadow-none" onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages}>
               <ChevronsRight className="h-4 w-4" />
             </Button>
           </div>
