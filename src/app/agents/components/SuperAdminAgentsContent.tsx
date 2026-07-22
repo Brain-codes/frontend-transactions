@@ -1225,7 +1225,6 @@ function AgentsListModal({
       return (
         (a.full_name || "").toLowerCase().includes(q) ||
         (a.email || "").toLowerCase().includes(q) ||
-        (a.phone || "").toLowerCase().includes(q) ||
         (a.role || "").toLowerCase().includes(q)
       );
     });
