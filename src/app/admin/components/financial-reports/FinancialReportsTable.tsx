@@ -103,29 +103,29 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
       </div>
 
       {/* Table */}
-      <div className="bg-white border-x border-gray-200 mt-1">
+      <div className="bg-white border-x border-gray-200 mt-1 w-full overflow-hidden">
         <Table className="text-sm w-full table-fixed">
           <TableHeader className="bg-[#4a5d0f]">
             <TableRow className="hover:bg-[#4a5d0f]">
-              <TableHead className="text-white font-semibold py-2 px-2 w-[90px]">Trans #</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-2 w-[7%]">Trans #</TableHead>
               <TableHead
-                className="text-white font-semibold py-2 px-2 w-[95px] cursor-pointer select-none"
+                className="text-white font-semibold py-2 px-2 w-[7%] cursor-pointer select-none"
                 onClick={onToggleSort}
               >
                 <div className="flex items-center gap-1">
                   Date <ArrowUpDown className="h-3 w-3" />
                 </div>
               </TableHead>
-               <TableHead className="text-white font-semibold py-2 px-2 w-[140px]">End User</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-2 w-[90px]">State</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-2 w-[135px]">Partner</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-2 w-[100px]">Stove ID</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-2 w-[120px]">Payment Model</TableHead>
-                <TableHead className="text-white font-semibold py-2 px-2 text-left w-[95px]">Expected</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-2 text-left w-[90px]">Paid</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-2 text-left w-[95px]">Balance</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-2 w-[130px]">Last Modified By</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-2 text-right w-[160px]">Actions</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[11%]">End User</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[7%]">State</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[11%]">Partner</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[8%]">Stove ID</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[9%]">Payment Model</TableHead>
+                <TableHead className="text-white font-semibold py-2 px-2 text-left w-[7%]">Expected</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 text-left w-[7%]">Paid</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 text-left w-[7%]">Balance</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[10%]">Last Modified By</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 text-right w-[9%]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className={loading ? "opacity-40" : ""}>
