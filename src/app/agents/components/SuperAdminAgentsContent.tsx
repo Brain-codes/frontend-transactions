@@ -3150,46 +3150,55 @@ export default function SuperAdminAgentsContent() {
             </Table>
           </div>
 
-          <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span>Rows per page:</span>
-              <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
-                <SelectTrigger className="h-8 w-[72px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[10, 25, 50, 100].map((n) => (
-                    <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-white">
+            <div className="flex items-center gap-4 text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <span>Rows per page:</span>
+                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+                  <SelectTrigger className="h-8 w-[72px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[10, 25, 50, 100].map((n) => (
+                      <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <p>
+                Showing <span className="font-medium">{showingStart}</span>–<span className="font-medium">{showingEnd}</span> of <span className="font-medium">{displayedTotal}</span> agents
+              </p>
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(1)} disabled={page === 1}>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(1)} disabled={safePage === 1}>
                 <ChevronsLeft className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+              <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}>
                 <ChevronLeft className="h-4 w-4 mr-1" />Prev
               </Button>
-              {getPageNumbers().map((p) => (
+              {Array.from({ length: Math.min(5, displayedTotalPages) }, (_, i) => {
+                const start = Math.max(1, Math.min(safePage - 2, displayedTotalPages - 4));
+                return start + i;
+              }).filter((p) => p >= 1 && p <= displayedTotalPages).map((p) => (
                 <Button
                   key={p}
-                  variant={p === page ? "default" : "outline"}
+                  variant={p === safePage ? "default" : "outline"}
                   size="sm"
-                  className={`h-8 w-8 p-0 ${p === page ? "bg-[#4a5d0f] text-white hover:bg-[#4a5d0f]" : ""}`}
+                  className={`h-8 w-8 p-0 ${p === safePage ? "bg-[#4a5d0f] text-white hover:bg-[#4a5d0f]" : ""}`}
                   onClick={() => setPage(p)}
                 >
                   {p}
                 </Button>
               ))}
-              <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+              <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setPage((p) => Math.min(displayedTotalPages, p + 1))} disabled={safePage >= displayedTotalPages}>
                 Next<ChevronRight className="h-4 w-4 ml-1" />
               </Button>
-              <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(totalPages)} disabled={page >= totalPages}>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(displayedTotalPages)} disabled={safePage >= displayedTotalPages}>
                 <ChevronsRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
+
         </div>
       </div>
 
