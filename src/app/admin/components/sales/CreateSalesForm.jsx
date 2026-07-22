@@ -155,7 +155,9 @@ const CreateSalesForm = ({
   useEffect(() => {
     const raw = formData.phone || "";
     const digits = raw.replace(/\D+/g, "");
-    if (digits.length < 7) {
+    // Skip duplicate lookup unless the number is a valid NG mobile — the format
+    // error (set by handleInputChange) already covers the wrong-format case.
+    if (!isValidNgPhone(raw) || digits.length < 7) {
       setPhoneChecking(false);
       setErrors((prev) =>
         prev.phone && prev.phone.startsWith("A customer with this phone")
