@@ -1318,6 +1318,151 @@ export default function StatesPerformanceContent() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Stoves in State Modal */}
+      <Dialog open={stoveModalOpen} onOpenChange={(open) => !open && closeStoveModal()}>
+        <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] p-0 flex flex-col overflow-hidden">
+          <DialogHeader className="border-b bg-[#4a5d0f] px-6 py-4 shrink-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-base font-semibold text-white">
+                  Stove IDs in {stoveModalState}
+                </DialogTitle>
+                <DialogDescription className="text-white/80 text-xs">
+                  {stoveModalRow?.stoves ?? 0} total · {stoveModalRow?.sold ?? 0} sold · {stoveModalRow?.notSold ?? 0} available
+                </DialogDescription>
+              </div>
+              <button
+                onClick={closeStoveModal}
+                className="rounded-md p-1 text-white/80 hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </DialogHeader>
+
+          <div className="flex flex-col flex-1 min-h-0 space-y-3 p-5 overflow-hidden">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <div className="relative min-w-[240px] flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search stove ID or partner..."
+                  value={stoveModalSearch}
+                  onChange={(e) => setStoveModalSearch(e.target.value)}
+                  className="h-9 pl-9 shadow-none"
+                />
+              </div>
+              <Select value={stoveModalStatus} onValueChange={(v) => setStoveModalStatus(v as any)}>
+                <SelectTrigger className="h-9 w-[140px] shadow-none">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="sold">Sold</SelectItem>
+                  <SelectItem value="available">Available</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={handleStoveModalExport}
+                disabled={stoveModalStoves.length === 0}
+                className="h-9 bg-[#4a5d0f] text-white hover:bg-[#3a4a0c] shadow-none"
+              >
+                <Download className="mr-2 h-4 w-4" /> Export CSV
+              </Button>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-[#e5e7eb]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-[#eef3c4] hover:bg-[#eef3c4]">
+                    <TableHead className="w-12 text-left text-[11px] font-semibold text-[#4a5d0f]">#</TableHead>
+                    <TableHead className="text-left text-[11px] font-semibold text-[#4a5d0f]">Stove ID</TableHead>
+                    <TableHead className="text-left text-[11px] font-semibold text-[#4a5d0f]">Partner</TableHead>
+                    <TableHead className="text-center text-[11px] font-semibold text-[#4a5d0f]">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {stoveModalPageRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-8 text-center text-sm text-gray-500">
+                        No stoves found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    stoveModalPageRows.map((s, i) => (
+                      <TableRow key={`${s.stove_id}-${i}`} className="border-b text-xs">
+                        <TableCell className="align-top text-gray-500">
+                          {stoveModalStart + i + 1}
+                        </TableCell>
+                        <TableCell className="align-top">
+                          <span className="font-mono text-[12px] font-medium text-gray-900">
+                            {s.stove_id}
+                          </span>
+                        </TableCell>
+                        <TableCell className="align-top text-gray-700">
+                          {s.partner_name}
+                        </TableCell>
+                        <TableCell className="text-center align-top">
+                          {s.status === "sold" ? (
+                            <Pill tone="emerald">Sold</Pill>
+                          ) : (
+                            <Pill tone="slate">Available</Pill>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#e5e7eb] pt-3 text-xs text-gray-600 shrink-0">
+              <div>
+                Showing {stoveModalStoves.length === 0 ? 0 : stoveModalStart + 1}–
+                {Math.min(stoveModalStart + stoveModalPageSize, stoveModalStoves.length)} of {stoveModalStoves.length} stoves
+              </div>
+              <div className="flex items-center gap-2">
+                <span>per page:</span>
+                <Select value={String(stoveModalPageSize)} onValueChange={(v) => setStoveModalPageSize(Number(v))}>
+                  <SelectTrigger className="h-8 w-[80px] shadow-none">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[25, 50, 100, 200].map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shadow-none"
+                  disabled={stoveModalClampedPage <= 1}
+                  onClick={() => setStoveModalPage((p) => Math.max(1, p - 1))}
+                >
+                  Prev
+                </Button>
+                <span className="px-2">
+                  Page {stoveModalClampedPage} of {stoveModalTotalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shadow-none"
+                  disabled={stoveModalClampedPage >= stoveModalTotalPages}
+                  onClick={() => setStoveModalPage((p) => Math.min(stoveModalTotalPages, p + 1))}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
 
   );
