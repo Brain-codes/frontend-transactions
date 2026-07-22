@@ -45,16 +45,25 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
     <div className="flex items-center justify-center gap-1">
       {/* Record Payment button */}
       {showPayButton && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 text-xs flex items-center gap-1 border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4]"
-          onClick={() => onRecordPayment(sale)}
-        >
-          <Plus className="h-3 w-3" />
-          Record Payment
-        </Button>
+        <TooltipProvider delayDuration={100}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                className="h-7 px-3 text-xs font-medium rounded-full bg-[#4a5d0f] text-white hover:bg-[#3a4a0c] shadow-sm transition-colors flex items-center gap-1.5"
+                onClick={() => onRecordPayment(sale)}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Pay
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="bg-[#4a5d0f] text-white border-[#4a5d0f]">
+              <p>Record payment for this sale</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       )}
+
 
       {/* Approve button (ACSL Agent only) */}
       {/* {onApproveSale && !sale.agent_approved && (
