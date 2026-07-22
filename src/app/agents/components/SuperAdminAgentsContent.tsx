@@ -3006,7 +3006,11 @@ export default function SuperAdminAgentsContent() {
                 <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Full Name</TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
-                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">States Assigned</TableHead>
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
+                    <button type="button" onClick={() => cycleStoveSort("states")} className="inline-flex items-center gap-1 hover:underline">
+                      States Assigned <StoveSortIcon col="states" />
+                    </button>
+                  </TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
                     <button type="button" onClick={() => cycleStoveSort("partners")} className="inline-flex items-center gap-1 hover:underline">
                       Partners Assigned <StoveSortIcon col="partners" />
