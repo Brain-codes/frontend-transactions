@@ -7,6 +7,22 @@
 import { isValidSignature } from "./signatureUtils";
 
 /**
+ * Validates a Nigerian mobile phone number. Accepts:
+ *   08031234567          (11 digits, leading 0)
+ *   +2348031234567       (with +234 country code)
+ *   2348031234567        (13 digits, leading 234)
+ * Spaces, dashes and parens in the raw value are ignored.
+ */
+export const isValidNgPhone = (raw) => {
+  if (!raw) return false;
+  const cleaned = String(raw).replace(/[\s\-()]/g, "");
+  return /^(?:0|\+?234)[7-9][0-1]\d{8}$/.test(cleaned);
+};
+
+export const NG_PHONE_FORMAT_MESSAGE =
+  "Enter a valid phone number (e.g. 08031234567, +2348031234567, or 2348031234567).";
+
+/**
  * Validates the sales form data
  * @param {Object} formData - The form data to validate
  * @returns {Object} - Object containing validation errors (empty if valid)
