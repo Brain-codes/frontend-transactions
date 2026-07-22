@@ -123,21 +123,6 @@ export default function UnifiedSalesContent() {
           title="Sales Record"
           right={
             <div className="flex items-center gap-3">
-              {isSuperAdmin && (
-                <>
-                  <span className="text-sm font-medium text-gray-700">Year:</span>
-                  <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
-                    <SelectTrigger className="w-[110px] h-8 text-sm shadow-none">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {YEARS.map((y) => (
-                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </>
-              )}
               {(isSuperAdmin || isPartner) && (
                 <Button
                   size="sm"
