@@ -1,40 +1,25 @@
 ## Goal
 
-Add a **Delete** action on each row of the End User Records view. Deleting a record removes it from Sales Records / End User Records and archives it under **Cancelled Transactions** with a reason — reusing the existing cancel-sale flow.
+On the sales form's "Stove Photo" field, let the user choose between:
+1. **Take Photo** — open the device camera and capture directly
+2. **Upload from Device** — pick an existing image (current behavior)
 
-## Access
+Agreement Document upload stays unchanged.
 
-- Visible and enabled only for `super_admin` and `partner` (resolved via `resolveRole(userRole)`).
-- Hidden for every other role.
+## Changes
 
-## UX
+### 1. `src/app/components/ui/ImageUploadSection.jsx`
+Add an optional `enableCamera` prop. When enabled:
+- Render two buttons instead of one: **Take Photo** (camera icon) and **Upload Image** (upload icon).
+- Add a second hidden `<input type="file" accept="image/*" capture="environment">` wired to a separate ref for camera capture. On mobile browsers this opens the rear camera directly; on desktop browsers without a camera it gracefully falls back to a file picker.
+- In the "preview exists" state, show both **Retake** and **Change** buttons when `enableCamera` is true.
+- Keep all existing behavior (upload flow, PDF preview, error, loading spinner) intact for other usages.
 
-- New **Delete** button (red, trash icon) in the Actions column of `EndUserRecordsContent.jsx`, next to the existing Edit button.
-- Clicking Delete opens the existing `CancelSaleModal` (already includes a warning prompt and a "Reason for cancelling" textarea). We will:
-  - Change its title to "Delete End User Record" and the confirm button to "Confirm Delete" when opened from this view (via a prop), keeping the same warning + reason field.
-  - Make the reason **required** for this entry point (label switches from optional to required, submit disabled until non-empty), since the user asked for a reason to be provided.
-- On confirm: call the existing cancel flow, then refresh the list. Toast on success/failure.
+### 2. `src/app/admin/components/sales/CreateSalesForm.jsx`
+Pass `enableCamera` on the Stove Photo `ImageUploadSection` only. Agreement Document upload stays as-is.
 
-## Backend behavior (reused, no schema change)
+## Technical notes
 
-- Reuse `adminSalesService.cancelSale(id, reason)` — the same call used by Sales Records' Cancel action.
-- This flow already:
-  - Sets `cancelled_at` and `cancel_reason` on the sale so it appears under **Cancelled Transactions**.
-  - Removes the sale from Sales Records / End User Records queries (they filter out cancelled rows via `get-sales-advanced`, and Cancelled Transactions reads rows where `cancelled_at is not null`).
-  - Releases the stove ID back to available.
-- No new edge function or migration required.
-
-## Files to change
-
-- `src/app/end-user-records/EndUserRecordsContent.jsx`
-  - Add `canDelete = ['super_admin','partner'].includes(resolveRole(userRole))`.
-  - Add Delete button in Actions column (guarded by `canDelete`).
-  - Add state `deleteTarget`, render `CancelSaleModal` with `requireReason` and custom labels; on confirm call `adminSalesService.cancelSale` and refetch.
-- `src/app/admin/components/sales/CancelSaleModal.tsx`
-  - Add optional props: `title`, `confirmLabel`, `requireReason` (default preserves current behavior).
-  - When `requireReason` is true: label shows "(required)", Confirm button disabled until reason is non-empty.
-
-## Out of scope
-
-- No changes to Cancelled Transactions view (it already shows `cancel_reason` and `cancelled_at`).
-- No changes to `delete-sale` edge function (we use cancel, not hard delete, so records remain auditable under Cancelled Transactions as requested).
+- Uses the standard HTML `capture` attribute — no new dependencies, no `getUserMedia` permissions plumbing, and it works inside iframes/preview.
+- Existing `handleImageUpload(file, "stove")` handler is reused for both paths; the captured photo is delivered as a normal `File`, so validation, upload, and preview logic don't change.
+- No backend, storage, or schema changes.
