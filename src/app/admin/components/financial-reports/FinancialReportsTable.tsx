@@ -103,58 +103,58 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
       </div>
 
       {/* Table */}
-      <div className="bg-white border-x border-gray-200 overflow-x-auto mt-1">
-        <Table className="text-sm">
+      <div className="bg-white border-x border-gray-200 mt-1">
+        <Table className="text-sm w-full table-fixed">
           <TableHeader className="bg-[#4a5d0f]">
             <TableRow className="hover:bg-[#4a5d0f]">
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Trans #</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1">Trans #</TableHead>
               <TableHead
-                className="text-white font-semibold py-2 px-1 whitespace-nowrap cursor-pointer select-none"
+                className="text-white font-semibold py-2 px-1 cursor-pointer select-none"
                 onClick={onToggleSort}
               >
                 <div className="flex items-center gap-1">
                   Date <ArrowUpDown className="h-3 w-3" />
                 </div>
               </TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">End User</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">State</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Partner</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Stove ID</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Payment Model</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Expected</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Paid</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Balance</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Last Modified By</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 text-center whitespace-nowrap"> </TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1">End User</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1">State</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1">Partner</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1">Stove ID</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1">Payment Model</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1 text-right">Expected</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 text-right">Paid</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 text-right">Balance</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1">Last Modified By</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 text-center w-[52px]"> </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className={loading ? "opacity-40" : ""}>
-            {data.map((sale, idx) => (
+            {data.map((sale) => (
               <TableRow
                 key={sale.id}
-                className={`${idx % 2 === 0 ? "bg-white" : "bg-[#fafafa]"} hover:bg-gray-100`}
+                className="bg-white hover:bg-gray-100"
               >
-                <TableCell className="py-1 px-1 font-medium whitespace-nowrap">{sale.transaction_id || "N/A"}</TableCell>
-                <TableCell className="py-1 px-1 whitespace-nowrap">{formatDate(sale.sales_date || sale.created_at)}</TableCell>
-                <TableCell className="py-1 px-1 whitespace-nowrap">{sale.end_user_name || "N/A"}</TableCell>
-                <TableCell className="py-1 px-1 whitespace-nowrap">{sale.state_backup || "N/A"}</TableCell>
-                <TableCell className="py-1 px-1 whitespace-nowrap">{sale.partner_name || (sale as any).organizations?.name || "N/A"}</TableCell>
-                <TableCell className="py-1 px-1 whitespace-nowrap">{sale.stove_serial_no || "N/A"}</TableCell>
-                <TableCell className="py-1 px-1 whitespace-nowrap">
+                <TableCell className="py-1 px-1 font-medium break-words align-top">{sale.transaction_id || "N/A"}</TableCell>
+                <TableCell className="py-1 px-1 break-words align-top">{formatDate(sale.sales_date || sale.created_at)}</TableCell>
+                <TableCell className="py-1 px-1 break-words align-top">{sale.end_user_name || "N/A"}</TableCell>
+                <TableCell className="py-1 px-1 break-words align-top">{sale.state_backup || "N/A"}</TableCell>
+                <TableCell className="py-1 px-1 break-words align-top">{sale.partner_name || (sale as any).organizations?.name || "N/A"}</TableCell>
+                <TableCell className="py-1 px-1 break-words align-top">{sale.stove_serial_no || "N/A"}</TableCell>
+                <TableCell className="py-1 px-1 break-words align-top">
                   {sale.is_installment
                     ? (sale.payment_model?.name || "Installment")
                     : "Full Payment"}
                 </TableCell>
-                <TableCell className="py-1 px-1 text-right font-bold whitespace-nowrap">
+                <TableCell className="py-1 px-1 text-right font-bold break-words align-top">
                   {formatCurrency(sale.amount ?? 0)}
                 </TableCell>
-                <TableCell className="py-1 px-1 text-right text-green-700 font-medium whitespace-nowrap">
+                <TableCell className="py-1 px-1 text-right text-green-700 font-medium break-words align-top">
                   {formatCurrency(getAmountPaid(sale))}
                 </TableCell>
-                <TableCell className="py-1 px-1 text-right text-red-700 font-medium whitespace-nowrap">
+                <TableCell className="py-1 px-1 text-right text-red-700 font-medium break-words align-top">
                   {formatCurrency(getAmountOwed(sale))}
                 </TableCell>
-                <TableCell className="py-1 px-1 whitespace-nowrap align-top">
+                <TableCell className="py-1 px-1 break-words align-top">
                   <div className="text-sm text-gray-800">
                     {(sale as any).n?.full_name ||
                       (sale as any).n?.email ||
