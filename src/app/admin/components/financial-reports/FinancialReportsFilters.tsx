@@ -59,6 +59,9 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
   assignedOrgs = [],
   approvalFilter,
   onApprovalChange,
+  salesModelFilter,
+  onSalesModelChange,
+  salesModels = [],
   stateList = [],
   lgaList = [],
 }) => {
