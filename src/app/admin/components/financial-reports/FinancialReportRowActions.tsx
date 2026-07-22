@@ -11,7 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { MoreVertical, History, Plus, Pencil, Trash2, Calendar, CheckCircle2, Clock, Eye, Ban } from "lucide-react";
+import { MoreVertical, History, Plus, Eye, Ban } from "lucide-react";
 import { AdminSales } from "@/types/adminSales";
 
 
