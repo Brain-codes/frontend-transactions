@@ -80,28 +80,6 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
 
   return (
     <div className="space-y-0">
-      {/* Pagination header */}
-      <div className="rounded-t-lg px-4 py-2 flex items-center justify-end gap-3">
-        <p className="text-sm text-gray-600">
-          Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
-          <span className="font-medium">{totalRecords}</span> records
-        </p>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">per page:</span>
-          <Select value={pageSize.toString()} onValueChange={(val) => onPageSizeChange(Number(val))}>
-            <SelectTrigger className="w-[65px] h-7 bg-white text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10</SelectItem>
-              <SelectItem value="25">25</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-              <SelectItem value="100">100</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
       {/* Table */}
       <div className="bg-white border-x border-gray-200 mt-1 w-full overflow-hidden">
         <Table className="text-sm w-full table-fixed">
@@ -214,11 +192,28 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
       </div>
 
       {/* Pagination footer */}
-      {totalPages > 1 && (
-        <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
+      <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
+        <div className="flex items-center gap-3">
           <p className="text-sm text-gray-600">
-            Showing {startRecord} to {endRecord} of {totalRecords} records
+            Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
           </p>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">per page:</span>
+            <Select value={pageSize.toString()} onValueChange={(val) => onPageSizeChange(Number(val))}>
+              <SelectTrigger className="w-[65px] h-7 bg-white text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {totalPages > 1 && (
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => onPageChange(1)} disabled={currentPage === 1}>
               <ChevronsLeft className="h-4 w-4" />
@@ -241,8 +236,8 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
               <ChevronsRight className="h-4 w-4" />
             </Button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
