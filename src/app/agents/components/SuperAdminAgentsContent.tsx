@@ -1239,9 +1239,9 @@ function AgentsListModal({
       const s = String(v ?? "");
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = ["Full Name", "Role", "Email", "Phone", "Status", "Assigned Partners", "Assigned States", "Created"];
+    const header = ["Full Name", "Role", "Email", "Status", "Assigned Partners", "Assigned States", "Created"];
     const body = filtered.map((a) => [
-      esc(a.full_name), esc(ROLE_LABELS[a.role] || a.role), esc(a.email), esc(a.phone || ""),
+      esc(a.full_name), esc(ROLE_LABELS[a.role] || a.role), esc(a.email),
       esc(a.status), esc(a.total_partners_count ?? a.assigned_organizations_count ?? 0),
       esc(a.assigned_states_count ?? 0),
       esc(a.created_at ? new Date(a.created_at).toISOString().split("T")[0] : ""),
