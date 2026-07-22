@@ -272,6 +272,31 @@ export default function StatesPerformanceContent() {
           if (o?.id) orgState.set(o.id, (o.state || "").trim() || "Unknown");
         });
 
+        // Compute states covered by any ACSL agent, using the same
+        // partner-derived rule as the Agents Performance "States Assigned"
+        // badge: agent's states = union of states of their assigned partner
+        // orgs, across both assignment tables and all agent-id column
+        // variants (schema drift between deployments).
+        const covered = new Set<string>();
+        const ASSIGN_TABLES = [
+          "super_admin_agent_organizations",
+          "acsl_agent_organizations",
+        ];
+        await Promise.all(
+          ASSIGN_TABLES.map(async (table) => {
+            const { data, error } = await supabase
+              .from(table)
+              .select("organization_id");
+            if (error || !data) return;
+            data.forEach((r: any) => {
+              const st = r.organization_id ? orgState.get(r.organization_id) : null;
+              if (st && st !== "Unknown") covered.add(st);
+            });
+          })
+        );
+        if (!cancelled) setAgentCoveredStates(covered);
+
+
         // Aggregate per state
         const map = new Map<string, StateRow>();
         const ensure = (state: string): StateRow => {
