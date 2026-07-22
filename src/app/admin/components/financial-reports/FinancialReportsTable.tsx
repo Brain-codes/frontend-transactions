@@ -128,7 +128,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                <TableHead className="text-white font-semibold py-2 px-2 text-right w-[9%]">Actions</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody className={loading ? "opacity-40" : ""}>
+          <TableBody className={loading ? "opacity-40 [&_tr:last-child]:border-b" : "[&_tr:last-child]:border-b"}>
             {data.map((sale) => (
               <TableRow
                 key={sale.id}
