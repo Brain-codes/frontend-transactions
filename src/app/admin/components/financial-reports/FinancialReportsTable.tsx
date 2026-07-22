@@ -156,10 +156,8 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                 </TableCell>
                 <TableCell className="py-2 px-2 text-xs break-words align-top">
                   <div className="text-gray-800">
-                    {(sale as any).n?.full_name ||
-                      (sale as any).n?.email ||
+                    {(sale as any).updated_by_profile?.full_name ||
                       (sale as any).creator?.full_name ||
-                      (sale as any).creator?.email ||
                       "—"}
                   </div>
                   <div className="text-[11px] text-gray-500">
