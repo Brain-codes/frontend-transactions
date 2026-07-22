@@ -66,6 +66,8 @@ function PerformanceTabs() {
       <div role="tabpanel">
         {active === "agents" && showAgents ? (
           <SuperAdminAgentsContent />
+        ) : active === "states" ? (
+          <StatesPerformanceContent />
         ) : (
           <PartnersContent />
         )}
