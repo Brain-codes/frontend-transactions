@@ -89,6 +89,9 @@ export default function StatesPerformanceContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<StateRow[]>([]);
+  const [acslRoster, setAcslRoster] = useState<{ id: string; name: string; role: string; phone: string }[]>([]);
+  const [unassignedModalOpen, setUnassignedModalOpen] = useState(false);
+  const [unassignedSearch, setUnassignedSearch] = useState("");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("sold");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
