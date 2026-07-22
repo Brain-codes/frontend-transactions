@@ -57,7 +57,7 @@ const YearFilterBar: React.FC<YearFilterBarProps> = ({ selectedYears, availableY
   };
   const pillLabel = getYearPillLabel(selectedYears, availableYears);
   return (
-    <div className="rounded-lg border border-border bg-card shadow-sm mb-4">
+    <div className="rounded-lg border border-border bg-card mb-4">
       <button onClick={() => setOpen((v) => !v)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           <CalendarDays className="h-4 w-4" />
