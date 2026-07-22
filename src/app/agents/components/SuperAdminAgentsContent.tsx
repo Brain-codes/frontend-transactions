@@ -2380,7 +2380,7 @@ export default function SuperAdminAgentsContent() {
   }, [page, pageSize, search, statusFilter, selectedRoles, dateFrom, dateTo]);
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
-  useEffect(() => { setPage(1); }, [search, statusFilter, selectedRoles, dateFrom, dateTo]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, selectedRoles, dateFrom, dateTo, sortMode, stoveSort.key, stoveSort.direction]);
   useEffect(() => {
     const handler = () => { fetchAgents(); };
     window.addEventListener("acsl:user-updated", handler);
