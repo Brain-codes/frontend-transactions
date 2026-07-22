@@ -3061,7 +3061,7 @@ export default function SuperAdminAgentsContent() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  displayedAgents.map((agent, idx) => (
+                  pageRows.map((agent, idx) => (
                     <TableRow
                       key={agent.id}
                       className="hover:bg-[#eef3c4] text-gray-700 bg-white"
