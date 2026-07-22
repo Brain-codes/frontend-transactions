@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { toast } from "sonner";
 import DashboardLayout from "../components/DashboardLayout";
 import PageHeader from "../components/PageHeader";
 import { Users } from "lucide-react";
@@ -606,14 +607,21 @@ const EndUserRecordsContent = () => {
           try {
             const result = await adminSalesService.cancelSale(target.id, reason);
             if (result && result.success === false) {
-              setError(result.error || result.message || "Failed to delete record");
+              const msg = result.error || result.message || "Failed to delete record";
+              setError(msg);
+              toast.error(msg);
               return;
             }
             setAllSales((prev) => prev.filter((s) => s.id !== target.id));
             setDeleteTarget(null);
             fetchSales();
+            toast.success(
+              `End user record for ${target.end_user_name || target.phone || "the selected customer"} has been deleted.`
+            );
           } catch (e) {
-            setError(e?.message || "Failed to delete record");
+            const msg = e?.message || "Failed to delete record";
+            setError(msg);
+            toast.error(msg);
           }
         }}
       />
