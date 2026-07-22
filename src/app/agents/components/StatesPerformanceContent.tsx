@@ -1437,8 +1437,8 @@ export default function StatesPerformanceContent() {
 
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#e5e7eb] pt-3 text-xs text-gray-600 shrink-0">
               <div>
-                Showing {stoveModalStoves.length === 0 ? 0 : stoveModalStart + 1}–
-                {Math.min(stoveModalStart + stoveModalPageSize, stoveModalStoves.length)} of {stoveModalStoves.length} stoves
+                Showing {stoveModalStoves.length === 0 ? 0 : formatNumber(stoveModalStart + 1)}–
+                {formatNumber(Math.min(stoveModalStart + stoveModalPageSize, stoveModalStoves.length))} of {formatNumber(stoveModalStoves.length)} stoves
               </div>
               <div className="flex items-center gap-2">
                 <span>per page:</span>
