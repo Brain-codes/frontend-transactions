@@ -417,7 +417,7 @@ const StoveIdsModal = ({ organization, isOpen, onClose, initialFilter = "all" })
 
 // ── Stove Transfer History Modal ──────────────────────────────────────────────
 
-const StoveTransferHistoryModal = ({ organization, isOpen, onClose }) => {
+export const StoveTransferHistoryModal = ({ organization, isOpen, onClose }) => {
   const { supabase } = useAuth();
   const [loading, setLoading] = useState(false);
   const [records, setRecords] = useState([]);
