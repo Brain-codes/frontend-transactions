@@ -39,6 +39,9 @@ export async function fetchRelatedData(
     fetchPromises.push(fetchModifiers(supabase, sales));
   }
 
+  // Installment payment counts are needed for the Payment column summary.
+  fetchPromises.push(fetchInstallmentSummaries(supabase, sales));
+
   if (
     (filters.includeImages ||
       filters.includeStoveImage ||
