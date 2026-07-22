@@ -149,6 +149,60 @@ const CreateSalesForm = ({
   // Determine if this is edit mode
   const isEditMode = mode === "edit" && initialData;
 
+  // Live end-user phone duplicate check (debounced). Flags an existing customer
+  // as the user types so the error surfaces before submit. Cancelled sales live
+  // in `cancelled_purchases` (not `sales`), so cancelling frees the phone.
+  useEffect(() => {
+    const raw = formData.phone || "";
+    const digits = raw.replace(/\D+/g, "");
+    if (digits.length < 7) {
+      setPhoneChecking(false);
+      setErrors((prev) =>
+        prev.phone && prev.phone.startsWith("A customer with this phone")
+          ? { ...prev, phone: null }
+          : prev,
+      );
+      return;
+    }
+    const token = ++phoneCheckTokenRef.current;
+    setPhoneChecking(true);
+    const timer = setTimeout(async () => {
+      try {
+        const sb = getSupabase();
+        const tail = digits.slice(-10);
+        const currentId = isEditMode ? initialData?.id : null;
+        let q = sb
+          .from("sales")
+          .select("id, transaction_id, phone")
+          .ilike("phone", `%${tail}%`)
+          .limit(50);
+        if (currentId) q = q.neq("id", currentId);
+        const { data } = await q;
+        if (token !== phoneCheckTokenRef.current) return;
+        const clash = (data || []).find(
+          (r) => String(r.phone ?? "").replace(/\D+/g, "") === digits,
+        );
+        setErrors((prev) => {
+          if (clash) {
+            return {
+              ...prev,
+              phone: `A customer with this phone number already exists (sale ${clash.transaction_id}).`,
+            };
+          }
+          if (prev.phone && prev.phone.startsWith("A customer with this phone")) {
+            return { ...prev, phone: null };
+          }
+          return prev;
+        });
+      } catch (err) {
+        console.warn("Live phone check failed", err);
+      } finally {
+        if (token === phoneCheckTokenRef.current) setPhoneChecking(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [formData.phone, isEditMode, initialData?.id]);
+
   // Centralized states + LGAs (geo-data edge fn → cache → bundled fallback).
   // Seed synchronously from cache/bundled so the first render has data, then
   // refresh from the network.
