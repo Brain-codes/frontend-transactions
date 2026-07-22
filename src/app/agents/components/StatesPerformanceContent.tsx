@@ -1123,13 +1123,13 @@ export default function StatesPerformanceContent() {
                           </span>
                         </TableCell>
                         <TableCell className="text-center align-top">
-                          <Pill tone="slate">{p.totalStoves}</Pill>
+                          <Pill tone="slate">{formatNumber(p.totalStoves)}</Pill>
                         </TableCell>
                         <TableCell className="text-center align-top">
-                          <Pill tone="emerald">{p.stovesSold}</Pill>
+                          <Pill tone="emerald">{formatNumber(p.stovesSold)}</Pill>
                         </TableCell>
                         <TableCell className="text-center align-top">
-                          <Pill tone="green">{p.stovesAvailable}</Pill>
+                          <Pill tone="green">{formatNumber(p.stovesAvailable)}</Pill>
                         </TableCell>
                       </TableRow>
                     ))
