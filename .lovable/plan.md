@@ -1,26 +1,30 @@
-## Plan
+## Problem
 
-1. **Fix the chart query failure**
-   - Update `AgentRecordsChart.tsx` so it no longer selects `sales.quantity`, because the live `sales` table does not have that column.
-   - Count each non-archived sale row as `1` record collected.
+Deleting the ACSL agent "ACSL Agent From Manager" from User Management returns:
 
-2. **Use the same attribution rule as the Agents Performance table**
-   - Fetch ACSL agent IDs from the `manage-users` endpoint for `acsl_agent` and `acsl_agent_manager`.
-   - Query `sales` by agent attribution:
-     - `created_by IN agentIds`
-     - plus `sold_on_behalf_of IN agentIds` where present, with de-duplication by sale ID.
-   - Exclude partner/partner-agent sales by only using the ACSL agent roster.
+```
+Edge function returned 500: "Failed to delete user: {}"
+```
 
-3. **Bucket sales into the monthly chart correctly**
-   - Use `sales_date` first, then `created_at` as fallback.
-   - Add `1` to the correct month per sale.
-   - This should place Kamal Mustapha’s confirmed 6 sales on the chart for July.
+The empty `{}` is the stringified error from `supabase.auth.admin.deleteUser(userId)` inside `supabase/functions/manage-users/delete-operations.ts`. That path deletes the auth user directly and relies on cascade — but this agent has related rows the current code never cleans up:
 
-4. **Improve failure visibility**
-   - If the chart query fails, show a small inline error instead of silently leaving the chart at zero.
-   - Keep the chart layout and colors unchanged.
+- `acsl_agent_organizations` rows (`agent_id = <userId>`) — the agent is assigned to 1 organization.
+- Possibly `profiles.manager_id` pointing at this user (unlikely here, but the sibling `super-admin-agents` delete flow already handles the org rows explicitly for exactly this reason).
 
-5. **Verify against the live data path**
-   - Re-run the same browser-side data check after implementation.
-   - Confirm Kamal Mustapha is in the agent roster and the monthly chart data includes his 6 records collected.
-   - Visually confirm the Records Collected chart no longer displays zero for that month.
+The sibling function `supabase/functions/super-admin-agents/deleteOptions.ts` already does the right thing (removes `acsl_agent_organizations` first, then deletes the auth user). `manage-users/delete-operations.ts` is missing that step, and its error is also serialized poorly (`${error.message}` on an object → `{}`).
+
+## Fix
+
+Update **only** `supabase/functions/manage-users/delete-operations.ts`:
+
+1. Before calling `auth.admin.deleteUser`, when the target role is `acsl_agent` or `acsl_agent_manager`, delete their `acsl_agent_organizations` rows (matches the working super-admin-agents flow).
+2. For `acsl_agent_manager` targets, also null out `profiles.manager_id` on any subordinate agents so the FK doesn't block deletion.
+3. Improve error reporting: when `authDeleteError` is present, include `authDeleteError.message || authDeleteError.name || JSON.stringify(authDeleteError, Object.getOwnPropertyNames(authDeleteError))` so future failures surface a readable reason instead of `{}`.
+
+No schema changes, no UI changes, no changes to other roles' delete paths.
+
+## Verification
+
+- Retry deleting "ACSL Agent From Manager" from `/user-management/users` — expect success and the row to disappear from the ACSL agents list.
+- Confirm the agent's row in `acsl_agent_organizations` is gone.
+- Delete a different role (e.g. partner_agent) to confirm behavior is unchanged.
