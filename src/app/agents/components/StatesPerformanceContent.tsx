@@ -636,7 +636,19 @@ export default function StatesPerformanceContent() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <Kpi icon={MapPin} label="States" value={filtered.length} tone="blue" />
         <Kpi icon={Building2} label="Partners" value={totals.partners} tone="orange" />
-        <Kpi icon={Users} label="Agents" value={totals.agents} tone="teal" />
+        <div className="relative">
+          <Kpi icon={Users} label="Agents" value={totals.agents} tone="teal" />
+          {unassignedAgents.length > 0 && (
+            <button
+              type="button"
+              onClick={() => { setUnassignedSearch(""); setUnassignedModalOpen(true); }}
+              title="View agents not yet assigned to any state"
+              className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow hover:bg-amber-600"
+            >
+              {unassignedAgents.length} unassigned
+            </button>
+          )}
+        </div>
         <Kpi icon={Package} label="Stoves" value={totals.stoves} tone="orange" />
         <Kpi icon={CheckCircle2} label="Sold" value={totals.sold} tone="emerald" />
         <Kpi icon={Circle} label="Not Sold" value={totals.notSold} tone="violet" />
