@@ -2217,6 +2217,8 @@ export default function SuperAdminAgentsContent() {
   const roleDropdownRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [tableNameFilter, setTableNameFilter] = useState("");
+  const [tableRoleFilter, setTableRoleFilter] = useState<string>("all");
 
   const [agentFormMode, setAgentFormMode] = useState<"create" | "edit" | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -2684,11 +2686,23 @@ export default function SuperAdminAgentsContent() {
     return [...sortedAgents].sort((a, b) => (((a.stove_summary?.[field] ?? 0) - (b.stove_summary?.[field] ?? 0)) * dir));
   }, [sortedAgents, stoveSort]);
 
+  // Table-level filters (name search + role dropdown) applied on top of displayedAgents
+  const tableFilteredAgents = useMemo(() => {
+    const q = tableNameFilter.trim().toLowerCase();
+    return displayedAgents.filter((a) => {
+      if (tableRoleFilter !== "all" && a.role !== tableRoleFilter) return false;
+      if (q && !(a.full_name || "").toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [displayedAgents, tableNameFilter, tableRoleFilter]);
+
+  useEffect(() => { setPage(1); }, [tableNameFilter, tableRoleFilter]);
+
   // Client-side pagination slice for the current page
-  const displayedTotal = displayedAgents.length;
+  const displayedTotal = tableFilteredAgents.length;
   const displayedTotalPages = Math.max(1, Math.ceil(displayedTotal / pageSize));
   const safePage = Math.min(page, displayedTotalPages);
-  const pageRows = displayedAgents.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const pageRows = tableFilteredAgents.slice((safePage - 1) * pageSize, safePage * pageSize);
   const showingStart = displayedTotal === 0 ? 0 : (safePage - 1) * pageSize + 1;
   const showingEnd = Math.min(safePage * pageSize, displayedTotal);
 
@@ -2998,11 +3012,41 @@ export default function SuperAdminAgentsContent() {
 
         {/* Table */}
         <div className="space-y-0">
-          <div className="flex items-center justify-between px-1 pb-2">
-            <p className="text-sm text-gray-600">
-              Showing <span className="font-medium">{startItem}</span> to{" "}
-              <span className="font-medium">{endItem}</span> of{" "}
-              <span className="font-medium">{totalItems.toLocaleString()}</span> agents
+          <div className="flex flex-wrap items-center justify-between gap-3 px-1 pb-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <Search className="h-4 w-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={tableNameFilter}
+                  onChange={(e) => setTableNameFilter(e.target.value)}
+                  placeholder="Search agent name..."
+                  className="h-9 w-64 pl-8 pr-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/40 bg-white"
+                />
+              </div>
+              <select
+                value={tableRoleFilter}
+                onChange={(e) => setTableRoleFilter(e.target.value)}
+                className="h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/40"
+              >
+                <option value="all">All User Groups</option>
+                <option value="acsl_agent_manager">ACSL Agent Manager</option>
+                <option value="acsl_agent">ACSL Agent</option>
+              </select>
+              {(tableNameFilter || tableRoleFilter !== "all") && (
+                <button
+                  type="button"
+                  onClick={() => { setTableNameFilter(""); setTableRoleFilter("all"); }}
+                  className="h-9 px-3 text-xs text-gray-600 hover:text-gray-900 inline-flex items-center gap-1"
+                >
+                  <X className="h-3 w-3" /> Clear
+                </button>
+              )}
+            </div>
+            <p className="text-sm text-gray-600 ml-auto">
+              Showing <span className="font-medium">{showingStart}</span> to{" "}
+              <span className="font-medium">{showingEnd}</span> of{" "}
+              <span className="font-medium">{displayedTotal.toLocaleString()}</span> agents
             </p>
           </div>
           <div className="bg-white border-x border-t border-gray-200 rounded-t-lg overflow-x-auto relative">
