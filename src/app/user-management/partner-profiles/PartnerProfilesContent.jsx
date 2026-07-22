@@ -183,6 +183,7 @@ const PartnerProfilesContent = () => {
   const [editingPartner, setEditingPartner] = useState(null);
   const [viewingCredential, setViewingCredential] = useState(null);
   const [loadingCredentialOrgId, setLoadingCredentialOrgId] = useState(null);
+  const [transferHistoryOrg, setTransferHistoryOrg] = useState(null);
   const [agentCounts, setAgentCounts] = useState({}); // orgId -> count
   const [agentsModalPartner, setAgentsModalPartner] = useState(null);
   const [agentsModalList, setAgentsModalList] = useState([]);
