@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
 import FinancialReportsView from "../../admin/components/financial-reports/FinancialReportsView";
 import SalesFormModal from "../../admin/components/sales/SalesFormModal";
@@ -8,8 +8,8 @@ import salesAdvancedService from "../../services/salesAdvancedAPIService";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import { AdminSales } from "@/types/adminSales";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, ShoppingCart, Download, Loader2 } from "lucide-react";
+
 import { useRouter, useSearchParams } from "@/compat/navigation";
 import PageHeader from "../../components/PageHeader";
 import { useAuth } from "../../contexts/useAuth";
