@@ -426,12 +426,16 @@ export default function StatesPerformanceContent() {
         });
 
         // Stoves
+        const orgPartnerName = new Map<string, string>();
+        (orgs || []).forEach((o: any) => {
+          if (o?.id) orgPartnerName.set(o.id, o.partner_name || "—");
+        });
         stoves.forEach((s) => {
           const state = s.organization_id ? orgState.get(s.organization_id) : null;
           if (!state || state === "Unknown") return;
           const row = ensure(state);
           row.stoves += 1;
-          const isSold = s.status === "sold" || s.sale_id;
+          const isSold = s.status === "sold" || !!s.sale_id;
           if (isSold) row.sold += 1;
           if (s.organization_id) {
             const c = ensurePartnerCounts(s.organization_id);
@@ -439,6 +443,11 @@ export default function StatesPerformanceContent() {
             if (isSold) c.sold += 1;
             else c.available += 1;
           }
+          row.stoveDetails.push({
+            stove_id: s.stove_id || "—",
+            partner_name: s.organization_id ? (orgPartnerName.get(s.organization_id) || "—") : "—",
+            status: isSold ? "sold" : "available",
+          });
         });
 
         // Build partner details per state
