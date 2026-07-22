@@ -63,11 +63,14 @@ const EndUserRecordsContent = () => {
   const [sortOrder, setSortOrder] = useState("desc");
   const [selectedSale, setSelectedSale] = useState(null);
   const [editSale, setEditSale] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const { userRole } = useAuth();
+  const resolvedRole = resolveRole(userRole) || "";
   const canEdit = ["super_admin", "acsl_agent_manager", "partner"].includes(
-    resolveRole(userRole) || ""
+    resolvedRole
   );
+  const canDelete = ["super_admin", "partner"].includes(resolvedRole);
 
   const stateList = useMemo(() => Object.keys(lgaAndStates).sort(), []);
   const lgaList = useMemo(
