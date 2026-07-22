@@ -1270,7 +1270,7 @@ function AgentsListModal({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, email, phone or role..."
+              placeholder="Search name, email or role..."
               className="pl-8"
             />
           </div>
