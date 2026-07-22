@@ -3,9 +3,10 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import { usePermissions } from "../hooks/usePermissions";
 import SuperAdminAgentsContent from "./components/SuperAdminAgentsContent";
 import PartnersContent from "../partners/components/PartnersContent";
-import { Users, Building2 } from "lucide-react";
+import StatesPerformanceContent from "./components/StatesPerformanceContent";
+import { Users, Building2, MapPin } from "lucide-react";
 
-type TabKey = "agents" | "partners";
+type TabKey = "agents" | "partners" | "states";
 
 function PerformanceTabs() {
   const { can } = usePermissions();
@@ -17,6 +18,7 @@ function PerformanceTabs() {
     const list: { key: TabKey; label: string; icon: typeof Users }[] = [];
     if (showAgents) list.push({ key: "agents", label: "ACSL Agents Performance Report", icon: Users });
     list.push({ key: "partners", label: "Partners Performance Report", icon: Building2 });
+    list.push({ key: "states", label: "States Performance Report", icon: MapPin });
     return list;
   }, [showAgents]);
 
@@ -64,6 +66,8 @@ function PerformanceTabs() {
       <div role="tabpanel">
         {active === "agents" && showAgents ? (
           <SuperAdminAgentsContent />
+        ) : active === "states" ? (
+          <StatesPerformanceContent />
         ) : (
           <PartnersContent />
         )}

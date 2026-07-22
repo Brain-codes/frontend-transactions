@@ -1,41 +1,54 @@
-## Sales Tracking Filter Bar
+# States Performance Tab
 
-Add a horizontal chip/pill bar directly above the sales records table with due-date tracking filters.
+Add a third tab to the Performance Report page (`/agents`) called **States Performance**, alongside the existing "ACSL Agents Performance" and "Partners Performance" tabs.
 
-### Chips (left-aligned)
-- **Due in 30 days** (blue)
-- **Due in 14 days** (indigo)
-- **Due in 7 days** (teal)
-- **Due Today** (amber)
-- **Overdue** (red)
-- **Cancel** button (ghost, appears when a chip is active) — clears the tracking filter
+## Data per state (row)
 
-Each chip shows a count badge (matching the reference screenshot style: pill with rounded colored count badge).
+For every state that has at least one partner (organization), compute:
 
-### Behavior
-- Only one chip active at a time. Clicking an active chip toggles it off (same as Cancel).
-- Filter applies to installment sales with an outstanding balance, using `next_due_date` (already computed by `get-sales-advanced/fetch-related.ts` and available on each sale row):
-  - **Due in N days**: `next_due_date` between today and today+N (inclusive), balance > 0
-  - **Due Today**: `next_due_date` === today, balance > 0
-  - **Overdue**: `next_due_date` < today, balance > 0
-- Fully-paid sales and sales without a `next_due_date` are excluded from all tracking chips.
-- Counts reflect the currently-filtered dataset (respecting search/state/year/etc.), computed before the tracking filter is applied so numbers stay stable while browsing.
-- Resets page to 1 on change (existing behavior).
+1. **State** — name (with region/zone badge if easy).
+2. **Partners** — count of `organizations` with `state = X`.
+3. **Agents** — count of profiles assigned to that state:
+   - Partner-side: `profiles` with role in (`partner_agent`, `agent`, `partner`, `admin`) whose `organization_id` maps to an org in that state.
+   - ACSL side: `acsl_agent_states` rows for that state (covers ACSL Agent Managers + ACSL Agents), de-duplicated by `agent_id`.
+   - Show a combined total plus a small breakdown chip (e.g. `12 · 3 ACSL`).
+4. **Total Stoves** — count of `stove_ids_base` rows for orgs in that state (excluding archived).
+5. **Sold** — count where `status = 'sold'` (or `sale_id IS NOT NULL`).
+6. **Not Sold** — Total Stoves − Sold.
+7. **Sell-through %** — Sold / Total (progress bar).
 
-### Implementation
+## UI
 
-1. **`FinancialReportsView.tsx`**
-   - Add `trackingFilter` state: `"none" | "due30" | "due14" | "due7" | "dueToday" | "overdue"`.
-   - Compute `trackingCounts` from `filteredSales` (before applying tracking filter).
-   - Split filtering: apply tracking filter as a final step producing `trackedSales`; pagination uses `trackedSales`.
-   - Include `trackingFilter` in `hasActiveFilters` and `clearFilters`.
-   - Render a new `<SalesTrackingBar />` between `FinancialReportsFilters` and `FinancialReportsTable`.
+- New file `src/app/agents/components/StatesPerformanceContent.tsx`.
+- Header KPI strip (green theme, matches Partners tab): Total States, Total Partners, Total Agents, Total Stoves, Sold, Not Sold.
+- Search box (filter by state name) + Region filter (optional) + Export CSV button.
+- Table (green header, white body, no striping, `text-xs`, borders — same visual language as Partners tab):
+  - Columns: State · Partners · Agents · Stoves · Sold · Not Sold · Sell-through
+  - Sortable headers; default sort by Sold desc.
+  - Numeric cells use tinted pills: Stoves (slate), Sold (green), Not Sold (red) — consistent with the Sales Records table tinting.
+- Row click → side drawer/modal listing the partners in that state (name, agents count, stoves, sold) with links to the Partner detail modal.
+- Bottom pagination (10/25/50), right-aligned "Showing X–Y of Z".
 
-2. **New `SalesTrackingBar.tsx`** (in `src/app/admin/components/financial-reports/`)
-   - Props: `active`, `onChange(key)`, `counts` (record per key).
-   - Renders 5 pill buttons with lucide icons (`CalendarClock`, `CalendarDays`, `Clock`, `AlertCircle`, `AlertTriangle`) and count badges styled like the reference image (light bg outer pill, solid colored circular count).
-   - Shows a subtle "Cancel" ghost button with an X icon when `active !== "none"`.
+## Integration
 
-3. **Types**: rely on existing `next_due_date` field on `AdminSales`. If TS complains, extend `src/types/adminSales.ts` with optional `next_due_date?: string | null`.
+- Update `src/app/agents/page.tsx`:
+  - Add `TabKey = "agents" | "partners" | "states"`.
+  - New tab entry `{ key: "states", label: "States Performance Report", icon: MapPin }` — visible to the same roles that already see the Partners tab (all admin-access roles).
+  - Render `<StatesPerformanceContent />` when active.
 
-No backend, no edge-function changes — `next_due_date` is already returned.
+## Data fetching
+
+Client-side aggregation using existing Supabase client (no new edge function needed):
+
+- `organizations` → id, partner_name, state
+- `profiles` → id, role, organization_id (filter to partner-side roles)
+- `acsl_agent_states` → agent_id, state
+- `stove_ids_base` → organization_id, status, is_archived
+
+Group in memory by state. Cache with a simple `useEffect` + loading state (same pattern as `PartnersContent.jsx`). Total dataset is small (states ≤ 37).
+
+## Out of scope
+
+- No schema changes.
+- No changes to permissions matrix (tab visibility follows existing admin-access rule).
+- No changes to other tabs.
