@@ -1807,7 +1807,7 @@ export default function PartnersContent() {
                 <TableBody className={tableLoading ? "opacity-40" : ""}>
                   {sortedOrgs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-10">
+                      <TableCell colSpan={9} className="text-center py-10">
                         <Building2 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                         <p className="text-gray-500 font-medium">No partners found</p>
                         <p className="text-gray-400 text-sm">Try adjusting your filters</p>
