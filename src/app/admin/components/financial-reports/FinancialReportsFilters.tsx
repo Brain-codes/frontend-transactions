@@ -206,6 +206,38 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
           </Select>
         )}
 
+        {/* Month */}
+        {onMonthChange && (
+          <Select value={selectedMonth ?? "all"} onValueChange={onMonthChange}>
+            <SelectTrigger className="bg-white shadow-none h-9 text-sm w-[130px] shrink-0">
+              <SelectValue placeholder="Month" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Months</SelectItem>
+              {MONTHS.map((m, idx) => (
+                <SelectItem key={m} value={String(idx)} disabled={isMonthDisabled(idx)}>
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* Year */}
+        {onYearFilterChange && (
+          <Select value={yearFilter ?? "all"} onValueChange={onYearFilterChange}>
+            <SelectTrigger className="bg-white shadow-none h-9 text-sm w-[110px] shrink-0">
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Years</SelectItem>
+              {yearsForSelect.map((y) => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
         {/* Partner */}
         {onOrgChange && (
           <Select value={orgFilter} onValueChange={onOrgChange}>
