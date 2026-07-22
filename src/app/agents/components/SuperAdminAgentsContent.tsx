@@ -2401,8 +2401,13 @@ export default function SuperAdminAgentsContent() {
   useEffect(() => {
     const handler = () => { fetchAgents(); };
     window.addEventListener("acsl:user-updated", handler);
-    return () => window.removeEventListener("acsl:user-updated", handler);
+    window.addEventListener("performance-report:refresh:agents", handler);
+    return () => {
+      window.removeEventListener("acsl:user-updated", handler);
+      window.removeEventListener("performance-report:refresh:agents", handler);
+    };
   }, [fetchAgents]);
+  useRealtimeRefresh("agents", REALTIME_AGENT_TABLES);
 
 
   // Hydrate Assigned / Collected / In Stock per agent from their assigned partner orgs.
