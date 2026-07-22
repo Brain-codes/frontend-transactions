@@ -649,6 +649,7 @@ const EndUserRecordsContent = () => {
           }
         }}
       />
+      </TooltipProvider>
     </DashboardLayout>
   );
 };
