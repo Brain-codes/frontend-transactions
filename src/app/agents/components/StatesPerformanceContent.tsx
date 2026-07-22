@@ -125,7 +125,7 @@ export default function StatesPerformanceContent() {
         // Partner-side agents/profiles with an org
         const { data: profiles, error: pErr } = await supabase
           .from("profiles")
-          .select("id,full_name,email,role,organization_id")
+          .select("id,full_name,email,role,organization_id,phone")
           .in("role", ["partner", "admin", "partner_agent", "agent", "acsl_agent", "acsl_agent_manager"]);
         if (pErr) throw pErr;
 
