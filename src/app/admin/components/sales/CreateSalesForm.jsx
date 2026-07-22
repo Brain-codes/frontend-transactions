@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { supabaseUrl as SUPABASE_URL } from "@/lib/supabaseConfig";
+import { getSupabase } from "@/lib/supabaseClient";
 import { useRouter } from "@/compat/navigation";
 import Link from "@/compat/Link";
 import { Button } from "@/components/ui/button";
@@ -1255,9 +1256,39 @@ const CreateSalesForm = ({
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => handleInputChange("phone", e.target.value)}
+                onBlur={async (e) => {
+                  const raw = e.target.value || "";
+                  const digits = raw.replace(/\D+/g, "");
+                  if (digits.length < 7) return;
+                  try {
+                    const sb = getSupabase();
+                    const tail = digits.slice(-10);
+                    const currentId = isEditMode ? initialData?.id : null;
+                    let q = sb
+                      .from("sales")
+                      .select("id, transaction_id, phone")
+                      .ilike("phone", `%${tail}%`)
+                      .limit(50);
+                    if (currentId) q = q.neq("id", currentId);
+                    const { data } = await q;
+                    const clash = (data || []).find(
+                      (r) => String(r.phone ?? "").replace(/\D+/g, "") === digits
+                    );
+                    if (clash) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        phone: `Already used on sale ${clash.transaction_id}`,
+                      }));
+                    }
+                  } catch (err) {
+                    // Best-effort — server check remains authoritative.
+                    console.warn("Duplicate phone check failed", err);
+                  }
+                }}
                 placeholder="+234 803 123 4567"
                 className={errors.phone ? "border-red-500" : ""}
               />
+
             </FormField>
             <FormField label="AKA" htmlFor="aka">
               <Input

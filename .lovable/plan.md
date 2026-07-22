@@ -1,57 +1,60 @@
-# Fix: Selecting "Swali Global Multi Concept (Amina Sales Model)" in Sales Form shows no state, no branch, no stoves
+## Goal
 
-## Root cause
+Every sale must be tied to a unique end-user phone. Reject a new sale when its end-user phone (digits-only) already appears on an existing active sale. Cancelled sales (moved to `cancelled_purchases`) free the phone automatically since they no longer live in `sales`.
 
-`CreateSalesForm.handlePartnerPick` calls `manage-organizations?search=<partnerName>` to load that partner's org rows (state + branch + org IDs). The edge function (`supabase/functions/manage-organizations/read-operations.ts`, line 126) applies the search as:
+## Where the check runs
 
-```ts
-q = q.or(`partner_name.ilike.%${search}%,partner_id.ilike.%${search}%`);
+**Server (authoritative)** — `supabase/functions/create-sale/index.ts`, right after the existing required-field checks (around line 167, before amount validation):
+
+1. Normalize `phone` to digits-only: `const phoneDigits = String(phone).replace(/\D+/g, "")`.
+2. Guard: if `phoneDigits.length < 7` return `jsonError("End user phone number is invalid", 400)`.
+3. Query existing sales with the same digits:
+   ```ts
+   const { data: dupes } = await supabase
+     .from("sales")
+     .select("id, transaction_id, phone")
+     .ilike("phone", `%${phoneDigits.slice(-10)}%`) // cheap prefilter
+     .limit(50);
+   const clash = (dupes ?? []).find(
+     (r) => String(r.phone ?? "").replace(/\D+/g, "") === phoneDigits
+   );
+   if (clash) {
+     return jsonError(
+       `This end user phone is already used on sale ${clash.transaction_id}. Each sale must have a unique end user phone.`,
+       409
+     );
+   }
+   ```
+   In edit mode (`mode === "edit"` / existing `saleId` in payload) exclude the current sale id from the clash check.
+
+Rationale: `sales.phone` is stored as text without normalization; the digits-only comparison in JS covers `0801…` vs `+234 801 …` variants without a schema migration. `cancelled_purchases` isn't queried, so cancelled sales free the phone.
+
+**Client (fast feedback)** — `src/app/admin/components/sales/CreateSalesForm.jsx`:
+
+1. On blur of the End User Phone input, call a lightweight check against `sales` via the existing supabase client using the same digits-only compare, and surface `errors.phone = "This phone is already used on another sale"` (excluding the current sale in edit mode).
+2. Keep the check debounced/best-effort — the server remains the source of truth.
+
+No changes to `salesFormValidation.js` beyond wiring the async duplicate message into `errors.phone` state; the required check there stays.
+
+## Optional hardening (recommended, not required)
+
+Add a partial unique index so races can't slip two concurrent inserts through:
+
+```sql
+-- migration
+CREATE UNIQUE INDEX IF NOT EXISTS sales_phone_digits_unique
+  ON public.sales ((regexp_replace(phone, '\D', '', 'g')));
 ```
 
-PostgREST's `.or()` filter is a mini-DSL where parentheses `(` `)` are **grouping delimiters**, and commas separate alternatives. When the search string is `Swali Global Multi Concept (Amina Sales Model)`, the raw parens inside the value break the parser — the whole filter is malformed and PostgREST returns 0 rows.
+If any existing rows already share a phone, the migration will fail; we'd need to inspect and clean those first. Confirm before I add this — I can either (a) run a pre-check query and list the offenders for you to resolve, or (b) skip the DB constraint and rely on the edge-function check only.
 
-Effect chain:
+## Files touched
 
-1. `handlePartnerPick` gets `rows = []` → `setPartnerBranches([])` → State/Branch dropdowns render empty.
-2. `finalizeBranchPick` never fires → `saa_selected_org_ids` never written → `getActiveOrgIds()` returns nothing → stove search filters on an empty org-id set → stove `101109216` is never found.
+- `supabase/functions/create-sale/index.ts` — add duplicate-phone guard.
+- `src/app/admin/components/sales/CreateSalesForm.jsx` — onBlur duplicate check + inline error surfacing.
+- (Optional) new SQL migration for the unique index.
 
-The Partner Profiles list works because it uses a different endpoint (`get-organizations-grouped`) that does not use `.or()` on the search value.
+## Out of scope
 
-## Change
-
-### 1) `supabase/functions/manage-organizations/read-operations.ts`
-
-Replace the unsafe `.or()` search with a parens-safe equivalent. Two acceptable options; pick option A because we already fall back to a single-column ilike on `partner_name` when `partner_id` looks non-numeric:
-
-- Option A — split into two safe filters using PostgREST's quoted-value syntax for `.or()`:
-  ```ts
-  if (search) {
-    const escaped = search.replace(/"/g, '\\"'); // escape double-quotes for PostgREST quoted value
-    q = q.or(`partner_name.ilike."*${escaped}*",partner_id.ilike."*${escaped}*"`);
-  }
-  ```
-  PostgREST uses `*` as ilike wildcard when the value is inside `"..."`, and quoted values treat parens/commas as literals.
-
-- Option B — drop the `.or()` for the common case and use two-column combined WHERE via `.ilike()` on `partner_name` only (since `partner_id` is a short code, users rarely paste the full "Amina" name into it):
-  ```ts
-  if (search) q = q.ilike("partner_name", `%${search}%`);
-  ```
-
-Ship Option A so the `partner_id` search still works.
-
-### 2) `src/app/admin/components/sales/CreateSalesForm.jsx` (defensive)
-
-After `handlePartnerPick` returns zero rows for a partner name that was picked from the dropdown, surface an inline error under the Partner input: "No branches configured for this partner — please contact an administrator." This prevents future silent failures if a partner has no `organizations` rows.
-
-No other client code changes needed — once the edge function returns the Amina row, State (Kano) → Branch (Main Branch) will auto-select (both single-value), `saa_selected_org_ids` gets populated with all org IDs sharing that partner+state+branch, and stove `101109216` becomes findable and sellable via the existing multi-org search path.
-
-## Verification
-
-1. On `/sales/create`, pick "Swali Global Multi Concept (Amina Sales Model)" from the partner dropdown.
-2. State should auto-fill to "Kano", Branch should auto-fill to "Main Branch".
-3. Type `101109216` in the Stove ID search — the ID should appear as available and validate as "Valid stove ID for this partner."
-4. Also verify the previous test partner (no parens in name) still loads correctly — a plain "Swali Global Multi Concept" pick must still work.
-
-## Out of scope for this turn
-
-The related complaint that this Amina variant does not appear in the "Track Stove IDs" partner filter is caused by a different function (`get-organizations-grouped` fuzzy-merges near-duplicate partner names). That fix is a separate change and will be planned separately if you want it addressed next.
+- Retroactive dedupe of existing sales rows.
+- Changing contact phone / alternative phone rules (only end-user `phone` is constrained).
