@@ -919,8 +919,8 @@ export default function StatesPerformanceContent() {
             </div>
           </DialogHeader>
 
-          <div className="space-y-3 p-5">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col flex-1 min-h-0 space-y-3 p-5 overflow-hidden">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <div className="relative min-w-[220px] flex-1">
                 <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
                 <Input
