@@ -155,10 +155,25 @@ export default function StatesPerformanceContent() {
               sold: 0,
               notSold: 0,
               sellThrough: 0,
+              partnerDetails: [],
             };
             map.set(state, r);
           }
           return r;
+        };
+
+        // Partner stove counts per organization
+        const partnerStoveCounts = new Map<
+          string,
+          { total: number; sold: number; available: number }
+        >();
+        const ensurePartnerCounts = (orgId: string) => {
+          let c = partnerStoveCounts.get(orgId);
+          if (!c) {
+            c = { total: 0, sold: 0, available: 0 };
+            partnerStoveCounts.set(orgId, c);
+          }
+          return c;
         };
 
         // Partners
