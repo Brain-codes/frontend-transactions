@@ -23,7 +23,10 @@ interface CancelledSale {
   stove_serial_no: string | null;
   cancel_reason: string | null;
   cancelled_at: string | null;
+  cancelled_by: string | null;
+  cancelled_by_name?: string | null;
 }
+
 
 const formatDate = (d?: string | null) => {
   if (!d) return "N/A";
