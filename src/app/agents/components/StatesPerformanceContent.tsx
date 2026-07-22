@@ -268,6 +268,7 @@ export default function StatesPerformanceContent() {
 
         // Stoves (paginated)
         const stoves: {
+          stove_id: string | null;
           organization_id: string | null;
           status: string | null;
           sale_id: string | null;
