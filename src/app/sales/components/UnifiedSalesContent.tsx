@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
 import FinancialReportsView from "../../admin/components/financial-reports/FinancialReportsView";
 import SalesFormModal from "../../admin/components/sales/SalesFormModal";
@@ -8,8 +8,8 @@ import salesAdvancedService from "../../services/salesAdvancedAPIService";
 import superAdminAgentService from "../../services/superAdminAgentService";
 import { AdminSales } from "@/types/adminSales";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, ShoppingCart, Download, Loader2 } from "lucide-react";
+
 import { useRouter, useSearchParams } from "@/compat/navigation";
 import PageHeader from "../../components/PageHeader";
 import { useAuth } from "../../contexts/useAuth";
@@ -34,9 +34,8 @@ export default function UnifiedSalesContent() {
   const [reloadKey, setReloadKey] = useState(0);
   const reload = () => setReloadKey((k) => k + 1);
 
-  const CURRENT_YEAR = new Date().getFullYear();
-  const YEARS = Array.from({ length: CURRENT_YEAR - 2023 }, (_, i) => 2024 + i);
-  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
+
+
 
   const exportFnRef = useRef<(() => void) | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -123,26 +122,11 @@ export default function UnifiedSalesContent() {
           title="Sales Record"
           right={
             <div className="flex items-center gap-3">
-              {isSuperAdmin && (
-                <>
-                  <span className="text-sm font-medium text-gray-700">Year:</span>
-                  <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
-                    <SelectTrigger className="w-[110px] h-8 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {YEARS.map((y) => (
-                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </>
-              )}
               {(isSuperAdmin || isPartner) && (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-8 text-xs flex items-center gap-1.5"
+                  className="h-9 px-3 text-xs font-medium border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900 flex items-center gap-1.5 shadow-none rounded-md"
                   disabled={exporting}
                   onClick={() => {
                     if (exportFnRef.current) {
@@ -158,13 +142,14 @@ export default function UnifiedSalesContent() {
               {can("create-sale") && (
                 <Button
                   size="sm"
-                  className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
-                  onClick={() => setShowCreateModal(true)}
+                  className="h-9 px-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium flex items-center gap-1.5 rounded-md shadow-none"
+                  onClick={() => router.push("/sales/create")}
                 >
                   <Plus className="h-4 w-4" />
                   Create Sale
                 </Button>
               )}
+
             </div>
           }
         />
@@ -177,10 +162,8 @@ export default function UnifiedSalesContent() {
           onCancelSale={handleCancelSale}
           onApproveSale={(isAcslAgent || isAcslAgentManager) ? setApproveSale : undefined}
           viewFrom={viewFrom as any}
-          selectedYear={isSuperAdmin ? selectedYear : undefined}
-          onYearChange={isSuperAdmin ? (v) => setSelectedYear(v ?? CURRENT_YEAR) : undefined}
-          availableYears={isSuperAdmin ? YEARS : undefined}
           onExportReady={(fn) => { exportFnRef.current = fn; }}
+
           onSelectionChange={setSelectedExportCount}
           initialSearchTerm={initialPartnerFilter}
         />

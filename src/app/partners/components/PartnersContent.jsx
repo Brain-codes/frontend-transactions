@@ -1,6 +1,9 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabaseUrl as SUPABASE_URL } from "@/lib/supabaseConfig";
+import { useRealtimeRefresh, useRefreshListener } from "../../agents/hooks/useRealtimeRefresh";
+
+const REALTIME_PARTNER_TABLES = ["organizations", "sales", "stove_ids"];
 import DashboardLayout from "../../components/DashboardLayout";
 import OrganizationFormModal from "../../components/OrganizationFormModal";
 import OrganizationDetailSidebar from "../../components/OrganizationDetailSidebar";
@@ -1316,6 +1319,13 @@ export default function PartnersContent() {
   };
 
   useEffect(() => { fetchTypeCounts(); }, []);
+
+  useRealtimeRefresh("partners", REALTIME_PARTNER_TABLES);
+  useRefreshListener("partners", () => {
+    try { fetchOrganizations && fetchOrganizations(); } catch {}
+    try { fetchStats(filters, dateFrom, dateTo); } catch {}
+    try { fetchTypeCounts(); } catch {}
+  });
 
   const STOVE_SORT_MAP = {
     active: "sold_stove_ids",

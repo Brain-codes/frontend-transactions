@@ -39,6 +39,9 @@ export async function fetchRelatedData(
     fetchPromises.push(fetchModifiers(supabase, sales));
   }
 
+  // Installment payment counts are needed for the Payment column summary.
+  fetchPromises.push(fetchInstallmentSummaries(supabase, sales));
+
   if (
     (filters.includeImages ||
       filters.includeStoveImage ||
@@ -267,6 +270,83 @@ async function fetchImages(supabase: any, sales: any[]) {
       sale.agreement_image = imageMap.get(sale.agreement_image_id) || null;
     }
   });
+}
+
+async function fetchInstallmentSummaries(supabase: any, sales: any[]) {
+  console.log("💳 Fetching installment payment summaries...");
+
+  const installmentSaleIds = [
+    ...new Set(
+      sales
+        .filter((sale) => sale.is_installment)
+        .map((sale) => sale.id)
+        .filter((id) => id !== null && id !== undefined)
+    ),
+  ];
+
+  if (installmentSaleIds.length === 0) {
+    console.log("💳 No installment sales to summarize");
+    sales.forEach((sale) => {
+      sale.installment_summary = null;
+    });
+    return;
+  }
+
+  console.log(
+    `💳 Fetching payment counts for ${installmentSaleIds.length} installment sales`
+  );
+
+  const { data: payments, error: paymentsError } = await supabase
+    .from("installment_payments")
+    .select("sale_id")
+    .in("sale_id", installmentSaleIds);
+
+  if (paymentsError) {
+    console.log("❌ Error fetching installment payments:", paymentsError.message);
+    return;
+  }
+
+  // Count payments per sale
+  const paymentCountMap = new Map<string, number>();
+  payments?.forEach((payment: any) => {
+    paymentCountMap.set(
+      payment.sale_id,
+      (paymentCountMap.get(payment.sale_id) || 0) + 1
+    );
+  });
+
+  sales.forEach((sale) => {
+    if (!sale.is_installment) {
+      sale.installment_summary = null;
+      return;
+    }
+
+    const totalInstallments = sale.payment_model?.duration_months || 1;
+    const paidInstallments = paymentCountMap.get(sale.id) || 0;
+    const leftInstallments = Math.max(0, totalInstallments - paidInstallments);
+
+    let nextDueDate: string | null = null;
+    if (leftInstallments > 0) {
+      const baseDate = new Date(sale.sales_date || sale.created_at);
+      if (!isNaN(baseDate.getTime())) {
+        baseDate.setMonth(baseDate.getMonth() + paidInstallments);
+        nextDueDate = baseDate.toISOString();
+      }
+    }
+
+    sale.installment_summary = {
+      total_installments: totalInstallments,
+      paid_installments: paidInstallments,
+      left_installments: leftInstallments,
+      next_due_date: nextDueDate,
+      installment_amount:
+        sale.payment_model?.fixed_price && totalInstallments
+          ? Number((sale.payment_model.fixed_price / totalInstallments).toFixed(2))
+          : undefined,
+    };
+  });
+
+  console.log("✅ Installment payment summaries attached");
 }
 
 function logRelatedDataResults(sales: any[]) {

@@ -182,6 +182,9 @@ export interface SuperAdminSale {
   stove_image_id?: string;
   agreement_image_id?: string;
   created_at?: string;
+  updated_at?: string;
+  updated_by?: string;
+  updated_by_profile?: UserProfile | null;
 
   // Installment payment fields
   is_installment?: boolean;

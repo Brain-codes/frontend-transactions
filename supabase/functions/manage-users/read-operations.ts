@@ -174,6 +174,27 @@ export async function getUsers(
       (managers || []).forEach((m: any) => managerMap.set(m.id, m.full_name));
     }
 
+    // Resolve which agent-id columns exist per assignment table (schema drift
+    // between deployments: agent_id / super_admin_agent_id / user_id).
+    const ASSIGNMENT_TABLES = ["super_admin_agent_organizations", "acsl_agent_organizations"];
+    const AGENT_ID_CANDIDATES = ["agent_id", "super_admin_agent_id", "user_id"];
+    const existingAgentCols: Record<string, string[]> = {};
+    await Promise.all(
+      ASSIGNMENT_TABLES.map(async (table) => {
+        const found: string[] = [];
+        for (const col of AGENT_ID_CANDIDATES) {
+          const { error } = await supabase
+            .from(table)
+            .select(col, { count: "exact", head: true })
+            .limit(1);
+          if (!error) found.push(col);
+        }
+        existingAgentCols[table] = found;
+      })
+    );
+
+    const ACSL_ROLES = new Set(["acsl_agent", "acsl_agent_manager", "super_admin_agent"]);
+
     // Fetch assigned_organizations_count + assigned_states_count for each SAA user
     const usersWithCounts = await Promise.all(
       (users || []).map(async (u: any) => {
@@ -181,23 +202,58 @@ export async function getUsers(
           ...u,
           manager_name: u.manager_id ? managerMap.get(u.manager_id) ?? null : null,
         };
-        if (user.role === "acsl_agent" || user.role === "super_admin_agent") {
-          const [{ count: orgCount }, { count: stateCount }] = await Promise.all([
-            supabase
-              .from("acsl_agent_organizations")
-              .select("*", { count: "exact", head: true })
-              .eq("agent_id", user.id),
-            supabase
-              .from("acsl_agent_states")
-              .select("*", { count: "exact", head: true })
-              .eq("agent_id", user.id),
-          ]);
+        if (ACSL_ROLES.has(user.role)) {
+          // Union across both assignment tables + all existing agent-id column
+          // variants. Legacy explicit state rows are also folded in.
+          const orgIdSet = new Set<string>();
+          await Promise.all(
+            ASSIGNMENT_TABLES.map(async (table) => {
+              const cols = existingAgentCols[table] || [];
+              if (cols.length === 0) return;
+              const orExpr = cols.map((c) => `${c}.eq.${user.id}`).join(",");
+              const { data } = await supabase
+                .from(table)
+                .select("organization_id")
+                .or(orExpr);
+              (data || []).forEach((r: any) => {
+                if (r.organization_id) orgIdSet.add(r.organization_id);
+              });
+            })
+          );
+          const orgIds = Array.from(orgIdSet);
+
+          const stateMap = new Map<string, string>();
+          const addState = (raw: any) => {
+            if (!raw) return;
+            const s = String(raw).trim();
+            if (!s) return;
+            const key = s.toLowerCase();
+            if (!stateMap.has(key)) stateMap.set(key, s);
+          };
+
+          if (orgIds.length > 0) {
+            const { data: orgRows } = await supabase
+              .from("organizations")
+              .select("state")
+              .in("id", orgIds);
+            (orgRows || []).forEach((o: any) => addState(o.state));
+          }
+
+          const { data: legacyStates } = await supabase
+            .from("acsl_agent_states")
+            .select("state")
+            .eq("agent_id", user.id);
+          (legacyStates || []).forEach((r: any) => addState(r.state));
+
+          const assigned_states = Array.from(stateMap.values());
           return {
             ...user,
-            assigned_organizations_count: orgCount || 0,
-            assigned_states_count: stateCount || 0,
+            assigned_organizations_count: orgIds.length,
+            assigned_states,
+            assigned_states_count: assigned_states.length,
           };
         }
+
         if (["partner_agent", "agent"].includes(user.role)) {
           const org = user.organization_id ? orgMap.get(user.organization_id) : null;
           return {
@@ -210,6 +266,7 @@ export async function getUsers(
         return { ...user, assigned_organizations_count: 0, assigned_states_count: 0 };
       })
     );
+
 
     // Calculate pagination metadata
     const totalPages = Math.ceil((count || 0) / limit);

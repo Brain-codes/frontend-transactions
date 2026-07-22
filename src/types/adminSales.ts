@@ -22,6 +22,8 @@ export interface AdminSales {
   stove_image_id: ImageData;
   agreement_image_id: ImageData;
   created_at: string; // ISO timestamp
+  updated_at?: string; // ISO timestamp
+  updated_by?: string;
   status: string; // could be "completed" | "pending" | ...
   address: Address;
   agent_approved?: boolean;
@@ -37,6 +39,11 @@ export interface AdminSales {
     phone?: string;
     role?: string;
   };
+  updated_by_profile?: {
+    id: string;
+    full_name: string;
+    email: string;
+  } | null;
 
   // Installment payment fields
   is_installment?: boolean;
@@ -49,6 +56,13 @@ export interface AdminSales {
     duration_months: number;
     fixed_price: number;
   };
+  installment_summary?: {
+    total_installments: number;
+    paid_installments: number;
+    left_installments: number;
+    next_due_date: string | null;
+    installment_amount?: number;
+  } | null;
 
   // New fields from user agreement form
   retailer_branch?: string;

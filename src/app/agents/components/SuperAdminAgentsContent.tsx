@@ -82,6 +82,16 @@ import PageHeader from "../../components/PageHeader";
 import AgentViewCredentialModal from "../../admin/components/agents/AgentViewCredentialModal";
 import AgentCredentialsModal from "../../admin/components/agents/AgentCredentialsModal";
 import tokenManager from "@/utils/tokenManager";
+import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
+
+const REALTIME_AGENT_TABLES = [
+  "profiles",
+  "acsl_agent_organizations",
+  "super_admin_agent_organizations",
+  "acsl_agent_states",
+  "sales",
+  "stove_ids",
+];
 
 // PostgREST caps un-ranged selects at 1000 rows, silently truncating bigger
 // result sets. Rebuilds the query per page (builders aren't reusable) and
@@ -1626,30 +1636,24 @@ function AgentStatesModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [states, setStates] = useState<string[]>([]);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    if (!isOpen || !agent) return;
-    setError(null);
-    setStates([]);
-    const load = async () => {
-      setLoading(true);
-      try {
-        const result = await superAdminAgentService.getAgentStates(agent.id);
-        const sorted: string[] = ((result.data || []) as any[])
-          .map((s: any) => s.state as string)
-          .sort();
-        setStates(sorted);
-      } catch (err: any) {
-        setError(err.message || "Failed to load states");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [isOpen, agent]);
+    if (isOpen) setSearch("");
+  }, [isOpen, agent?.id]);
+
+  // Single source of truth: the partner-derived list already computed on the
+  // row. This guarantees the modal and the row badge can never disagree.
+  const states = useMemo(
+    () => [...(agent?.assigned_states || [])].sort(),
+    [agent?.assigned_states]
+  );
+
+  const filteredStates = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return states;
+    return states.filter((s) => s.toLowerCase().includes(q));
+  }, [states, search]);
 
   if (!agent) return null;
 
@@ -1661,35 +1665,42 @@ function AgentStatesModal({
             <DialogTitle className="text-base font-bold text-foreground">States Assigned</DialogTitle>
             <p className="text-xs text-muted-foreground mt-0.5">
               Agent: <span className="font-semibold text-primary">{agent.full_name}</span>
-              {!loading && (
-                <span className="ml-2 bg-primary/10 text-primary text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                  {states.length} state{states.length !== 1 ? "s" : ""}
-                </span>
-              )}
+              <span className="ml-2 bg-primary/10 text-primary text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                {filteredStates.length}{search ? ` of ${states.length}` : ""} state{states.length !== 1 ? "s" : ""}
+              </span>
             </p>
           </div>
         </DialogHeader>
 
+        <div className="px-5 pt-3 pb-2 shrink-0">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Filter states..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-9 pl-9 shadow-none"
+              disabled={states.length === 0}
+            />
+          </div>
+        </div>
+
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            </div>
-          ) : error ? (
-            <div className="text-center py-8">
-              <p className="text-red-600 text-sm">{error}</p>
-            </div>
-          ) : states.length === 0 ? (
+          {states.length === 0 ? (
             <div className="text-center text-muted-foreground py-10 text-sm">
               <MapPin className="h-8 w-8 text-gray-300 mx-auto mb-2" />
               No states assigned to this agent.
             </div>
+          ) : filteredStates.length === 0 ? (
+            <div className="text-center text-muted-foreground py-10 text-sm">
+              No states match "{search}".
+            </div>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {states.map((s) => (
+              {filteredStates.map((s) => (
                 <span
                   key={s}
-                  className="bg-primary/10 text-primary text-[11px] font-mono px-2.5 py-1 rounded"
+                  className="bg-sky-100 text-sky-700 text-[11px] font-semibold px-2.5 py-1 rounded"
                 >
                   {s}
                 </span>
@@ -1697,12 +1708,11 @@ function AgentStatesModal({
             </div>
           )}
         </div>
-
-
       </DialogContent>
     </Dialog>
   );
 }
+
 
 
 // ── Active Partners Modal ──────────────────────────────────────────────────────
@@ -2192,6 +2202,8 @@ export default function SuperAdminAgentsContent() {
   const roleDropdownRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [tableNameFilter, setTableNameFilter] = useState("");
+  const [tableRoleFilter, setTableRoleFilter] = useState<string>("all");
 
   const [agentFormMode, setAgentFormMode] = useState<"create" | "edit" | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -2330,7 +2342,22 @@ export default function SuperAdminAgentsContent() {
         }))
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      setAgents(rows);
+      setAgents((prev) => {
+        const prevById = new Map(prev.map((p) => [p.id, p as any]));
+        return rows.map((r: any) => {
+          const existing: any = prevById.get(r.id);
+          if (!existing) return r;
+          return {
+            ...r,
+            stove_summary: existing.stove_summary ?? r.stove_summary,
+            direct_org_ids: existing.direct_org_ids ?? r.direct_org_ids,
+            assigned_organizations_count:
+              existing.assigned_organizations_count ?? r.assigned_organizations_count,
+            total_partners_count:
+              existing.total_partners_count ?? r.total_partners_count,
+          };
+        });
+      });
       setRoleTotals(
         rows.reduce<Record<string, number>>((acc, row) => {
           acc[row.role] = (acc[row.role] || 0) + 1;
@@ -2352,15 +2379,20 @@ export default function SuperAdminAgentsContent() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, statusFilter, selectedRoles, dateFrom, dateTo]);
+  }, [search, statusFilter, selectedRoles, dateFrom, dateTo]);
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
-  useEffect(() => { setPage(1); }, [search, statusFilter, selectedRoles, dateFrom, dateTo]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, selectedRoles, dateFrom, dateTo, sortMode, stoveSort.key, stoveSort.direction]);
   useEffect(() => {
     const handler = () => { fetchAgents(); };
     window.addEventListener("acsl:user-updated", handler);
-    return () => window.removeEventListener("acsl:user-updated", handler);
+    window.addEventListener("performance-report:refresh:agents", handler);
+    return () => {
+      window.removeEventListener("acsl:user-updated", handler);
+      window.removeEventListener("performance-report:refresh:agents", handler);
+    };
   }, [fetchAgents]);
+  useRealtimeRefresh("agents", REALTIME_AGENT_TABLES);
 
 
   // Hydrate Assigned / Collected / In Stock per agent from their assigned partner orgs.
@@ -2396,6 +2428,7 @@ export default function SuperAdminAgentsContent() {
         // matches what was explicitly set in the User Manager.
         const agentToOrgIds: Record<string, string[]> = {};
         const agentToDirectOrgIds: Record<string, string[]> = {};
+        const agentToStates: Record<string, string[]> = {};
         const allOrgIds = new Set<string>();
         for (const r of orgListResults) {
           const ids = r.orgs.map((o: any) => o.id).filter(Boolean);
@@ -2405,8 +2438,20 @@ export default function SuperAdminAgentsContent() {
             .filter(Boolean);
           agentToOrgIds[r.id] = ids;
           agentToDirectOrgIds[r.id] = directIds;
+          // Derive states from ALL reachable orgs (direct + via state assignments)
+          const stateMap = new Map<string, string>();
+          for (const o of r.orgs) {
+            const raw = (o as any).state;
+            if (!raw) continue;
+            const s = String(raw).trim();
+            if (!s) continue;
+            const key = s.toLowerCase();
+            if (!stateMap.has(key)) stateMap.set(key, s);
+          }
+          agentToStates[r.id] = Array.from(stateMap.values());
           ids.forEach((id) => allOrgIds.add(id));
         }
+
 
 
         // 2. Stove counts per org — count TOTAL non-archived stoves per org
@@ -2502,16 +2547,24 @@ export default function SuperAdminAgentsContent() {
             const total_partners_count = isAcslRole
               ? directOrgs.length
               : a.total_partners_count;
+            const states = agentToStates[a.id] || [];
+            const assigned_states = isAcslRole && states.length > 0 ? states : a.assigned_states;
+            const assigned_states_count = isAcslRole
+              ? states.length
+              : a.assigned_states_count;
 
             return {
               ...a,
               assigned_organizations_count,
               total_partners_count,
+              assigned_states,
+              assigned_states_count,
               stove_summary: { received, sold, available },
               direct_org_ids: directOrgs,
             };
           })
         );
+
 
       } catch {
         // silent: columns fall back to em-dash
@@ -2601,6 +2654,8 @@ export default function SuperAdminAgentsContent() {
   };
 
   // ── Pagination helpers ─────────────────────────────────────────────────────
+  // Note: `displayedTotalPages` (computed below from `displayedAgents`) is the
+  // source of truth for the pager; these are kept for KPI/legacy references.
   const totalItems = pagination?.totalItems ?? agents.length;
   const totalPages = pagination?.totalPages ?? 1;
   const startItem = (page - 1) * pageSize + 1;
@@ -2608,8 +2663,9 @@ export default function SuperAdminAgentsContent() {
 
   const getPageNumbers = () => {
     const pages: number[] = [];
+    const tp = Math.max(1, Math.ceil((pagination?.totalItems ?? agents.length) / pageSize));
     const start = Math.max(1, page - 2);
-    const end = Math.min(totalPages, start + 4);
+    const end = Math.min(tp, start + 4);
     for (let i = start; i <= end; i++) pages.push(i);
     return pages;
   };
@@ -2648,10 +2704,33 @@ export default function SuperAdminAgentsContent() {
     if (stoveSort.key === "partners") {
       return [...sortedAgents].sort((a, b) => (((a.assigned_organizations_count ?? 0) - (b.assigned_organizations_count ?? 0)) * dir));
     }
+    if (stoveSort.key === "states") {
+      return [...sortedAgents].sort((a, b) => (((a.assigned_states_count ?? 0) - (b.assigned_states_count ?? 0)) * dir));
+    }
     const field = stoveSortFieldMap[stoveSort.key];
     if (!field) return sortedAgents;
     return [...sortedAgents].sort((a, b) => (((a.stove_summary?.[field] ?? 0) - (b.stove_summary?.[field] ?? 0)) * dir));
   }, [sortedAgents, stoveSort]);
+
+  // Table-level filters (name search + role dropdown) applied on top of displayedAgents
+  const tableFilteredAgents = useMemo(() => {
+    const q = tableNameFilter.trim().toLowerCase();
+    return displayedAgents.filter((a) => {
+      if (tableRoleFilter !== "all" && a.role !== tableRoleFilter) return false;
+      if (q && !(a.full_name || "").toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [displayedAgents, tableNameFilter, tableRoleFilter]);
+
+  useEffect(() => { setPage(1); }, [tableNameFilter, tableRoleFilter]);
+
+  // Client-side pagination slice for the current page
+  const displayedTotal = tableFilteredAgents.length;
+  const displayedTotalPages = Math.max(1, Math.ceil(displayedTotal / pageSize));
+  const safePage = Math.min(page, displayedTotalPages);
+  const pageRows = tableFilteredAgents.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const showingStart = displayedTotal === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const showingEnd = Math.min(safePage * pageSize, displayedTotal);
 
   const dateBadgeLabel = useMemo(() => {
     const fmt = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -2959,11 +3038,41 @@ export default function SuperAdminAgentsContent() {
 
         {/* Table */}
         <div className="space-y-0">
-          <div className="flex items-center justify-between px-1 pb-2">
-            <p className="text-sm text-gray-600">
-              Showing <span className="font-medium">{startItem}</span> to{" "}
-              <span className="font-medium">{endItem}</span> of{" "}
-              <span className="font-medium">{totalItems.toLocaleString()}</span> agents
+          <div className="flex flex-wrap items-center justify-between gap-3 px-1 pb-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <Search className="h-4 w-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={tableNameFilter}
+                  onChange={(e) => setTableNameFilter(e.target.value)}
+                  placeholder="Search agent name..."
+                  className="h-9 w-64 pl-8 pr-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/40 bg-white"
+                />
+              </div>
+              <select
+                value={tableRoleFilter}
+                onChange={(e) => setTableRoleFilter(e.target.value)}
+                className="h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#4a5d0f]/40"
+              >
+                <option value="all">All User Groups</option>
+                <option value="acsl_agent_manager">ACSL Agent Manager</option>
+                <option value="acsl_agent">ACSL Agent</option>
+              </select>
+              {(tableNameFilter || tableRoleFilter !== "all") && (
+                <button
+                  type="button"
+                  onClick={() => { setTableNameFilter(""); setTableRoleFilter("all"); }}
+                  className="h-9 px-3 text-xs text-gray-600 hover:text-gray-900 inline-flex items-center gap-1"
+                >
+                  <X className="h-3 w-3" /> Clear
+                </button>
+              )}
+            </div>
+            <p className="text-sm text-gray-600 ml-auto">
+              Showing <span className="font-medium">{showingStart}</span> to{" "}
+              <span className="font-medium">{showingEnd}</span> of{" "}
+              <span className="font-medium">{displayedTotal.toLocaleString()}</span> agents
             </p>
           </div>
           <div className="bg-white border-x border-t border-gray-200 rounded-t-lg overflow-x-auto relative">
@@ -2978,6 +3087,11 @@ export default function SuperAdminAgentsContent() {
                 <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Full Name</TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
+                    <button type="button" onClick={() => cycleStoveSort("states")} className="inline-flex items-center gap-1 hover:underline">
+                      States Assigned <StoveSortIcon col="states" />
+                    </button>
+                  </TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
                     <button type="button" onClick={() => cycleStoveSort("partners")} className="inline-flex items-center gap-1 hover:underline">
                       Partners Assigned <StoveSortIcon col="partners" />
@@ -3004,7 +3118,7 @@ export default function SuperAdminAgentsContent() {
               <TableBody className={loading ? "opacity-40" : ""}>
                 {!loading && sortedAgents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12">
+                    <TableCell colSpan={7} className="text-center py-12">
                       <Users className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500 font-medium">
                         {sortMode !== "default" ? "No agents match the active filter" : "No agents found"}
@@ -3017,20 +3131,30 @@ export default function SuperAdminAgentsContent() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  displayedAgents.map((agent, idx) => (
+                  pageRows.map((agent, idx) => (
                     <TableRow
                       key={agent.id}
-                      className="hover:bg-[#eef3c4] text-gray-700"
-                      style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
+                      className="hover:bg-[#eef3c4] text-gray-700 bg-white"
                     >
                       <TableCell className="text-sm font-medium text-gray-900">
                         <span>{agent.full_name}</span>
-                        <sup className="ml-0.5 text-[9px] text-[#4a5d0f] font-semibold">
+                        <sup className="ml-0.5 text-[9px] text-blue-600 font-semibold">
                           {AGENTS_PERFORMANCE_ROLE_LABELS[agent.role] || agent.role}
                         </sup>
                       </TableCell>
                       <TableCell className="text-sm text-gray-700">
                         {agent.phone || ""}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <button
+                          type="button"
+                          onClick={() => setStatesModalAgent(agent)}
+                          disabled={(agent.assigned_states_count ?? 0) === 0}
+                          className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-100 text-sky-700 hover:bg-sky-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          title="View assigned states"
+                        >
+                          {(agent.assigned_states_count ?? 0).toLocaleString()}
+                        </button>
                       </TableCell>
                       <TableCell className="text-center">
                         <button
@@ -3096,46 +3220,55 @@ export default function SuperAdminAgentsContent() {
             </Table>
           </div>
 
-          <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span>Rows per page:</span>
-              <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
-                <SelectTrigger className="h-8 w-[72px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[10, 25, 50, 100].map((n) => (
-                    <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-white">
+            <div className="flex items-center gap-4 text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <span>Rows per page:</span>
+                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+                  <SelectTrigger className="h-8 w-[72px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[10, 25, 50, 100].map((n) => (
+                      <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <p>
+                Showing <span className="font-medium">{showingStart}</span>–<span className="font-medium">{showingEnd}</span> of <span className="font-medium">{displayedTotal}</span> agents
+              </p>
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(1)} disabled={page === 1}>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(1)} disabled={safePage === 1}>
                 <ChevronsLeft className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+              <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}>
                 <ChevronLeft className="h-4 w-4 mr-1" />Prev
               </Button>
-              {getPageNumbers().map((p) => (
+              {Array.from({ length: Math.min(5, displayedTotalPages) }, (_, i) => {
+                const start = Math.max(1, Math.min(safePage - 2, displayedTotalPages - 4));
+                return start + i;
+              }).filter((p) => p >= 1 && p <= displayedTotalPages).map((p) => (
                 <Button
                   key={p}
-                  variant={p === page ? "default" : "outline"}
+                  variant={p === safePage ? "default" : "outline"}
                   size="sm"
-                  className={`h-8 w-8 p-0 ${p === page ? "bg-[#4a5d0f] text-white hover:bg-[#4a5d0f]" : ""}`}
+                  className={`h-8 w-8 p-0 ${p === safePage ? "bg-[#4a5d0f] text-white hover:bg-[#4a5d0f]" : ""}`}
                   onClick={() => setPage(p)}
                 >
                   {p}
                 </Button>
               ))}
-              <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+              <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setPage((p) => Math.min(displayedTotalPages, p + 1))} disabled={safePage >= displayedTotalPages}>
                 Next<ChevronRight className="h-4 w-4 ml-1" />
               </Button>
-              <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(totalPages)} disabled={page >= totalPages}>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPage(displayedTotalPages)} disabled={safePage >= displayedTotalPages}>
                 <ChevronsRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
+
         </div>
       </div>
 

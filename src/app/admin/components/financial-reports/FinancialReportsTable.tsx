@@ -80,78 +80,99 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
 
   return (
     <div className="space-y-0">
-      {/* Pagination header */}
-      <div className="rounded-t-lg px-4 py-2 flex items-center justify-end gap-3">
-        <p className="text-sm text-gray-600">
-          Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
-          <span className="font-medium">{totalRecords}</span> records
-        </p>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">per page:</span>
-          <Select value={pageSize.toString()} onValueChange={(val) => onPageSizeChange(Number(val))}>
-            <SelectTrigger className="w-[65px] h-7 bg-white text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10</SelectItem>
-              <SelectItem value="25">25</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-              <SelectItem value="100">100</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
       {/* Table */}
-      <div className="bg-white border-x border-gray-200 overflow-x-auto mt-1">
-        <Table className="text-sm">
+      <div className="bg-white border-x border-gray-200 mt-1 w-full overflow-hidden">
+        <Table className="text-sm w-full table-fixed">
           <TableHeader className="bg-[#4a5d0f]">
             <TableRow className="hover:bg-[#4a5d0f]">
-              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Trans #</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-2 w-[6%]">Trans #</TableHead>
               <TableHead
-                className="text-white font-semibold py-2 px-1 whitespace-nowrap cursor-pointer select-none"
+                className="text-white font-semibold py-2 px-2 w-[6%] cursor-pointer select-none"
                 onClick={onToggleSort}
               >
                 <div className="flex items-center gap-1">
                   Date <ArrowUpDown className="h-3 w-3" />
                 </div>
               </TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">End User</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">State</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Stove ID</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Payment Model</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Expected</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Paid</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Balance</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 text-center whitespace-nowrap"> </TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[11%]">End User</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[7%]">State</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[11%]">Partner</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[8%]">Stove ID</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[11%] bg-indigo-500">Model</TableHead>
+                 <TableHead className="text-white font-semibold py-2 px-2 text-left w-[7%] bg-slate-500">Expected</TableHead>
+                <TableHead className="text-white font-semibold py-2 px-2 text-left w-[7%] bg-green-600">Paid</TableHead>
+                <TableHead className="text-white font-semibold py-2 px-2 text-left w-[7%] bg-red-500">Balance</TableHead>
+                <TableHead className="text-white font-semibold py-2 px-2 w-[10%]">Modified By</TableHead>
+                <TableHead className="text-white font-semibold py-2 px-2 text-right w-[9%]">Actions</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody className={loading ? "opacity-40" : ""}>
-            {data.map((sale, idx) => (
+          <TableBody className={loading ? "opacity-40 [&_tr:last-child]:border-b" : "[&_tr:last-child]:border-b"}>
+            {data.map((sale) => (
               <TableRow
                 key={sale.id}
-                className={`${idx % 2 === 0 ? "bg-white" : "bg-[#fafafa]"} hover:bg-gray-100`}
+                className="bg-white hover:bg-gray-100"
               >
-                <TableCell className="py-1 px-1 font-medium whitespace-nowrap">{sale.transaction_id || "N/A"}</TableCell>
-                <TableCell className="py-1 px-1 whitespace-nowrap">{formatDate(sale.sales_date || sale.created_at)}</TableCell>
-                <TableCell className="py-1 px-1 whitespace-nowrap">{sale.end_user_name || "N/A"}</TableCell>
-                <TableCell className="py-1 px-1 whitespace-nowrap">{sale.state_backup || "N/A"}</TableCell>
-                <TableCell className="py-1 px-1 whitespace-nowrap">{sale.stove_serial_no || "N/A"}</TableCell>
-                <TableCell className="py-1 px-1 whitespace-nowrap">
-                  {sale.is_installment
-                    ? (sale.payment_model?.name || "Installment")
-                    : "Full Payment"}
+                <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.transaction_id || "N/A"}</TableCell>
+                <TableCell className="py-2 px-2 text-xs break-words align-top">{formatDate(sale.sales_date || sale.created_at)}</TableCell>
+                <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.end_user_name || "N/A"}</TableCell>
+                <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.state_backup || "N/A"}</TableCell>
+                <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.partner_name || (sale as any).organizations?.name || "N/A"}</TableCell>
+                <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.stove_serial_no || "N/A"}</TableCell>
+                <TableCell className="py-2 px-2 text-xs break-words align-top bg-indigo-50">
+                  {sale.is_installment ? (
+                    sale.installment_summary ? (
+                      <div className="space-y-0.5">
+                        <div className="font-medium text-gray-900 leading-tight">
+                          {sale.payment_model?.name || "Installment"}
+                        </div>
+                        <div className="text-[11px] text-gray-600">
+                          {sale.installment_summary.total_installments} installments
+                        </div>
+                        <div className="text-[11px] text-gray-600">
+                          {sale.installment_summary.paid_installments} paid · {sale.installment_summary.left_installments} left
+                        </div>
+                        {sale.installment_summary.left_installments > 0 && sale.installment_summary.next_due_date ? (
+                          <div className="text-[11px] font-medium text-[#4a5d0f]">
+                            Next due: {formatDate(sale.installment_summary.next_due_date)}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] font-medium text-green-700">
+                            Completed
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      sale.payment_model?.name || "Installment"
+                    )
+                  ) : (
+                    <Badge className="bg-[#eef3c4] text-[#4a5d0f] hover:bg-[#eef3c4] text-[10px] px-1.5 py-0">
+                      Full Payment
+                    </Badge>
+                  )}
                 </TableCell>
-                <TableCell className="py-1 px-1 text-right font-bold whitespace-nowrap">
+                <TableCell className="py-2 px-2 text-xs text-left break-words align-top bg-slate-50">
                   {formatCurrency(sale.amount ?? 0)}
                 </TableCell>
-                <TableCell className="py-1 px-1 text-right text-green-700 font-medium whitespace-nowrap">
+                <TableCell className="py-2 px-2 text-xs text-left text-green-700 break-words align-top bg-green-50">
                   {formatCurrency(getAmountPaid(sale))}
                 </TableCell>
-                <TableCell className="py-1 px-1 text-right text-red-700 font-medium whitespace-nowrap">
+                <TableCell className="py-2 px-2 text-xs text-left text-red-700 break-words align-top bg-red-50">
                   {formatCurrency(getAmountOwed(sale))}
                 </TableCell>
-                <TableCell className="py-1 px-1 text-center">
+                <TableCell className="py-2 px-2 text-xs break-words align-top">
+                  <div className="text-gray-800">
+                    {(sale as any).updated_by_profile?.full_name ||
+                      (sale as any).creator?.full_name ||
+                      (sale as any).updated_by_profile?.email ||
+                      (sale as any).creator?.email ||
+                      sale.partner_name ||
+                      "—"}
+                  </div>
+                  <div className="text-[11px] text-gray-500">
+                    {formatDate((sale as any).updated_at || sale.created_at)}
+                  </div>
+                </TableCell>
+                <TableCell className="py-2 px-2 text-right align-top">
                   <FinancialReportRowActions
                     sale={sale}
                     onViewDetails={onViewDetails}
@@ -171,35 +192,52 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
       </div>
 
       {/* Pagination footer */}
-      {totalPages > 1 && (
-        <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
-          <p className="text-sm text-gray-600">
-            Showing {startRecord} to {endRecord} of {totalRecords} records
-          </p>
+      <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-end bg-white gap-4">
+        {totalPages > 1 && (
           <div className="flex items-center gap-1">
-            <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => onPageChange(1)} disabled={currentPage === 1}>
+            <Button variant="outline" size="sm" className="h-8 w-8 p-0 shadow-none" onClick={() => onPageChange(1)} disabled={currentPage === 1}>
               <ChevronsLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}>
+            <Button variant="outline" size="sm" className="h-8 px-2 shadow-none" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}>
               <ChevronLeft className="h-4 w-4 mr-1" />Prev
             </Button>
             {getVisiblePages().map((p) => (
               <Button key={p} variant={p === currentPage ? "default" : "outline"} size="sm"
-                className={`h-8 w-8 p-0 ${p === currentPage ? "bg-[#4a5d0f] text-white hover:bg-[#4a5d0f]" : ""}`}
+                className={`h-8 w-8 p-0 shadow-none ${p === currentPage ? "bg-[#4a5d0f] text-white hover:bg-[#4a5d0f]" : ""}`}
                 onClick={() => onPageChange(p)}
               >
                 {p}
               </Button>
             ))}
-            <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}>
+            <Button variant="outline" size="sm" className="h-8 px-2 shadow-none" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}>
               Next<ChevronRight className="h-4 w-4 ml-1" />
             </Button>
-            <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages}>
+            <Button variant="outline" size="sm" className="h-8 w-8 p-0 shadow-none" onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages}>
               <ChevronsRight className="h-4 w-4" />
             </Button>
           </div>
+        )}
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-gray-600">
+            Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </p>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">per page:</span>
+            <Select value={pageSize.toString()} onValueChange={(val) => onPageSizeChange(Number(val))}>
+              <SelectTrigger className="w-[65px] h-7 bg-white text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

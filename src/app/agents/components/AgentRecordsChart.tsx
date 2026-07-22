@@ -11,13 +11,14 @@ import {
   LabelList,
 } from "recharts";
 import { useAuth } from "../../contexts/useAuth";
+import tokenManager from "@/utils/tokenManager";
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-const AGENT_ROLES = ["acsl_agent", "acsl_agent_manager"];
+const AGENT_ROLES = ["acsl_agent", "acsl_agent_manager", "super_admin_agent"];
 
 function bucketMonthlySales(rows: any[]) {
   const counts = new Array(12).fill(0);
@@ -30,6 +31,39 @@ function bucketMonthlySales(rows: any[]) {
     counts[d.getMonth()] += qty;
   });
   return MONTHS.map((m, i) => ({ month: m, value: counts[i] }));
+}
+
+// Fetch the full ACSL agent roster via the manage-users edge function so we
+// bypass RLS on the profiles table (which was returning an empty/truncated
+// list in the browser and causing the chart to render all zeros).
+async function fetchAgentIdsViaManageUsers(): Promise<string[]> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const token = await tokenManager.getValidToken();
+  if (!supabaseUrl || !token) return [];
+  const ids = new Set<string>();
+  for (const role of AGENT_ROLES) {
+    let page = 1;
+    let totalPages = 1;
+    do {
+      const qs = new URLSearchParams({
+        page: String(page),
+        limit: "100",
+        role,
+      });
+      const res = await fetch(
+        `${supabaseUrl}/functions/v1/manage-users?${qs.toString()}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) break;
+      const json = await res.json().catch(() => ({}));
+      (json.data || []).forEach((u: any) => {
+        if (u?.id) ids.add(u.id);
+      });
+      totalPages = json.pagination?.totalPages ?? 1;
+      page += 1;
+    } while (page <= totalPages);
+  }
+  return Array.from(ids);
 }
 
 const AgentRecordsChart = ({
@@ -51,17 +85,19 @@ const AgentRecordsChart = ({
 
     (async () => {
       try {
-        // 1. Gather every user ID that has an ACSL agent role
-        const { data: profilesData, error: profilesError } = await supabase
-          .from("profiles")
-          .select("id")
-          .in("role", AGENT_ROLES);
+        // 1. Roster of ACSL agent user IDs (via edge function, RLS-safe)
+        let agentIds = await fetchAgentIdsViaManageUsers();
 
-        if (profilesError) throw profilesError;
-
-        const agentIds = (profilesData || [])
-          .map((p: any) => p.id)
-          .filter(Boolean);
+        // Fallback: direct profiles read (may be RLS-restricted)
+        if (agentIds.length === 0) {
+          const { data: profilesData } = await supabase
+            .from("profiles")
+            .select("id")
+            .in("role", AGENT_ROLES);
+          agentIds = (profilesData || [])
+            .map((p: any) => p.id)
+            .filter(Boolean);
+        }
 
         if (agentIds.length === 0) {
           if (mounted) {
