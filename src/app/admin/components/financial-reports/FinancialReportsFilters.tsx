@@ -41,7 +41,13 @@ interface FinancialReportsFiltersProps {
   salesModels?: { id: string; name: string }[];
   stateList?: string[];
   lgaList?: string[];
+  selectedMonth?: string;
+  onMonthChange?: (value: string) => void;
+  yearFilter?: string;
+  onYearFilterChange?: (value: string) => void;
+  availableYears?: number[];
 }
+
 
 const toISO = (d?: Date) => (d ? format(d, "yyyy-MM-dd") : "");
 const fromISO = (s?: string) => {
