@@ -207,7 +207,34 @@ export default function StatesPerformanceContent() {
           if (!state || state === "Unknown") return;
           const row = ensure(state);
           row.stoves += 1;
-          if (s.status === "sold" || s.sale_id) row.sold += 1;
+          const isSold = s.status === "sold" || s.sale_id;
+          if (isSold) row.sold += 1;
+          if (s.organization_id) {
+            const c = ensurePartnerCounts(s.organization_id);
+            c.total += 1;
+            if (isSold) c.sold += 1;
+            else c.available += 1;
+          }
+        });
+
+        // Build partner details per state
+        const partnerDetailsByState = new Map<string, PartnerDetail[]>();
+        (orgs || []).forEach((o: any) => {
+          const state = (o.state || "").trim();
+          if (!state) return;
+          const counts = partnerStoveCounts.get(o.id) || { total: 0, sold: 0, available: 0 };
+          const phone = o.contact_phone || o.alternative_phone || "—";
+          const detail: PartnerDetail = {
+            id: o.id,
+            name: o.partner_name || "—",
+            phone,
+            totalStoves: counts.total,
+            stovesSold: counts.sold,
+            stovesAvailable: counts.available,
+          };
+          const list = partnerDetailsByState.get(state) || [];
+          list.push(detail);
+          partnerDetailsByState.set(state, list);
         });
 
         // Finalize computed cols
@@ -218,6 +245,7 @@ export default function StatesPerformanceContent() {
             agents: r.partnerAgents + r.acslAgents,
             notSold: Math.max(0, r.stoves - r.sold),
             sellThrough: r.stoves > 0 ? r.sold / r.stoves : 0,
+            partnerDetails: partnerDetailsByState.get(r.state) || [],
           }));
 
         if (!cancelled) setRows(finalRows);
