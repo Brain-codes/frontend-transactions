@@ -181,6 +181,27 @@ const SalesTable = ({
                     <span className="text-green-600 font-medium">₦0</span>
                   )}
                 </TableCell>
+                <TableCell className="px-2 py-2 text-xs whitespace-nowrap">
+                  {(() => {
+                    const name =
+                      sale.updated_by_profile?.full_name ||
+                      sale.updated_by_profile?.email ||
+                      sale.creator?.full_name ||
+                      sale.creator?.email ||
+                      "N/A";
+                    const dateStr = sale.updated_at || sale.created_at;
+                    return (
+                      <div className="flex flex-col">
+                        <span>{name}</span>
+                        {dateStr && (
+                          <span className="text-[10px] text-gray-500">
+                            {formatDate(dateStr)}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </TableCell>
                 <TableCell className="px-2 py-2 cursor-pointer text-center">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
