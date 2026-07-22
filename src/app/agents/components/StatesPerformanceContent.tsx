@@ -780,10 +780,10 @@ export default function StatesPerformanceContent() {
   };
 
   // ----- Stove modal derived state -----
-  const openStoveModal = (state: string) => {
+  const openStoveModal = (state: string, status: "all" | "sold" | "available" = "all") => {
     setStoveModalState(state);
     setStoveModalSearch("");
-    setStoveModalStatus("all");
+    setStoveModalStatus(status);
     setStoveModalPage(1);
     setStoveModalPageSize(25);
     setStoveModalOpen(true);
@@ -960,10 +960,24 @@ export default function StatesPerformanceContent() {
                     </button>
                   </TableCell>
                   <TableCell className="text-center align-top">
-                    <Pill tone="emerald">{r.sold}</Pill>
+                    <button
+                      onClick={() => openStoveModal(r.state, "sold")}
+                      disabled={r.sold === 0}
+                      title="View sold stove IDs in this state"
+                      className="disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Pill tone="emerald">{r.sold}</Pill>
+                    </button>
                   </TableCell>
                   <TableCell className="text-center align-top">
-                    <Pill tone="rose">{r.notSold}</Pill>
+                    <button
+                      onClick={() => openStoveModal(r.state, "available")}
+                      disabled={r.notSold === 0}
+                      title="View unsold stove IDs in this state"
+                      className="disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Pill tone="rose">{r.notSold}</Pill>
+                    </button>
                   </TableCell>
                   <TableCell className="align-top">
                     <div className="flex items-center gap-2">
