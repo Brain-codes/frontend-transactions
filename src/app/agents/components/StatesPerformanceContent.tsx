@@ -185,6 +185,12 @@ interface AgentDetail {
   stovesRecorded: number;
 }
 
+interface StoveDetail {
+  stove_id: string;
+  partner_name: string;
+  status: "sold" | "available";
+}
+
 interface StateRow {
   state: string;
   partners: number;
@@ -197,6 +203,7 @@ interface StateRow {
   sellThrough: number;
   partnerDetails: PartnerDetail[];
   agentDetails: AgentDetail[];
+  stoveDetails: StoveDetail[];
 }
 
 const PAGE_SIZES = [10, 25, 50];
@@ -229,6 +236,14 @@ export default function StatesPerformanceContent() {
   const [agentModalSearch, setAgentModalSearch] = useState("");
   const [agentModalPage, setAgentModalPage] = useState(1);
   const [agentModalPageSize, setAgentModalPageSize] = useState(10);
+
+  // Stove detail modal state
+  const [stoveModalOpen, setStoveModalOpen] = useState(false);
+  const [stoveModalState, setStoveModalState] = useState<string | null>(null);
+  const [stoveModalSearch, setStoveModalSearch] = useState("");
+  const [stoveModalStatus, setStoveModalStatus] = useState<"all" | "sold" | "available">("all");
+  const [stoveModalPage, setStoveModalPage] = useState(1);
+  const [stoveModalPageSize, setStoveModalPageSize] = useState(25);
   const [reloadKey, setReloadKey] = useState(0);
 
   useRealtimeRefresh("states", REALTIME_STATE_TABLES);
@@ -261,6 +276,7 @@ export default function StatesPerformanceContent() {
 
         // Stoves (paginated)
         const stoves: {
+          stove_id: string | null;
           organization_id: string | null;
           status: string | null;
           sale_id: string | null;
@@ -271,7 +287,7 @@ export default function StatesPerformanceContent() {
         while (from < HARD_CAP) {
           const { data, error: sErr } = await supabase
             .from("stove_ids")
-            .select("organization_id,status,sale_id")
+            .select("stove_id,organization_id,status,sale_id")
             .eq("is_archived", false)
             .range(from, from + PAGE_FETCH - 1);
           if (sErr) throw sErr;
@@ -373,6 +389,7 @@ export default function StatesPerformanceContent() {
               sellThrough: 0,
               partnerDetails: [],
               agentDetails: [],
+              stoveDetails: [],
             };
             map.set(state, r);
           }
@@ -417,12 +434,16 @@ export default function StatesPerformanceContent() {
         });
 
         // Stoves
+        const orgPartnerName = new Map<string, string>();
+        (orgs || []).forEach((o: any) => {
+          if (o?.id) orgPartnerName.set(o.id, o.partner_name || "—");
+        });
         stoves.forEach((s) => {
           const state = s.organization_id ? orgState.get(s.organization_id) : null;
           if (!state || state === "Unknown") return;
           const row = ensure(state);
           row.stoves += 1;
-          const isSold = s.status === "sold" || s.sale_id;
+          const isSold = s.status === "sold" || !!s.sale_id;
           if (isSold) row.sold += 1;
           if (s.organization_id) {
             const c = ensurePartnerCounts(s.organization_id);
@@ -430,6 +451,11 @@ export default function StatesPerformanceContent() {
             if (isSold) c.sold += 1;
             else c.available += 1;
           }
+          row.stoveDetails.push({
+            stove_id: s.stove_id || "—",
+            partner_name: s.organization_id ? (orgPartnerName.get(s.organization_id) || "—") : "—",
+            status: isSold ? "sold" : "available",
+          });
         });
 
         // Build partner details per state
@@ -511,6 +537,9 @@ export default function StatesPerformanceContent() {
             sellThrough: r.stoves > 0 ? r.sold / r.stoves : 0,
             partnerDetails: partnerDetailsByState.get(r.state) || [],
             agentDetails: agentDetailsByState.get(r.state) || [],
+            stoveDetails: [...r.stoveDetails].sort((a, b) =>
+              (a.stove_id || "").localeCompare(b.stove_id || ""),
+            ),
           }));
 
         if (!cancelled) {
@@ -750,6 +779,77 @@ export default function StatesPerformanceContent() {
     );
   };
 
+  // ----- Stove modal derived state -----
+  const openStoveModal = (state: string) => {
+    setStoveModalState(state);
+    setStoveModalSearch("");
+    setStoveModalStatus("all");
+    setStoveModalPage(1);
+    setStoveModalPageSize(25);
+    setStoveModalOpen(true);
+  };
+  const closeStoveModal = () => {
+    setStoveModalOpen(false);
+    setStoveModalState(null);
+    setStoveModalSearch("");
+    setStoveModalPage(1);
+  };
+
+  const stoveModalRow = useMemo(
+    () => (stoveModalState ? rows.find((r) => r.state === stoveModalState) : undefined),
+    [rows, stoveModalState],
+  );
+
+  const stoveModalStoves = useMemo(() => {
+    const list = stoveModalRow?.stoveDetails || [];
+    const q = stoveModalSearch.trim().toLowerCase();
+    return list.filter((s) => {
+      if (stoveModalStatus !== "all" && s.status !== stoveModalStatus) return false;
+      if (!q) return true;
+      return (
+        s.stove_id.toLowerCase().includes(q) ||
+        s.partner_name.toLowerCase().includes(q)
+      );
+    });
+  }, [stoveModalRow, stoveModalSearch, stoveModalStatus]);
+
+  const stoveModalTotalPages = Math.max(
+    1,
+    Math.ceil(stoveModalStoves.length / stoveModalPageSize),
+  );
+  const stoveModalClampedPage = Math.min(stoveModalPage, stoveModalTotalPages);
+  const stoveModalStart = (stoveModalClampedPage - 1) * stoveModalPageSize;
+  const stoveModalPageRows = stoveModalStoves.slice(
+    stoveModalStart,
+    stoveModalStart + stoveModalPageSize,
+  );
+  useEffect(
+    () => setStoveModalPage(1),
+    [stoveModalSearch, stoveModalPageSize, stoveModalStatus],
+  );
+
+  const handleStoveModalExport = () => {
+    const headers = ["#", "Stove ID", "Partner", "State", "Status"];
+    const state = stoveModalState || "";
+    const lines = [headers.join(",")].concat(
+      stoveModalStoves.map((s, i) =>
+        [
+          i + 1,
+          `"${(s.stove_id || "").replace(/"/g, '""')}"`,
+          `"${s.partner_name.replace(/"/g, '""')}"`,
+          `"${state.replace(/"/g, '""')}"`,
+          s.status,
+        ].join(","),
+      ),
+    );
+    downloadCSV(
+      lines.join("\n"),
+      `stoves-in-${state.toLowerCase().replace(/\s+/g, "-") || "state"}-${new Date().toISOString().split("T")[0]}.csv`,
+    );
+  };
+
+
+
   return (
     <div className="space-y-4 p-6">
       {/* KPI strip */}
@@ -850,7 +950,14 @@ export default function StatesPerformanceContent() {
 
 
                   <TableCell className="text-center align-top">
-                    <Pill tone="slate">{r.stoves}</Pill>
+                    <button
+                      onClick={() => openStoveModal(r.state)}
+                      className="inline-flex min-w-[2rem] cursor-pointer justify-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-[#4a5d0f] hover:text-white"
+                      title="View stove IDs in this state"
+                      disabled={r.stoves === 0}
+                    >
+                      {r.stoves}
+                    </button>
                   </TableCell>
                   <TableCell className="text-center align-top">
                     <Pill tone="emerald">{r.sold}</Pill>
@@ -1203,6 +1310,151 @@ export default function StatesPerformanceContent() {
                   className="h-8 shadow-none"
                   disabled={agentModalClampedPage >= agentModalTotalPages}
                   onClick={() => setAgentModalPage((p) => Math.min(agentModalTotalPages, p + 1))}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stoves in State Modal */}
+      <Dialog open={stoveModalOpen} onOpenChange={(open) => !open && closeStoveModal()}>
+        <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] p-0 flex flex-col overflow-hidden">
+          <DialogHeader className="border-b bg-[#4a5d0f] px-6 py-4 shrink-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-base font-semibold text-white">
+                  Stove IDs in {stoveModalState}
+                </DialogTitle>
+                <DialogDescription className="text-white/80 text-xs">
+                  {stoveModalRow?.stoves ?? 0} total · {stoveModalRow?.sold ?? 0} sold · {stoveModalRow?.notSold ?? 0} available
+                </DialogDescription>
+              </div>
+              <button
+                onClick={closeStoveModal}
+                className="rounded-md p-1 text-white/80 hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </DialogHeader>
+
+          <div className="flex flex-col flex-1 min-h-0 space-y-3 p-5 overflow-hidden">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <div className="relative min-w-[240px] flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search stove ID or partner..."
+                  value={stoveModalSearch}
+                  onChange={(e) => setStoveModalSearch(e.target.value)}
+                  className="h-9 pl-9 shadow-none"
+                />
+              </div>
+              <Select value={stoveModalStatus} onValueChange={(v) => setStoveModalStatus(v as any)}>
+                <SelectTrigger className="h-9 w-[140px] shadow-none">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="sold">Sold</SelectItem>
+                  <SelectItem value="available">Available</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={handleStoveModalExport}
+                disabled={stoveModalStoves.length === 0}
+                className="h-9 bg-[#4a5d0f] text-white hover:bg-[#3a4a0c] shadow-none"
+              >
+                <Download className="mr-2 h-4 w-4" /> Export CSV
+              </Button>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-[#e5e7eb]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-[#eef3c4] hover:bg-[#eef3c4]">
+                    <TableHead className="w-12 text-left text-[11px] font-semibold text-[#4a5d0f]">#</TableHead>
+                    <TableHead className="text-left text-[11px] font-semibold text-[#4a5d0f]">Stove ID</TableHead>
+                    <TableHead className="text-left text-[11px] font-semibold text-[#4a5d0f]">Partner</TableHead>
+                    <TableHead className="text-center text-[11px] font-semibold text-[#4a5d0f]">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {stoveModalPageRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-8 text-center text-sm text-gray-500">
+                        No stoves found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    stoveModalPageRows.map((s, i) => (
+                      <TableRow key={`${s.stove_id}-${i}`} className="border-b text-xs">
+                        <TableCell className="align-top text-gray-500">
+                          {stoveModalStart + i + 1}
+                        </TableCell>
+                        <TableCell className="align-top">
+                          <span className="font-mono text-[12px] font-medium text-gray-900">
+                            {s.stove_id}
+                          </span>
+                        </TableCell>
+                        <TableCell className="align-top text-gray-700">
+                          {s.partner_name}
+                        </TableCell>
+                        <TableCell className="text-center align-top">
+                          {s.status === "sold" ? (
+                            <Pill tone="emerald">Sold</Pill>
+                          ) : (
+                            <Pill tone="slate">Available</Pill>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#e5e7eb] pt-3 text-xs text-gray-600 shrink-0">
+              <div>
+                Showing {stoveModalStoves.length === 0 ? 0 : stoveModalStart + 1}–
+                {Math.min(stoveModalStart + stoveModalPageSize, stoveModalStoves.length)} of {stoveModalStoves.length} stoves
+              </div>
+              <div className="flex items-center gap-2">
+                <span>per page:</span>
+                <Select value={String(stoveModalPageSize)} onValueChange={(v) => setStoveModalPageSize(Number(v))}>
+                  <SelectTrigger className="h-8 w-[80px] shadow-none">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[25, 50, 100, 200].map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shadow-none"
+                  disabled={stoveModalClampedPage <= 1}
+                  onClick={() => setStoveModalPage((p) => Math.max(1, p - 1))}
+                >
+                  Prev
+                </Button>
+                <span className="px-2">
+                  Page {stoveModalClampedPage} of {stoveModalTotalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shadow-none"
+                  disabled={stoveModalClampedPage >= stoveModalTotalPages}
+                  onClick={() => setStoveModalPage((p) => Math.min(stoveModalTotalPages, p + 1))}
                 >
                   Next
                 </Button>
