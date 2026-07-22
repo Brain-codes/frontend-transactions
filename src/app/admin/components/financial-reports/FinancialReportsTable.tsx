@@ -121,11 +121,11 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                <TableHead className="text-white font-semibold py-2 px-1">Partner</TableHead>
                <TableHead className="text-white font-semibold py-2 px-1">Stove ID</TableHead>
                <TableHead className="text-white font-semibold py-2 px-1">Payment Model</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1 text-right">Expected</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 text-right">Paid</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 text-right">Balance</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1">Last Modified By</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 text-center w-[220px]">Actions</TableHead>
+                <TableHead className="text-white font-semibold py-2 px-1 text-left">Expected</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1 text-left">Paid</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1 text-left">Balance</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1">Last Modified By</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1 text-right w-[220px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className={loading ? "opacity-40" : ""}>
@@ -145,13 +145,13 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                     ? (sale.payment_model?.name || "Installment")
                     : "Full Payment"}
                 </TableCell>
-                <TableCell className="py-1 px-1 text-right font-bold break-words align-top">
+                <TableCell className="py-1 px-1 text-left font-bold break-words align-top">
                   {formatCurrency(sale.amount ?? 0)}
                 </TableCell>
-                <TableCell className="py-1 px-1 text-right text-green-700 font-medium break-words align-top">
+                <TableCell className="py-1 px-1 text-left text-green-700 font-medium break-words align-top">
                   {formatCurrency(getAmountPaid(sale))}
                 </TableCell>
-                <TableCell className="py-1 px-1 text-right text-red-700 font-medium break-words align-top">
+                <TableCell className="py-1 px-1 text-left text-red-700 font-medium break-words align-top">
                   {formatCurrency(getAmountOwed(sale))}
                 </TableCell>
                 <TableCell className="py-1 px-1 break-words align-top">
@@ -166,7 +166,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                     {formatDate((sale as any).updated_at || sale.created_at)}
                   </div>
                 </TableCell>
-                <TableCell className="py-1 px-1 text-center">
+                <TableCell className="py-1 px-1 text-right">
                   <FinancialReportRowActions
                     sale={sale}
                     onViewDetails={onViewDetails}
