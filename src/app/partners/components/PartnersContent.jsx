@@ -1,6 +1,9 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabaseUrl as SUPABASE_URL } from "@/lib/supabaseConfig";
+import { useRealtimeRefresh, useRefreshListener } from "../../agents/hooks/useRealtimeRefresh";
+
+const REALTIME_PARTNER_TABLES = ["organizations", "sales", "stove_ids"];
 import DashboardLayout from "../../components/DashboardLayout";
 import OrganizationFormModal from "../../components/OrganizationFormModal";
 import OrganizationDetailSidebar from "../../components/OrganizationDetailSidebar";
