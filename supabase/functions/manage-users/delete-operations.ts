@@ -46,6 +46,37 @@ export async function deleteUser(
 
     console.log("🔍 User found, proceeding with deletion");
 
+    // Clean up dependent rows that would otherwise block auth deletion.
+    if (
+      existingUser.role === "acsl_agent" ||
+      existingUser.role === "acsl_agent_manager"
+    ) {
+      const { error: orgAssignError } = await supabase
+        .from("acsl_agent_organizations")
+        .delete()
+        .eq("agent_id", userId);
+      if (orgAssignError) {
+        console.warn(
+          "⚠️ Failed to remove acsl_agent_organizations rows:",
+          orgAssignError.message
+        );
+      }
+    }
+
+    // If this user manages other agents, clear subordinates' manager_id first.
+    if (existingUser.role === "acsl_agent_manager") {
+      const { error: clearMgrError } = await supabase
+        .from("profiles")
+        .update({ manager_id: null })
+        .eq("manager_id", userId);
+      if (clearMgrError) {
+        console.warn(
+          "⚠️ Failed to clear subordinate manager_id:",
+          clearMgrError.message
+        );
+      }
+    }
+
     // Delete from Auth (this should cascade to profiles due to foreign key constraints)
     const { error: authDeleteError } = await supabase.auth.admin.deleteUser(
       userId
@@ -53,7 +84,14 @@ export async function deleteUser(
 
     if (authDeleteError) {
       console.error("❌ Error deleting user from Auth:", authDeleteError);
-      throw new Error(`Failed to delete user: ${authDeleteError.message}`);
+      const authErrMsg =
+        (authDeleteError as any)?.message ||
+        (authDeleteError as any)?.name ||
+        JSON.stringify(
+          authDeleteError,
+          Object.getOwnPropertyNames(authDeleteError as any)
+        );
+      throw new Error(`Failed to delete user: ${authErrMsg}`);
     }
 
     console.log("✅ User deleted successfully from Auth");
