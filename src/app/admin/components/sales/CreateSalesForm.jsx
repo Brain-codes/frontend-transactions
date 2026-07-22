@@ -30,7 +30,7 @@ import GooglePlacesInput from "@/app/components/ui/google-places-input";
 import { getGeoData, getGeoDataSync } from "@/lib/geoDataService";
 import adminSalesService from "../../../services/adminSalesService";
 import profileService from "../../../services/profileService";
-import { validateSalesForm } from "../../../utils/salesFormValidation";
+import { validateSalesForm, isValidNgPhone, NG_PHONE_FORMAT_MESSAGE } from "../../../utils/salesFormValidation";
 import {
   createInitialFormData,
   populateFormDataForEdit,
