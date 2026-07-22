@@ -18,7 +18,7 @@ const MONTHS = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-const AGENT_ROLES = ["acsl_agent", "acsl_agent_manager"];
+const AGENT_ROLES = ["acsl_agent", "acsl_agent_manager", "super_admin_agent"];
 
 function bucketMonthlySales(rows: any[]) {
   const counts = new Array(12).fill(0);

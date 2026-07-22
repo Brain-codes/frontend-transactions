@@ -1,62 +1,27 @@
+## Diagnosis (unconfirmed — needs a quick data check)
 
-## Goal
+The Records Collected chart in `src/app/agents/components/AgentRecordsChart.tsx` builds its roster from `manage-users` filtered to only two roles:
 
-Make the three Performance Report tabs (ACSL Agents, Partners, States) feel instant when switching, without losing real-time accuracy.
+```
+const AGENT_ROLES = ["acsl_agent", "acsl_agent_manager"];
+```
 
-## Root cause (verified)
+It then reads `sales.created_by IN (agentIds)`. But elsewhere in the app, "agent" also includes `super_admin_agent` — `create-sale/index.ts` treats `super_admin_agent` as an agent, and `manage-users/read-operations.ts` lists it among agent roles. If Kamal Mustapha (the seller of the 6 July sales) has role `super_admin_agent`, his ID is never fetched, so his sales never bucket into the chart and it renders zeros.
 
-`src/app/agents/page.tsx` conditionally renders one of `SuperAdminAgentsContent`, `PartnersContent`, or `StatesPerformanceContent`. Switching tabs **unmounts** the previous component. Each of those components loads its data with plain `useState` + `useEffect` + `fetch` (no shared cache — TanStack Query isn't used inside them). So every tab click:
-
-1. Throws away the previous tab's fetched agents/partners/states/stoves/sales rows.
-2. Re-runs all initial `useEffect` loaders on the next tab (edge-function calls + Supabase reads for thousands of rows).
-
-That's the "reloads while navigating from tab to tab" the user is seeing.
+The KPI card for his 6 sales comes from a different code path that does count `super_admin_agent`, which is why the numbers disagree.
 
 ## Fix
 
-### 1. Keep tabs mounted (biggest win, smallest change)
+1. In `AgentRecordsChart.tsx`, extend the roster to all three agent roles:
+   ```
+   const AGENT_ROLES = ["acsl_agent", "acsl_agent_manager", "super_admin_agent"];
+   ```
+   This is used both by `fetchAgentIdsViaManageUsers` (which loops per role) and by the RLS fallback (`profiles.in("role", AGENT_ROLES)`).
 
-Rework `src/app/agents/page.tsx` so tabs are rendered once activated and then **kept mounted**, toggled with the `hidden` attribute instead of conditional rendering:
+2. Keep the existing batched `sales.in("created_by", batch)` query — no other change needed, because `created_by` is set to the caller's userId in `create-sale`.
 
-- Track `mountedTabs: Set<TabKey>` — add a key the first time its tab is activated (lazy mount, so no upfront cost).
-- Render each mounted tab inside a wrapper with `hidden={active !== key}`. Hidden panels keep their React state, queries, scroll position, filters, and cached data.
-- Only the active panel is visible; the others sit idle in memory. Switching tabs becomes an O(1) visibility toggle — no refetch, no re-render of huge tables.
+3. Verification step: after the change, open the Agents Performance tab; the July bucket should show 6 (matching Kamal's KPI). If it still shows 0, the sales' `created_by` isn't Kamal's profile id — I'll then log the fetched agentIds and a sample sales row in the browser console to confirm the mismatch and adjust (e.g. fall back to querying sales by `profiles.role IN agent roles` via a join).
 
-This alone eliminates the reload-on-switch behavior for all three tabs, with zero changes inside the three large content components.
+## Scope
 
-### 2. Manual refresh button on the tab bar
-
-Add a small "Refresh" button (with a spinning `RefreshCw` icon) next to the segmented tab control. It broadcasts a `performance-report:refresh` custom event scoped to the active tab key.
-
-Each tab component gets a tiny `useEffect` that listens for that event and calls its existing top-level loader (`fetchAgents` / `fetchOrganizations` / `load()`). No refactor of the loaders themselves — just wire the existing function to the event.
-
-Gives the user an explicit "get fresh data now" affordance without a page reload.
-
-### 3. Realtime auto-refresh (throttled)
-
-Add a shared hook `useRealtimeRefresh(tabKey)` used by each of the three tab components. It opens Supabase realtime channels on the tables that back each tab and, on any `INSERT`/`UPDATE`/`DELETE`, debounces (5s) then triggers the same refresh event the button uses — but only when that tab is the active one, so background tabs don't thrash.
-
-Channels per tab:
-- **Agents**: `profiles` (role in acsl_agent/acsl_agent_manager), `acsl_agent_organizations`, `super_admin_agent_organizations`, `sales`, `stove_ids`.
-- **Partners**: `organizations`, `sales`, `stove_ids`.
-- **States**: `organizations`, `sales`, `stove_ids`.
-
-Result: data updates itself in the background while the user is on a tab, without a full page reload and without refetching every time they toggle tabs.
-
-### 4. Preserve realtime for non-active tabs on next visit
-
-When a background tab's realtime channel fires while it's hidden, set a `stale` flag for that tab. On next activation, the tab bar shows a subtle dot on the tab and auto-triggers one refresh, then clears the flag. Users never see stale numbers, but we still avoid refetching tabs they aren't looking at.
-
-## Files to change
-
-- `src/app/agents/page.tsx` — lazy-mount + hidden-toggle tab shell, refresh button, stale-dot indicators.
-- `src/app/agents/components/SuperAdminAgentsContent.tsx` — add event listener + realtime hook wiring; no changes to existing fetch logic, table, or KPI code.
-- `src/app/agents/components/StatesPerformanceContent.tsx` — same wiring.
-- `src/app/partners/components/PartnersContent.jsx` — same wiring.
-- `src/app/agents/hooks/useRealtimeRefresh.ts` *(new)* — small shared hook: opens channels, debounces, dispatches the refresh event only when its tab is active (or marks stale otherwise).
-
-## Out of scope
-
-- No refactor of the three large components' internal fetch code to TanStack Query (that's a much larger change; the mount-persistence fix already removes the perceived slowness).
-- No schema, edge function, or RLS changes.
-- No visual redesign of the tabs beyond adding the Refresh button and a small "updated" dot.
+Frontend-only change to one file: `src/app/agents/components/AgentRecordsChart.tsx`. No backend, schema, or RLS changes.
