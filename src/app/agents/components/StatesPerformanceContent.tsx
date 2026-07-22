@@ -940,7 +940,7 @@ export default function StatesPerformanceContent() {
                       className="inline-flex min-w-[2rem] cursor-pointer justify-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#eef3c4] text-[#4a5d0f] hover:bg-[#4a5d0f] hover:text-white"
                       title="View partners in this state"
                     >
-                      {r.partners}
+                      {formatNumber(r.partners)}
                     </button>
                   </TableCell>
                   <TableCell className="text-center align-top">
@@ -949,7 +949,7 @@ export default function StatesPerformanceContent() {
                       className="inline-flex min-w-[2rem] cursor-pointer justify-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#eef3c4] text-[#4a5d0f] hover:bg-[#4a5d0f] hover:text-white"
                       title="View agents in this state"
                     >
-                      {r.agents}
+                      {formatNumber(r.agents)}
                     </button>
                   </TableCell>
 
