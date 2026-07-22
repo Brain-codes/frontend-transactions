@@ -780,10 +780,10 @@ export default function StatesPerformanceContent() {
   };
 
   // ----- Stove modal derived state -----
-  const openStoveModal = (state: string) => {
+  const openStoveModal = (state: string, status: "all" | "sold" | "available" = "all") => {
     setStoveModalState(state);
     setStoveModalSearch("");
-    setStoveModalStatus("all");
+    setStoveModalStatus(status);
     setStoveModalPage(1);
     setStoveModalPageSize(25);
     setStoveModalOpen(true);
