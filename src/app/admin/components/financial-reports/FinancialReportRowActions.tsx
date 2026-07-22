@@ -88,6 +88,15 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
 
           <DropdownMenuSeparator />
 
+          {/* View Details */}
+          <DropdownMenuItem
+            onClick={() => onViewDetails(sale)}
+            className="py-2 px-3 rounded-md hover:!bg-[#4a5d0f] hover:!text-white cursor-pointer"
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            Details
+          </DropdownMenuItem>
+
           {/* Payment History */}
           <DropdownMenuItem
             onClick={() => onViewHistory(sale)}
