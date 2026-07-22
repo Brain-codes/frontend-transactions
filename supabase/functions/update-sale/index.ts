@@ -114,27 +114,32 @@ Deno.serve(async (req) => {
       return jsonError(`Contact phone: ${PHONE_FORMAT_MESSAGE}`, 400);
     }
 
-    // End-user phone uniqueness (digits-only, excluding this sale)
+    // End-user phone uniqueness (digits-only, excluding this sale).
+    // Skip when the phone is unchanged from the current sale's stored phone.
     {
       const phoneDigits = String(phone).replace(/\D+/g, "");
-      const tail = phoneDigits.slice(-10);
-      const { data: dupes } = await supabase
-        .from("sales")
-        .select("id, transaction_id, phone")
-        .neq("id", saleId)
-        .ilike("phone", `%${tail}%`)
-        .limit(100);
-      const clash = (dupes ?? []).find(
-        (r: { phone: string | null }) =>
-          String(r.phone ?? "").replace(/\D+/g, "") === phoneDigits
-      );
-      if (clash) {
-        return jsonError(
-          `This end user phone is already used on sale ${clash.transaction_id}.`,
-          409
+      const currentDigits = String(sale.phone ?? "").replace(/\D+/g, "");
+      if (phoneDigits && phoneDigits !== currentDigits) {
+        const tail = phoneDigits.slice(-10);
+        const { data: dupes } = await supabase
+          .from("sales")
+          .select("id, transaction_id, phone")
+          .neq("id", saleId)
+          .ilike("phone", `%${tail}%`)
+          .limit(100);
+        const clash = (dupes ?? []).find(
+          (r: { phone: string | null }) =>
+            String(r.phone ?? "").replace(/\D+/g, "") === phoneDigits
         );
+        if (clash) {
+          return jsonError(
+            `This end user phone is already used on sale ${clash.transaction_id}.`,
+            409
+          );
+        }
       }
     }
+
 
     // Update address (if provided and sale has one)
     if (addressData && sale.address_id) {
