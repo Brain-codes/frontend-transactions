@@ -278,6 +278,31 @@ export async function updateUser(
       updatedUser = profileRow;
     }
 
+    // Some deployments have a DB trigger that syncs profiles.full_name from
+    // auth.users.raw_user_meta_data->>'full_name' after UPDATE. Without also
+    // updating the auth metadata, the profile update appears to succeed but
+    // the trigger reverts full_name (to null for users with no auth meta).
+    // Keep auth metadata in sync when name/phone/role change.
+    const authMetaPatch: Record<string, unknown> = {};
+    if (profileUpdates.full_name !== undefined) authMetaPatch.full_name = profileUpdates.full_name;
+    if (profileUpdates.phone !== undefined) authMetaPatch.phone = profileUpdates.phone;
+    if (profileUpdates.role !== undefined) authMetaPatch.role = profileUpdates.role;
+    if (Object.keys(authMetaPatch).length > 0) {
+      const { error: metaErr } = await supabase.auth.admin.updateUserById(userId, {
+        user_metadata: authMetaPatch,
+      });
+      if (metaErr) {
+        console.warn("⚠️ Failed to sync auth user_metadata:", metaErr.message);
+      } else {
+        const { data: refreshed } = await supabase
+          .from("profiles")
+          .select("id, full_name, email, phone, role, status, created_at")
+          .eq("id", userId)
+          .single();
+        if (refreshed) updatedUser = refreshed;
+      }
+    }
+
     // If email was updated, update it in Auth as well
     if (profileUpdates.email) {
       const { error: authUpdateError } =
