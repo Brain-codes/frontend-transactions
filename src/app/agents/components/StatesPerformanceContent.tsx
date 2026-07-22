@@ -1060,7 +1060,7 @@ export default function StatesPerformanceContent() {
                   Partners in {modalState}
                 </DialogTitle>
                 <DialogDescription className="text-white/80 text-xs">
-                  {modalPartners.length} partner{modalPartners.length === 1 ? "" : "s"} found
+                  {formatNumber(modalPartners.length)} partner{modalPartners.length === 1 ? "" : "s"} found
                 </DialogDescription>
               </div>
               <button
