@@ -380,6 +380,7 @@ export default function StatesPerformanceContent() {
               sellThrough: 0,
               partnerDetails: [],
               agentDetails: [],
+              stoveDetails: [],
             };
             map.set(state, r);
           }
