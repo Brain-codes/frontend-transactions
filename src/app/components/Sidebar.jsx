@@ -58,7 +58,7 @@ const allNavItems = [
       { name: "Partner Agents Profile", route: "partner-agents-profiles", href: "/agents/partner-agents-profiles" },
     ],
   },
-  { name: "Performance Report", icon: BarChart3, route: "performance-report", href: "/agents" },
+  { name: "Performance Report", icon: BarChart3, route: "agents", href: "/agents" },
   {
     name: "Manage Sales",
     icon: ShoppingCart,
