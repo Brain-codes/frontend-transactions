@@ -89,6 +89,9 @@ export default function StatesPerformanceContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<StateRow[]>([]);
+  const [acslRoster, setAcslRoster] = useState<{ id: string; name: string; role: string; phone: string }[]>([]);
+  const [unassignedModalOpen, setUnassignedModalOpen] = useState(false);
+  const [unassignedSearch, setUnassignedSearch] = useState("");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("sold");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -125,7 +128,7 @@ export default function StatesPerformanceContent() {
         // Partner-side agents/profiles with an org
         const { data: profiles, error: pErr } = await supabase
           .from("profiles")
-          .select("id,full_name,email,role,organization_id")
+          .select("id,full_name,email,role,organization_id,phone")
           .in("role", ["partner", "admin", "partner_agent", "agent", "acsl_agent", "acsl_agent_manager"]);
         if (pErr) throw pErr;
 
@@ -356,7 +359,19 @@ export default function StatesPerformanceContent() {
             agentDetails: agentDetailsByState.get(r.state) || [],
           }));
 
-        if (!cancelled) setRows(finalRows);
+        const roster = (profiles || [])
+          .filter((p: any) => p.role === "acsl_agent" || p.role === "acsl_agent_manager")
+          .map((p: any) => ({
+            id: p.id,
+            name: p.full_name || p.email || "—",
+            role: p.role,
+            phone: p.phone || "",
+          }));
+
+        if (!cancelled) {
+          setRows(finalRows);
+          setAcslRoster(roster);
+        }
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Failed to load states performance");
       } finally {
@@ -399,8 +414,27 @@ export default function StatesPerformanceContent() {
       },
       { partners: 0, stoves: 0, sold: 0, notSold: 0 },
     );
+    // Union with authoritative ACSL roster so KPI matches the Agents Performance report
+    acslRoster.forEach((a) => uniqueAgentIds.add(a.id));
     return { ...base, agents: uniqueAgentIds.size };
-  }, [filtered]);
+  }, [filtered, acslRoster]);
+
+  const unassignedAgents = useMemo(() => {
+    const assigned = new Set<string>();
+    filtered.forEach((r) => (r.agentDetails || []).forEach((a) => a?.id && assigned.add(a.id)));
+    return acslRoster.filter((a) => !assigned.has(a.id));
+  }, [filtered, acslRoster]);
+
+  const unassignedFiltered = useMemo(() => {
+    const q = unassignedSearch.trim().toLowerCase();
+    if (!q) return unassignedAgents;
+    return unassignedAgents.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        a.role.toLowerCase().includes(q) ||
+        (a.phone || "").toLowerCase().includes(q),
+    );
+  }, [unassignedAgents, unassignedSearch]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const clampedPage = Math.min(page, totalPages);
@@ -602,7 +636,19 @@ export default function StatesPerformanceContent() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <Kpi icon={MapPin} label="States" value={filtered.length} tone="blue" />
         <Kpi icon={Building2} label="Partners" value={totals.partners} tone="orange" />
-        <Kpi icon={Users} label="Agents" value={totals.agents} tone="teal" />
+        <div className="relative">
+          <Kpi icon={Users} label="Agents" value={totals.agents} tone="teal" />
+          {unassignedAgents.length > 0 && (
+            <button
+              type="button"
+              onClick={() => { setUnassignedSearch(""); setUnassignedModalOpen(true); }}
+              title="View agents not yet assigned to any state"
+              className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow hover:bg-amber-600"
+            >
+              {unassignedAgents.length} unassigned
+            </button>
+          )}
+        </div>
         <Kpi icon={Package} label="Stoves" value={totals.stoves} tone="orange" />
         <Kpi icon={CheckCircle2} label="Sold" value={totals.sold} tone="emerald" />
         <Kpi icon={Circle} label="Not Sold" value={totals.notSold} tone="violet" />
@@ -1042,6 +1088,59 @@ export default function StatesPerformanceContent() {
                   Next
                 </Button>
               </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unassigned Agents Modal */}
+      <Dialog open={unassignedModalOpen} onOpenChange={setUnassignedModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Unassigned ACSL Agents</DialogTitle>
+            <DialogDescription>
+              {unassignedAgents.length} agent{unassignedAgents.length === 1 ? "" : "s"} not linked to any state. Assign them via User Management.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search name, role, or phone..."
+                value={unassignedSearch}
+                onChange={(e) => setUnassignedSearch(e.target.value)}
+                className="h-9 pl-8 shadow-none"
+              />
+            </div>
+            <div className="max-h-[60vh] overflow-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-[#4a5d0f]">
+                    <TableHead className="text-white">Name</TableHead>
+                    <TableHead className="text-white">Role</TableHead>
+                    <TableHead className="text-white">Phone</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {unassignedFiltered.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="py-6 text-center text-sm text-gray-500">
+                        No unassigned agents.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    unassignedFiltered.map((a) => (
+                      <TableRow key={a.id}>
+                        <TableCell className="text-sm">{a.name}</TableCell>
+                        <TableCell className="text-sm">
+                          {a.role === "acsl_agent_manager" ? "ACSL Agent Manager" : "ACSL Agent"}
+                        </TableCell>
+                        <TableCell className="text-sm">{a.phone || "—"}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </div>
         </DialogContent>
