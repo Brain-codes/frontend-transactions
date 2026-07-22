@@ -56,6 +56,24 @@ function jsonError(message: string, status: number): Response {
   return json({ success: false, message }, status);
 }
 
+/// Accepts whatever the operator pasted and recovers the raw JWT:
+/// a bare token, one wrapped in quotes, prefixed with "Bearer ", broken across
+/// lines by the textarea, or the whole localStorage session JSON blob.
+function sanitizeErpToken(raw: unknown): string {
+  let t = String(raw ?? "").trim();
+  if (t.startsWith("{") || t.startsWith("[")) {
+    try {
+      const p = JSON.parse(t);
+      const o = Array.isArray(p) ? (p[1] ?? p[0]) : p;
+      t = o?.access_token ?? o?.currentSession?.access_token ?? o?.session?.access_token ?? "";
+    } catch { /* not JSON — keep as-is */ }
+  }
+  t = String(t).replace(/^\s*["']|["']\s*$/g, "");
+  t = t.replace(/^Bearer\s+/i, "");
+  t = t.replace(/\s+/g, "");
+  return t;
+}
+
 interface ErpRow {
   stove_id: string;
   sales_reference: string;
@@ -85,8 +103,14 @@ serve(async (req) => {
   }
 
   const body = await req.json().catch(() => ({}));
-  const erpToken = typeof body?.erp_token === "string" ? body.erp_token.trim() : "";
+  const erpToken = sanitizeErpToken(body?.erp_token);
   if (!erpToken) return jsonError("Provide erp_token (your ERP login access token).", 400);
+  if (erpToken.split(".").length !== 3) {
+    return jsonError(
+      "That doesn't look like a valid ERP access token. It must be a JWT with three dot-separated parts (eyJ....eyJ....<sig>). Copy the value of `access_token` only — not the whole JSON object, and no quotes.",
+      400,
+    );
+  }
   const year = Number(body?.year) || 2026;
   const sampleLimit = Math.min(Math.max(typeof body?.sample_limit === "number" ? body.sample_limit : 2000, 0), 20000);
 

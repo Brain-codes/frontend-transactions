@@ -43,8 +43,9 @@ const formatDate = (dateStr: string) => {
   });
 };
 
-const getAmountPaid = (sale: AdminSales): number =>
-  sale.total_paid ?? (sale.is_installment ? 0 : (sale.amount ?? 0));
+// total_paid is what was actually collected, for outright sales too. Never
+// substitute `amount` here — that would report an underpaid sale as settled.
+const getAmountPaid = (sale: AdminSales): number => sale.total_paid ?? 0;
 
 const getAmountOwed = (sale: AdminSales): number =>
   Math.max(0, (sale.amount ?? 0) - getAmountPaid(sale));

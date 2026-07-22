@@ -24,7 +24,7 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
   sale, onViewDetails, onViewHistory, onRecordPayment, onApproveSale, onEditSale, onDeleteSale, onCancelSale, viewFrom = "admin",
 }) => {
   const isInstallment = sale.is_installment === true;
-  const totalPaid = sale.total_paid ?? (isInstallment ? 0 : sale.amount);
+  const totalPaid = sale.total_paid ?? 0;
   const balance = Math.max(0, (sale.amount || 0) - totalPaid);
   const showPayButton = balance > 0;
 

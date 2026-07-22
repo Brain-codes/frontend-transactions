@@ -484,17 +484,21 @@ const CreateSalesForm = ({
 
   // The catalogue narrowed to what this partner may actually sell. Resolved
   // locally so no per-partner request is ever made.
+  //
+  // A partner with NO assignments gets EVERY active model, exactly as before
+  // entitlements existed. Only a partner with an explicit list is restricted to
+  // it. `create-sale` applies the identical rule — keep the two in step.
   const visiblePaymentModels = useMemo(() => {
-    if (!orgPaymentModelIds) return paymentModels;
+    if (!orgPaymentModelIds || orgPaymentModelIds.length === 0) {
+      return paymentModels;
+    }
     const allowed = new Set(orgPaymentModelIds);
     return paymentModels.filter((m) => allowed.has(m.id));
   }, [paymentModels, orgPaymentModelIds]);
 
-  // Two different empty states, worth distinguishing: the partner genuinely has
-  // no models, versus it references models this catalogue can't resolve (the
-  // model is inactive, or was created after we loaded).
-  const partnerHasNoPaymentModels =
-    orgPaymentModelIds !== null && orgPaymentModelIds.length === 0;
+  // The partner is assigned models we can't resolve against the catalogue —
+  // they're inactive, or were created after we loaded. Distinct from having
+  // none assigned, which is no longer an empty state at all.
   const partnerModelsUnresolved =
     orgPaymentModelIds !== null &&
     orgPaymentModelIds.length > 0 &&
@@ -1379,12 +1383,6 @@ const CreateSalesForm = ({
                     ))}
                   </SelectContent>
                 </Select>
-                {partnerHasNoPaymentModels && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    This partner has no sales models assigned, so only full
-                    payment is available.
-                  </p>
-                )}
                 {partnerModelsUnresolved && (
                   <p className="mt-1 text-xs text-amber-600">
                     This partner is assigned {orgPaymentModelIds.length} sales
