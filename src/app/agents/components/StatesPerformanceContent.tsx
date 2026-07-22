@@ -355,6 +355,66 @@ export default function StatesPerformanceContent() {
     );
   };
 
+  const openPartnerModal = (state: string) => {
+    setModalState(state);
+    setModalSearch("");
+    setModalPage(1);
+    setModalPageSize(10);
+    setModalOpen(true);
+  };
+
+  const closePartnerModal = () => {
+    setModalOpen(false);
+    setModalState(null);
+    setModalSearch("");
+    setModalPage(1);
+  };
+
+  const modalPartners = useMemo(() => {
+    if (!modalState) return [];
+    const row = rows.find((r) => r.state === modalState);
+    const list = row?.partnerDetails || [];
+    const q = modalSearch.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.phone.toLowerCase().includes(q),
+    );
+  }, [rows, modalState, modalSearch]);
+
+  const modalTotalPages = Math.max(1, Math.ceil(modalPartners.length / modalPageSize));
+  const modalClampedPage = Math.min(modalPage, modalTotalPages);
+  const modalStart = (modalClampedPage - 1) * modalPageSize;
+  const modalPageRows = modalPartners.slice(modalStart, modalStart + modalPageSize);
+
+  useEffect(() => setModalPage(1), [modalSearch, modalPageSize]);
+
+  const handleModalExport = () => {
+    const headers = [
+      "Partner Name",
+      "Phone Number",
+      "Total Stoves",
+      "Stoves Sold",
+      "Stoves Available",
+    ];
+    const lines = [headers.join(",")].concat(
+      modalPartners.map((p) =>
+        [
+          `"${p.name.replace(/"/g, '""')}"`,
+          `"${p.phone.replace(/"/g, '""')}"`,
+          p.totalStoves,
+          p.stovesSold,
+          p.stovesAvailable,
+        ].join(","),
+      ),
+    );
+    downloadCSV(
+      lines.join("\n"),
+      `partners-in-${modalState?.toLowerCase().replace(/\s+/g, "-") || "state"}-${new Date().toISOString().split("T")[0]}.csv`,
+    );
+  };
+
   return (
     <div className="space-y-4 p-6">
       {/* KPI strip */}
