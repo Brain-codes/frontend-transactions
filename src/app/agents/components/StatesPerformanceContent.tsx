@@ -290,13 +290,14 @@ export default function StatesPerformanceContent() {
     <div className="space-y-4 p-6">
       {/* KPI strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Kpi icon={MapPin} label="States" value={filtered.length} tone="green" />
-        <Kpi icon={Building2} label="Partners" value={totals.partners} tone="green" />
-        <Kpi icon={Users} label="Agents" value={totals.agents} tone="green" />
-        <Kpi icon={Package} label="Stoves" value={totals.stoves} tone="slate" />
+        <Kpi icon={MapPin} label="States" value={filtered.length} tone="blue" />
+        <Kpi icon={Building2} label="Partners" value={totals.partners} tone="indigo" />
+        <Kpi icon={Users} label="Agents" value={totals.agents} tone="teal" />
+        <Kpi icon={Package} label="Stoves" value={totals.stoves} tone="orange" />
         <Kpi icon={CheckCircle2} label="Sold" value={totals.sold} tone="emerald" />
-        <Kpi icon={Circle} label="Not Sold" value={totals.notSold} tone="rose" />
+        <Kpi icon={Circle} label="Not Sold" value={totals.notSold} tone="violet" />
       </div>
+
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[#e5e7eb] bg-white p-3">
