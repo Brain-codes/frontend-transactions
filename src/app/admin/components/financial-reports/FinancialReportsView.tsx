@@ -345,7 +345,7 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
   const clearFilters = () => {
     setSearchTerm(""); setPaymentStatusFilter("all"); setStartDate(""); setEndDate("");
     setSelectedState("all"); setSelectedLGA("all"); setOrgFilter("all"); setApprovalFilter("all");
-    setTrackingFilter("none");
+    setSalesModelFilter("all"); setTrackingFilter("none");
   };
 
   // Clicking a status card toggles the filter
