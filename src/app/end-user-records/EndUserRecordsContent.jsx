@@ -491,6 +491,16 @@ const EndUserRecordsContent = () => {
                                 Edit
                               </Button>
                             )}
+                            {canDelete && (
+                              <Button
+                                size="sm"
+                                className="h-7 px-3 rounded-none bg-red-600 hover:bg-red-700 text-white"
+                                onClick={() => setDeleteTarget(sale)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                                Delete
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
