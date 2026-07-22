@@ -459,7 +459,7 @@ export default function StatesPerformanceContent() {
     return () => {
       cancelled = true;
     };
-  }, [supabase]);
+  }, [supabase, reloadKey]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
