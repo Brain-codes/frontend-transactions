@@ -285,7 +285,7 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
     });
 
     return result;
-  }, [allSales, searchTerm, paymentStatusFilter, startDate, endDate, sortOrder, selectedState, selectedLGA, orgFilter, approvalFilter, salesModelFilter, selectedYears, availableYears, viewFrom]);
+  }, [allSales, searchTerm, paymentStatusFilter, startDate, endDate, sortOrder, selectedState, selectedLGA, orgFilter, approvalFilter, salesModelFilter, selectedMonth, yearFilter, selectedYears, availableYears, viewFrom]);
 
   const financialSummary = useMemo(() => {
     const totalReceivable = filteredSales.reduce((sum, s) => sum + (s.amount || 0), 0);
