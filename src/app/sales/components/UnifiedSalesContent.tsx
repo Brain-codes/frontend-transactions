@@ -34,9 +34,8 @@ export default function UnifiedSalesContent() {
   const [reloadKey, setReloadKey] = useState(0);
   const reload = () => setReloadKey((k) => k + 1);
 
-  const CURRENT_YEAR = new Date().getFullYear();
-  const YEARS = Array.from({ length: CURRENT_YEAR - 2023 }, (_, i) => 2024 + i);
-  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
+
+
 
   const exportFnRef = useRef<(() => void) | null>(null);
   const [exporting, setExporting] = useState(false);
