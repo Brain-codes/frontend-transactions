@@ -747,6 +747,23 @@ const PartnerProfilesContent = () => {
                             <TooltipContent>Edit partner</TooltipContent>
                           </Tooltip>
                           )}
+
+                          {can("manage-all-partners") && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => setTransferHistoryOrg(p)}
+                                aria-label="Purchases from ACSL"
+                                className="inline-flex items-center justify-center h-8 px-3 bg-black text-white text-xs font-medium shadow-sm hover:bg-black/90 active:scale-[0.98] transition"
+                              >
+                                Purchases from ACSL
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>View purchases from ACSL</TooltipContent>
+                          </Tooltip>
+                          )}
+
                         </TooltipProvider>
                       </div>
 
