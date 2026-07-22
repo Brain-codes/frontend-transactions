@@ -1197,7 +1197,7 @@ export default function StatesPerformanceContent() {
                   Agents in {agentModalState}
                 </DialogTitle>
                 <DialogDescription className="text-white/80 text-xs">
-                  {agentModalAgents.length} agent{agentModalAgents.length === 1 ? "" : "s"} · Total stoves in state: {agentModalRow?.stoves ?? 0} · Unsold: {agentModalRow?.notSold ?? 0}
+                  {formatNumber(agentModalAgents.length)} agent{agentModalAgents.length === 1 ? "" : "s"} · Total stoves in state: {formatNumber(agentModalRow?.stoves ?? 0)} · Unsold: {formatNumber(agentModalRow?.notSold ?? 0)}
                 </DialogDescription>
               </div>
               <button
