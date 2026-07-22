@@ -1141,8 +1141,8 @@ export default function StatesPerformanceContent() {
             {/* Modal pagination */}
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#e5e7eb] pt-3 text-xs text-gray-600">
               <div>
-                Showing {modalPartners.length === 0 ? 0 : modalStart + 1}–
-                {Math.min(modalStart + modalPageSize, modalPartners.length)} of {modalPartners.length} partners
+                Showing {modalPartners.length === 0 ? 0 : formatNumber(modalStart + 1)}–
+                {formatNumber(Math.min(modalStart + modalPageSize, modalPartners.length))} of {formatNumber(modalPartners.length)} partners
               </div>
               <div className="flex items-center gap-2">
                 <span>per page:</span>
