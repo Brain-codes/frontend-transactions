@@ -356,15 +356,16 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, paymentStatusFilter, startDate, endDate, pageSize, selectedState, selectedLGA, orgFilter, approvalFilter, salesModelFilter, selectedYears, trackingFilter]);
+  }, [searchTerm, paymentStatusFilter, startDate, endDate, pageSize, selectedState, selectedLGA, orgFilter, approvalFilter, salesModelFilter, selectedMonth, yearFilter, selectedYears, trackingFilter]);
 
-  const hasActiveFilters = searchTerm !== "" || paymentStatusFilter !== "all" || startDate !== "" || endDate !== "" || selectedState !== "all" || selectedLGA !== "all" || orgFilter !== "all" || approvalFilter !== "all" || salesModelFilter !== "all" || trackingFilter !== "none";
+  const hasActiveFilters = searchTerm !== "" || paymentStatusFilter !== "all" || startDate !== "" || endDate !== "" || selectedState !== "all" || selectedLGA !== "all" || orgFilter !== "all" || approvalFilter !== "all" || salesModelFilter !== "all" || selectedMonth !== "all" || yearFilter !== "all" || trackingFilter !== "none";
 
   const clearFilters = () => {
     setSearchTerm(""); setPaymentStatusFilter("all"); setStartDate(""); setEndDate("");
     setSelectedState("all"); setSelectedLGA("all"); setOrgFilter("all"); setApprovalFilter("all");
-    setSalesModelFilter("all"); setTrackingFilter("none");
+    setSalesModelFilter("all"); setSelectedMonth("all"); setYearFilter("all"); setTrackingFilter("none");
   };
+
 
   // Clicking a status card toggles the filter
   const handleCardFilterClick = (filter: string) => {
