@@ -482,32 +482,49 @@ const EndUserRecordsContent = () => {
                         </TableCell>
                         <TableCell className="py-2 px-2 whitespace-nowrap text-right">
                           <div className="inline-flex items-center gap-2 justify-end">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 px-3 rounded-none border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4]"
-                              onClick={() => setSelectedSale(sale)}
-                            >
-                              Details
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="outline"
+                                  aria-label="View details"
+                                  className="h-8 w-8 rounded-none border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4]"
+                                  onClick={() => setSelectedSale(sale)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">View details</TooltipContent>
+                            </Tooltip>
                             {canEdit && (
-                              <Button
-                                size="sm"
-                                className="h-7 px-3 rounded-none bg-[#4a5d0f] hover:bg-[#3a4a0c] text-white"
-                                onClick={() => setEditSale(sale)}
-                              >
-                                Edit
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    aria-label="Edit record"
+                                    className="h-8 w-8 rounded-none bg-[#4a5d0f] hover:bg-[#3a4a0c] text-white"
+                                    onClick={() => setEditSale(sale)}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">Edit record</TooltipContent>
+                              </Tooltip>
                             )}
                             {canDelete && (
-                              <Button
-                                size="sm"
-                                className="h-7 px-3 rounded-none bg-red-600 hover:bg-red-700 text-white"
-                                onClick={() => setDeleteTarget(sale)}
-                              >
-                                <Trash2 className="h-3.5 w-3.5 mr-1" />
-                                Delete
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    aria-label="Delete record"
+                                    className="h-8 w-8 rounded-none bg-red-600 hover:bg-red-700 text-white"
+                                    onClick={() => setDeleteTarget(sale)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">Delete record</TooltipContent>
+                              </Tooltip>
                             )}
                           </div>
                         </TableCell>
