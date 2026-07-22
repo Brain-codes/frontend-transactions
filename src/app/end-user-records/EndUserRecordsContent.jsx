@@ -206,9 +206,16 @@ const EndUserRecordsContent = () => {
     return pages;
   };
 
+  const getModifierName = (s) =>
+    s.updated_by_profile?.full_name ||
+    s.creator?.full_name ||
+    s.created_by_profile?.full_name ||
+    s.sales_agent?.full_name ||
+    "";
+
   const formatModifier = (s) => {
-    const name = s.updated_by_profile?.full_name;
-    const when = s.updated_at ? formatDate(s.updated_at) : null;
+    const name = getModifierName(s);
+    const when = s.updated_at || s.created_at ? formatDate(s.updated_at || s.created_at) : null;
     if (!name && !when) return "—";
     if (name && when) return `${name} · ${when}`;
     return name || when || "—";
