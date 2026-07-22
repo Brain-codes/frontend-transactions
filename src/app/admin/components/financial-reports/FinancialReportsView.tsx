@@ -448,6 +448,9 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
             onOrgChange={viewFrom === "acsl_agent" ? setOrgFilter : undefined}
             approvalFilter={viewFrom === "acsl_agent" ? approvalFilter : undefined}
             onApprovalChange={viewFrom === "acsl_agent" ? setApprovalFilter : undefined}
+            salesModelFilter={salesModelFilter}
+            onSalesModelChange={setSalesModelFilter}
+            salesModels={salesModels}
             // We would need to fetch assignedOrgs if viewFrom === "acsl_agent"
             // For now, we can extract them from allSales
             assignedOrgs={viewFrom === "acsl_agent" ? Array.from(new Set(allSales.map(s => s.organization_id).filter(Boolean))).map(id => ({
