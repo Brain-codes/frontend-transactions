@@ -385,17 +385,21 @@ export default function StatesPerformanceContent() {
   }, [rows, search, sortKey, sortDir]);
 
   const totals = useMemo(() => {
-    return filtered.reduce(
+    const uniqueAgentIds = new Set<string>();
+    const base = filtered.reduce(
       (acc, r) => {
         acc.partners += r.partners;
-        acc.agents += r.agents;
         acc.stoves += r.stoves;
         acc.sold += r.sold;
         acc.notSold += r.notSold;
+        (r.agentDetails || []).forEach((a) => {
+          if (a?.id) uniqueAgentIds.add(a.id);
+        });
         return acc;
       },
-      { partners: 0, agents: 0, stoves: 0, sold: 0, notSold: 0 },
+      { partners: 0, stoves: 0, sold: 0, notSold: 0 },
     );
+    return { ...base, agents: uniqueAgentIds.size };
   }, [filtered]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
