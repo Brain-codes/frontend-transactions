@@ -41,6 +41,76 @@ import {
   X,
 } from "lucide-react";
 import { downloadCSV } from "@/utils/csvExportUtils";
+import tokenManager from "@/utils/tokenManager";
+
+const PROFILE_ROLES_FOR_STATES = [
+  "partner",
+  "admin",
+  "partner_agent",
+  "agent",
+  "acsl_agent",
+  "acsl_agent_manager",
+];
+
+type ProfileLite = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  role: string;
+  organization_id: string | null;
+  phone: string | null;
+};
+
+async function fetchProfilesViaManageUsers(): Promise<ProfileLite[] | null> {
+  try {
+    const { supabaseFunctionsUrl } = await import("@/lib/supabaseConfig");
+    const token = await tokenManager.getValidToken();
+    if (!token) return null;
+
+    const fetchRole = async (role: string): Promise<any[]> => {
+      const rows: any[] = [];
+      let nextPage = 1;
+      let totalPages = 1;
+      do {
+        const qs = new URLSearchParams({
+          page: String(nextPage),
+          limit: "100",
+          sortBy: "created_at",
+          sortOrder: "desc",
+          role,
+        });
+        const res = await fetch(`${supabaseFunctionsUrl}/manage-users?${qs.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const contentType = res.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) return rows;
+        const json = await res.json();
+        if (!res.ok) return rows;
+        rows.push(...(json.data || []));
+        totalPages = json.pagination?.totalPages ?? 1;
+        nextPage += 1;
+      } while (nextPage <= totalPages);
+      return rows;
+    };
+
+    const all = (await Promise.all(PROFILE_ROLES_FOR_STATES.map(fetchRole))).flat();
+    const byId = new Map<string, ProfileLite>();
+    all.forEach((u: any) => {
+      if (!u?.id || byId.has(u.id)) return;
+      byId.set(u.id, {
+        id: u.id,
+        full_name: u.full_name ?? u.name ?? null,
+        email: u.email ?? null,
+        role: u.role,
+        organization_id: u.organization_id ?? null,
+        phone: u.phone ?? null,
+      });
+    });
+    return Array.from(byId.values());
+  } catch {
+    return null;
+  }
+}
 
 type SortKey =
   | "state"
@@ -125,12 +195,17 @@ export default function StatesPerformanceContent() {
           .select("id,state,partner_name,contact_phone,alternative_phone");
         if (oErr) throw oErr;
 
-        // Partner-side agents/profiles with an org
-        const { data: profiles, error: pErr } = await supabase
-          .from("profiles")
-          .select("id,full_name,email,role,organization_id,phone")
-          .in("role", ["partner", "admin", "partner_agent", "agent", "acsl_agent", "acsl_agent_manager"]);
-        if (pErr) throw pErr;
+        // Partner-side + ACSL profiles — prefer manage-users (service role, bypasses RLS)
+        // so the roster and names match the Agents Performance report.
+        let profiles: ProfileLite[] | null = await fetchProfilesViaManageUsers();
+        if (!profiles) {
+          const { data: fallback, error: pErr } = await supabase
+            .from("profiles")
+            .select("id,full_name,email,role,organization_id,phone")
+            .in("role", PROFILE_ROLES_FOR_STATES);
+          if (pErr) throw pErr;
+          profiles = (fallback || []) as ProfileLite[];
+        }
 
         // ACSL agent -> state assignments
         const { data: acslStates, error: aErr } = await supabase
