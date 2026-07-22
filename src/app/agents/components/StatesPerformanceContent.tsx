@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../contexts/useAuth";
+import { useRealtimeRefresh, useRefreshListener } from "../hooks/useRealtimeRefresh";
+
+const REALTIME_STATE_TABLES = ["organizations", "profiles", "acsl_agent_states", "sales", "stove_ids"];
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
