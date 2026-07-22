@@ -2557,16 +2557,24 @@ export default function SuperAdminAgentsContent() {
             const total_partners_count = isAcslRole
               ? directOrgs.length
               : a.total_partners_count;
+            const states = agentToStates[a.id] || [];
+            const assigned_states = isAcslRole && states.length > 0 ? states : a.assigned_states;
+            const assigned_states_count = isAcslRole
+              ? states.length
+              : a.assigned_states_count;
 
             return {
               ...a,
               assigned_organizations_count,
               total_partners_count,
+              assigned_states,
+              assigned_states_count,
               stove_summary: { received, sold, available },
               direct_org_ids: directOrgs,
             };
           })
         );
+
 
       } catch {
         // silent: columns fall back to em-dash
