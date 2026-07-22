@@ -27,11 +27,14 @@ import {
   X,
   Download,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import salesAdvancedService from "../services/salesAdvancedAPIService";
+import adminSalesService from "../services/adminSalesService";
 import { lgaAndStates } from "../constants";
 import AdminSalesDetailModal from "../admin/components/sales/AdminSalesDetailModal";
 import EditEndUserModal from "./EditEndUserModal";
+import CancelSaleModal from "../admin/components/sales/CancelSaleModal";
 import { useAuth } from "../contexts/useAuth";
 import { resolveRole } from "@/lib/permissions";
 
