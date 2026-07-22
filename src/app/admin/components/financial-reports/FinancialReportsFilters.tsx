@@ -32,6 +32,9 @@ interface FinancialReportsFiltersProps {
   assignedOrgs?: { id: string; partner_name: string }[];
   approvalFilter?: string;
   onApprovalChange?: (value: string) => void;
+  salesModelFilter?: string;
+  onSalesModelChange?: (value: string) => void;
+  salesModels?: { id: string; name: string }[];
   stateList?: string[];
   lgaList?: string[];
 }
@@ -56,6 +59,9 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
   assignedOrgs = [],
   approvalFilter,
   onApprovalChange,
+  salesModelFilter,
+  onSalesModelChange,
+  salesModels = [],
   stateList = [],
   lgaList = [],
 }) => {
@@ -91,6 +97,23 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
             </SelectContent>
           </Select>
         </div>
+
+        {/* Sales Model Filter */}
+        {onSalesModelChange && (
+          <div className="flex-1 min-w-[150px] max-w-[200px]">
+            <Select value={salesModelFilter} onValueChange={onSalesModelChange}>
+              <SelectTrigger className="bg-white text-sm h-10 shadow-none">
+                <SelectValue placeholder="All Sales Models" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sales Models</SelectItem>
+                {salesModels.map((model) => (
+                  <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* State Filter */}
         {onStateChange && (

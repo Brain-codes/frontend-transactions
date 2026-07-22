@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { lgaAndStates } from "../../../constants";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CalendarDays, ChevronDown, ChevronUp } from "lucide-react";
+import paymentModelService from "../../../services/paymentModelService";
 
 // --- YearFilterBar helper ---
 const STORAGE_KEY = "super_admin_manage_sales_selected_years";
@@ -130,6 +131,8 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
   const [selectedLGA, setSelectedLGA] = useState("all");
   const [orgFilter, setOrgFilter] = useState("all");
   const [approvalFilter, setApprovalFilter] = useState("all");
+  const [salesModelFilter, setSalesModelFilter] = useState("all");
+  const [salesModels, setSalesModels] = useState<{ id: string; name: string }[]>([]);
   const [trackingFilter, setTrackingFilter] = useState<TrackingKey>("none");
   const [internalSelectedYears, setInternalSelectedYears] = useState<number[]>(loadSelectedYears);
   const selectedYears = useMemo(
@@ -179,6 +182,22 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
   }, [loadSales]);
 
   useEffect(() => { fetchSales(); }, [fetchSales]);
+
+  // Load active sales models for the filter dropdown
+  useEffect(() => {
+    let mounted = true;
+    paymentModelService.getPaymentModels({ status: "active" })
+      .then((res) => {
+        if (!mounted) return;
+        const models = (res?.data || [])
+          .filter((m: any) => m && m.is_active !== false)
+          .map((m: any) => ({ id: m.id, name: m.name }))
+          .sort((a: any, b: any) => a.name.localeCompare(b.name));
+        setSalesModels(models);
+      })
+      .catch((err) => console.error("[SalesRecords] failed to load sales models:", err));
+    return () => { mounted = false; };
+  }, []);
 
   const filteredSales = useMemo(() => {
     let result = [...allSales];
@@ -234,6 +253,9 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
     if (approvalFilter !== "all") {
       result = result.filter((s) => approvalFilter === "approved" ? s.agent_approved : !s.agent_approved);
     }
+    if (salesModelFilter !== "all") {
+      result = result.filter((s) => s.payment_model_id === salesModelFilter);
+    }
 
     if (startDate) result = result.filter((s) => (s.sales_date || s.created_at) >= startDate);
     if (endDate)   result = result.filter((s) => (s.sales_date || s.created_at) <= endDate + "T23:59:59");
@@ -245,7 +267,7 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
     });
 
     return result;
-  }, [allSales, searchTerm, paymentStatusFilter, startDate, endDate, sortOrder, selectedState, selectedLGA, orgFilter, approvalFilter, selectedYears, availableYears, viewFrom]);
+  }, [allSales, searchTerm, paymentStatusFilter, startDate, endDate, sortOrder, selectedState, selectedLGA, orgFilter, approvalFilter, salesModelFilter, selectedYears, availableYears, viewFrom]);
 
   const financialSummary = useMemo(() => {
     const totalReceivable = filteredSales.reduce((sum, s) => sum + (s.amount || 0), 0);
@@ -316,14 +338,14 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, paymentStatusFilter, startDate, endDate, pageSize, selectedState, selectedLGA, orgFilter, approvalFilter, selectedYears, trackingFilter]);
+  }, [searchTerm, paymentStatusFilter, startDate, endDate, pageSize, selectedState, selectedLGA, orgFilter, approvalFilter, salesModelFilter, selectedYears, trackingFilter]);
 
-  const hasActiveFilters = searchTerm !== "" || paymentStatusFilter !== "all" || startDate !== "" || endDate !== "" || selectedState !== "all" || selectedLGA !== "all" || orgFilter !== "all" || approvalFilter !== "all" || trackingFilter !== "none";
+  const hasActiveFilters = searchTerm !== "" || paymentStatusFilter !== "all" || startDate !== "" || endDate !== "" || selectedState !== "all" || selectedLGA !== "all" || orgFilter !== "all" || approvalFilter !== "all" || salesModelFilter !== "all" || trackingFilter !== "none";
 
   const clearFilters = () => {
     setSearchTerm(""); setPaymentStatusFilter("all"); setStartDate(""); setEndDate("");
     setSelectedState("all"); setSelectedLGA("all"); setOrgFilter("all"); setApprovalFilter("all");
-    setTrackingFilter("none");
+    setSalesModelFilter("all"); setTrackingFilter("none");
   };
 
   // Clicking a status card toggles the filter
@@ -373,6 +395,9 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
         exportData = exportData.filter((s: any) =>
           approvalFilter === "approved" ? s.agent_approved : !s.agent_approved
         );
+      }
+      if (salesModelFilter !== "all") {
+        exportData = exportData.filter((s: any) => s.payment_model_id === salesModelFilter);
       }
       if (selectedYears.length > 0 && selectedYears.length < availableYears.length) {
         exportData = exportData.filter((s: any) => {
@@ -426,6 +451,9 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
             onOrgChange={viewFrom === "acsl_agent" ? setOrgFilter : undefined}
             approvalFilter={viewFrom === "acsl_agent" ? approvalFilter : undefined}
             onApprovalChange={viewFrom === "acsl_agent" ? setApprovalFilter : undefined}
+            salesModelFilter={salesModelFilter}
+            onSalesModelChange={setSalesModelFilter}
+            salesModels={salesModels}
             // We would need to fetch assignedOrgs if viewFrom === "acsl_agent"
             // For now, we can extract them from allSales
             assignedOrgs={viewFrom === "acsl_agent" ? Array.from(new Set(allSales.map(s => s.organization_id).filter(Boolean))).map(id => ({
