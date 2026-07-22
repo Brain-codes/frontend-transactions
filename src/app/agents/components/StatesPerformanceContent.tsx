@@ -1174,11 +1174,13 @@ function Kpi({
   label,
   value,
   tone,
+  sub,
 }: {
   icon: any;
   label: string;
   value: number;
   tone: "blue" | "indigo" | "teal" | "orange" | "emerald" | "violet";
+  sub?: string;
 }) {
   const toneMap: Record<string, string> = {
     blue: "from-blue-500 to-blue-600",
@@ -1196,6 +1198,9 @@ function Kpi({
         <div className="min-w-0">
           <div className="text-xl font-bold leading-tight">{value.toLocaleString()}</div>
           <div className="mt-0.5 text-[11px] font-medium text-white/90">{label}</div>
+          {sub ? (
+            <div className="mt-1 text-[10px] font-medium text-white/80">{sub}</div>
+          ) : null}
         </div>
         <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/20 backdrop-blur-sm">
           <Icon className="h-3.5 w-3.5" />
@@ -1204,6 +1209,7 @@ function Kpi({
     </div>
   );
 }
+
 
 
 function Pill({
