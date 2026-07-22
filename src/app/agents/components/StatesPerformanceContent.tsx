@@ -359,7 +359,19 @@ export default function StatesPerformanceContent() {
             agentDetails: agentDetailsByState.get(r.state) || [],
           }));
 
-        if (!cancelled) setRows(finalRows);
+        const roster = (profiles || [])
+          .filter((p: any) => p.role === "acsl_agent" || p.role === "acsl_agent_manager")
+          .map((p: any) => ({
+            id: p.id,
+            name: p.full_name || p.email || "—",
+            role: p.role,
+            phone: p.phone || "",
+          }));
+
+        if (!cancelled) {
+          setRows(finalRows);
+          setAcslRoster(roster);
+        }
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Failed to load states performance");
       } finally {
