@@ -1348,7 +1348,7 @@ export default function StatesPerformanceContent() {
                   Stove IDs in {stoveModalState}
                 </DialogTitle>
                 <DialogDescription className="text-white/80 text-xs">
-                  {stoveModalRow?.stoves ?? 0} total · {stoveModalRow?.sold ?? 0} sold · {stoveModalRow?.notSold ?? 0} available
+                  {formatNumber(stoveModalRow?.stoves ?? 0)} total · {formatNumber(stoveModalRow?.sold ?? 0)} sold · {formatNumber(stoveModalRow?.notSold ?? 0)} available
                 </DialogDescription>
               </div>
               <button
