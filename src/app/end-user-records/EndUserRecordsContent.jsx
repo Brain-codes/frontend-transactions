@@ -206,6 +206,14 @@ const EndUserRecordsContent = () => {
     return pages;
   };
 
+  const formatModifier = (s) => {
+    const name = s.updated_by_profile?.full_name;
+    const when = s.updated_at ? formatDate(s.updated_at) : null;
+    if (!name && !when) return "—";
+    if (name && when) return `${name} · ${when}`;
+    return name || when || "—";
+  };
+
   const handleExport = () => {
     const headers = [
       "Stove ID",
@@ -216,6 +224,7 @@ const EndUserRecordsContent = () => {
       "End User",
       "State",
       "LGA",
+      "Last Modified By",
     ];
     const rows = filteredSales.map((s) => [
       s.stove_serial_no || "",
@@ -226,6 +235,7 @@ const EndUserRecordsContent = () => {
       s.end_user_name || "",
       s.state_backup || "",
       s.lga_backup || "",
+      formatModifier(s),
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
