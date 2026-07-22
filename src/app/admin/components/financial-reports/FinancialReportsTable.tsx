@@ -145,13 +145,13 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                     ? (sale.payment_model?.name || "Installment")
                     : "Full Payment"}
                 </TableCell>
-                <TableCell className="py-1 px-1 text-left font-bold break-words align-top">
+                <TableCell className="py-1 px-1 text-left break-words align-top">
                   {formatCurrency(sale.amount ?? 0)}
                 </TableCell>
-                <TableCell className="py-1 px-1 text-left text-green-700 font-medium break-words align-top">
+                <TableCell className="py-1 px-1 text-left text-green-700 break-words align-top">
                   {formatCurrency(getAmountPaid(sale))}
                 </TableCell>
-                <TableCell className="py-1 px-1 text-left text-red-700 font-medium break-words align-top">
+                <TableCell className="py-1 px-1 text-left text-red-700 break-words align-top">
                   {formatCurrency(getAmountOwed(sale))}
                 </TableCell>
                 <TableCell className="py-1 px-1 break-words align-top">
