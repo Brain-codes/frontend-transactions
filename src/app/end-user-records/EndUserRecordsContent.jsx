@@ -556,6 +556,16 @@ const EndUserRecordsContent = () => {
         sale={selectedSale}
         viewFrom="superAdmin"
       />
+      <EditEndUserModal
+        open={!!editSale}
+        sale={editSale}
+        onClose={() => setEditSale(null)}
+        onSaved={(updated) => {
+          setAllSales((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
+          // Refresh in the background to pick up the fresh updated_by_profile join.
+          fetchSales();
+        }}
+      />
     </DashboardLayout>
   );
 };
