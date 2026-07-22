@@ -27,8 +27,7 @@ function bucketMonthlySales(rows: any[]) {
     if (!raw) return;
     const d = new Date(raw);
     if (isNaN(d.getTime())) return;
-    const qty = Number(r?.quantity ?? 1) || 1;
-    counts[d.getMonth()] += qty;
+    counts[d.getMonth()] += 1;
   });
   return MONTHS.map((m, i) => ({ month: m, value: counts[i] }));
 }
@@ -78,13 +77,19 @@ const AgentRecordsChart = ({
     MONTHS.map((m) => ({ month: m, value: 0 }))
   );
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     let mounted = true;
-    if (!supabase) return;
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
 
     (async () => {
       try {
+        setLoading(true);
+        setErrorMessage("");
         // 1. Roster of ACSL agent user IDs (via edge function, RLS-safe)
         let agentIds = await fetchAgentIdsViaManageUsers();
 
@@ -107,20 +112,39 @@ const AgentRecordsChart = ({
           return;
         }
 
-        // 2. Fetch sales created by those agents (batched IN queries)
+        // 2. Fetch sales attributed to those agents (batched IN queries).
+        // Each row is one collected record; the sales table has no quantity column.
         const BATCH = 200;
         const allSales: any[] = [];
+        const seenSaleIds = new Set<string>();
+
+        const addSales = (rows: any[]) => {
+          (rows || []).forEach((row) => {
+            if (!row?.id || seenSaleIds.has(row.id)) return;
+            seenSaleIds.add(row.id);
+            allSales.push(row);
+          });
+        };
 
         for (let i = 0; i < agentIds.length; i += BATCH) {
           const batch = agentIds.slice(i, i + BATCH);
-          const { data, error } = await supabase
+          const { data: createdByRows, error: createdByError } = await supabase
             .from("sales")
-            .select("sales_date, quantity, created_at")
+            .select("id, sales_date, created_at")
             .in("created_by", batch)
             .eq("is_archived", false);
 
-          if (error) throw error;
-          allSales.push(...(data || []));
+          if (createdByError) throw createdByError;
+          addSales(createdByRows || []);
+
+          const { data: onBehalfRows, error: onBehalfError } = await supabase
+            .from("sales")
+            .select("id, sales_date, created_at")
+            .in("sold_on_behalf_of", batch)
+            .eq("is_archived", false);
+
+          if (onBehalfError) throw onBehalfError;
+          addSales(onBehalfRows || []);
         }
 
         if (mounted) {
@@ -128,6 +152,9 @@ const AgentRecordsChart = ({
         }
       } catch (e) {
         console.error("Agent records fetch failed:", e);
+        if (mounted) {
+          setErrorMessage("Unable to load records collected chart.");
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -211,6 +238,9 @@ const AgentRecordsChart = ({
         <p className="text-xs text-gray-400 mt-2 text-center">
           Loading {title.toLowerCase()}…
         </p>
+      )}
+      {errorMessage && !loading && (
+        <p className="text-xs text-red-600 mt-2 text-center">{errorMessage}</p>
       )}
     </div>
   );
