@@ -27,11 +27,14 @@ import {
   X,
   Download,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import salesAdvancedService from "../services/salesAdvancedAPIService";
+import adminSalesService from "../services/adminSalesService";
 import { lgaAndStates } from "../constants";
 import AdminSalesDetailModal from "../admin/components/sales/AdminSalesDetailModal";
 import EditEndUserModal from "./EditEndUserModal";
+import CancelSaleModal from "../admin/components/sales/CancelSaleModal";
 import { useAuth } from "../contexts/useAuth";
 import { resolveRole } from "@/lib/permissions";
 
@@ -60,11 +63,14 @@ const EndUserRecordsContent = () => {
   const [sortOrder, setSortOrder] = useState("desc");
   const [selectedSale, setSelectedSale] = useState(null);
   const [editSale, setEditSale] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const { userRole } = useAuth();
+  const resolvedRole = resolveRole(userRole) || "";
   const canEdit = ["super_admin", "acsl_agent_manager", "partner"].includes(
-    resolveRole(userRole) || ""
+    resolvedRole
   );
+  const canDelete = ["super_admin", "partner"].includes(resolvedRole);
 
   const stateList = useMemo(() => Object.keys(lgaAndStates).sort(), []);
   const lgaList = useMemo(
@@ -429,7 +435,7 @@ const EndUserRecordsContent = () => {
                         key={sale.id}
                         className={`${idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]"} hover:bg-gray-50`}
                       >
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
+                        <TableCell className="py-2 px-2 whitespace-nowrap align-top">
                           {formatDate(sale.sales_date || sale.created_at)}
                         </TableCell>
                         <TableCell className="py-2 px-2 break-words align-top max-w-[160px]">
@@ -483,6 +489,16 @@ const EndUserRecordsContent = () => {
                                 onClick={() => setEditSale(sale)}
                               >
                                 Edit
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                size="sm"
+                                className="h-7 px-3 rounded-none bg-red-600 hover:bg-red-700 text-white"
+                                onClick={() => setDeleteTarget(sale)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                                Delete
                               </Button>
                             )}
                           </div>
@@ -570,6 +586,35 @@ const EndUserRecordsContent = () => {
           setAllSales((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
           // Refresh in the background to pick up the fresh updated_by_profile join.
           fetchSales();
+        }}
+      />
+      <CancelSaleModal
+        open={!!deleteTarget}
+        sale={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title={
+          <div className="flex items-center gap-2 text-red-700">
+            <Trash2 className="h-5 w-5" />
+            Delete End User Record
+          </div>
+        }
+        confirmLabel="Confirm Delete"
+        requireReason
+        onConfirm={async (reason) => {
+          if (!deleteTarget) return;
+          const target = deleteTarget;
+          try {
+            const result = await adminSalesService.cancelSale(target.id, reason);
+            if (result && result.success === false) {
+              setError(result.error || result.message || "Failed to delete record");
+              return;
+            }
+            setAllSales((prev) => prev.filter((s) => s.id !== target.id));
+            setDeleteTarget(null);
+            fetchSales();
+          } catch (e) {
+            setError(e?.message || "Failed to delete record");
+          }
         }}
       />
     </DashboardLayout>
