@@ -2686,11 +2686,23 @@ export default function SuperAdminAgentsContent() {
     return [...sortedAgents].sort((a, b) => (((a.stove_summary?.[field] ?? 0) - (b.stove_summary?.[field] ?? 0)) * dir));
   }, [sortedAgents, stoveSort]);
 
+  // Table-level filters (name search + role dropdown) applied on top of displayedAgents
+  const tableFilteredAgents = useMemo(() => {
+    const q = tableNameFilter.trim().toLowerCase();
+    return displayedAgents.filter((a) => {
+      if (tableRoleFilter !== "all" && a.role !== tableRoleFilter) return false;
+      if (q && !(a.full_name || "").toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [displayedAgents, tableNameFilter, tableRoleFilter]);
+
+  useEffect(() => { setPage(1); }, [tableNameFilter, tableRoleFilter]);
+
   // Client-side pagination slice for the current page
-  const displayedTotal = displayedAgents.length;
+  const displayedTotal = tableFilteredAgents.length;
   const displayedTotalPages = Math.max(1, Math.ceil(displayedTotal / pageSize));
   const safePage = Math.min(page, displayedTotalPages);
-  const pageRows = displayedAgents.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const pageRows = tableFilteredAgents.slice((safePage - 1) * pageSize, safePage * pageSize);
   const showingStart = displayedTotal === 0 ? 0 : (safePage - 1) * pageSize + 1;
   const showingEnd = Math.min(safePage * pageSize, displayedTotal);
 
