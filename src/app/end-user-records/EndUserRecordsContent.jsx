@@ -216,25 +216,25 @@ const EndUserRecordsContent = () => {
 
   const handleExport = () => {
     const headers = [
-      "Stove ID",
       "Sales Date",
-      "Contact Person",
-      "Phone Number",
-      "Partner",
       "End User",
       "State",
       "LGA",
+      "Contact Person",
+      "Phone Number",
+      "Partner",
+      "Stove ID",
       "Last Modified By",
     ];
     const rows = filteredSales.map((s) => [
-      s.stove_serial_no || "",
       formatDate(s.sales_date || s.created_at),
-      s.contact_person || "",
-      s.phone || s.contact_phone || "",
-      s.partner_name || s.organizations?.name || s.organizations?.partner_name || "",
       s.end_user_name || "",
       s.state_backup || "",
       s.lga_backup || "",
+      s.contact_person || "",
+      s.phone || s.contact_phone || "",
+      s.partner_name || s.organizations?.name || s.organizations?.partner_name || "",
+      s.stove_serial_no || "",
       formatModifier(s),
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
@@ -388,7 +388,6 @@ const EndUserRecordsContent = () => {
               <Table className="text-sm">
                 <TableHeader className="bg-[#4a5d0f]">
                   <TableRow className="hover:bg-[#4a5d0f]">
-                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Stove ID</TableHead>
                     <TableHead
                       className="text-white font-semibold py-2 px-2 whitespace-nowrap cursor-pointer select-none"
                       onClick={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
@@ -397,12 +396,13 @@ const EndUserRecordsContent = () => {
                         Sales Date
                       </div>
                     </TableHead>
-                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Contact Person</TableHead>
-                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Phone Number</TableHead>
-                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Partner</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">End User</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">State</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">LGA</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Contact Person</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Phone Number</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Partner</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Stove ID</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Last Modified By</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap text-right">Actions</TableHead>
                   </TableRow>
@@ -422,11 +422,17 @@ const EndUserRecordsContent = () => {
                         key={sale.id}
                         className={`${idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]"} hover:bg-gray-50`}
                       >
-                        <TableCell className="py-2 px-2 font-medium whitespace-nowrap">
-                          {sale.stove_serial_no || "N/A"}
-                        </TableCell>
                         <TableCell className="py-2 px-2 whitespace-nowrap">
                           {formatDate(sale.sales_date || sale.created_at)}
+                        </TableCell>
+                        <TableCell className="py-2 px-2 whitespace-nowrap">
+                          {sale.end_user_name || "N/A"}
+                        </TableCell>
+                        <TableCell className="py-2 px-2 whitespace-nowrap">
+                          {sale.state_backup || "N/A"}
+                        </TableCell>
+                        <TableCell className="py-2 px-2 whitespace-nowrap">
+                          {sale.lga_backup || "N/A"}
                         </TableCell>
                         <TableCell className="py-2 px-2 whitespace-nowrap">
                           {sale.contact_person || "N/A"}
@@ -437,14 +443,8 @@ const EndUserRecordsContent = () => {
                         <TableCell className="py-2 px-2 whitespace-nowrap">
                           {sale.partner_name || sale.organizations?.name || sale.organizations?.partner_name || "N/A"}
                         </TableCell>
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
-                          {sale.end_user_name || "N/A"}
-                        </TableCell>
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
-                          {sale.state_backup || "N/A"}
-                        </TableCell>
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
-                          {sale.lga_backup || "N/A"}
+                        <TableCell className="py-2 px-2 font-medium whitespace-nowrap">
+                          {sale.stove_serial_no || "N/A"}
                         </TableCell>
                         <TableCell className="py-2 px-2 whitespace-nowrap text-xs">
                           {sale.updated_by_profile?.full_name ? (
