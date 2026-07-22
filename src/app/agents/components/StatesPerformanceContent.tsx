@@ -278,7 +278,7 @@ export default function StatesPerformanceContent() {
         while (from < HARD_CAP) {
           const { data, error: sErr } = await supabase
             .from("stove_ids")
-            .select("organization_id,status,sale_id")
+            .select("stove_id,organization_id,status,sale_id")
             .eq("is_archived", false)
             .range(from, from + PAGE_FETCH - 1);
           if (sErr) throw sErr;
