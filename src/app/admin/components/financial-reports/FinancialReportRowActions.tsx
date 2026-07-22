@@ -5,8 +5,15 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { MoreVertical, History, Plus, Pencil, Trash2, Calendar, CheckCircle2, Clock, Eye, Ban } from "lucide-react";
 import { AdminSales } from "@/types/adminSales";
+
 
 interface FinancialReportRowActionsProps {
   sale: AdminSales;
