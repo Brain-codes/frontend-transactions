@@ -638,6 +638,19 @@ const CreateSalesForm = ({
       [field]: value,
     }));
 
+    // Live format check for phone fields — flag invalid format on every keystroke.
+    if (field === "contactPhone" || field === "phone") {
+      const trimmed = String(value || "").trim();
+      if (trimmed && !isValidNgPhone(trimmed)) {
+        setErrors((prev) => ({ ...prev, [field]: NG_PHONE_FORMAT_MESSAGE }));
+        return;
+      }
+      // Valid (or empty) — clear format error; the duplicate-check effect will
+      // repopulate `phone` if the number already exists.
+      setErrors((prev) => ({ ...prev, [field]: null }));
+      return;
+    }
+
     // Clear error for this field
     if (errors[field]) {
       setErrors((prev) => ({
@@ -646,6 +659,7 @@ const CreateSalesForm = ({
       }));
     }
   };
+
 
   const handleAddressSelect = (addressData) => {
     setFormData((prev) => ({
