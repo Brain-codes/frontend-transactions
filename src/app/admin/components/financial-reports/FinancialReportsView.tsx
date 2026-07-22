@@ -183,6 +183,22 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
 
   useEffect(() => { fetchSales(); }, [fetchSales]);
 
+  // Load active sales models for the filter dropdown
+  useEffect(() => {
+    let mounted = true;
+    paymentModelService.getPaymentModels({ status: "active" })
+      .then((res) => {
+        if (!mounted) return;
+        const models = (res?.data || [])
+          .filter((m: any) => m && m.is_active !== false)
+          .map((m: any) => ({ id: m.id, name: m.name }))
+          .sort((a: any, b: any) => a.name.localeCompare(b.name));
+        setSalesModels(models);
+      })
+      .catch((err) => console.error("[SalesRecords] failed to load sales models:", err));
+    return () => { mounted = false; };
+  }, []);
+
   const filteredSales = useMemo(() => {
     let result = [...allSales];
 
