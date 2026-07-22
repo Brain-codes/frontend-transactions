@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { useAuth } from "../../contexts/useAuth";
 import tokenManager from "@/utils/tokenManager";
+import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -36,9 +37,8 @@ function bucketMonthlySales(rows: any[]) {
 // bypass RLS on the profiles table (which was returning an empty/truncated
 // list in the browser and causing the chart to render all zeros).
 async function fetchAgentIdsViaManageUsers(): Promise<string[]> {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const token = await tokenManager.getValidToken();
-  if (!supabaseUrl || !token) return [];
+  if (!supabaseFunctionsUrl || !token) return [];
   const ids = new Set<string>();
   for (const role of AGENT_ROLES) {
     let page = 1;
@@ -50,7 +50,7 @@ async function fetchAgentIdsViaManageUsers(): Promise<string[]> {
         role,
       });
       const res = await fetch(
-        `${supabaseUrl}/functions/v1/manage-users?${qs.toString()}`,
+        `${supabaseFunctionsUrl}/manage-users?${qs.toString()}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) break;
