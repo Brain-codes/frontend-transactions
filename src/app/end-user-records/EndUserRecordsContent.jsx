@@ -31,6 +31,9 @@ import {
 import salesAdvancedService from "../services/salesAdvancedAPIService";
 import { lgaAndStates } from "../constants";
 import AdminSalesDetailModal from "../admin/components/sales/AdminSalesDetailModal";
+import EditEndUserModal from "./EditEndUserModal";
+import { useAuth } from "../contexts/useAuth";
+import { resolveRole } from "@/lib/permissions";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "N/A";
@@ -56,6 +59,12 @@ const EndUserRecordsContent = () => {
   const [pageSize, setPageSize] = useState(10);
   const [sortOrder, setSortOrder] = useState("desc");
   const [selectedSale, setSelectedSale] = useState(null);
+  const [editSale, setEditSale] = useState(null);
+
+  const { userRole } = useAuth();
+  const canEdit = ["super_admin", "acsl_agent_manager", "partner"].includes(
+    resolveRole(userRole) || ""
+  );
 
   const stateList = useMemo(() => Object.keys(lgaAndStates).sort(), []);
   const lgaList = useMemo(
