@@ -896,7 +896,154 @@ export default function StatesPerformanceContent() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Agents in State Modal */}
+      <Dialog open={agentModalOpen} onOpenChange={(open) => !open && closeAgentModal()}>
+        <DialogContent className="max-w-4xl p-0">
+          <DialogHeader className="border-b bg-[#4a5d0f] px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-base font-semibold text-white">
+                  Agents in {agentModalState}
+                </DialogTitle>
+                <DialogDescription className="text-white/80 text-xs">
+                  {agentModalAgents.length} agent{agentModalAgents.length === 1 ? "" : "s"} · Total stoves in state: {agentModalRow?.stoves ?? 0} · Unsold: {agentModalRow?.notSold ?? 0}
+                </DialogDescription>
+              </div>
+              <button
+                onClick={closeAgentModal}
+                className="rounded-md p-1 text-white/80 hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-3 p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-[220px] flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search agent name, role, or state..."
+                  value={agentModalSearch}
+                  onChange={(e) => setAgentModalSearch(e.target.value)}
+                  className="h-9 pl-9 shadow-none"
+                />
+              </div>
+              <Button
+                onClick={handleAgentModalExport}
+                disabled={agentModalAgents.length === 0}
+                className="h-9 bg-[#4a5d0f] text-white hover:bg-[#3a4a0c] shadow-none"
+              >
+                <Download className="mr-2 h-4 w-4" /> Export CSV
+              </Button>
+            </div>
+
+            <div className="overflow-hidden rounded-lg border border-[#e5e7eb]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-[#eef3c4] hover:bg-[#eef3c4]">
+                    <TableHead className="text-left text-[11px] font-semibold text-[#4a5d0f]">Agent</TableHead>
+                    <TableHead className="text-left text-[11px] font-semibold text-[#4a5d0f]">Role</TableHead>
+                    <TableHead className="text-center text-[11px] font-semibold text-[#4a5d0f]">States Covered</TableHead>
+                    <TableHead className="text-left text-[11px] font-semibold text-[#4a5d0f]">State List</TableHead>
+                    <TableHead className="text-center text-[11px] font-semibold text-[#4a5d0f]">Stoves Recorded</TableHead>
+                    <TableHead className="text-center text-[11px] font-semibold text-[#4a5d0f]">Total in State</TableHead>
+                    <TableHead className="text-center text-[11px] font-semibold text-[#4a5d0f]">Unsold in State</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {agentModalPageRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-8 text-center text-sm text-gray-500">
+                        No agents found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    agentModalPageRows.map((a) => (
+                      <TableRow key={a.id} className="border-b text-xs">
+                        <TableCell className="align-top font-medium text-gray-800">{a.name}</TableCell>
+                        <TableCell className="align-top text-gray-700">{a.role}</TableCell>
+                        <TableCell className="text-center align-top">
+                          <Pill tone="slate">{a.statesCovered.length}</Pill>
+                        </TableCell>
+                        <TableCell className="align-top text-gray-700">
+                          <div className="flex flex-wrap gap-1">
+                            {a.statesCovered.map((s) => (
+                              <span
+                                key={s}
+                                className="inline-flex rounded-full bg-[#eef3c4] px-2 py-0.5 text-[10px] font-medium text-[#4a5d0f]"
+                              >
+                                {s}
+                              </span>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center align-top">
+                          <Pill tone="emerald">{a.stovesRecorded}</Pill>
+                        </TableCell>
+                        <TableCell className="text-center align-top">
+                          <Pill tone="slate">{agentModalRow?.stoves ?? 0}</Pill>
+                        </TableCell>
+                        <TableCell className="text-center align-top">
+                          <Pill tone="rose">{agentModalRow?.notSold ?? 0}</Pill>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#e5e7eb] pt-3 text-xs text-gray-600">
+              <div>
+                Showing {agentModalAgents.length === 0 ? 0 : agentModalStart + 1}–
+                {Math.min(agentModalStart + agentModalPageSize, agentModalAgents.length)} of {agentModalAgents.length} agents
+              </div>
+              <div className="flex items-center gap-2">
+                <span>per page:</span>
+                <Select value={String(agentModalPageSize)} onValueChange={(v) => setAgentModalPageSize(Number(v))}>
+                  <SelectTrigger className="h-8 w-[70px] shadow-none">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZES.map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shadow-none"
+                  disabled={agentModalClampedPage <= 1}
+                  onClick={() => setAgentModalPage((p) => Math.max(1, p - 1))}
+                >
+                  Prev
+                </Button>
+                <span className="px-2">
+                  Page {agentModalClampedPage} of {agentModalTotalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shadow-none"
+                  disabled={agentModalClampedPage >= agentModalTotalPages}
+                  onClick={() => setAgentModalPage((p) => Math.min(agentModalTotalPages, p + 1))}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
 
