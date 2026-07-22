@@ -403,13 +403,14 @@ const EndUserRecordsContent = () => {
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">End User</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">State</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">LGA</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Last Modified By</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedSales.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                         {searchTerm || hasActiveFilters
                           ? "No records found matching your filters."
                           : "No end user records available."}
@@ -445,15 +446,40 @@ const EndUserRecordsContent = () => {
                         <TableCell className="py-2 px-2 whitespace-nowrap">
                           {sale.lga_backup || "N/A"}
                         </TableCell>
+                        <TableCell className="py-2 px-2 whitespace-nowrap text-xs">
+                          {sale.updated_by_profile?.full_name ? (
+                            <div className="flex flex-col leading-tight">
+                              <span className="font-medium">{sale.updated_by_profile.full_name}</span>
+                              {sale.updated_at && (
+                                <span className="text-gray-500">{formatDate(sale.updated_at)}</span>
+                              )}
+                            </div>
+                          ) : sale.updated_at ? (
+                            <span className="text-gray-500">{formatDate(sale.updated_at)}</span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="py-2 px-2 whitespace-nowrap text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-3 rounded-none border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4]"
-                            onClick={() => setSelectedSale(sale)}
-                          >
-                            Details
-                          </Button>
+                          <div className="inline-flex items-center gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-3 rounded-none border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4]"
+                              onClick={() => setSelectedSale(sale)}
+                            >
+                              Details
+                            </Button>
+                            {canEdit && (
+                              <Button
+                                size="sm"
+                                className="h-7 px-3 rounded-none bg-[#4a5d0f] hover:bg-[#3a4a0c] text-white"
+                                onClick={() => setEditSale(sale)}
+                              >
+                                Edit
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
