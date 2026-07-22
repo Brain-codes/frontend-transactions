@@ -2681,6 +2681,14 @@ export default function SuperAdminAgentsContent() {
     return [...sortedAgents].sort((a, b) => (((a.stove_summary?.[field] ?? 0) - (b.stove_summary?.[field] ?? 0)) * dir));
   }, [sortedAgents, stoveSort]);
 
+  // Client-side pagination slice for the current page
+  const displayedTotal = displayedAgents.length;
+  const displayedTotalPages = Math.max(1, Math.ceil(displayedTotal / pageSize));
+  const safePage = Math.min(page, displayedTotalPages);
+  const pageRows = displayedAgents.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const showingStart = displayedTotal === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const showingEnd = Math.min(safePage * pageSize, displayedTotal);
+
   const dateBadgeLabel = useMemo(() => {
     const fmt = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     return (dateFrom || dateTo)
