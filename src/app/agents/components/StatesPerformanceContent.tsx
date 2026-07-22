@@ -236,6 +236,14 @@ export default function StatesPerformanceContent() {
   const [agentModalSearch, setAgentModalSearch] = useState("");
   const [agentModalPage, setAgentModalPage] = useState(1);
   const [agentModalPageSize, setAgentModalPageSize] = useState(10);
+
+  // Stove detail modal state
+  const [stoveModalOpen, setStoveModalOpen] = useState(false);
+  const [stoveModalState, setStoveModalState] = useState<string | null>(null);
+  const [stoveModalSearch, setStoveModalSearch] = useState("");
+  const [stoveModalStatus, setStoveModalStatus] = useState<"all" | "sold" | "available">("all");
+  const [stoveModalPage, setStoveModalPage] = useState(1);
+  const [stoveModalPageSize, setStoveModalPageSize] = useState(25);
   const [reloadKey, setReloadKey] = useState(0);
 
   useRealtimeRefresh("states", REALTIME_STATE_TABLES);
