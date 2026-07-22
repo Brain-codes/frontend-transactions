@@ -290,13 +290,14 @@ export default function StatesPerformanceContent() {
     <div className="space-y-4 p-6">
       {/* KPI strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Kpi icon={MapPin} label="States" value={filtered.length} tone="green" />
-        <Kpi icon={Building2} label="Partners" value={totals.partners} tone="green" />
-        <Kpi icon={Users} label="Agents" value={totals.agents} tone="green" />
-        <Kpi icon={Package} label="Stoves" value={totals.stoves} tone="slate" />
+        <Kpi icon={MapPin} label="States" value={filtered.length} tone="blue" />
+        <Kpi icon={Building2} label="Partners" value={totals.partners} tone="indigo" />
+        <Kpi icon={Users} label="Agents" value={totals.agents} tone="teal" />
+        <Kpi icon={Package} label="Stoves" value={totals.stoves} tone="orange" />
         <Kpi icon={CheckCircle2} label="Sold" value={totals.sold} tone="emerald" />
-        <Kpi icon={Circle} label="Not Sold" value={totals.notSold} tone="rose" />
+        <Kpi icon={Circle} label="Not Sold" value={totals.notSold} tone="violet" />
       </div>
+
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[#e5e7eb] bg-white p-3">
@@ -365,13 +366,9 @@ export default function StatesPerformanceContent() {
                     <Pill tone="green">{r.partners}</Pill>
                   </TableCell>
                   <TableCell className="text-center align-top">
-                    <div className="flex flex-col items-center gap-0.5">
-                      <Pill tone="green">{r.agents}</Pill>
-                      <span className="text-[10px] text-gray-500">
-                        {r.partnerAgents} partner · {r.acslAgents} ACSL
-                      </span>
-                    </div>
+                    <Pill tone="green">{r.agents}</Pill>
                   </TableCell>
+
                   <TableCell className="text-center align-top">
                     <Pill tone="slate">{r.stoves}</Pill>
                   </TableCell>
@@ -459,26 +456,33 @@ function Kpi({
   icon: any;
   label: string;
   value: number;
-  tone: "green" | "slate" | "emerald" | "rose";
+  tone: "blue" | "indigo" | "teal" | "orange" | "emerald" | "violet";
 }) {
   const toneMap: Record<string, string> = {
-    green: "bg-[#eef3c4] text-[#4a5d0f] border-[#d5dfa1]",
-    slate: "bg-slate-50 text-slate-700 border-slate-200",
-    emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    rose: "bg-rose-50 text-rose-700 border-rose-200",
+    blue: "from-blue-500 to-blue-600",
+    indigo: "from-indigo-500 to-indigo-600",
+    teal: "from-teal-500 to-emerald-600",
+    orange: "from-orange-500 to-amber-600",
+    emerald: "from-emerald-500 to-green-600",
+    violet: "from-violet-500 to-purple-600",
   };
   return (
-    <div className={`flex items-center gap-3 rounded-xl border p-3 ${toneMap[tone]}`}>
-      <div className="rounded-lg bg-white/70 p-2">
-        <Icon className="h-4 w-4" />
-      </div>
-      <div>
-        <div className="text-[11px] uppercase tracking-wide opacity-80">{label}</div>
-        <div className="text-lg font-semibold leading-tight">{value.toLocaleString()}</div>
+    <div
+      className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${toneMap[tone]} p-3 text-white shadow-sm`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-xl font-bold leading-tight">{value.toLocaleString()}</div>
+          <div className="mt-0.5 text-[11px] font-medium text-white/90">{label}</div>
+        </div>
+        <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/20 backdrop-blur-sm">
+          <Icon className="h-3.5 w-3.5" />
+        </div>
       </div>
     </div>
   );
 }
+
 
 function Pill({
   children,
