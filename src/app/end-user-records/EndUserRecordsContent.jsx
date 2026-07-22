@@ -588,6 +588,35 @@ const EndUserRecordsContent = () => {
           fetchSales();
         }}
       />
+      <CancelSaleModal
+        open={!!deleteTarget}
+        sale={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title={
+          <div className="flex items-center gap-2 text-red-700">
+            <Trash2 className="h-5 w-5" />
+            Delete End User Record
+          </div>
+        }
+        confirmLabel="Confirm Delete"
+        requireReason
+        onConfirm={async (reason) => {
+          if (!deleteTarget) return;
+          const target = deleteTarget;
+          try {
+            const result = await adminSalesService.cancelSale(target.id, reason);
+            if (result && result.success === false) {
+              setError(result.error || result.message || "Failed to delete record");
+              return;
+            }
+            setAllSales((prev) => prev.filter((s) => s.id !== target.id));
+            setDeleteTarget(null);
+            fetchSales();
+          } catch (e) {
+            setError(e?.message || "Failed to delete record");
+          }
+        }}
+      />
     </DashboardLayout>
   );
 };
