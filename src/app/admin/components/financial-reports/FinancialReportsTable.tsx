@@ -140,7 +140,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                 <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.state_backup || "N/A"}</TableCell>
                 <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.partner_name || (sale as any).organizations?.name || "N/A"}</TableCell>
                 <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.stove_serial_no || "N/A"}</TableCell>
-                <TableCell className="py-2 px-2 text-xs break-words align-top">
+                <TableCell className="py-2 px-2 text-xs break-words align-top bg-indigo-50">
                   {sale.is_installment ? (
                     sale.installment_summary ? (
                       <div className="space-y-0.5">
@@ -172,13 +172,13 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                     </Badge>
                   )}
                 </TableCell>
-                <TableCell className="py-2 px-2 text-xs text-left break-words align-top">
+                <TableCell className="py-2 px-2 text-xs text-left break-words align-top bg-slate-50">
                   {formatCurrency(sale.amount ?? 0)}
                 </TableCell>
-                <TableCell className="py-2 px-2 text-xs text-left text-green-700 break-words align-top">
+                <TableCell className="py-2 px-2 text-xs text-left text-green-700 break-words align-top bg-green-50">
                   {formatCurrency(getAmountPaid(sale))}
                 </TableCell>
-                <TableCell className="py-2 px-2 text-xs text-left text-red-700 break-words align-top">
+                <TableCell className="py-2 px-2 text-xs text-left text-red-700 break-words align-top bg-red-50">
                   {formatCurrency(getAmountOwed(sale))}
                 </TableCell>
                 <TableCell className="py-2 px-2 text-xs break-words align-top">
