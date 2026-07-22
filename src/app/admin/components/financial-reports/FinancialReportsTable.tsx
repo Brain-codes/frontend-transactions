@@ -107,25 +107,25 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
         <Table className="text-sm w-full table-fixed">
           <TableHeader className="bg-[#4a5d0f]">
             <TableRow className="hover:bg-[#4a5d0f]">
-              <TableHead className="text-white font-semibold py-2 px-1">Trans #</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-2 w-[90px]">Trans #</TableHead>
               <TableHead
-                className="text-white font-semibold py-2 px-1 cursor-pointer select-none"
+                className="text-white font-semibold py-2 px-2 w-[95px] cursor-pointer select-none"
                 onClick={onToggleSort}
               >
                 <div className="flex items-center gap-1">
                   Date <ArrowUpDown className="h-3 w-3" />
                 </div>
               </TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1">End User</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1">State</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1">Partner</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1">Stove ID</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1">Payment Model</TableHead>
-                <TableHead className="text-white font-semibold py-2 px-1 text-left">Expected</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1 text-left">Paid</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1 text-left">Balance</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1">Last Modified By</TableHead>
-               <TableHead className="text-white font-semibold py-2 px-1 text-right w-[220px]">Actions</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[140px]">End User</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[90px]">State</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[135px]">Partner</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[100px]">Stove ID</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[120px]">Payment Model</TableHead>
+                <TableHead className="text-white font-semibold py-2 px-2 text-left w-[95px]">Expected</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 text-left w-[90px]">Paid</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 text-left w-[95px]">Balance</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 w-[130px]">Last Modified By</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-2 text-right w-[160px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className={loading ? "opacity-40" : ""}>
@@ -134,39 +134,39 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                 key={sale.id}
                 className="bg-white hover:bg-gray-100"
               >
-                <TableCell className="py-1 px-1 font-medium break-words align-top">{sale.transaction_id || "N/A"}</TableCell>
-                <TableCell className="py-1 px-1 break-words align-top">{formatDate(sale.sales_date || sale.created_at)}</TableCell>
-                <TableCell className="py-1 px-1 break-words align-top">{sale.end_user_name || "N/A"}</TableCell>
-                <TableCell className="py-1 px-1 break-words align-top">{sale.state_backup || "N/A"}</TableCell>
-                <TableCell className="py-1 px-1 break-words align-top">{sale.partner_name || (sale as any).organizations?.name || "N/A"}</TableCell>
-                <TableCell className="py-1 px-1 break-words align-top">{sale.stove_serial_no || "N/A"}</TableCell>
-                <TableCell className="py-1 px-1 break-words align-top">
+                <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.transaction_id || "N/A"}</TableCell>
+                <TableCell className="py-2 px-2 text-xs break-words align-top">{formatDate(sale.sales_date || sale.created_at)}</TableCell>
+                <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.end_user_name || "N/A"}</TableCell>
+                <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.state_backup || "N/A"}</TableCell>
+                <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.partner_name || (sale as any).organizations?.name || "N/A"}</TableCell>
+                <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.stove_serial_no || "N/A"}</TableCell>
+                <TableCell className="py-2 px-2 text-xs break-words align-top">
                   {sale.is_installment
                     ? (sale.payment_model?.name || "Installment")
                     : "Full Payment"}
                 </TableCell>
-                <TableCell className="py-1 px-1 text-left break-words align-top">
+                <TableCell className="py-2 px-2 text-xs text-left break-words align-top">
                   {formatCurrency(sale.amount ?? 0)}
                 </TableCell>
-                <TableCell className="py-1 px-1 text-left text-green-700 break-words align-top">
+                <TableCell className="py-2 px-2 text-xs text-left text-green-700 break-words align-top">
                   {formatCurrency(getAmountPaid(sale))}
                 </TableCell>
-                <TableCell className="py-1 px-1 text-left text-red-700 break-words align-top">
+                <TableCell className="py-2 px-2 text-xs text-left text-red-700 break-words align-top">
                   {formatCurrency(getAmountOwed(sale))}
                 </TableCell>
-                <TableCell className="py-1 px-1 break-words align-top">
-                  <div className="text-sm text-gray-800">
+                <TableCell className="py-2 px-2 text-xs break-words align-top">
+                  <div className="text-gray-800">
                     {(sale as any).n?.full_name ||
                       (sale as any).n?.email ||
                       (sale as any).creator?.full_name ||
                       (sale as any).creator?.email ||
                       "—"}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-[11px] text-gray-500">
                     {formatDate((sale as any).updated_at || sale.created_at)}
                   </div>
                 </TableCell>
-                <TableCell className="py-1 px-1 text-right">
+                <TableCell className="py-2 px-2 text-right">
                   <FinancialReportRowActions
                     sale={sale}
                     onViewDetails={onViewDetails}

@@ -42,7 +42,7 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
   const remaining = durationMonths - paymentsMade;
 
   return (
-    <div className="flex items-center justify-center gap-1">
+    <div className="flex items-center justify-end gap-1">
       {/* Record Payment button */}
       {showPayButton && (
         <TooltipProvider delayDuration={100}>
