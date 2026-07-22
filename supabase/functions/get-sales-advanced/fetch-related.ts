@@ -329,7 +329,7 @@ async function fetchInstallmentSummaries(supabase: any, sales: any[]) {
     if (leftInstallments > 0) {
       const baseDate = new Date(sale.sales_date || sale.created_at);
       if (!isNaN(baseDate.getTime())) {
-        baseDate.setMonth(baseDate.getMonth() + paidInstallments + 1);
+        baseDate.setMonth(baseDate.getMonth() + paidInstallments);
         nextDueDate = baseDate.toISOString();
       }
     }
