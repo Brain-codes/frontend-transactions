@@ -253,6 +253,9 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
     if (approvalFilter !== "all") {
       result = result.filter((s) => approvalFilter === "approved" ? s.agent_approved : !s.agent_approved);
     }
+    if (salesModelFilter !== "all") {
+      result = result.filter((s) => s.payment_model_id === salesModelFilter);
+    }
 
     if (startDate) result = result.filter((s) => (s.sales_date || s.created_at) >= startDate);
     if (endDate)   result = result.filter((s) => (s.sales_date || s.created_at) <= endDate + "T23:59:59");
