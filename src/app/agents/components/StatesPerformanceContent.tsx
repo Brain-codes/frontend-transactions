@@ -125,8 +125,8 @@ export default function StatesPerformanceContent() {
         // Partner-side agents/profiles with an org
         const { data: profiles, error: pErr } = await supabase
           .from("profiles")
-          .select("id,role,organization_id")
-          .in("role", ["partner", "admin", "partner_agent", "agent"]);
+          .select("id,full_name,email,role,organization_id")
+          .in("role", ["partner", "admin", "partner_agent", "agent", "acsl_agent", "acsl_agent_manager"]);
         if (pErr) throw pErr;
 
         // ACSL agent -> state assignments
@@ -157,6 +157,21 @@ export default function StatesPerformanceContent() {
           from += PAGE_FETCH;
         }
 
+        // Sales (for stoves-recorded-by-agent per state)
+        const sales: { created_by: string | null; organization_id: string | null }[] = [];
+        let sfrom = 0;
+        while (sfrom < HARD_CAP) {
+          const { data, error: sErr2 } = await supabase
+            .from("sales")
+            .select("created_by,organization_id")
+            .range(sfrom, sfrom + PAGE_FETCH - 1);
+          if (sErr2) throw sErr2;
+          const chunk = data || [];
+          sales.push(...chunk);
+          if (chunk.length < PAGE_FETCH) break;
+          sfrom += PAGE_FETCH;
+        }
+
         // Build org -> state map
         const orgState = new Map<string, string>();
         (orgs || []).forEach((o: any) => {
@@ -179,6 +194,7 @@ export default function StatesPerformanceContent() {
               notSold: 0,
               sellThrough: 0,
               partnerDetails: [],
+              agentDetails: [],
             };
             map.set(state, r);
           }
@@ -207,7 +223,9 @@ export default function StatesPerformanceContent() {
         });
 
         // Partner-side agents (via profile's organization_id -> state)
+        const partnerAgentRoles = new Set(["partner", "admin", "partner_agent", "agent"]);
         (profiles || []).forEach((p: any) => {
+          if (!partnerAgentRoles.has(p.role)) return;
           const state = p.organization_id ? orgState.get(p.organization_id) : null;
           if (!state || state === "Unknown") return;
           ensure(state).partnerAgents += 1;
@@ -260,6 +278,72 @@ export default function StatesPerformanceContent() {
           partnerDetailsByState.set(state, list);
         });
 
+        // Profile lookup
+        const profileById = new Map<string, any>();
+        (profiles || []).forEach((p: any) => profileById.set(p.id, p));
+
+        // ACSL agent -> states covered
+        const acslStatesByAgent = new Map<string, Set<string>>();
+        (acslStates || []).forEach((a: any) => {
+          const st = (a.state || "").trim();
+          if (!st || !a.agent_id) return;
+          let set = acslStatesByAgent.get(a.agent_id);
+          if (!set) {
+            set = new Set();
+            acslStatesByAgent.set(a.agent_id, set);
+          }
+          set.add(st);
+        });
+
+        // Agent -> per-state stoves recorded (from sales.created_by + org state)
+        // Key: `${agentId}::${state}` -> count
+        const agentStateSales = new Map<string, number>();
+        sales.forEach((s) => {
+          if (!s.created_by || !s.organization_id) return;
+          const st = orgState.get(s.organization_id);
+          if (!st || st === "Unknown") return;
+          const key = `${s.created_by}::${st}`;
+          agentStateSales.set(key, (agentStateSales.get(key) || 0) + 1);
+        });
+
+        // Build agent details per state
+        const agentDetailsByState = new Map<string, AgentDetail[]>();
+        const pushAgent = (state: string, agent: AgentDetail) => {
+          const list = agentDetailsByState.get(state) || [];
+          if (list.some((a) => a.id === agent.id)) return;
+          list.push(agent);
+          agentDetailsByState.set(state, list);
+        };
+
+        // Partner-side agents: their org's state
+        (profiles || []).forEach((p: any) => {
+          if (!partnerAgentRoles.has(p.role)) return;
+          const state = p.organization_id ? orgState.get(p.organization_id) : null;
+          if (!state || state === "Unknown") return;
+          pushAgent(state, {
+            id: p.id,
+            name: p.full_name || p.email || "—",
+            role: p.role,
+            statesCovered: [state],
+            stovesRecorded: agentStateSales.get(`${p.id}::${state}`) || 0,
+          });
+        });
+
+        // ACSL agents/managers
+        acslStatesByAgent.forEach((stateSet, agentId) => {
+          const p = profileById.get(agentId);
+          const statesCovered = Array.from(stateSet).sort();
+          stateSet.forEach((state) => {
+            pushAgent(state, {
+              id: agentId,
+              name: p?.full_name || p?.email || "—",
+              role: p?.role || "acsl_agent",
+              statesCovered,
+              stovesRecorded: agentStateSales.get(`${agentId}::${state}`) || 0,
+            });
+          });
+        });
+
         // Finalize computed cols
         const finalRows: StateRow[] = Array.from(map.values())
           .filter((r) => r.partners > 0) // only states that have partners
@@ -269,6 +353,7 @@ export default function StatesPerformanceContent() {
             notSold: Math.max(0, r.stoves - r.sold),
             sellThrough: r.stoves > 0 ? r.sold / r.stoves : 0,
             partnerDetails: partnerDetailsByState.get(r.state) || [],
+            agentDetails: agentDetailsByState.get(r.state) || [],
           }));
 
         if (!cancelled) setRows(finalRows);
