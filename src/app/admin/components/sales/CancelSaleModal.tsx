@@ -13,6 +13,9 @@ interface CancelSaleModalProps {
     end_user_name?: string | null;
     stove_serial_no?: string | null;
   } | null;
+  title?: React.ReactNode;
+  confirmLabel?: string;
+  requireReason?: boolean;
 }
 
 const CancelSaleModal: React.FC<CancelSaleModalProps> = ({
