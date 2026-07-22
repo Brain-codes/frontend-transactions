@@ -118,6 +118,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
               </TableHead>
                <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">End User</TableHead>
                <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">State</TableHead>
+               <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Partner</TableHead>
                <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Stove ID</TableHead>
                <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Payment Model</TableHead>
                <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Expected</TableHead>
@@ -137,6 +138,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                 <TableCell className="py-1 px-1 whitespace-nowrap">{formatDate(sale.sales_date || sale.created_at)}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{sale.end_user_name || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{sale.state_backup || "N/A"}</TableCell>
+                <TableCell className="py-1 px-1 whitespace-nowrap">{sale.partner_name || (sale as any).organizations?.name || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{sale.stove_serial_no || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">
                   {sale.is_installment
