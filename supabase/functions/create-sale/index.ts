@@ -284,14 +284,31 @@ Deno.serve(async (req) => {
       // sync (`Partner Sales Models`) rather than assigned by a super admin.
       // The clients already filter the picker to the partner's models; this is
       // the server-side enforcement that makes that filtering real.
-      const { data: orgModelLink, error: linkError } = await supabase
+      //
+      // A partner with NO assignments may use EVERY active model. The sync only
+      // covers partners the external app has sent, so treating "none assigned"
+      // as "no entitlement" would block sales for every unsynced partner rather
+      // than protect them. Only a partner with an explicit list is restricted
+      // to that list.
+      //
+      // The whole list is fetched rather than probing for one link so a failed
+      // lookup is distinguishable from a genuine "not assigned" — the first is
+      // a 500, not a spurious 403. This must stay in step with
+      // `visiblePaymentModels` in both clients; if they diverge, the picker
+      // offers models this endpoint then rejects.
+      const { data: orgModelLinks, error: linkError } = await supabase
         .from("organization_payment_models")
-        .select("id")
-        .eq("organization_id", organizationId)
-        .eq("payment_model_id", paymentModelId)
-        .maybeSingle();
+        .select("payment_model_id")
+        .eq("organization_id", organizationId);
 
-      if (linkError || !orgModelLink) {
+      if (linkError) {
+        console.error("❌ Payment model assignment lookup failed:", linkError.message);
+        return jsonError("Could not verify the partner's sales models", 500);
+      }
+
+      const assignedIds = (orgModelLinks || []).map((l: any) => l.payment_model_id);
+
+      if (assignedIds.length > 0 && !assignedIds.includes(paymentModelId)) {
         return jsonError(
           `This partner is not assigned the "${paymentModel.name}" sales model`,
           403,
@@ -327,7 +344,10 @@ Deno.serve(async (req) => {
 
     // ── Amount received validation ────────────────────────────────────────────
     // Amount received is what the customer actually pays. It cannot be negative
-    // and cannot exceed the sales amount.
+    // and cannot exceed the sales amount. For outright (non-installment) sales
+    // this is the ONLY record of what was collected — it is persisted below as
+    // `total_paid`, so an outright sale can legitimately be partially paid.
+    let outrightPaid = 0;
     if (amountReceived !== null && amountReceived !== undefined && String(amountReceived).trim() !== "") {
       const parsedReceived = Number(amountReceived);
       if (Number.isNaN(parsedReceived)) {
@@ -339,6 +359,7 @@ Deno.serve(async (req) => {
       if (parsedReceived > saleAmount) {
         return jsonError("Amount received cannot be greater than the sales amount", 400);
       }
+      outrightPaid = parsedReceived;
     }
 
     // Stove image is now OPTIONAL (previously rejected when missing). The sale
@@ -489,8 +510,14 @@ console.log("📋 Sale status evaluation:", {
           agreement_image_id: safeAgreementImageId,
           is_installment: !!installmentData,
           payment_model_id: installmentData?.modelId || null,
-          total_paid: installmentData?.totalPaid || 0,
-          payment_status: installmentData ? installmentData.paymentStatus : "not_applicable",
+          // total_paid always reflects what was actually collected, for both
+          // installment and outright sales — never the sale price.
+          total_paid: installmentData ? installmentData.totalPaid : outrightPaid,
+          payment_status: installmentData
+            ? installmentData.paymentStatus
+            : outrightPaid >= saleAmount
+              ? "fully_paid"
+              : "partially_paid",
           pot_quantity: potQuantity ?? null,
           heat_retention_device: heatRetentionDevice ?? false,
           previous_stove_type: previousStoveType || null,

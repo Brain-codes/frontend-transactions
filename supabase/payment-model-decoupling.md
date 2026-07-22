@@ -84,20 +84,47 @@ an option, and the mobile app must work offline. Both clients therefore:
 
 No extra request is made when a partner is selected, online or offline.
 
-`payment_model_ids` distinguishes three states, and clients must not conflate them:
+### Unassigned partners get everything
 
-| Value | Meaning | Client behaviour |
+**A partner with no assignments may use every active sales model.** Only a
+partner with an explicit list is restricted to it. (User directive, 21 Jul 2026 —
+this overrides the earlier "`[]` means full payment only" rule, which was
+briefly reinstated in error.)
+
+| `payment_model_ids` | Meaning | Client behaviour |
 |---|---|---|
 | `[...]` | These models | Show exactly these |
-| `[]` | Genuinely none assigned | **Full payment only**, with an explanatory note |
-| `null` | Unknown — lookup failed, or an older cached row | Fall back to showing every model |
+| `[]` | None assigned | Show **every active model** |
+| `null` | Unknown — lookup failed, or an older cached row | Show **every active model** |
+
+The sync only covers partners the external app has actually sent, so treating
+"none assigned" as "no entitlement" would block sales for every partner not yet
+synced — restricting sellers rather than protecting them.
+
+`create-sale` applies the identical rule
+(`assignedIds.length > 0 && !assignedIds.includes` → 403).
+**These must not diverge**: if a client is more permissive than the server the
+picker offers models that then fail on submit; if it is more restrictive,
+sellers silently lose options they are entitled to.
+
+Separately from all three, a partner may be assigned models that cannot be
+*resolved* against the cached catalogue (inactive, or created after the client
+cached it). Both clients show an amber warning there rather than silently
+offering nothing — that case is a data fault, not a permission, and must not be
+shown as "none assigned" or it would hide the fault.
 
 ## Server-side enforcement — `create-sale`
 
-Client-side filtering is cosmetic on its own, so the installment branch verifies the
-org↔model link again and returns 403 otherwise:
+Client-side filtering is cosmetic on its own, so the installment branch re-checks
+the org's assignments. A partner **with** assignments that don't include the
+chosen model gets a 403:
 
 > `This partner is not assigned the "<name>" sales model`
+
+A partner with **no** assignments passes — see "Unassigned partners get everything".
+
+The endpoint fetches the partner's whole assignment list rather than probing for
+a single link, so a failed lookup returns a 500 instead of a misleading 403.
 
 The sale `amount` remains operator-entered (see the request contract below).
 

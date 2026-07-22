@@ -20,7 +20,7 @@ import {
 
 // Fallback used only if the release edge function can't be reached — points at
 // the newest APK actually committed to /public/downloads.
-const FALLBACK_APK_URL = "/downloads/sales-monitoring-app-v1-0-8.apk";
+const FALLBACK_APK_URL = "/downloads/sales-monitoring-app-v1-0-14.apk";
 
 const DownloadPage = () => {
   // Live release info (version + real APK URL), same source the mobile app's

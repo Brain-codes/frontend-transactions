@@ -484,17 +484,30 @@ const CreateSalesForm = ({
 
   // The catalogue narrowed to what this partner may actually sell. Resolved
   // locally so no per-partner request is ever made.
+  //
+  // `orgPaymentModelIds` carries three distinct states and they must not be
+  // conflated: a list restricts to that list, `[]` means genuinely none
+  // assigned (full payment only), and `null` means unknown — the lookup failed
+  // or the row predates entitlements — which falls back to the whole
+  // catalogue. `create-sale` applies the identical rule; keep the two in step,
+  // or the picker offers models the endpoint then rejects.
+  // A partner with NO assignments gets EVERY active model. The sync only covers
+  // partners the external app has sent, so treating "none assigned" as "no
+  // models" would block sales for every unsynced partner rather than protect
+  // them. Only an explicit list restricts. `create-sale` applies the identical
+  // rule — if these diverge, the picker and the server disagree.
   const visiblePaymentModels = useMemo(() => {
-    if (!orgPaymentModelIds) return paymentModels;
+    if (!orgPaymentModelIds || orgPaymentModelIds.length === 0) {
+      return paymentModels;
+    }
     const allowed = new Set(orgPaymentModelIds);
     return paymentModels.filter((m) => allowed.has(m.id));
   }, [paymentModels, orgPaymentModelIds]);
 
-  // Two different empty states, worth distinguishing: the partner genuinely has
-  // no models, versus it references models this catalogue can't resolve (the
-  // model is inactive, or was created after we loaded).
-  const partnerHasNoPaymentModels =
-    orgPaymentModelIds !== null && orgPaymentModelIds.length === 0;
+  // The one real empty state left: the partner is assigned models this
+  // catalogue can't resolve (inactive, or created after we loaded). That's a
+  // data fault, not a permission, so it must not fall back to "show all" —
+  // doing so would hide it.
   const partnerModelsUnresolved =
     orgPaymentModelIds !== null &&
     orgPaymentModelIds.length > 0 &&
@@ -1379,12 +1392,6 @@ const CreateSalesForm = ({
                     ))}
                   </SelectContent>
                 </Select>
-                {partnerHasNoPaymentModels && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    This partner has no sales models assigned, so only full
-                    payment is available.
-                  </p>
-                )}
                 {partnerModelsUnresolved && (
                   <p className="mt-1 text-xs text-amber-600">
                     This partner is assigned {orgPaymentModelIds.length} sales

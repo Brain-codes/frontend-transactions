@@ -97,8 +97,8 @@ interface FinancialReportsViewProps {
   initialPaymentStatus?: string;
 }
 
-const getAmountPaid = (sale: AdminSales): number =>
-  sale.total_paid ?? (sale.is_installment ? 0 : (sale.amount ?? 0));
+// See FinancialReportsTable: total_paid is the real collected figure.
+const getAmountPaid = (sale: AdminSales): number => sale.total_paid ?? 0;
 
 const getAmountOwed = (sale: AdminSales): number =>
   Math.max(0, (sale.amount ?? 0) - getAmountPaid(sale));

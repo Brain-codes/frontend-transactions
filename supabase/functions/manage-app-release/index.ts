@@ -82,6 +82,42 @@ serve(async (req) => {
         if (key in body) update[key] = body[key];
       }
 
+      // Preflight: `apk_path` is free text and nothing else validates it, but the
+      // mobile app force-updates against this row — announcing a version whose
+      // APK isn't uploaded yet locks users out. Confirm the file is reachable
+      // before publishing. Only runs when the download location is changing.
+      if ("apk_path" in body || "base_url" in body) {
+        const { data: current } = await supabase
+          .from("app_releases")
+          .select("base_url, apk_path")
+          .eq("id", ROW_ID)
+          .single();
+
+        const base = (update.base_url ?? current?.base_url ?? "") as string;
+        const path = (update.apk_path ?? current?.apk_path ?? "") as string;
+        const apkUrl = path.startsWith("http")
+          ? path
+          : `${base}${path.startsWith("/") ? path : `/${path}`}`;
+
+        let reachable = false;
+        try {
+          const head = await fetch(apkUrl, { method: "HEAD" });
+          reachable = head.ok;
+        } catch {
+          reachable = false;
+        }
+
+        if (!reachable) {
+          return json(
+            {
+              error:
+                `APK not reachable at ${apkUrl} — upload and deploy the file before publishing this release.`,
+            },
+            422
+          );
+        }
+      }
+
       const { data, error } = await supabase
         .from("app_releases")
         .update(update)

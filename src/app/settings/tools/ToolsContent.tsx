@@ -61,6 +61,33 @@ interface ErpReport {
     in_monitoring_not_erp: Bucket;
   };
 }
+interface SalesModelReport {
+  mode: "apply" | "dry_run";
+  authoritative: boolean;
+  diagnostics: {
+    erp_orders_with_model: number;
+    erp_partner_entitlements: number;
+    order_refs_matched_to_org: number;
+    order_refs_with_no_org_here: number;
+  };
+  totals: {
+    orgs_with_derived_models: number;
+    partners_needing_changes: number;
+    partners_already_complete: number;
+    assignments_to_add: number;
+    assignments_to_remove: number;
+    models_missing_locally: number;
+    models_created: number;
+    assignments_added: number;
+    assignments_removed: number;
+  };
+  buckets: {
+    partners_to_update: Bucket;
+    models_that_need_creating: Bucket;
+    unmatched_order_refs: Bucket;
+  };
+  note: string;
+}
 interface FullReport {
   generated_at: string;
   year: number;
@@ -200,6 +227,11 @@ const ToolsContentInner = () => {
   const [erpToken, setErpToken] = useState("");
   const [fullYear, setFullYear] = useState(new Date().getFullYear());
 
+  // Sales-model backfill
+  const [smLoading, setSmLoading] = useState(false);
+  const [smReport, setSmReport] = useState<SalesModelReport | null>(null);
+  const [smAuthoritative, setSmAuthoritative] = useState(false);
+
   // Backfill / fix tool
   const backfillInputRef = React.useRef<HTMLInputElement>(null);
   const [backfillRows, setBackfillRows] = useState<any[] | null>(null);
@@ -282,6 +314,50 @@ const ToolsContentInner = () => {
       });
     } finally {
       setErpLoading(false);
+    }
+  };
+
+  const runSalesModels = async (apply: boolean) => {
+    if (!erpToken.trim()) {
+      toast({
+        title: "ERP token required",
+        description: "Paste your ERP login access token in the card above first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSmLoading(true);
+    try {
+      const token = await getToken();
+      const res = await fetch(`${FUNCTIONS_URL}/backfill-sales-models`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          erp_token: erpToken.trim(),
+          apply,
+          authoritative: smAuthoritative,
+          sample_limit: 20000,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success)
+        throw new Error(data.message || "Sales-model backfill failed");
+      setSmReport(data);
+      toast({
+        title: apply ? "Applied" : "Preview ready",
+        description: data.note,
+      });
+    } catch (err) {
+      toast({
+        title: "Sales-model backfill failed",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setSmLoading(false);
     }
   };
 
@@ -426,10 +502,16 @@ const ToolsContentInner = () => {
           <div className="rounded-lg bg-gray-50 border border-gray-200 p-3 text-xs space-y-1">
             <p className="font-medium text-gray-700">How to get your ERP token:</p>
             <p className="text-gray-600">
-              Log into the ERP site → open DevTools → Application → Local Storage →
-              copy the <code>access_token</code> value (or grab it from any logged-in
-              Postman request). Paste it below. Tokens expire after ~1 hour — just
-              grab a fresh one if it fails.
+              Log into the ERP site → DevTools → <strong>Console</strong> → paste:
+            </p>
+            <code className="block break-all bg-white border border-gray-200 rounded p-2 my-1 text-gray-800">
+              {`copy(JSON.parse(Object.entries(localStorage).find(([k])=>k.includes('auth-token'))[1]).access_token)`}
+            </code>
+            <p className="text-gray-600">
+              That copies the token to your clipboard — paste it below. It should
+              start with <code>eyJ</code> and contain two dots. Tokens expire after
+              ~1 hour; grab a fresh one if you get a 401. Pasting the whole JSON
+              blob or a <code>Bearer</code> prefix is fine — we clean it up.
             </p>
           </div>
 
@@ -549,6 +631,203 @@ const ToolsContentInner = () => {
               />
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* ── Tool 0b: Sales-model backfill ── */}
+      <Card className="border-emerald-200">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Wrench className="h-5 w-5 text-emerald-700" />
+            <CardTitle>Backfill Partner Sales Models</CardTitle>
+          </div>
+          <CardDescription>
+            Partners transferred before the ERP started sending sales models have
+            no entitlements here. This derives them from the ERP&apos;s{" "}
+            <strong>order history</strong> (<code>sales_orders.sales_model_id</code>)
+            — a partner that sold on a model is entitled to it — plus the newer{" "}
+            <code>partner_sales_models</code> list where it exists. Partners are
+            matched by <code>sales_reference</code> → stove → organization (not by
+            name), and models by the same rules as the live sync. Uses the ERP
+            token from the card above.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <label className="flex items-start gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={smAuthoritative}
+              onChange={(e) => setSmAuthoritative(e.target.checked)}
+            />
+            <span>
+              Treat the ERP as authoritative — also <strong>revoke</strong> models
+              assigned here that the ERP doesn&apos;t list.
+              <span className="block text-xs text-gray-500">
+                Leave unticked (recommended) to only ADD missing models and never
+                remove anything.
+              </span>
+            </span>
+          </label>
+
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => runSalesModels(false)}
+              disabled={smLoading}
+            >
+              {smLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+              )}
+              Preview (dry run)
+            </Button>
+            <Button
+              onClick={() => {
+                if (
+                  window.confirm(
+                    smAuthoritative
+                      ? "Apply: add missing sales models AND revoke ones the ERP doesn't list. Proceed?"
+                      : "Apply: add missing sales models to partners. Nothing will be revoked. Proceed?"
+                  )
+                )
+                  runSalesModels(true);
+              }}
+              disabled={smLoading || !smReport}
+            >
+              <Wrench className="h-4 w-4 mr-2" />
+              Apply
+            </Button>
+          </div>
+
+          {smReport && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <StatCard
+                  label="ERP orders with a model"
+                  value={smReport.diagnostics.erp_orders_with_model}
+                />
+                <StatCard
+                  label="Partners derived"
+                  value={smReport.totals.orgs_with_derived_models}
+                  tone="good"
+                />
+                <StatCard
+                  label="Need fixing"
+                  value={smReport.totals.partners_needing_changes}
+                  tone={
+                    smReport.totals.partners_needing_changes > 0 ? "bad" : "good"
+                  }
+                />
+                <StatCard
+                  label="Already complete"
+                  value={smReport.totals.partners_already_complete}
+                  tone="good"
+                />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <StatCard
+                  label={
+                    smReport.mode === "apply"
+                      ? "Assignments added"
+                      : "Assignments to add"
+                  }
+                  value={
+                    smReport.mode === "apply"
+                      ? smReport.totals.assignments_added
+                      : smReport.totals.assignments_to_add
+                  }
+                  tone="good"
+                />
+                <StatCard
+                  label={
+                    smReport.mode === "apply"
+                      ? "Assignments revoked"
+                      : "Assignments to revoke"
+                  }
+                  value={
+                    smReport.mode === "apply"
+                      ? smReport.totals.assignments_removed
+                      : smReport.totals.assignments_to_remove
+                  }
+                  tone={
+                    (smReport.mode === "apply"
+                      ? smReport.totals.assignments_removed
+                      : smReport.totals.assignments_to_remove) > 0
+                      ? "warn"
+                      : "neutral"
+                  }
+                />
+                <StatCard
+                  label={
+                    smReport.mode === "apply"
+                      ? "Models created"
+                      : "Models to create"
+                  }
+                  value={
+                    smReport.mode === "apply"
+                      ? smReport.totals.models_created
+                      : smReport.totals.models_missing_locally
+                  }
+                  tone={
+                    (smReport.mode === "apply"
+                      ? smReport.totals.models_created
+                      : smReport.totals.models_missing_locally) > 0
+                      ? "warn"
+                      : "neutral"
+                  }
+                />
+                <StatCard
+                  label="Order refs not here"
+                  value={smReport.diagnostics.order_refs_with_no_org_here}
+                  tone={
+                    smReport.diagnostics.order_refs_with_no_org_here > 0
+                      ? "warn"
+                      : "good"
+                  }
+                />
+              </div>
+
+              <BucketRow
+                title="Partners to update"
+                description="Partners whose sales-model entitlements will change, with the model names being added."
+                bucket={smReport.buckets.partners_to_update}
+                filename="partners_sales_models_to_update.csv"
+                tone="bad"
+              />
+              <BucketRow
+                title="Sales models missing locally"
+                description="Model names the ERP uses that don't exist here yet. Apply creates them as stubs with ZERO pricing — a super admin must set fixed_price / min_down_payment afterwards."
+                bucket={smReport.buckets.models_that_need_creating}
+                filename="sales_models_to_create.csv"
+                tone="warn"
+              />
+              <BucketRow
+                title="Order refs with no org here"
+                description="ERP orders carrying a sales model whose sales_reference matches no stove in monitoring — so no partner could be derived from them."
+                bucket={smReport.buckets.unmatched_order_refs}
+                filename="unmatched_order_refs.csv"
+                tone="neutral"
+              />
+
+              <p className="text-xs text-gray-500">
+                {smReport.mode === "apply"
+                  ? "✅ Applied. Re-run Preview to confirm 'Need fixing' is now 0."
+                  : "Dry run — nothing was written. Review the buckets above, then Apply."}
+              </p>
+            </div>
+          )}
+
+          <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
+            <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+            <p className="text-xs text-amber-800">
+              Only <strong>published</strong> ERP sales models are pulled (same
+              rule the ERP transfer uses). Any model created here starts with zero
+              pricing so partners are never blocked from selling — set the real
+              pricing in Payment Models afterwards.
+            </p>
+          </div>
         </CardContent>
       </Card>
 

@@ -490,12 +490,36 @@ export async function getAgentOrganizations(supabase: any, agentId: string, sear
     }
   }
 
+  // Sales model entitlements, as bare IDs — the SAME field `manage-organizations`
+  // returns. Agent roles read their partners from HERE, not from that endpoint,
+  // so omitting it made every agent-selected partner look unrestricted (the
+  // clients treat a missing list as "unknown" and show every model).
+  const modelIdsByOrg: Record<string, string[]> = {};
+  let modelLookupOk = true;
+  if (allOrgIds.length > 0) {
+    const { data: modelLinks, error: modelLinksErr } = await supabase
+      .from("organization_payment_models")
+      .select("organization_id, payment_model_id")
+      .in("organization_id", allOrgIds);
+
+    if (modelLinksErr) {
+      console.warn("⚠️ Could not fetch payment model assignments:", modelLinksErr.message);
+      // Report null (unknown) rather than [] — [] would read as a real answer.
+      modelLookupOk = false;
+    } else {
+      for (const link of modelLinks || []) {
+        (modelIdsByOrg[link.organization_id] ||= []).push(link.payment_model_id);
+      }
+    }
+  }
+
   // Annotate each org with accurate stove counts
   const orgsWithStats = allOrganizations.map((o: any) => ({
     ...o,
     total_sales: orgStatsMap[o.id]?.total ?? 0,
     approved_sales: orgStatsMap[o.id]?.sold ?? 0,
     pending_sales: orgStatsMap[o.id]?.available ?? 0,
+    payment_model_ids: modelLookupOk ? (modelIdsByOrg[o.id] || []) : null,
   }));
 
   console.log(`✅ Sales stats attached for ${allOrgIds.length} organizations`);
