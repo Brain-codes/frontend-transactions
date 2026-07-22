@@ -464,7 +464,7 @@ const EndUserRecordsContent = () => {
                         <TableCell className="py-2 px-2 break-words align-top max-w-[180px]">
                           {sale.partner_name || sale.organizations?.name || sale.organizations?.partner_name || "N/A"}
                         </TableCell>
-                        <TableCell className="py-2 px-2 font-medium whitespace-nowrap align-top">
+                        <TableCell className="py-2 px-2 whitespace-nowrap align-top">
                           {sale.stove_serial_no || "N/A"}
                         </TableCell>
                         <TableCell className="py-2 px-2 align-top text-xs max-w-[160px] break-words">
