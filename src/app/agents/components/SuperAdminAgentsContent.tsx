@@ -2358,14 +2358,14 @@ export default function SuperAdminAgentsContent() {
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setAgents((prev) => {
-        const prevById = new Map(prev.map((p) => [p.id, p]));
-        return rows.map((r) => {
-          const existing = prevById.get(r.id);
+        const prevById = new Map(prev.map((p) => [p.id, p as any]));
+        return rows.map((r: any) => {
+          const existing: any = prevById.get(r.id);
           if (!existing) return r;
           return {
             ...r,
             stove_summary: existing.stove_summary ?? r.stove_summary,
-            direct_org_ids: existing.direct_org_ids ?? (r as any).direct_org_ids,
+            direct_org_ids: existing.direct_org_ids ?? r.direct_org_ids,
             assigned_organizations_count:
               existing.assigned_organizations_count ?? r.assigned_organizations_count,
             total_partners_count:
