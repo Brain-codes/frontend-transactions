@@ -1836,6 +1836,21 @@ export default function PartnersContent() {
                               {org.available_stove_ids ?? 0}
                             </button>
                           </TableCell>
+                          <TableCell className="align-middle min-w-[140px]">
+                            {(() => {
+                              const total = org.total_stove_ids ?? 0;
+                              const sold = org.sold_stove_ids ?? 0;
+                              const pct = total > 0 ? (sold / total) * 100 : 0;
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                                    <div className="h-full bg-[#4a5d0f]" style={{ width: `${Math.round(pct)}%` }} />
+                                  </div>
+                                  <span className="w-12 text-right text-[11px] text-gray-600">{pct.toFixed(1)}%</span>
+                                </div>
+                              );
+                            })()}
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                             </div>
