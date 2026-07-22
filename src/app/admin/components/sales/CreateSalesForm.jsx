@@ -30,7 +30,7 @@ import GooglePlacesInput from "@/app/components/ui/google-places-input";
 import { getGeoData, getGeoDataSync } from "@/lib/geoDataService";
 import adminSalesService from "../../../services/adminSalesService";
 import profileService from "../../../services/profileService";
-import { validateSalesForm } from "../../../utils/salesFormValidation";
+import { validateSalesForm, isValidNgPhone, NG_PHONE_FORMAT_MESSAGE } from "../../../utils/salesFormValidation";
 import {
   createInitialFormData,
   populateFormDataForEdit,
@@ -155,7 +155,9 @@ const CreateSalesForm = ({
   useEffect(() => {
     const raw = formData.phone || "";
     const digits = raw.replace(/\D+/g, "");
-    if (digits.length < 7) {
+    // Skip duplicate lookup unless the number is a valid NG mobile — the format
+    // error (set by handleInputChange) already covers the wrong-format case.
+    if (!isValidNgPhone(raw) || digits.length < 7) {
       setPhoneChecking(false);
       setErrors((prev) =>
         prev.phone && prev.phone.startsWith("A customer with this phone")
@@ -642,6 +644,19 @@ const CreateSalesForm = ({
       [field]: value,
     }));
 
+    // Live format check for phone fields — flag invalid format on every keystroke.
+    if (field === "contactPhone" || field === "phone") {
+      const trimmed = String(value || "").trim();
+      if (trimmed && !isValidNgPhone(trimmed)) {
+        setErrors((prev) => ({ ...prev, [field]: NG_PHONE_FORMAT_MESSAGE }));
+        return;
+      }
+      // Valid (or empty) — clear format error; the duplicate-check effect will
+      // repopulate `phone` if the number already exists.
+      setErrors((prev) => ({ ...prev, [field]: null }));
+      return;
+    }
+
     // Clear error for this field
     if (errors[field]) {
       setErrors((prev) => ({
@@ -650,6 +665,7 @@ const CreateSalesForm = ({
       }));
     }
   };
+
 
   const handleAddressSelect = (addressData) => {
     setFormData((prev) => ({

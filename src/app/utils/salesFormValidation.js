@@ -7,21 +7,24 @@
 import { isValidSignature } from "./signatureUtils";
 
 /**
- * The three phone formats the business accepts:
- *   08031234567 · 2348031234567 · +2348031234567
- * Separators people naturally type (spaces, dashes, brackets) are stripped
- * before matching, so "0803 123 4567" passes rather than being rejected.
+ * Validates a Nigerian mobile phone number. Accepts:
+ *   08031234567          (11 digits, leading 0)
+ *   +2348031234567       (with +234 country code)
+ *   2348031234567        (13 digits, leading 234)
+ * Spaces, dashes and parens in the raw value are ignored.
  *
- * Mirrors `PhoneUtils.isValidNigerianPhone` in the mobile app — keep in step.
+ * Mirrored by `PhoneUtils.isValidNigerianPhone` in the mobile app — keep the
+ * two in step, and note this one additionally enforces the NG mobile prefix
+ * ([7-9][0-1]), so it is the stricter of the pair.
  */
-export const PHONE_FORMAT_MESSAGE =
-  "Use 08031234567, 2348031234567 or +2348031234567";
-
-export const isValidNigerianPhone = (value) => {
-  const v = String(value ?? "").trim().replace(/[\s\-().]/g, "");
-  if (!v) return false;
-  return /^0\d{10}$/.test(v) || /^234\d{10}$/.test(v) || /^\+234\d{10}$/.test(v);
+export const isValidNgPhone = (raw) => {
+  if (!raw) return false;
+  const cleaned = String(raw).replace(/[\s\-()]/g, "");
+  return /^(?:0|\+?234)[7-9][0-1]\d{8}$/.test(cleaned);
 };
+
+export const NG_PHONE_FORMAT_MESSAGE =
+  "Enter a valid phone number (e.g. 08031234567, +2348031234567, or 2348031234567).";
 
 /**
  * Validates the sales form data
@@ -49,8 +52,8 @@ export const validateSalesForm = (formData) => {
   // Contact phone validation
   if (!formData.contactPhone.trim()) {
     errors.contactPhone = "Contact phone number is required";
-  } else if (!isValidNigerianPhone(formData.contactPhone)) {
-    errors.contactPhone = PHONE_FORMAT_MESSAGE;
+  } else if (!isValidNgPhone(formData.contactPhone)) {
+    errors.contactPhone = NG_PHONE_FORMAT_MESSAGE;
   }
 
   // End user first name validation
@@ -76,8 +79,8 @@ export const validateSalesForm = (formData) => {
   // Phone validation
   if (!formData.phone.trim()) {
     errors.phone = "End user phone number is required";
-  } else if (!isValidNigerianPhone(formData.phone)) {
-    errors.phone = PHONE_FORMAT_MESSAGE;
+  } else if (!isValidNgPhone(formData.phone)) {
+    errors.phone = NG_PHONE_FORMAT_MESSAGE;
   }
 
   // Amount validation
@@ -181,8 +184,8 @@ export const fieldValidators = {
     if (!value?.trim()) {
       return "Contact phone number is required";
     }
-    if (!isValidNigerianPhone(value)) {
-      return PHONE_FORMAT_MESSAGE;
+    if (!isValidNgPhone(value)) {
+      return NG_PHONE_FORMAT_MESSAGE;
     }
     return null;
   },
@@ -212,8 +215,8 @@ export const fieldValidators = {
     if (!value?.trim()) {
       return "End user phone number is required";
     }
-    if (!isValidNigerianPhone(value)) {
-      return PHONE_FORMAT_MESSAGE;
+    if (!isValidNgPhone(value)) {
+      return NG_PHONE_FORMAT_MESSAGE;
     }
     return null;
   },

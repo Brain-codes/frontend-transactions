@@ -31,6 +31,9 @@ import {
 import salesAdvancedService from "../services/salesAdvancedAPIService";
 import { lgaAndStates } from "../constants";
 import AdminSalesDetailModal from "../admin/components/sales/AdminSalesDetailModal";
+import EditEndUserModal from "./EditEndUserModal";
+import { useAuth } from "../contexts/useAuth";
+import { resolveRole } from "@/lib/permissions";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "N/A";
@@ -56,6 +59,12 @@ const EndUserRecordsContent = () => {
   const [pageSize, setPageSize] = useState(10);
   const [sortOrder, setSortOrder] = useState("desc");
   const [selectedSale, setSelectedSale] = useState(null);
+  const [editSale, setEditSale] = useState(null);
+
+  const { userRole } = useAuth();
+  const canEdit = ["super_admin", "acsl_agent_manager", "partner"].includes(
+    resolveRole(userRole) || ""
+  );
 
   const stateList = useMemo(() => Object.keys(lgaAndStates).sort(), []);
   const lgaList = useMemo(
@@ -197,26 +206,43 @@ const EndUserRecordsContent = () => {
     return pages;
   };
 
+  const getModifierName = (s) =>
+    s.updated_by_profile?.full_name ||
+    s.creator?.full_name ||
+    s.created_by_profile?.full_name ||
+    s.sales_agent?.full_name ||
+    "";
+
+  const formatModifier = (s) => {
+    const name = getModifierName(s);
+    const when = s.updated_at || s.created_at ? formatDate(s.updated_at || s.created_at) : null;
+    if (!name && !when) return "—";
+    if (name && when) return `${name} · ${when}`;
+    return name || when || "—";
+  };
+
   const handleExport = () => {
     const headers = [
-      "Stove ID",
       "Sales Date",
-      "Contact Person",
-      "Phone Number",
-      "Partner",
       "End User",
       "State",
       "LGA",
+      "Contact Person",
+      "Phone Number",
+      "Partner",
+      "Stove ID",
+      "Last Modified By",
     ];
     const rows = filteredSales.map((s) => [
-      s.stove_serial_no || "",
       formatDate(s.sales_date || s.created_at),
-      s.contact_person || "",
-      s.phone || s.contact_phone || "",
-      s.partner_name || s.organizations?.name || s.organizations?.partner_name || "",
       s.end_user_name || "",
       s.state_backup || "",
       s.lga_backup || "",
+      s.contact_person || "",
+      s.phone || s.contact_phone || "",
+      s.partner_name || s.organizations?.name || s.organizations?.partner_name || "",
+      s.stove_serial_no || "",
+      formatModifier(s),
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -341,7 +367,7 @@ const EndUserRecordsContent = () => {
         ) : (
           <>
             {/* Top pagination bar */}
-            <div className="bg-[#eef3c4] rounded-t-lg px-4 py-2 flex items-center justify-between">
+            <div className="px-4 py-2 flex items-center justify-end">
               <div className="flex items-center gap-3">
                 <p className="text-sm text-gray-600">
                   Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
@@ -369,7 +395,6 @@ const EndUserRecordsContent = () => {
               <Table className="text-sm">
                 <TableHeader className="bg-[#4a5d0f]">
                   <TableRow className="hover:bg-[#4a5d0f]">
-                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Stove ID</TableHead>
                     <TableHead
                       className="text-white font-semibold py-2 px-2 whitespace-nowrap cursor-pointer select-none"
                       onClick={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
@@ -378,19 +403,21 @@ const EndUserRecordsContent = () => {
                         Sales Date
                       </div>
                     </TableHead>
-                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Contact Person</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2">End User</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2">State</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2">LGA</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2">Contact Person</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Phone Number</TableHead>
-                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Partner</TableHead>
-                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">End User</TableHead>
-                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">State</TableHead>
-                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">LGA</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2">Partner</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Stove ID</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2">Last Modified By</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedSales.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                         {searchTerm || hasActiveFilters
                           ? "No records found matching your filters."
                           : "No end user records available."}
@@ -402,39 +429,63 @@ const EndUserRecordsContent = () => {
                         key={sale.id}
                         className={`${idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]"} hover:bg-gray-50`}
                       >
-                        <TableCell className="py-2 px-2 font-medium whitespace-nowrap">
-                          {sale.stove_serial_no || "N/A"}
-                        </TableCell>
                         <TableCell className="py-2 px-2 whitespace-nowrap">
                           {formatDate(sale.sales_date || sale.created_at)}
                         </TableCell>
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
-                          {sale.contact_person || "N/A"}
-                        </TableCell>
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
-                          {sale.phone || sale.contact_phone || "N/A"}
-                        </TableCell>
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
-                          {sale.partner_name || sale.organizations?.name || sale.organizations?.partner_name || "N/A"}
-                        </TableCell>
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
+                        <TableCell className="py-2 px-2 break-words align-top max-w-[160px]">
                           {sale.end_user_name || "N/A"}
                         </TableCell>
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
+                        <TableCell className="py-2 px-2 break-words align-top max-w-[110px]">
                           {sale.state_backup || "N/A"}
                         </TableCell>
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
+                        <TableCell className="py-2 px-2 break-words align-top max-w-[120px]">
                           {sale.lga_backup || "N/A"}
                         </TableCell>
+                        <TableCell className="py-2 px-2 break-words align-top max-w-[160px]">
+                          {sale.contact_person || "N/A"}
+                        </TableCell>
+                        <TableCell className="py-2 px-2 whitespace-nowrap align-top">
+                          {sale.phone || sale.contact_phone || "N/A"}
+                        </TableCell>
+                        <TableCell className="py-2 px-2 break-words align-top max-w-[180px]">
+                          {sale.partner_name || sale.organizations?.name || sale.organizations?.partner_name || "N/A"}
+                        </TableCell>
+                        <TableCell className="py-2 px-2 font-medium whitespace-nowrap align-top">
+                          {sale.stove_serial_no || "N/A"}
+                        </TableCell>
+                        <TableCell className="py-2 px-2 align-top text-xs max-w-[160px] break-words">
+                          {(() => {
+                            const name = getModifierName(sale);
+                            const when = sale.updated_at || sale.created_at;
+                            if (!name && !when) return <span className="text-gray-400">—</span>;
+                            return (
+                              <div className="flex flex-col leading-tight">
+                                {name && <span className="font-medium">{name}</span>}
+                                {when && <span className="text-gray-500">{formatDate(when)}</span>}
+                              </div>
+                            );
+                          })()}
+                        </TableCell>
                         <TableCell className="py-2 px-2 whitespace-nowrap text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-3 rounded-none border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4]"
-                            onClick={() => setSelectedSale(sale)}
-                          >
-                            Details
-                          </Button>
+                          <div className="inline-flex items-center gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-3 rounded-none border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4]"
+                              onClick={() => setSelectedSale(sale)}
+                            >
+                              Details
+                            </Button>
+                            {canEdit && (
+                              <Button
+                                size="sm"
+                                className="h-7 px-3 rounded-none bg-[#4a5d0f] hover:bg-[#3a4a0c] text-white"
+                                onClick={() => setEditSale(sale)}
+                              >
+                                Edit
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -510,6 +561,16 @@ const EndUserRecordsContent = () => {
         onClose={() => setSelectedSale(null)}
         sale={selectedSale}
         viewFrom="superAdmin"
+      />
+      <EditEndUserModal
+        open={!!editSale}
+        sale={editSale}
+        onClose={() => setEditSale(null)}
+        onSaved={(updated) => {
+          setAllSales((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
+          // Refresh in the background to pick up the fresh updated_by_profile join.
+          fetchSales();
+        }}
       />
     </DashboardLayout>
   );
