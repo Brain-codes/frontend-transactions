@@ -167,20 +167,21 @@ export default function CancelledTransactionsContent() {
                 <TableHead className="text-white font-semibold">End User</TableHead>
                 <TableHead className="text-white font-semibold">State</TableHead>
                 <TableHead className="text-white font-semibold">Stove ID</TableHead>
+                <TableHead className="text-white font-semibold">Cancelled By</TableHead>
                 <TableHead className="text-white font-semibold">Reason for Cancel</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-gray-500">
+                  <TableCell colSpan={7} className="py-8 text-center text-gray-500">
                     <Loader2 className="h-5 w-5 animate-spin inline mr-2" />
                     Loading cancelled transactions...
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-gray-500">
+                  <TableCell colSpan={7} className="py-8 text-center text-gray-500">
                     No cancelled transactions found.
                   </TableCell>
                 </TableRow>
@@ -195,12 +196,14 @@ export default function CancelledTransactionsContent() {
                     <TableCell>{r.end_user_name || "N/A"}</TableCell>
                     <TableCell>{r.state_backup || "N/A"}</TableCell>
                     <TableCell className="font-mono">{r.stove_serial_no || "N/A"}</TableCell>
+                    <TableCell>{r.cancelled_by_name || <span className="text-gray-400 italic">Unknown</span>}</TableCell>
                     <TableCell className="text-gray-700">
                       {r.cancel_reason || <span className="text-gray-400 italic">No reason provided</span>}
                     </TableCell>
                   </TableRow>
                 ))
               )}
+
             </TableBody>
           </Table>
         </div>
