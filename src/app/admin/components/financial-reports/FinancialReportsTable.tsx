@@ -194,7 +194,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                     {formatDate((sale as any).updated_at || sale.created_at)}
                   </div>
                 </TableCell>
-                <TableCell className="py-2 px-2 text-right">
+                <TableCell className="py-2 px-2 text-right align-top">
                   <FinancialReportRowActions
                     sale={sale}
                     onViewDetails={onViewDetails}
