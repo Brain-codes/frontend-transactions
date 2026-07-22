@@ -675,8 +675,15 @@ export default function StatesPerformanceContent() {
                     </button>
                   </TableCell>
                   <TableCell className="text-center align-top">
-                    <Pill tone="green">{r.agents}</Pill>
+                    <button
+                      onClick={() => openAgentModal(r.state)}
+                      className="inline-flex min-w-[2rem] cursor-pointer justify-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#eef3c4] text-[#4a5d0f] hover:bg-[#4a5d0f] hover:text-white"
+                      title="View agents in this state"
+                    >
+                      {r.agents}
+                    </button>
                   </TableCell>
+
 
                   <TableCell className="text-center align-top">
                     <Pill tone="slate">{r.stoves}</Pill>
