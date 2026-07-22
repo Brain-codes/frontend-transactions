@@ -2626,6 +2626,8 @@ export default function SuperAdminAgentsContent() {
   };
 
   // ── Pagination helpers ─────────────────────────────────────────────────────
+  // Note: `displayedTotalPages` (computed below from `displayedAgents`) is the
+  // source of truth for the pager; these are kept for KPI/legacy references.
   const totalItems = pagination?.totalItems ?? agents.length;
   const totalPages = pagination?.totalPages ?? 1;
   const startItem = (page - 1) * pageSize + 1;
@@ -2633,8 +2635,9 @@ export default function SuperAdminAgentsContent() {
 
   const getPageNumbers = () => {
     const pages: number[] = [];
+    const tp = Math.max(1, Math.ceil((pagination?.totalItems ?? agents.length) / pageSize));
     const start = Math.max(1, page - 2);
-    const end = Math.min(totalPages, start + 4);
+    const end = Math.min(tp, start + 4);
     for (let i = start; i <= end; i++) pages.push(i);
     return pages;
   };
