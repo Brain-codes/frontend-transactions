@@ -1,25 +1,31 @@
-## Goal
+## Problem
 
-On the sales form's "Stove Photo" field, let the user choose between:
-1. **Take Photo** — open the device camera and capture directly
-2. **Upload from Device** — pick an existing image (current behavior)
+The current "Take Photo" button uses the HTML `capture="environment"` attribute. On mobile that opens the camera, but on **desktop/laptop browsers it's ignored** and the file picker opens instead. To actually use a laptop webcam we need the `navigator.mediaDevices.getUserMedia()` API with a live video preview.
 
-Agreement Document upload stays unchanged.
+## Fix
 
-## Changes
+### 1. New component: `src/app/components/ui/CameraCaptureModal.jsx`
+A modal dialog that:
+- On open, calls `navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })` (falls back to any camera if `environment` unavailable — laptops use the front-facing webcam).
+- Renders a live `<video autoPlay playsInline muted>` stream preview.
+- **Capture** button draws the current video frame to an offscreen `<canvas>`, converts to a JPEG `Blob` via `canvas.toBlob`, wraps it into a `File` (`stove-photo-<timestamp>.jpg`), and passes it to `onCapture`.
+- **Retake** returns to live preview after a capture; **Use Photo** confirms and closes.
+- **Cancel** stops all tracks and closes.
+- Cleans up: stops every `MediaStreamTrack` on close/unmount.
+- Handles errors: permission denied, no camera found, insecure context — shows a clear message and a "Choose file instead" button that triggers the normal upload path.
 
-### 1. `src/app/components/ui/ImageUploadSection.jsx`
-Add an optional `enableCamera` prop. When enabled:
-- Render two buttons instead of one: **Take Photo** (camera icon) and **Upload Image** (upload icon).
-- Add a second hidden `<input type="file" accept="image/*" capture="environment">` wired to a separate ref for camera capture. On mobile browsers this opens the rear camera directly; on desktop browsers without a camera it gracefully falls back to a file picker.
-- In the "preview exists" state, show both **Retake** and **Change** buttons when `enableCamera` is true.
-- Keep all existing behavior (upload flow, PDF preview, error, loading spinner) intact for other usages.
+### 2. `src/app/components/ui/ImageUploadSection.jsx`
+- Drop the hidden `capture="environment"` input.
+- When `enableCamera` is true, the "Take Photo" / "Retake" button opens the new `CameraCaptureModal` instead of a file input.
+- On successful capture, call the same `onUpload(file)` callback — the parent form flow is unchanged.
+- Keep "Upload Image" / "Change" as-is for device file selection.
 
-### 2. `src/app/admin/components/sales/CreateSalesForm.jsx`
-Pass `enableCamera` on the Stove Photo `ImageUploadSection` only. Agreement Document upload stays as-is.
+### 3. No changes needed in `CreateSalesForm.jsx`
+It already passes `enableCamera` and `onUpload={(file) => handleImageUpload(file, "stove")}`.
 
 ## Technical notes
 
-- Uses the standard HTML `capture` attribute — no new dependencies, no `getUserMedia` permissions plumbing, and it works inside iframes/preview.
-- Existing `handleImageUpload(file, "stove")` handler is reused for both paths; the captured photo is delivered as a normal `File`, so validation, upload, and preview logic don't change.
-- No backend, storage, or schema changes.
+- `getUserMedia` requires a **secure context** (HTTPS or localhost). The Lovable preview and published site are HTTPS, so this works. If ever served over plain HTTP, the modal will surface the error message and fall back to file upload.
+- No new dependencies — uses built-in browser APIs (`MediaDevices`, `HTMLCanvasElement`).
+- JPEG quality set to `0.9`; captured resolution follows the native stream size (typically 1280×720 on laptop webcams).
+- Camera stream is fully torn down when the modal closes to release the webcam indicator.
