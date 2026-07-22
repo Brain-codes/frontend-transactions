@@ -259,9 +259,24 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
     if (salesModelFilter !== "all") {
       result = result.filter((s) => s.payment_model_id === salesModelFilter);
     }
+    if (yearFilter !== "all") {
+      const y = Number(yearFilter);
+      result = result.filter((s) => {
+        const d = s.sales_date || s.created_at;
+        return d ? new Date(d).getFullYear() === y : false;
+      });
+    }
+    if (selectedMonth !== "all") {
+      const m = Number(selectedMonth);
+      result = result.filter((s) => {
+        const d = s.sales_date || s.created_at;
+        return d ? new Date(d).getMonth() === m : false;
+      });
+    }
 
     if (startDate) result = result.filter((s) => (s.sales_date || s.created_at) >= startDate);
     if (endDate)   result = result.filter((s) => (s.sales_date || s.created_at) <= endDate + "T23:59:59");
+
 
     result.sort((a, b) => {
       const dA = new Date(a.sales_date || a.created_at).getTime();
