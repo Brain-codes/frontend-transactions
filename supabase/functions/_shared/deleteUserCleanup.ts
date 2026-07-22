@@ -25,7 +25,10 @@ function isSchemaDrift(error: SupabaseError): boolean {
     message.includes("could not find the table") ||
     message.includes("could not find the column") ||
     message.includes("column") && message.includes("does not exist") ||
-    message.includes("relation") && message.includes("does not exist")
+    message.includes("relation") && message.includes("does not exist") ||
+    message.includes("cannot delete from view") ||
+    message.includes("cannot update view") ||
+    message.includes("is not updatable")
   );
 }
 
