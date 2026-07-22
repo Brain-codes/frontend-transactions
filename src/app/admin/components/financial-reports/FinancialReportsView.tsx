@@ -340,7 +340,7 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
     setCurrentPage(1);
   }, [searchTerm, paymentStatusFilter, startDate, endDate, pageSize, selectedState, selectedLGA, orgFilter, approvalFilter, salesModelFilter, selectedYears, trackingFilter]);
 
-  const hasActiveFilters = searchTerm !== "" || paymentStatusFilter !== "all" || startDate !== "" || endDate !== "" || selectedState !== "all" || selectedLGA !== "all" || orgFilter !== "all" || approvalFilter !== "all" || trackingFilter !== "none";
+  const hasActiveFilters = searchTerm !== "" || paymentStatusFilter !== "all" || startDate !== "" || endDate !== "" || selectedState !== "all" || selectedLGA !== "all" || orgFilter !== "all" || approvalFilter !== "all" || salesModelFilter !== "all" || trackingFilter !== "none";
 
   const clearFilters = () => {
     setSearchTerm(""); setPaymentStatusFilter("all"); setStartDate(""); setEndDate("");
