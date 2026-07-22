@@ -130,6 +130,7 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
   const [selectedLGA, setSelectedLGA] = useState("all");
   const [orgFilter, setOrgFilter] = useState("all");
   const [approvalFilter, setApprovalFilter] = useState("all");
+  const [trackingFilter, setTrackingFilter] = useState<TrackingKey>("none");
   const [internalSelectedYears, setInternalSelectedYears] = useState<number[]>(loadSelectedYears);
   const selectedYears = useMemo(
     () => externalSelectedYear !== undefined ? [externalSelectedYear] : internalSelectedYears,
