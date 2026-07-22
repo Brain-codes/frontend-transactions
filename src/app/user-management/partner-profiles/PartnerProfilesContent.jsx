@@ -856,6 +856,13 @@ const PartnerProfilesContent = () => {
         credential={viewingCredential}
       />
 
+      <StoveTransferHistoryModal
+        organization={transferHistoryOrg}
+        isOpen={!!transferHistoryOrg}
+        onClose={() => setTransferHistoryOrg(null)}
+      />
+
+
       <Dialog open={!!agentsModalPartner} onOpenChange={(o) => !o && setAgentsModalPartner(null)}>
         <DialogContent className="max-w-2xl p-0 overflow-hidden">
           <DialogHeader className="px-6 py-4" style={{ backgroundColor: "#4a5d0f" }}>
