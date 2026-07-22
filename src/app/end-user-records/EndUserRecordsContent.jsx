@@ -396,14 +396,14 @@ const EndUserRecordsContent = () => {
                         Sales Date
                       </div>
                     </TableHead>
-                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">End User</TableHead>
-                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">State</TableHead>
-                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">LGA</TableHead>
-                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Contact Person</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2">End User</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2">State</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2">LGA</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2">Contact Person</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Phone Number</TableHead>
-                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Partner</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2">Partner</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Stove ID</TableHead>
-                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Last Modified By</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2">Last Modified By</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -425,28 +425,28 @@ const EndUserRecordsContent = () => {
                         <TableCell className="py-2 px-2 whitespace-nowrap">
                           {formatDate(sale.sales_date || sale.created_at)}
                         </TableCell>
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
+                        <TableCell className="py-2 px-2 break-words align-top max-w-[160px]">
                           {sale.end_user_name || "N/A"}
                         </TableCell>
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
+                        <TableCell className="py-2 px-2 break-words align-top max-w-[110px]">
                           {sale.state_backup || "N/A"}
                         </TableCell>
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
+                        <TableCell className="py-2 px-2 break-words align-top max-w-[120px]">
                           {sale.lga_backup || "N/A"}
                         </TableCell>
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
+                        <TableCell className="py-2 px-2 break-words align-top max-w-[160px]">
                           {sale.contact_person || "N/A"}
                         </TableCell>
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
+                        <TableCell className="py-2 px-2 whitespace-nowrap align-top">
                           {sale.phone || sale.contact_phone || "N/A"}
                         </TableCell>
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
+                        <TableCell className="py-2 px-2 break-words align-top max-w-[180px]">
                           {sale.partner_name || sale.organizations?.name || sale.organizations?.partner_name || "N/A"}
                         </TableCell>
-                        <TableCell className="py-2 px-2 font-medium whitespace-nowrap">
+                        <TableCell className="py-2 px-2 font-medium whitespace-nowrap align-top">
                           {sale.stove_serial_no || "N/A"}
                         </TableCell>
-                        <TableCell className="py-2 px-2 whitespace-nowrap text-xs">
+                        <TableCell className="py-2 px-2 align-top text-xs max-w-[160px] break-words">
                           {sale.updated_by_profile?.full_name ? (
                             <div className="flex flex-col leading-tight">
                               <span className="font-medium">{sale.updated_by_profile.full_name}</span>
