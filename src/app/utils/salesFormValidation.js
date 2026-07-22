@@ -48,6 +48,8 @@ export const validateSalesForm = (formData) => {
   // Contact phone validation
   if (!formData.contactPhone.trim()) {
     errors.contactPhone = "Contact phone number is required";
+  } else if (!isValidNgPhone(formData.contactPhone)) {
+    errors.contactPhone = NG_PHONE_FORMAT_MESSAGE;
   }
 
   // End user first name validation
