@@ -1753,9 +1753,12 @@ export default function PartnersContent() {
 
           <div className="space-y-0">
             <div className="flex items-center justify-between px-1 py-2">
-              <p className="text-sm text-gray-600">
-                Showing <span className="font-medium">{startRecord}–{endRecord}</span> of <span className="font-medium">{pagination.total}</span> partners
-              </p>
+              <div className="flex items-center gap-3">
+                <h3 className="text-sm font-semibold text-gray-900">Partners Performance</h3>
+                <p className="text-sm text-gray-600">
+                  Showing <span className="font-medium">{startRecord}–{endRecord}</span> of <span className="font-medium">{pagination.total}</span> partners
+                </p>
+              </div>
               <Button
                 size="sm"
                 className="h-8 px-3 text-xs flex items-center gap-1 bg-black hover:bg-black/90 text-white shadow-none rounded-md"
