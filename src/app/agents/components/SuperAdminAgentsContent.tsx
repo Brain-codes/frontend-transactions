@@ -82,6 +82,16 @@ import PageHeader from "../../components/PageHeader";
 import AgentViewCredentialModal from "../../admin/components/agents/AgentViewCredentialModal";
 import AgentCredentialsModal from "../../admin/components/agents/AgentCredentialsModal";
 import tokenManager from "@/utils/tokenManager";
+import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
+
+const REALTIME_AGENT_TABLES = [
+  "profiles",
+  "acsl_agent_organizations",
+  "super_admin_agent_organizations",
+  "acsl_agent_states",
+  "sales",
+  "stove_ids",
+];
 
 // PostgREST caps un-ranged selects at 1000 rows, silently truncating bigger
 // result sets. Rebuilds the query per page (builders aren't reusable) and
@@ -2401,8 +2411,13 @@ export default function SuperAdminAgentsContent() {
   useEffect(() => {
     const handler = () => { fetchAgents(); };
     window.addEventListener("acsl:user-updated", handler);
-    return () => window.removeEventListener("acsl:user-updated", handler);
+    window.addEventListener("performance-report:refresh:agents", handler);
+    return () => {
+      window.removeEventListener("acsl:user-updated", handler);
+      window.removeEventListener("performance-report:refresh:agents", handler);
+    };
   }, [fetchAgents]);
+  useRealtimeRefresh("agents", REALTIME_AGENT_TABLES);
 
 
   // Hydrate Assigned / Collected / In Stock per agent from their assigned partner orgs.

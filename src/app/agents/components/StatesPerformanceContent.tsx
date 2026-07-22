@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../contexts/useAuth";
+import { useRealtimeRefresh, useRefreshListener } from "../hooks/useRealtimeRefresh";
+
+const REALTIME_STATE_TABLES = ["organizations", "profiles", "acsl_agent_states", "sales", "stove_ids"];
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -186,6 +189,10 @@ export default function StatesPerformanceContent() {
   const [agentModalSearch, setAgentModalSearch] = useState("");
   const [agentModalPage, setAgentModalPage] = useState(1);
   const [agentModalPageSize, setAgentModalPageSize] = useState(10);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useRealtimeRefresh("states", REALTIME_STATE_TABLES);
+  useRefreshListener("states", () => setReloadKey((k) => k + 1));
 
   useEffect(() => {
     let cancelled = false;
@@ -452,7 +459,7 @@ export default function StatesPerformanceContent() {
     return () => {
       cancelled = true;
     };
-  }, [supabase]);
+  }, [supabase, reloadKey]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
