@@ -2394,7 +2394,7 @@ export default function SuperAdminAgentsContent() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, statusFilter, selectedRoles, dateFrom, dateTo]);
+  }, [search, statusFilter, selectedRoles, dateFrom, dateTo]);
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
   useEffect(() => { setPage(1); }, [search, statusFilter, selectedRoles, dateFrom, dateTo, sortMode, stoveSort.key, stoveSort.direction]);
