@@ -170,6 +170,10 @@ export default function StatesPerformanceContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<StateRow[]>([]);
+  // Set of states that appear in at least one ACSL agent's partner-derived
+  // assignments — same rule as Agents Performance's "States Assigned" badge.
+  const [agentCoveredStates, setAgentCoveredStates] = useState<Set<string>>(new Set());
+
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("sold");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -267,6 +271,31 @@ export default function StatesPerformanceContent() {
         (orgs || []).forEach((o: any) => {
           if (o?.id) orgState.set(o.id, (o.state || "").trim() || "Unknown");
         });
+
+        // Compute states covered by any ACSL agent, using the same
+        // partner-derived rule as the Agents Performance "States Assigned"
+        // badge: agent's states = union of states of their assigned partner
+        // orgs, across both assignment tables and all agent-id column
+        // variants (schema drift between deployments).
+        const covered = new Set<string>();
+        const ASSIGN_TABLES = [
+          "super_admin_agent_organizations",
+          "acsl_agent_organizations",
+        ];
+        await Promise.all(
+          ASSIGN_TABLES.map(async (table) => {
+            const { data, error } = await supabase
+              .from(table)
+              .select("organization_id");
+            if (error || !data) return;
+            data.forEach((r: any) => {
+              const st = r.organization_id ? orgState.get(r.organization_id) : null;
+              if (st && st !== "Unknown") covered.add(st);
+            });
+          })
+        );
+        if (!cancelled) setAgentCoveredStates(covered);
+
 
         // Aggregate per state
         const map = new Map<string, StateRow>();
@@ -687,7 +716,14 @@ export default function StatesPerformanceContent() {
     <div className="space-y-4 p-6">
       {/* KPI strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <Kpi icon={MapPin} label="States" value={filtered.length} tone="blue" />
+        <Kpi
+          icon={MapPin}
+          label="States"
+          value={filtered.length}
+          tone="blue"
+          sub={`${filtered.filter((r) => agentCoveredStates.has(r.state)).length} of ${filtered.length} covered by an agent`}
+        />
+
         <Kpi icon={Building2} label="Partners" value={totals.partners} tone="orange" />
         <Kpi icon={Package} label="Stoves" value={totals.stoves} tone="orange" />
         <Kpi icon={CheckCircle2} label="Sold" value={totals.sold} tone="emerald" />
@@ -1145,11 +1181,13 @@ function Kpi({
   label,
   value,
   tone,
+  sub,
 }: {
   icon: any;
   label: string;
   value: number;
   tone: "blue" | "indigo" | "teal" | "orange" | "emerald" | "violet";
+  sub?: string;
 }) {
   const toneMap: Record<string, string> = {
     blue: "from-blue-500 to-blue-600",
@@ -1167,6 +1205,9 @@ function Kpi({
         <div className="min-w-0">
           <div className="text-xl font-bold leading-tight">{value.toLocaleString()}</div>
           <div className="mt-0.5 text-[11px] font-medium text-white/90">{label}</div>
+          {sub ? (
+            <div className="mt-1 text-[10px] font-medium text-white/80">{sub}</div>
+          ) : null}
         </div>
         <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/20 backdrop-blur-sm">
           <Icon className="h-3.5 w-3.5" />
@@ -1175,6 +1216,7 @@ function Kpi({
     </div>
   );
 }
+
 
 
 function Pill({
