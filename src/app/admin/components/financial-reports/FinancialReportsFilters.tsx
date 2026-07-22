@@ -312,17 +312,17 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
         </Popover>
 
         {/* Clear all */}
-        {hasActiveFilters && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClearFilters}
-            className="flex items-center gap-1 h-9 px-3 shadow-none shrink-0"
-          >
-            <X className="h-3 w-3" />
-            Clear
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onClearFilters}
+          disabled={!hasActiveFilters}
+          className="flex items-center gap-1 h-9 px-3 shadow-none shrink-0 disabled:opacity-50"
+        >
+          <X className="h-3 w-3" />
+          Clear Filters
+        </Button>
+
       </div>
     </div>
   );
