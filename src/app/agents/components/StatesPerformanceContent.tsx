@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../contexts/useAuth";
 import { useRealtimeRefresh, useRefreshListener } from "../hooks/useRealtimeRefresh";
-
-const REALTIME_STATE_TABLES = ["organizations", "profiles", "acsl_agent_states", "sales", "stove_ids"];
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,6 +42,20 @@ import {
 } from "lucide-react";
 import { downloadCSV } from "@/utils/csvExportUtils";
 import tokenManager from "@/utils/tokenManager";
+
+const ACSL_AGENT_ROLES = new Set(["acsl_agent", "acsl_agent_manager"]);
+const ACSL_ASSIGNMENT_TABLES = [
+  "super_admin_agent_organizations",
+  "acsl_agent_organizations",
+];
+const ACSL_AGENT_ID_COLUMNS = ["agent_id", "super_admin_agent_id", "user_id"];
+const REALTIME_STATE_TABLES = [
+  "organizations",
+  "profiles",
+  ...ACSL_ASSIGNMENT_TABLES,
+  "sales",
+  "stove_ids",
+];
 
 const PROFILE_ROLES_FOR_STATES = [
   "partner",
@@ -121,6 +133,30 @@ async function fetchProfilesViaManageUsers(): Promise<ProfileLite[] | null> {
   } catch {
     return null;
   }
+}
+
+async function fetchAllRows<T = any>(
+  buildQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>,
+): Promise<T[]> {
+  const PAGE = 1000;
+  const rows: T[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await buildQuery(from, from + PAGE - 1);
+    if (error) throw error;
+    const chunk = data || [];
+    rows.push(...chunk);
+    if (chunk.length < PAGE) break;
+    from += PAGE;
+  }
+  return rows;
+}
+
+function pickAgentId(row: any, columns: string[]) {
+  for (const col of columns) {
+    if (row?.[col]) return String(row[col]);
+  }
+  return null;
 }
 
 type SortKey =
@@ -223,12 +259,6 @@ export default function StatesPerformanceContent() {
           profiles = (fallback || []) as ProfileLite[];
         }
 
-        // ACSL agent -> state assignments
-        const { data: acslStates, error: aErr } = await supabase
-          .from("acsl_agent_states")
-          .select("agent_id,state");
-        if (aErr) throw aErr;
-
         // Stoves (paginated)
         const stoves: {
           organization_id: string | null;
@@ -272,28 +302,57 @@ export default function StatesPerformanceContent() {
           if (o?.id) orgState.set(o.id, (o.state || "").trim() || "Unknown");
         });
 
-        // Compute states covered by any ACSL agent, using the same
-        // partner-derived rule as the Agents Performance "States Assigned"
-        // badge: agent's states = union of states of their assigned partner
-        // orgs, across both assignment tables and all agent-id column
-        // variants (schema drift between deployments).
-        const covered = new Set<string>();
-        const ASSIGN_TABLES = [
-          "super_admin_agent_organizations",
-          "acsl_agent_organizations",
-        ];
-        await Promise.all(
-          ASSIGN_TABLES.map(async (table) => {
-            const { data, error } = await supabase
+        // Profile lookup
+        const profileById = new Map<string, any>();
+        (profiles || []).forEach((p: any) => profileById.set(p.id, p));
+
+        // ACSL agent -> states covered, using the same partner-derived rule as
+        // the Agents Performance "States Assigned" badge: assigned states are
+        // the union of states from the agent's assigned partner organizations.
+        const acslStatesByAgent = new Map<string, Set<string>>();
+        const getExistingAgentCols = async (table: string) => {
+          const found: string[] = [];
+          for (const col of ACSL_AGENT_ID_COLUMNS) {
+            const { error } = await supabase
               .from(table)
-              .select("organization_id");
-            if (error || !data) return;
+              .select(col, { count: "exact", head: true })
+              .limit(1);
+            if (!error) found.push(col);
+          }
+          return found;
+        };
+        await Promise.all(
+          ACSL_ASSIGNMENT_TABLES.map(async (table) => {
+            const cols = await getExistingAgentCols(table);
+            if (cols.length === 0) return;
+            const data = await fetchAllRows<any>((from, to) =>
+              supabase
+                .from(table)
+                .select(`organization_id,${cols.join(",")}`)
+                .range(from, to),
+            );
             data.forEach((r: any) => {
+              const agentId = pickAgentId(r, cols);
+              if (!agentId) return;
+              const profile = profileById.get(agentId);
+              if (!profile || !ACSL_AGENT_ROLES.has(profile.role)) return;
+
               const st = r.organization_id ? orgState.get(r.organization_id) : null;
-              if (st && st !== "Unknown") covered.add(st);
+              if (!st || st === "Unknown") return;
+
+              let set = acslStatesByAgent.get(agentId);
+              if (!set) {
+                set = new Set();
+                acslStatesByAgent.set(agentId, set);
+              }
+              set.add(st);
             });
-          })
+          }),
         );
+        const covered = new Set<string>();
+        acslStatesByAgent.forEach((stateSet) => {
+          stateSet.forEach((state) => covered.add(state));
+        });
         if (!cancelled) setAgentCoveredStates(covered);
 
 
@@ -350,15 +409,11 @@ export default function StatesPerformanceContent() {
           ensure(state).partnerAgents += 1;
         });
 
-        // ACSL agents (dedupe by agent per state)
-        const seen = new Set<string>();
-        (acslStates || []).forEach((a: any) => {
-          const state = (a.state || "").trim();
-          if (!state) return;
-          const key = `${a.agent_id}::${state}`;
-          if (seen.has(key)) return;
-          seen.add(key);
-          ensure(state).acslAgents += 1;
+        // ACSL agents (dedupe by agent per partner-derived state)
+        acslStatesByAgent.forEach((stateSet) => {
+          stateSet.forEach((state) => {
+            ensure(state).acslAgents += 1;
+          });
         });
 
         // Stoves
@@ -395,23 +450,6 @@ export default function StatesPerformanceContent() {
           const list = partnerDetailsByState.get(state) || [];
           list.push(detail);
           partnerDetailsByState.set(state, list);
-        });
-
-        // Profile lookup
-        const profileById = new Map<string, any>();
-        (profiles || []).forEach((p: any) => profileById.set(p.id, p));
-
-        // ACSL agent -> states covered
-        const acslStatesByAgent = new Map<string, Set<string>>();
-        (acslStates || []).forEach((a: any) => {
-          const st = (a.state || "").trim();
-          if (!st || !a.agent_id) return;
-          let set = acslStatesByAgent.get(a.agent_id);
-          if (!set) {
-            set = new Set();
-            acslStatesByAgent.set(a.agent_id, set);
-          }
-          set.add(st);
         });
 
         // Agent -> per-state stoves recorded (from sales.created_by + org state)
