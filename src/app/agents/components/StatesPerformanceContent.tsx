@@ -1068,7 +1068,6 @@ export default function StatesPerformanceContent() {
                 <TableHeader>
                   <TableRow className="bg-[#eef3c4] hover:bg-[#eef3c4]">
                     <TableHead className="text-left text-[11px] font-semibold text-[#4a5d0f]">Agent</TableHead>
-                    <TableHead className="text-left text-[11px] font-semibold text-[#4a5d0f]">Role</TableHead>
                     <TableHead className="text-center text-[11px] font-semibold text-[#4a5d0f]">States Covered</TableHead>
                     <TableHead className="text-left text-[11px] font-semibold text-[#4a5d0f]">State List</TableHead>
                     <TableHead className="text-center text-[11px] font-semibold text-[#4a5d0f]">Stoves Recorded</TableHead>
@@ -1079,15 +1078,19 @@ export default function StatesPerformanceContent() {
                 <TableBody>
                   {agentModalPageRows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-8 text-center text-sm text-gray-500">
+                      <TableCell colSpan={6} className="py-8 text-center text-sm text-gray-500">
                         No agents found.
                       </TableCell>
                     </TableRow>
                   ) : (
                     agentModalPageRows.map((a) => (
                       <TableRow key={a.id} className="border-b text-xs">
-                        <TableCell className="align-top font-medium text-gray-800">{a.name}</TableCell>
-                        <TableCell className="align-top text-gray-700">{a.role}</TableCell>
+                        <TableCell className="align-top font-medium text-gray-800">
+                          {a.name}
+                          <sup className="ml-1 text-[9px] font-medium text-blue-600">
+                            {AGENT_ROLE_LABELS[a.role] || a.role}
+                          </sup>
+                        </TableCell>
                         <TableCell className="text-center align-top">
                           <Pill tone="slate">{a.statesCovered.length}</Pill>
                         </TableCell>
