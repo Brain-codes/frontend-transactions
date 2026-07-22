@@ -182,22 +182,44 @@ export async function getUsers(
           manager_name: u.manager_id ? managerMap.get(u.manager_id) ?? null : null,
         };
         if (user.role === "acsl_agent" || user.role === "super_admin_agent") {
-          const [{ count: orgCount }, { count: stateCount }] = await Promise.all([
+          // Derive states from the agent's assigned partner organizations
+          // (acsl_agent_organizations → organizations.state), and union with
+          // any legacy explicit rows in acsl_agent_states.
+          const [assignmentsRes, legacyStatesRes] = await Promise.all([
             supabase
               .from("acsl_agent_organizations")
-              .select("*", { count: "exact", head: true })
+              .select("organization_id, organizations!inner(state)")
               .eq("agent_id", user.id),
             supabase
               .from("acsl_agent_states")
-              .select("*", { count: "exact", head: true })
+              .select("state")
               .eq("agent_id", user.id),
           ]);
+          const assignments = assignmentsRes.data || [];
+          const stateMap = new Map<string, string>(); // key: lowercased state, val: display
+          const addState = (raw: any) => {
+            if (!raw) return;
+            const s = String(raw).trim();
+            if (!s) return;
+            const key = s.toLowerCase();
+            if (!stateMap.has(key)) stateMap.set(key, s);
+          };
+          for (const a of assignments) {
+            const org = Array.isArray((a as any).organizations)
+              ? (a as any).organizations[0]
+              : (a as any).organizations;
+            addState(org?.state);
+          }
+          for (const r of legacyStatesRes.data || []) addState((r as any).state);
+          const assigned_states = Array.from(stateMap.values());
           return {
             ...user,
-            assigned_organizations_count: orgCount || 0,
-            assigned_states_count: stateCount || 0,
+            assigned_organizations_count: assignments.length,
+            assigned_states,
+            assigned_states_count: assigned_states.length,
           };
         }
+
         if (["partner_agent", "agent"].includes(user.role)) {
           const org = user.organization_id ? orgMap.get(user.organization_id) : null;
           return {
