@@ -175,17 +175,6 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Details button */}
-      {viewFrom !== "agent" && (
-        <Button
-          variant="default"
-          size="sm"
-          className="h-7 text-xs bg-[#4A5D0F] hover:bg-[#3a4a0c] text-white rounded-none"
-          onClick={() => onViewDetails(sale)}
-        >
-          Details
-        </Button>
-      )}
     </div>
   );
 };
