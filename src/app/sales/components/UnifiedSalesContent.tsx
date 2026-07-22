@@ -127,7 +127,7 @@ export default function UnifiedSalesContent() {
                 <>
                   <span className="text-sm font-medium text-gray-700">Year:</span>
                   <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
-                    <SelectTrigger className="w-[110px] h-8 text-sm">
+                    <SelectTrigger className="w-[110px] h-8 text-sm shadow-none">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -142,7 +142,7 @@ export default function UnifiedSalesContent() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-8 text-xs flex items-center gap-1.5"
+                  className="h-9 px-3 text-xs font-medium border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900 flex items-center gap-1.5 shadow-none rounded-md"
                   disabled={exporting}
                   onClick={() => {
                     if (exportFnRef.current) {
@@ -158,13 +158,14 @@ export default function UnifiedSalesContent() {
               {can("create-sale") && (
                 <Button
                   size="sm"
-                  className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5"
-                  onClick={() => setShowCreateModal(true)}
+                  className="h-9 px-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium flex items-center gap-1.5 rounded-md shadow-none"
+                  onClick={() => router.push("/sales/create")}
                 >
                   <Plus className="h-4 w-4" />
                   Create Sale
                 </Button>
               )}
+
             </div>
           }
         />
