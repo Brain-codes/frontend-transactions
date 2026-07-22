@@ -18,6 +18,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   Search,
   MapPin,
   Users,
@@ -30,6 +37,8 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  Phone,
+  X,
 } from "lucide-react";
 import { downloadCSV } from "@/utils/csvExportUtils";
 
