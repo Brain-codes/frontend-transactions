@@ -516,6 +516,82 @@ export default function StatesPerformanceContent() {
     );
   };
 
+  const openAgentModal = (state: string) => {
+    setAgentModalState(state);
+    setAgentModalSearch("");
+    setAgentModalPage(1);
+    setAgentModalPageSize(10);
+    setAgentModalOpen(true);
+  };
+
+  const closeAgentModal = () => {
+    setAgentModalOpen(false);
+    setAgentModalState(null);
+    setAgentModalSearch("");
+    setAgentModalPage(1);
+  };
+
+  const agentModalRow = useMemo(
+    () => (agentModalState ? rows.find((r) => r.state === agentModalState) : undefined),
+    [rows, agentModalState],
+  );
+
+  const agentModalAgents = useMemo(() => {
+    const list = agentModalRow?.agentDetails || [];
+    const q = agentModalSearch.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        a.role.toLowerCase().includes(q) ||
+        a.statesCovered.some((s) => s.toLowerCase().includes(q)),
+    );
+  }, [agentModalRow, agentModalSearch]);
+
+  const agentModalTotalPages = Math.max(
+    1,
+    Math.ceil(agentModalAgents.length / agentModalPageSize),
+  );
+  const agentModalClampedPage = Math.min(agentModalPage, agentModalTotalPages);
+  const agentModalStart = (agentModalClampedPage - 1) * agentModalPageSize;
+  const agentModalPageRows = agentModalAgents.slice(
+    agentModalStart,
+    agentModalStart + agentModalPageSize,
+  );
+
+  useEffect(() => setAgentModalPage(1), [agentModalSearch, agentModalPageSize]);
+
+  const handleAgentModalExport = () => {
+    const headers = [
+      "Agent Name",
+      "Role",
+      "States Covered (Count)",
+      "States Covered",
+      "Stoves Recorded (in state)",
+      "Total Stoves in State",
+      "Unsold Stoves in State",
+    ];
+    const totalStoves = agentModalRow?.stoves || 0;
+    const unsold = agentModalRow?.notSold || 0;
+    const lines = [headers.join(",")].concat(
+      agentModalAgents.map((a) =>
+        [
+          `"${a.name.replace(/"/g, '""')}"`,
+          `"${a.role}"`,
+          a.statesCovered.length,
+          `"${a.statesCovered.join("; ").replace(/"/g, '""')}"`,
+          a.stovesRecorded,
+          totalStoves,
+          unsold,
+        ].join(","),
+      ),
+    );
+    downloadCSV(
+      lines.join("\n"),
+      `agents-in-${agentModalState?.toLowerCase().replace(/\s+/g, "-") || "state"}-${new Date().toISOString().split("T")[0]}.csv`,
+    );
+  };
+
   return (
     <div className="space-y-4 p-6">
       {/* KPI strip */}
