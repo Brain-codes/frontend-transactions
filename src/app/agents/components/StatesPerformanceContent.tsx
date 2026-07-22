@@ -414,8 +414,27 @@ export default function StatesPerformanceContent() {
       },
       { partners: 0, stoves: 0, sold: 0, notSold: 0 },
     );
+    // Union with authoritative ACSL roster so KPI matches the Agents Performance report
+    acslRoster.forEach((a) => uniqueAgentIds.add(a.id));
     return { ...base, agents: uniqueAgentIds.size };
-  }, [filtered]);
+  }, [filtered, acslRoster]);
+
+  const unassignedAgents = useMemo(() => {
+    const assigned = new Set<string>();
+    filtered.forEach((r) => (r.agentDetails || []).forEach((a) => a?.id && assigned.add(a.id)));
+    return acslRoster.filter((a) => !assigned.has(a.id));
+  }, [filtered, acslRoster]);
+
+  const unassignedFiltered = useMemo(() => {
+    const q = unassignedSearch.trim().toLowerCase();
+    if (!q) return unassignedAgents;
+    return unassignedAgents.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        a.role.toLowerCase().includes(q) ||
+        (a.phone || "").toLowerCase().includes(q),
+    );
+  }, [unassignedAgents, unassignedSearch]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const clampedPage = Math.min(page, totalPages);
