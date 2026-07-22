@@ -102,6 +102,8 @@ const CreateSalesForm = ({
 
   // Validation state
   const [errors, setErrors] = useState({});
+  const [phoneChecking, setPhoneChecking] = useState(false);
+  const phoneCheckTokenRef = useRef(0);
 
   // Installment payment state
   // `paymentModels` is the full active catalogue, fetched once. The picker is
