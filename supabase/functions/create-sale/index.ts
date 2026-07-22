@@ -282,14 +282,16 @@ Deno.serve(async (req) => {
 
       // Sales models are tied to a partner again, sourced from the external
       // sync (`Partner Sales Models`) rather than assigned by a super admin.
-      // The clients filter the picker to the partner's models; this is the
-      // server-side enforcement that makes that filtering real.
+      // The clients already filter the picker to the partner's models; this is
+      // the server-side enforcement that makes that filtering real.
       //
-      // A partner with NO assignments falls back to every active model. The
-      // sync only covers partners the external app has sent, so restricting an
-      // unassigned partner to nothing would block sales rather than protect
-      // them. This must stay in step with the same fallback in both clients —
-      // if they diverge, the picker offers models this endpoint then rejects.
+      // An installment sale requires an explicit assignment: a partner with no
+      // assignments has no installment entitlement and is limited to full
+      // payment. The whole list is fetched rather than probing for one link so
+      // a failed lookup is distinguishable from a genuine "not assigned" — the
+      // first is a 500, not a spurious 403. This must stay in step with
+      // `visiblePaymentModels` in both clients; if they diverge, the picker
+      // offers models this endpoint then rejects.
       const { data: orgModelLinks, error: linkError } = await supabase
         .from("organization_payment_models")
         .select("payment_model_id")
@@ -302,7 +304,7 @@ Deno.serve(async (req) => {
 
       const assignedIds = (orgModelLinks || []).map((l: any) => l.payment_model_id);
 
-      if (assignedIds.length > 0 && !assignedIds.includes(paymentModelId)) {
+      if (!assignedIds.includes(paymentModelId)) {
         return jsonError(
           `This partner is not assigned the "${paymentModel.name}" sales model`,
           403,

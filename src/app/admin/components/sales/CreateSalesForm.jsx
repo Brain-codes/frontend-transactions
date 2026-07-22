@@ -485,20 +485,24 @@ const CreateSalesForm = ({
   // The catalogue narrowed to what this partner may actually sell. Resolved
   // locally so no per-partner request is ever made.
   //
-  // A partner with NO assignments gets EVERY active model, exactly as before
-  // entitlements existed. Only a partner with an explicit list is restricted to
-  // it. `create-sale` applies the identical rule — keep the two in step.
+  // `orgPaymentModelIds` carries three distinct states and they must not be
+  // conflated: a list restricts to that list, `[]` means genuinely none
+  // assigned (full payment only), and `null` means unknown — the lookup failed
+  // or the row predates entitlements — which falls back to the whole
+  // catalogue. `create-sale` applies the identical rule; keep the two in step,
+  // or the picker offers models the endpoint then rejects.
   const visiblePaymentModels = useMemo(() => {
-    if (!orgPaymentModelIds || orgPaymentModelIds.length === 0) {
-      return paymentModels;
-    }
+    if (!orgPaymentModelIds) return paymentModels;
     const allowed = new Set(orgPaymentModelIds);
     return paymentModels.filter((m) => allowed.has(m.id));
   }, [paymentModels, orgPaymentModelIds]);
 
-  // The partner is assigned models we can't resolve against the catalogue —
-  // they're inactive, or were created after we loaded. Distinct from having
-  // none assigned, which is no longer an empty state at all.
+  // Two different empty states, worth distinguishing: the partner genuinely has
+  // no models assigned, versus it references models this catalogue can't
+  // resolve (they're inactive, or were created after we loaded). The second is
+  // a data fault, not a permission, so it must not be silently shown as "none".
+  const partnerHasNoPaymentModels =
+    orgPaymentModelIds !== null && orgPaymentModelIds.length === 0;
   const partnerModelsUnresolved =
     orgPaymentModelIds !== null &&
     orgPaymentModelIds.length > 0 &&
@@ -1383,6 +1387,12 @@ const CreateSalesForm = ({
                     ))}
                   </SelectContent>
                 </Select>
+                {partnerHasNoPaymentModels && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    This partner has no sales models assigned, so only full
+                    payment is available.
+                  </p>
+                )}
                 {partnerModelsUnresolved && (
                   <p className="mt-1 text-xs text-amber-600">
                     This partner is assigned {orgPaymentModelIds.length} sales

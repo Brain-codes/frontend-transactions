@@ -84,41 +84,43 @@ an option, and the mobile app must work offline. Both clients therefore:
 
 No extra request is made when a partner is selected, online or offline.
 
-### Unassigned partners get everything
+### Three states, never conflated
 
-**A partner with no assignments may use every active sales model.** Only a
-partner with an explicit list is restricted to that list.
+`payment_model_ids` carries three distinct states, and clients must not collapse
+them into "empty":
 
-The sync only covers partners the external app has actually sent, so treating
-"no assignments" as "no models" would block sales for every partner not yet
-synced — restricting sellers rather than protecting them.
-
-| `payment_model_ids` | Meaning | Behaviour |
+| `payment_model_ids` | Meaning | Client behaviour |
 |---|---|---|
 | `[...]` | These models | Show exactly these |
-| `[]` | None assigned | Show **every active model** |
-| `null` | Unknown — lookup failed, or an older cached row | Show **every active model** |
+| `[]` | Genuinely none assigned | **Full payment only**, with an explanatory note |
+| `null` | Unknown — lookup failed, or an older cached row | Fall back to every active model |
 
-`create-sale` applies the identical rule (`assignedIds.length > 0 && !includes`
-→ 403). **These must not diverge**: if a client is more permissive than the
-server the picker offers models that then fail on submit; if it is more
-restrictive, sellers silently lose options they are entitled to.
+Installments are an entitlement: a partner earns them by being assigned a model,
+so `[]` means full payment only. `null` is not an entitlement decision at all —
+it means we don't know, and blocking a sale on missing information would punish
+the seller for our failed lookup.
 
-There is one genuine empty state left: a partner assigned models that cannot be
-resolved (inactive, or created after the client cached the catalogue). Both
-clients show an amber warning there rather than silently offering nothing —
-that case is a data fault, not a permission, and must not fall back to "show
-everything" or it would hide the fault.
+`create-sale` applies the identical rule (`!assignedIds.includes` → 403).
+**These must not diverge**: if a client is more permissive than the server the
+picker offers models that then fail on submit; if it is more restrictive,
+sellers silently lose options they are entitled to.
+
+Separately from all three, a partner may be assigned models that cannot be
+*resolved* against the cached catalogue (inactive, or created after the client
+cached it). Both clients show an amber warning there rather than silently
+offering nothing — that case is a data fault, not a permission, and must not be
+shown as "none assigned" or it would hide the fault.
 
 ## Server-side enforcement — `create-sale`
 
 Client-side filtering is cosmetic on its own, so the installment branch re-checks
-the org's assignments. A partner **with** assignments that don't include the chosen
-model gets a 403:
+the org's assignments. Any partner whose assignments don't include the chosen
+model — including a partner with no assignments at all — gets a 403:
 
 > `This partner is not assigned the "<name>" sales model`
 
-A partner with **no** assignments passes — see "Unassigned partners get everything".
+The endpoint fetches the partner's whole assignment list rather than probing for
+a single link, so a failed lookup returns a 500 instead of a misleading 403.
 
 The sale `amount` remains operator-entered (see the request contract below).
 

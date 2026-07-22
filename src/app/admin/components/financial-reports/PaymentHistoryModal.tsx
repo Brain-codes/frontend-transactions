@@ -79,14 +79,11 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
     note: "",
   });
 
-  const isInstallment = sale?.is_installment === true;
-
   const fetchPayments = useCallback(async () => {
-    if (!sale?.id || !isInstallment) return;
+    if (!sale?.id) return;
     try {
       setLoading(true);
       const result = await paymentModelService.getInstallmentPayments(sale.id);
-      // Edge function returns: { success, data: [...payments], summary: {...}, payment_model: {...} }
       setPayments(result.data || []);
       setSummary(result.summary || null);
       setPaymentModel(result.payment_model || null);
@@ -95,23 +92,29 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [sale?.id, isInstallment]);
+  }, [sale?.id]);
 
   useEffect(() => {
-    if (open && isInstallment) {
+    if (open) {
       fetchPayments();
-    }
-    if (!open) {
+    } else {
       setPayments([]);
       setSummary(null);
       setPaymentModel(null);
     }
-  }, [open, isInstallment, fetchPayments]);
+  }, [open, fetchPayments]);
 
   if (!sale) return null;
 
   const saleAmount = sale.amount || 0;
   const totalPaid = summary?.total_paid ?? sale.total_paid ?? 0;
+  // Treat as installment/partial whenever there's an outstanding balance,
+  // recorded installment payments, or the sale is explicitly flagged.
+  const isInstallment =
+    sale?.is_installment === true ||
+    payments.length > 0 ||
+    (sale?.payment_status && sale.payment_status !== "fully_paid" && totalPaid > 0) ||
+    totalPaid < saleAmount;
   const amountOwed = isInstallment ? Math.max(saleAmount - totalPaid, 0) : 0;
   const totalPaidDisplay = isInstallment ? totalPaid : saleAmount;
 
