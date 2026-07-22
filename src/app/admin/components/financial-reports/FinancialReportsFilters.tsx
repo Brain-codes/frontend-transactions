@@ -60,7 +60,7 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
   lgaList = [],
 }) => {
   return (
-    <div className="bg-[#fafafa] p-4 rounded-lg ">
+    <div className="bg-[#fafafa] p-4 rounded-lg shadow-none">
       <div className="flex flex-wrap items-center gap-4">
         {/* Search */}
         <div className="relative md:w-[400px] w-full">
@@ -70,7 +70,7 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
             placeholder="Search by customer, transaction ID, phone..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 bg-white"
+            className="pl-9 bg-white shadow-none"
           />
         </div>
 
@@ -80,7 +80,7 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
             value={paymentStatusFilter}
             onValueChange={onPaymentStatusChange}
           >
-            <SelectTrigger className="bg-white">
+            <SelectTrigger className="bg-white shadow-none">
               <SelectValue placeholder="Payment Status" />
             </SelectTrigger>
             <SelectContent>
@@ -96,7 +96,7 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
         {onStateChange && (
           <div className="flex-1 min-w-[150px] max-w-[180px]">
             <Select value={selectedState} onValueChange={onStateChange}>
-              <SelectTrigger className="bg-white text-sm h-10">
+              <SelectTrigger className="bg-white text-sm h-10 shadow-none">
                 <SelectValue placeholder="All States" />
               </SelectTrigger>
               <SelectContent>
@@ -113,7 +113,7 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
         {onLGAChange && selectedState !== "all" && lgaList.length > 0 && (
           <div className="flex-1 min-w-[150px] max-w-[180px]">
             <Select value={selectedLGA} onValueChange={onLGAChange}>
-              <SelectTrigger className="bg-white text-sm h-10">
+              <SelectTrigger className="bg-white text-sm h-10 shadow-none">
                 <SelectValue placeholder="All LGAs" />
               </SelectTrigger>
               <SelectContent>
@@ -130,7 +130,7 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
         {onOrgChange && (
           <div className="flex-1 min-w-[150px] max-w-[180px]">
             <Select value={orgFilter} onValueChange={onOrgChange}>
-              <SelectTrigger className="bg-white text-sm h-10">
+              <SelectTrigger className="bg-white text-sm h-10 shadow-none">
                 <SelectValue placeholder="All Partners" />
               </SelectTrigger>
               <SelectContent>
@@ -147,7 +147,7 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
         {onApprovalChange && (
           <div className="flex-1 min-w-[150px] max-w-[180px]">
             <Select value={approvalFilter} onValueChange={onApprovalChange}>
-              <SelectTrigger className="bg-white text-sm h-10">
+              <SelectTrigger className="bg-white text-sm h-10 shadow-none">
                 <SelectValue placeholder="All Approvals" />
               </SelectTrigger>
               <SelectContent>
@@ -165,7 +165,7 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
             type="date"
             value={startDate}
             onChange={(e) => onStartDateChange(e.target.value)}
-            className="bg-white w-[150px] h-10 text-sm"
+            className="bg-white w-[150px] h-10 text-sm shadow-none"
             placeholder="Start Date"
           />
           <span className="text-gray-400 text-sm">to</span>
@@ -173,7 +173,7 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
             type="date"
             value={endDate}
             onChange={(e) => onEndDateChange(e.target.value)}
-            className="bg-white w-[150px] h-10 text-sm"
+            className="bg-white w-[150px] h-10 text-sm shadow-none"
             placeholder="End Date"
           />
         </div>
@@ -184,7 +184,7 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
             variant="outline"
             size="sm"
             onClick={onClearFilters}
-            className="flex items-center gap-1 h-10 px-3"
+            className="flex items-center gap-1 h-10 px-3 shadow-none"
           >
             <X className="h-3 w-3" />
             Clear
