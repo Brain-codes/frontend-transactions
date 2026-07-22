@@ -1087,9 +1087,11 @@ export default function StatesPerformanceContent() {
                   ) : (
                     agentModalPageRows.map((a) => (
                       <TableRow key={a.id} className="border-b text-xs">
-                        <TableCell className="align-top font-medium text-gray-800">
-                          {a.name}
-                          <sup className="ml-1 text-[9px] font-medium text-blue-600">
+                        <TableCell className="min-w-[220px] align-top whitespace-nowrap">
+                          <span className="inline-block max-w-[180px] truncate align-bottom font-medium text-gray-800" title={a.name}>
+                            {a.name}
+                          </span>
+                          <sup className="ml-1 whitespace-nowrap text-[9px] font-medium text-blue-600">
                             {AGENT_ROLE_LABELS[a.role] || a.role}
                           </sup>
                         </TableCell>
