@@ -1,7 +1,8 @@
 import React from "react";
-import { CalendarClock, CalendarDays, Clock, AlertCircle, AlertTriangle, X } from "lucide-react";
+import { CalendarClock, CalendarDays, Clock, AlertTriangle, X, ShoppingCart } from "lucide-react";
 
 export type TrackingKey = "none" | "due30" | "due14" | "due7" | "dueToday" | "overdue";
+
 
 interface Props {
   active: TrackingKey;
