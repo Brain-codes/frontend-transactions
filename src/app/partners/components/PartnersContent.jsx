@@ -1837,14 +1837,9 @@ export default function PartnersContent() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
-                              {can("manage-all-partners") && (
-
-                                <Button size="sm" className="h-7 px-2 text-xs rounded-none bg-black hover:bg-black/90 text-white" title="Purchases from ACSL" onClick={() => setTransferHistoryOrg(org)}>
-                                  Purchases from ACSL
-                                </Button>
-                              )}
                             </div>
                           </TableCell>
+
                         </TableRow>
 
                         {expandedOrgId === org.id && (
