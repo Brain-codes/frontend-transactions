@@ -98,6 +98,23 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
           </Select>
         </div>
 
+        {/* Sales Model Filter */}
+        {onSalesModelChange && (
+          <div className="flex-1 min-w-[150px] max-w-[200px]">
+            <Select value={salesModelFilter} onValueChange={onSalesModelChange}>
+              <SelectTrigger className="bg-white text-sm h-10 shadow-none">
+                <SelectValue placeholder="All Sales Models" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sales Models</SelectItem>
+                {salesModels.map((model) => (
+                  <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* State Filter */}
         {onStateChange && (
           <div className="flex-1 min-w-[150px] max-w-[180px]">
