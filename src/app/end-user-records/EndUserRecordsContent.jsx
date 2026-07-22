@@ -275,6 +275,7 @@ const EndUserRecordsContent = () => {
       title="End User Records"
       description="View and manage end user records"
     >
+      <TooltipProvider>
       <div className="p-6 space-y-4">
         <PageHeader
           icon={Users}
