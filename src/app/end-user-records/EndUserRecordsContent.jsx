@@ -360,7 +360,7 @@ const EndUserRecordsContent = () => {
         ) : (
           <>
             {/* Top pagination bar */}
-            <div className="bg-[#eef3c4] rounded-t-lg px-4 py-2 flex items-center justify-between">
+            <div className="px-4 py-2 flex items-center justify-end">
               <div className="flex items-center gap-3">
                 <p className="text-sm text-gray-600">
                   Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
