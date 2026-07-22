@@ -1,42 +1,22 @@
 ## Problem
 
-On the Agents Performance Report table, the **States Assigned** column shows `0` for most ACSL agents even when partners are assigned to them.
+On the Agents Performance Report view, "Records to collect", "Records collected", and "Records not collected" columns go blank after changing pages, and only reappear on a full page refresh.
 
-Root cause is in `supabase/functions/manage-users/read-operations.ts` (lines 184–199). For `acsl_agent` / `super_admin_agent` users, `assigned_states_count` is computed by counting rows in a separate `acsl_agent_states` direct-assignment table:
+## Root cause (verified in `SuperAdminAgentsContent.tsx`)
 
-```ts
-supabase.from("acsl_agent_states")
-  .select("*", { count: "exact", head: true })
-  .eq("agent_id", user.id)
-```
+Pagination on this table is client-side (`pageRows = tableFilteredAgents.slice(...)`), but `fetchAgents` still lists `page` and `pageSize` in its `useCallback` dependencies (line 2382). So every page change:
 
-In this project, agents are assigned **partner organizations** (via `acsl_agent_organizations`), not states directly. Unless a state was also explicitly written to `acsl_agent_states`, the count is 0 — which is exactly what the table is showing. The expected behavior is: derive the agent's states from the `state` column of the partner organizations already assigned to that agent.
+1. Re-runs `fetchAgents`, which rebuilds `agents` from scratch via `setAgents(rows)` (line 2360). The new agent objects have no `stove_summary` / `direct_org_ids` yet.
+2. The stove hydration effect is keyed on `agentIdsKey = agents.map(a => a.id).join(",")` (line 2395, effect at 2396–2549). Because the underlying IDs are unchanged, `agentIdsKey` is the same string and the memo returns the same reference — so React skips the effect and the hydrated stove counts are never re-merged.
 
-## Fix (edge function only)
+Result: the three stove-related cells stay empty until a hard refresh (which happens to re-run everything from a clean state).
 
-In `supabase/functions/manage-users/read-operations.ts`, change the ACSL agent branch to derive states from the agent's assigned organizations:
+## Fix
 
-1. For each `acsl_agent` / `super_admin_agent` user, replace the two parallel count queries with a single fetch:
-   ```ts
-   const { data: assignments } = await supabase
-     .from("acsl_agent_organizations")
-     .select("organization_id, organizations!inner(state)")
-     .eq("agent_id", user.id);
-   ```
-2. Derive:
-   - `assigned_organizations_count` = `assignments.length`
-   - `assigned_states` = de-duplicated, non-empty, case-insensitive-unique list of `assignments[i].organizations.state`
-   - `assigned_states_count` = `assigned_states.length`
-3. Return `assigned_states` (the array) on the user payload as well, so the existing "View assigned states" modal in `SuperAdminAgentsContent.tsx` (which already reads `agent.assigned_states`) shows the correct list. Keep the payload shape backward-compatible — all existing fields remain.
-4. Keep the `partner_agent` / `agent` branch unchanged (their single org.state already drives the count correctly).
-5. Union with any legacy explicit rows in `acsl_agent_states` if that table is still populated, so agents assigned directly to states aren't regressed:
-   - fetch `state` values from `acsl_agent_states` for the same `agent_id` and merge into the set before counting.
+Keep client-side pagination working seamlessly without losing hydrated data.
 
-No frontend changes required — `SuperAdminAgentsContent.tsx` already reads `assigned_states_count` and `assigned_states` from the API payload. No schema changes.
+1. In `src/app/agents/components/SuperAdminAgentsContent.tsx`, remove `page` and `pageSize` from the `fetchAgents` `useCallback` deps (line 2382) so paging no longer refetches the full agent list. Pagination is already applied to `tableFilteredAgents`, so no data is lost.
+2. As a safety net, preserve prior enrichment when `fetchAgents` does run (e.g. after a real filter change or a `acsl:user-updated` event): change `setAgents(rows)` to a functional update that copies `stove_summary`, `direct_org_ids`, `assigned_organizations_count`, and `total_partners_count` from the previous entry with the same `id` when present. This avoids a flash of empty cells during the brief window before the hydration effect finishes.
+3. Verify by paging forward/back and changing page size on the Agents Performance table — the three stove columns must remain populated without any refresh, and the KPI totals / sorting must still work.
 
-## Verification
-
-After deploying the updated `manage-users` function:
-- The States Assigned pill on the Agents Performance Report reflects the number of distinct states across the agent's assigned partners.
-- Clicking the pill opens the states modal populated with those state names.
-- Agents with no partner assignments still show `0`.
+No schema, backend, or UI-layout changes.
