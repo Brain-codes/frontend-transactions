@@ -779,6 +779,77 @@ export default function StatesPerformanceContent() {
     );
   };
 
+  // ----- Stove modal derived state -----
+  const openStoveModal = (state: string) => {
+    setStoveModalState(state);
+    setStoveModalSearch("");
+    setStoveModalStatus("all");
+    setStoveModalPage(1);
+    setStoveModalPageSize(25);
+    setStoveModalOpen(true);
+  };
+  const closeStoveModal = () => {
+    setStoveModalOpen(false);
+    setStoveModalState(null);
+    setStoveModalSearch("");
+    setStoveModalPage(1);
+  };
+
+  const stoveModalRow = useMemo(
+    () => (stoveModalState ? rows.find((r) => r.state === stoveModalState) : undefined),
+    [rows, stoveModalState],
+  );
+
+  const stoveModalStoves = useMemo(() => {
+    const list = stoveModalRow?.stoveDetails || [];
+    const q = stoveModalSearch.trim().toLowerCase();
+    return list.filter((s) => {
+      if (stoveModalStatus !== "all" && s.status !== stoveModalStatus) return false;
+      if (!q) return true;
+      return (
+        s.stove_id.toLowerCase().includes(q) ||
+        s.partner_name.toLowerCase().includes(q)
+      );
+    });
+  }, [stoveModalRow, stoveModalSearch, stoveModalStatus]);
+
+  const stoveModalTotalPages = Math.max(
+    1,
+    Math.ceil(stoveModalStoves.length / stoveModalPageSize),
+  );
+  const stoveModalClampedPage = Math.min(stoveModalPage, stoveModalTotalPages);
+  const stoveModalStart = (stoveModalClampedPage - 1) * stoveModalPageSize;
+  const stoveModalPageRows = stoveModalStoves.slice(
+    stoveModalStart,
+    stoveModalStart + stoveModalPageSize,
+  );
+  useEffect(
+    () => setStoveModalPage(1),
+    [stoveModalSearch, stoveModalPageSize, stoveModalStatus],
+  );
+
+  const handleStoveModalExport = () => {
+    const headers = ["#", "Stove ID", "Partner", "State", "Status"];
+    const state = stoveModalState || "";
+    const lines = [headers.join(",")].concat(
+      stoveModalStoves.map((s, i) =>
+        [
+          i + 1,
+          `"${(s.stove_id || "").replace(/"/g, '""')}"`,
+          `"${s.partner_name.replace(/"/g, '""')}"`,
+          `"${state.replace(/"/g, '""')}"`,
+          s.status,
+        ].join(","),
+      ),
+    );
+    downloadCSV(
+      lines.join("\n"),
+      `stoves-in-${state.toLowerCase().replace(/\s+/g, "-") || "state"}-${new Date().toISOString().split("T")[0]}.csv`,
+    );
+  };
+
+
+
   return (
     <div className="space-y-4 p-6">
       {/* KPI strip */}
