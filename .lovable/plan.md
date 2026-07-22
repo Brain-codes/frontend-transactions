@@ -1,39 +1,40 @@
-# End User Records — Edit action + Last Modified tracking
+## Goal
 
-## 1. Database (migration)
-Add audit columns to `sales`:
-- `updated_at timestamptz`
-- `updated_by uuid REFERENCES profiles(id) ON DELETE SET NULL`
+Add a **Delete** action on each row of the End User Records view. Deleting a record removes it from Sales Records / End User Records and archives it under **Cancelled Transactions** with a reason — reusing the existing cancel-sale flow.
 
-Backfill `updated_at = created_at` for existing rows so the new column shows a sensible date immediately.
+## Access
 
-## 2. Edge function — `update-sale`
-Create a new function `supabase/functions/update-sale/index.ts` (the client service in `adminSalesService.jsx` already references this URL but the function isn't deployed).
+- Visible and enabled only for `super_admin` and `partner` (resolved via `resolveRole(userRole)`).
+- Hidden for every other role.
 
-Behavior:
-- Authenticate caller via bearer token, load profile.
-- Authorize by role: allow `super_admin`, `acsl_agent_manager`, and `partner` (partner scoped to `organization_id = caller.organization_id`). Others → 403.
-- Accept editable end-user fields only:
-  `end_user_name, aka, phone, other_phone, contact_person, contact_phone, state_backup, lga_backup, address (street/city + address_id row update)`.
-- Re-run existing Nigerian phone validation + duplicate-phone check (digits-only normalization, ignoring the current sale's `id`).
-- Update the `sales` row and set `updated_at = now()`, `updated_by = caller.id`.
-- Return the refreshed sale.
+## UX
 
-## 3. Frontend — `EndUserRecordsContent.jsx`
-- Gate a new "Edit" button per row using `usePermissions` — visible when role is `super_admin`, `acsl_agent_manager`, or `partner`.
-- Add a new column **Last Modified By** rendering `updated_by_name` + formatted `updated_at` (falls back to "—" when never edited). Insert it before the Actions column, and add it to the CSV export.
-- The `Details` button stays; the new `Edit` button opens a new modal.
+- New **Delete** button (red, trash icon) in the Actions column of `EndUserRecordsContent.jsx`, next to the existing Edit button.
+- Clicking Delete opens the existing `CancelSaleModal` (already includes a warning prompt and a "Reason for cancelling" textarea). We will:
+  - Change its title to "Delete End User Record" and the confirm button to "Confirm Delete" when opened from this view (via a prop), keeping the same warning + reason field.
+  - Make the reason **required** for this entry point (label switches from optional to required, submit disabled until non-empty), since the user asked for a reason to be provided.
+- On confirm: call the existing cancel flow, then refresh the list. Toast on success/failure.
 
-## 4. New modal — `EditEndUserModal.jsx`
-- Inputs for all end-user fields listed in §2, prefilled from the sale.
-- Reuses `isValidNgPhone` + `NG_PHONE_FORMAT_MESSAGE` for `phone` and `contact_phone` (live format check).
-- Debounced duplicate lookup on `phone` (excluding current sale id), same UX as `CreateSalesForm`.
-- Save → calls `adminSalesService.updateSale(id, payload)` → on success, refreshes the row in local state and closes.
+## Backend behavior (reused, no schema change)
 
-## 5. Read path — `get-sales-advanced`
-Extend the sales select and response mapping to include `updated_at` and a joined `updated_by_profile(full_name)` so the new column renders without an extra fetch. (Format2 response used by End User Records.)
+- Reuse `adminSalesService.cancelSale(id, reason)` — the same call used by Sales Records' Cancel action.
+- This flow already:
+  - Sets `cancelled_at` and `cancel_reason` on the sale so it appears under **Cancelled Transactions**.
+  - Removes the sale from Sales Records / End User Records queries (they filter out cancelled rows via `get-sales-advanced`, and Cancelled Transactions reads rows where `cancelled_at is not null`).
+  - Releases the stove ID back to available.
+- No new edge function or migration required.
 
-## Technical notes
-- RLS on `sales`: keep existing policies; writes go through the edge function using service role after role check, matching the pattern used by `create-sale` / `delete-sale`.
-- Partner scoping: enforced in the edge function by comparing `sales.organization_id` to caller's `organization_id`.
-- No changes to sidebar/permissions map required; the row-level gate uses the existing role from `useAuth`.
+## Files to change
+
+- `src/app/end-user-records/EndUserRecordsContent.jsx`
+  - Add `canDelete = ['super_admin','partner'].includes(resolveRole(userRole))`.
+  - Add Delete button in Actions column (guarded by `canDelete`).
+  - Add state `deleteTarget`, render `CancelSaleModal` with `requireReason` and custom labels; on confirm call `adminSalesService.cancelSale` and refetch.
+- `src/app/admin/components/sales/CancelSaleModal.tsx`
+  - Add optional props: `title`, `confirmLabel`, `requireReason` (default preserves current behavior).
+  - When `requireReason` is true: label shows "(required)", Confirm button disabled until reason is non-empty.
+
+## Out of scope
+
+- No changes to Cancelled Transactions view (it already shows `cancel_reason` and `cancelled_at`).
+- No changes to `delete-sale` edge function (we use cancel, not hard delete, so records remain auditable under Cancelled Transactions as requested).

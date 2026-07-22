@@ -13,6 +13,9 @@ interface CancelSaleModalProps {
     end_user_name?: string | null;
     stove_serial_no?: string | null;
   } | null;
+  title?: React.ReactNode;
+  confirmLabel?: string;
+  requireReason?: boolean;
 }
 
 const CancelSaleModal: React.FC<CancelSaleModalProps> = ({
@@ -20,6 +23,9 @@ const CancelSaleModal: React.FC<CancelSaleModalProps> = ({
   onClose,
   onConfirm,
   sale,
+  title,
+  confirmLabel,
+  requireReason = false,
 }) => {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -48,10 +54,12 @@ const CancelSaleModal: React.FC<CancelSaleModalProps> = ({
       onOpenChange={handleClose}
       size="md"
       title={
-        <div className="flex items-center gap-2 text-red-700">
-          <AlertTriangle className="h-5 w-5" />
-          Cancel Sale
-        </div>
+        title ?? (
+          <div className="flex items-center gap-2 text-red-700">
+            <AlertTriangle className="h-5 w-5" />
+            Cancel Sale
+          </div>
+        )
       }
     >
       <div className="space-y-4">
@@ -85,7 +93,11 @@ const CancelSaleModal: React.FC<CancelSaleModalProps> = ({
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Reason for cancelling{" "}
-            <span className="text-gray-400 font-normal">(optional)</span>
+            {requireReason ? (
+              <span className="text-red-600 font-normal">(required)</span>
+            ) : (
+              <span className="text-gray-400 font-normal">(optional)</span>
+            )}
           </label>
           <Textarea
             value={reason}
@@ -107,10 +119,10 @@ const CancelSaleModal: React.FC<CancelSaleModalProps> = ({
           <Button
             className="bg-red-600 hover:bg-red-700 text-white"
             onClick={handleConfirm}
-            disabled={submitting}
+            disabled={submitting || (requireReason && !reason.trim())}
           >
             {submitting && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
-            Confirm Cancel
+            {confirmLabel ?? "Confirm Cancel"}
           </Button>
         </div>
       </div>
