@@ -950,7 +950,14 @@ export default function StatesPerformanceContent() {
 
 
                   <TableCell className="text-center align-top">
-                    <Pill tone="slate">{r.stoves}</Pill>
+                    <button
+                      onClick={() => openStoveModal(r.state)}
+                      className="inline-flex min-w-[2rem] cursor-pointer justify-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-[#4a5d0f] hover:text-white"
+                      title="View stove IDs in this state"
+                      disabled={r.stoves === 0}
+                    >
+                      {r.stoves}
+                    </button>
                   </TableCell>
                   <TableCell className="text-center align-top">
                     <Pill tone="emerald">{r.sold}</Pill>
