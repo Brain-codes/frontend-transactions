@@ -93,10 +93,10 @@ export default function StatesPerformanceContent() {
       setLoading(true);
       setError(null);
       try {
-        // Fetch organizations (id, state)
+        // Fetch organizations (id, state, name, phone)
         const { data: orgs, error: oErr } = await supabase
           .from("organizations")
-          .select("id,state");
+          .select("id,state,partner_name,contact_phone,alternative_phone");
         if (oErr) throw oErr;
 
         // Partner-side agents/profiles with an org
