@@ -1,8 +1,8 @@
-
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Upload, FileText, Loader2 } from "lucide-react";
+import { Upload, FileText, Loader2, Camera } from "lucide-react";
+import CameraCaptureModal from "./CameraCaptureModal";
 
 const ImageUploadSection = ({
   label,
@@ -14,15 +14,21 @@ const ImageUploadSection = ({
   uploadIcon: UploadIcon = Upload,
   accept = "image/*",
   buttonText = "Upload Image",
+  enableCamera = false,
 }) => {
   const fileInputRef = useRef(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file && onUpload) {
       onUpload(file);
     }
+    e.target.value = "";
   };
+
+  const openFilePicker = () => fileInputRef.current?.click();
+  const openCamera = () => setCameraOpen(true);
 
   return (
     <div className="space-y-2">
@@ -59,28 +65,26 @@ const ImageUploadSection = ({
                 />
               );
             })()}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4 mr-2" />
+            <div className="flex flex-wrap justify-center gap-2">
+              {enableCamera && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={openCamera}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4 mr-2" />
+                  )}
+                  Retake
+                </Button>
               )}
-              Change
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <UploadIcon className="h-12 w-12 text-gray-400 mx-auto" />
-            <div>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={openFilePicker}
                 disabled={uploading}
               >
                 {uploading ? (
@@ -88,8 +92,44 @@ const ImageUploadSection = ({
                 ) : (
                   <Upload className="h-4 w-4 mr-2" />
                 )}
-                {buttonText}
+                Change
               </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <UploadIcon className="h-12 w-12 text-gray-400 mx-auto" />
+            <div>
+              <div className="flex flex-wrap justify-center gap-2">
+                {enableCamera && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={openCamera}
+                    disabled={uploading}
+                  >
+                    {uploading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Camera className="h-4 w-4 mr-2" />
+                    )}
+                    Take Photo
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={openFilePicker}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4 mr-2" />
+                  )}
+                  {buttonText}
+                </Button>
+              </div>
               {placeholder && (
                 <p className="text-sm text-gray-500 mt-2">{placeholder}</p>
               )}
@@ -105,6 +145,16 @@ const ImageUploadSection = ({
         />
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {enableCamera && (
+        <CameraCaptureModal
+          open={cameraOpen}
+          onOpenChange={setCameraOpen}
+          onCapture={(file) => onUpload?.(file)}
+          onFallbackUpload={openFilePicker}
+          title={label ? `Take Photo — ${label}` : "Take Photo"}
+        />
+      )}
     </div>
   );
 };

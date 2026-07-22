@@ -301,13 +301,13 @@ const EndUserRecordsContent = () => {
                 placeholder="Search by name, phone, stove ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-white text-sm h-9"
+                className="bg-white text-sm h-9 shadow-none"
               />
             </div>
 
             <div className="flex-1 min-w-[140px] max-w-[180px]">
               <Select value={selectedState} onValueChange={(v) => { setSelectedState(v); setSelectedLGA("all"); }}>
-                <SelectTrigger className="bg-white text-sm h-9">
+                <SelectTrigger className="bg-white text-sm h-9 shadow-none">
                   <SelectValue placeholder="All States" />
                 </SelectTrigger>
                 <SelectContent>
@@ -322,7 +322,7 @@ const EndUserRecordsContent = () => {
             {selectedState !== "all" && lgaList.length > 0 && (
               <div className="flex-1 min-w-[140px] max-w-[180px]">
                 <Select value={selectedLGA} onValueChange={setSelectedLGA}>
-                  <SelectTrigger className="bg-white text-sm h-9">
+                  <SelectTrigger className="bg-white text-sm h-9 shadow-none">
                     <SelectValue placeholder="All LGAs" />
                   </SelectTrigger>
                   <SelectContent>
@@ -340,14 +340,14 @@ const EndUserRecordsContent = () => {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="bg-white w-[140px] h-9 text-sm"
+                className="bg-white w-[140px] h-9 text-sm shadow-none"
               />
               <span className="text-gray-400 text-sm">to</span>
               <Input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="bg-white w-[140px] h-9 text-sm"
+                className="bg-white w-[140px] h-9 text-sm shadow-none"
               />
             </div>
 
@@ -356,7 +356,7 @@ const EndUserRecordsContent = () => {
                 variant="outline"
                 size="sm"
                 onClick={clearFilters}
-                className="flex items-center gap-1 h-9 px-3 rounded-none"
+                className="flex items-center gap-1 h-9 px-3 rounded-none shadow-none"
               >
                 <X className="h-3 w-3" />
                 Reset Filters
@@ -434,7 +434,7 @@ const EndUserRecordsContent = () => {
                     paginatedSales.map((sale, idx) => (
                       <TableRow
                         key={sale.id}
-                        className={`${idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]"} hover:bg-gray-50`}
+                        className="bg-white hover:bg-gray-50"
                       >
                         <TableCell className="py-2 px-2 whitespace-nowrap align-top">
                           {formatDate(sale.sales_date || sale.created_at)}
