@@ -1177,7 +1177,7 @@ const UserManagementPage = () => {
         { method: "DELETE", headers: { Authorization: `Bearer ${session.access_token}` } },
       );
       const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Failed to delete user");
+      if (!res.ok) throw new Error(result.error || result.message || "Failed to delete user");
 
       toast({ variant: "success", title: "User deleted successfully" });
       setShowDeleteModal(false);

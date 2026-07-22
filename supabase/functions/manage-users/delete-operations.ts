@@ -1,6 +1,7 @@
 // Delete operations for users
 
 import { userInScope, CallerContext, CallerScope } from "./scope.ts";
+import { cleanupUserDependencies, deleteProfileAndAuthUser } from "../_shared/deleteUserCleanup.ts";
 
 export async function deleteUser(
   supabase: any,
@@ -46,81 +47,13 @@ export async function deleteUser(
 
     console.log("🔍 User found, proceeding with deletion");
 
-    // Clean up dependent rows that would otherwise block auth deletion.
-    if (
-      existingUser.role === "acsl_agent" ||
-      existingUser.role === "acsl_agent_manager"
-    ) {
-      const { error: orgAssignError } = await supabase
-        .from("acsl_agent_organizations")
-        .delete()
-        .eq("agent_id", userId);
-      if (orgAssignError) {
-        console.warn(
-          "⚠️ Failed to remove acsl_agent_organizations rows:",
-          orgAssignError.message
-        );
-      }
-    }
+    await cleanupUserDependencies(supabase, {
+      userId,
+      replacementUserId: caller.id,
+      email: existingUser.email,
+    });
 
-    // If this user manages other agents, clear subordinates' manager_id first.
-    if (existingUser.role === "acsl_agent_manager") {
-      const { error: clearMgrError } = await supabase
-        .from("profiles")
-        .update({ manager_id: null })
-        .eq("manager_id", userId);
-      if (clearMgrError) {
-        console.warn(
-          "⚠️ Failed to clear subordinate manager_id:",
-          clearMgrError.message
-        );
-      }
-    }
-
-    // Delete from Auth (this should cascade to profiles due to foreign key constraints)
-    const { error: authDeleteError } = await supabase.auth.admin.deleteUser(
-      userId
-    );
-
-    if (authDeleteError) {
-      console.error("❌ Error deleting user from Auth:", authDeleteError);
-      const authErrMsg =
-        (authDeleteError as any)?.message ||
-        (authDeleteError as any)?.name ||
-        JSON.stringify(
-          authDeleteError,
-          Object.getOwnPropertyNames(authDeleteError as any)
-        );
-      throw new Error(`Failed to delete user: ${authErrMsg}`);
-    }
-
-    console.log("✅ User deleted successfully from Auth");
-
-    // Verify deletion from profiles table
-    const { data: stillExists, error: verifyError } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (verifyError) {
-      console.warn("⚠️ Error verifying deletion:", verifyError.message);
-    }
-
-    if (stillExists) {
-      // If profile still exists, delete it manually
-      const { error: profileDeleteError } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("id", userId);
-
-      if (profileDeleteError) {
-        console.error("❌ Error deleting profile:", profileDeleteError);
-        throw new Error(
-          `Failed to delete user profile: ${profileDeleteError.message}`
-        );
-      }
-    }
+    await deleteProfileAndAuthUser(supabase, userId);
 
     console.log("✅ User completely deleted:", userId);
 
