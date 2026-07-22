@@ -185,6 +185,9 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                   <div className="text-gray-800">
                     {(sale as any).updated_by_profile?.full_name ||
                       (sale as any).creator?.full_name ||
+                      (sale as any).updated_by_profile?.email ||
+                      (sale as any).creator?.email ||
+                      sale.partner_name ||
                       "—"}
                   </div>
                   <div className="text-[11px] text-gray-500">

@@ -1,74 +1,42 @@
-## Goal
-Replace the plain text in the **Payment** column of the sales record table with a clear, card-style summary that shows:
-- Sales / payment model name
-- Total number of installments
-- Installments paid and installments remaining
-- Next due date
+## Diagnosis (unconfirmed until redeploy check)
 
-This matches the sample image attached by the user.
+The Modified By cell renders `updated_by_profile?.full_name || creator?.full_name || "—"`. The "line" you see is the em‑dash `—`, i.e. both objects arrive as `null` on the sale rows.
 
-## Current state
-- The sales record table (`FinancialReportsTable.tsx`) currently renders the Payment column as plain text: either `Full Payment` or the payment model name for installment sales.
-- The `get-sales-advanced` edge function returns sales rows with a joined `payment_model` object (`name`, `duration_months`, `fixed_price`) but does **not** return the count of recorded installment payments or a calculated next-due date.
-- Installment payments are stored in `public.installment_payments` and linked by `sale_id`.
-- The project uses its own Supabase project, so edge-function changes must be deployed by the user after they are written.
+Both fields are attached in `supabase/functions/get-sales-advanced/fetch-related.ts` (`fetchCreators`, `fetchModifiers`), and the edge function runs with the service role so RLS is not the blocker. That means one of these is true on your Supabase project:
 
-## Proposed implementation
+1. The `get-sales-advanced` edge function has not been redeployed since `fetchModifiers` / the `creator` attachment was added, so the deployed version returns rows without those fields.
+2. `sales.created_by` values don't correspond to rows in `profiles` (an older issue documented in `get-sales-advanced/DEPLOYMENT-GUIDE.md`), so `creator` resolves to `null` for existing sales and `updated_by` is still `null` for anything you haven't edited yet.
 
-### 1. Backend: enrich sales data with installment summary
-In `supabase/functions/get-sales-advanced/fetch-related.ts`, add a new `fetchInstallmentSummaries(supabase, sales)` helper that:
-- Collects all `sale.id` values for rows where `is_installment` is true.
-- Runs a single batched query against `installment_payments` to get the count of payments per `sale_id`.
-- Attaches a computed `installment_summary` object to each sale:
-  - `total_installments` — from `payment_model.duration_months`
-  - `paid_installments` — count of payment records
-  - `left_installments` — `total - paid`
-  - `next_due_date` — `sales_date` plus `(paid_installments + 1)` months, or `null` when fully paid
-  - `installment_amount` — optional, `fixed_price / duration_months`
+I need to verify which one is happening before writing code, and the safest fix is a small UI-side fallback plus a redeploy.
 
-This follows the existing batching pattern already used for organizations, addresses, creators, and modifiers.
+## Plan
 
-### 2. TypeScript types
-Update `src/types/adminSales.ts` to include the new optional field:
-```ts
-installment_summary?: {
-  total_installments: number;
-  paid_installments: number;
-  left_installments: number;
-  next_due_date: string | null;
-  installment_amount?: number;
-};
-```
+1. **Verify what the API is returning**
+   - Open the browser Network tab on `/sales`, inspect the POST to `get-sales-advanced`, and confirm whether each sale object contains `creator` / `updated_by_profile` keys. That confirms (1) vs (2).
 
-### 3. UI: render the Payment column as a compact card
-Update `src/app/admin/components/financial-reports/FinancialReportsTable.tsx` so the **Payment** column cell renders:
-- **Full payment sales**: a small green badge or text reading `Full Payment`.
-- **Installment sales**: a compact stacked block styled like the sample:
-  - First line: payment model name (e.g. `Direct Community Engagement Sales Model`)
-  - Second line: `{total} installments`
-  - Third line: `{paid} paid · {left} left`
-  - Fourth line: `Next due: {date}` in the project's accent color (current green `#4a5d0f`)
+2. **Redeploy the edge function (if fields are missing in the response)**
+   ```bash
+   supabase functions deploy get-sales-advanced --no-verify-jwt
+   ```
+   No code changes needed here — the current source already fetches both.
 
-If the summary is missing or the payment model has no duration, fall back gracefully to the current text display.
+3. **UI fallback in `FinancialReportsTable.tsx`** so the column is never just `—` when we have any identifying info:
+   - Order of preference for the name line:
+     1. `updated_by_profile.full_name`
+     2. `creator.full_name`
+     3. `updated_by_profile.email` (before falling back to email of creator)
+     4. `creator.email`
+     5. `sale.partner_name` (last resort — shows who owns the record)
+     6. `—`
+   - Keep the second line (date) as `updated_at || created_at`.
 
-### 4. Edge case handling
-- Sales with `is_installment = false` → show `Full Payment`.
-- Installment sales with no payments yet → `0 paid · N left`, next due = `sales_date + 1 month`.
-- Fully paid installment sales → show `Completed` / `Paid in full` instead of a next due date.
-- Missing `sales_date` → use `created_at` for the due-date calculation.
+4. **Backfill only if needed** (only if step 1 shows `creator` is present in the payload but its `full_name` is `null` because the profile row is missing):
+   - Provide a one-off SQL snippet to insert placeholder profiles for orphaned `sales.created_by` UUIDs, mirroring the guidance in `get-sales-advanced/DEPLOYMENT-GUIDE.md`. This is optional and only run if the network payload proves broken FKs.
 
-## Files to change
-- `supabase/functions/get-sales-advanced/fetch-related.ts` — add batched installment summary fetcher
-- `src/types/adminSales.ts` — add `installment_summary` type
-- `src/app/admin/components/financial-reports/FinancialReportsTable.tsx` — update Payment column rendering
+No changes to business logic — this stays a display / deployment fix.
 
-## Out-of-scope (unless requested)
-- CSV/Excel export changes
-- Changes to the Payment History modal
-- Adding new database columns or triggers
+## Files touched
 
-## Deployment note
-Because this project connects to the user's own Supabase project, the updated `get-sales-advanced` edge function will need to be redeployed after the code changes:
-```bash
-supabase functions deploy get-sales-advanced --no-verify-jwt
-```
+- `src/app/admin/components/financial-reports/FinancialReportsTable.tsx` — extend the "Modified By" fallback chain.
+- (Deploy only) `supabase/functions/get-sales-advanced/*` — no source change, just `supabase functions deploy`.
+- (Optional SQL) a snippet you'd run manually if orphaned `created_by` IDs are the cause.
