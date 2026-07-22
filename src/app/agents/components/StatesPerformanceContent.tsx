@@ -86,6 +86,13 @@ export default function StatesPerformanceContent() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // Partner detail modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalState, setModalState] = useState<string | null>(null);
+  const [modalSearch, setModalSearch] = useState("");
+  const [modalPage, setModalPage] = useState(1);
+  const [modalPageSize, setModalPageSize] = useState(10);
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
