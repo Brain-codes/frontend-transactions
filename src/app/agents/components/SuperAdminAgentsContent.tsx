@@ -1636,32 +1636,18 @@ function AgentStatesModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [states, setStates] = useState<string[]>([]);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    if (!isOpen || !agent) return;
-    setError(null);
-    setStates([]);
-    setSearch("");
-    const load = async () => {
-      setLoading(true);
-      try {
-        const result = await superAdminAgentService.getAgentStates(agent.id);
-        const sorted: string[] = ((result.data || []) as any[])
-          .map((s: any) => s.state as string)
-          .sort();
-        setStates(sorted);
-      } catch (err: any) {
-        setError(err.message || "Failed to load states");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [isOpen, agent]);
+    if (isOpen) setSearch("");
+  }, [isOpen, agent?.id]);
+
+  // Single source of truth: the partner-derived list already computed on the
+  // row. This guarantees the modal and the row badge can never disagree.
+  const states = useMemo(
+    () => [...(agent?.assigned_states || [])].sort(),
+    [agent?.assigned_states]
+  );
 
   const filteredStates = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -1679,11 +1665,9 @@ function AgentStatesModal({
             <DialogTitle className="text-base font-bold text-foreground">States Assigned</DialogTitle>
             <p className="text-xs text-muted-foreground mt-0.5">
               Agent: <span className="font-semibold text-primary">{agent.full_name}</span>
-              {!loading && (
-                <span className="ml-2 bg-primary/10 text-primary text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                  {filteredStates.length}{search ? ` of ${states.length}` : ""} state{states.length !== 1 ? "s" : ""}
-                </span>
-              )}
+              <span className="ml-2 bg-primary/10 text-primary text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                {filteredStates.length}{search ? ` of ${states.length}` : ""} state{states.length !== 1 ? "s" : ""}
+              </span>
             </p>
           </div>
         </DialogHeader>
@@ -1696,21 +1680,13 @@ function AgentStatesModal({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-9 pl-9 shadow-none"
-              disabled={loading || states.length === 0}
+              disabled={states.length === 0}
             />
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            </div>
-          ) : error ? (
-            <div className="text-center py-8">
-              <p className="text-red-600 text-sm">{error}</p>
-            </div>
-          ) : states.length === 0 ? (
+          {states.length === 0 ? (
             <div className="text-center text-muted-foreground py-10 text-sm">
               <MapPin className="h-8 w-8 text-gray-300 mx-auto mb-2" />
               No states assigned to this agent.
@@ -1732,12 +1708,11 @@ function AgentStatesModal({
             </div>
           )}
         </div>
-
-
       </DialogContent>
     </Dialog>
   );
 }
+
 
 
 // ── Active Partners Modal ──────────────────────────────────────────────────────
