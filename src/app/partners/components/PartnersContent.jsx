@@ -1799,14 +1799,15 @@ export default function PartnersContent() {
                         Available <SortIcon col="available" />
                       </button>
                     </TableHead>
-                    
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Sell-through</TableHead>
+
                     <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className={tableLoading ? "opacity-40" : ""}>
                   {sortedOrgs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-10">
+                      <TableCell colSpan={9} className="text-center py-10">
                         <Building2 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                         <p className="text-gray-500 font-medium">No partners found</p>
                         <p className="text-gray-400 text-sm">Try adjusting your filters</p>
@@ -1834,6 +1835,21 @@ export default function PartnersContent() {
                             <button onClick={() => handleViewStoveIds(org, "available")} className="inline-flex items-center justify-center min-w-[40px] px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 transition-colors" title="Available">
                               {org.available_stove_ids ?? 0}
                             </button>
+                          </TableCell>
+                          <TableCell className="align-middle min-w-[140px]">
+                            {(() => {
+                              const total = org.total_stove_ids ?? 0;
+                              const sold = org.sold_stove_ids ?? 0;
+                              const pct = total > 0 ? (sold / total) * 100 : 0;
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                                    <div className="h-full bg-[#4a5d0f]" style={{ width: `${Math.round(pct)}%` }} />
+                                  </div>
+                                  <span className="w-12 text-right text-[11px] text-gray-600">{pct.toFixed(1)}%</span>
+                                </div>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
