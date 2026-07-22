@@ -141,9 +141,36 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                 <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.partner_name || (sale as any).organizations?.name || "N/A"}</TableCell>
                 <TableCell className="py-2 px-2 text-xs break-words align-top">{sale.stove_serial_no || "N/A"}</TableCell>
                 <TableCell className="py-2 px-2 text-xs break-words align-top">
-                  {sale.is_installment
-                    ? (sale.payment_model?.name || "Installment")
-                    : "Full Payment"}
+                  {sale.is_installment ? (
+                    sale.installment_summary ? (
+                      <div className="space-y-0.5">
+                        <div className="font-medium text-gray-900 leading-tight">
+                          {sale.payment_model?.name || "Installment"}
+                        </div>
+                        <div className="text-[11px] text-gray-600">
+                          {sale.installment_summary.total_installments} installments
+                        </div>
+                        <div className="text-[11px] text-gray-600">
+                          {sale.installment_summary.paid_installments} paid · {sale.installment_summary.left_installments} left
+                        </div>
+                        {sale.installment_summary.left_installments > 0 && sale.installment_summary.next_due_date ? (
+                          <div className="text-[11px] font-medium text-[#4a5d0f]">
+                            Next due: {formatDate(sale.installment_summary.next_due_date)}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] font-medium text-green-700">
+                            Completed
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      sale.payment_model?.name || "Installment"
+                    )
+                  ) : (
+                    <Badge className="bg-[#eef3c4] text-[#4a5d0f] hover:bg-[#eef3c4] text-[10px] px-1.5 py-0">
+                      Full Payment
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell className="py-2 px-2 text-xs text-left break-words align-top">
                   {formatCurrency(sale.amount ?? 0)}
