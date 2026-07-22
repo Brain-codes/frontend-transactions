@@ -1092,6 +1092,59 @@ export default function StatesPerformanceContent() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Unassigned Agents Modal */}
+      <Dialog open={unassignedModalOpen} onOpenChange={setUnassignedModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Unassigned ACSL Agents</DialogTitle>
+            <DialogDescription>
+              {unassignedAgents.length} agent{unassignedAgents.length === 1 ? "" : "s"} not linked to any state. Assign them via User Management.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search name, role, or phone..."
+                value={unassignedSearch}
+                onChange={(e) => setUnassignedSearch(e.target.value)}
+                className="h-9 pl-8 shadow-none"
+              />
+            </div>
+            <div className="max-h-[60vh] overflow-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-[#4a5d0f]">
+                    <TableHead className="text-white">Name</TableHead>
+                    <TableHead className="text-white">Role</TableHead>
+                    <TableHead className="text-white">Phone</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {unassignedFiltered.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="py-6 text-center text-sm text-gray-500">
+                        No unassigned agents.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    unassignedFiltered.map((a) => (
+                      <TableRow key={a.id}>
+                        <TableCell className="text-sm">{a.name}</TableCell>
+                        <TableCell className="text-sm">
+                          {a.role === "acsl_agent_manager" ? "ACSL Agent Manager" : "ACSL Agent"}
+                        </TableCell>
+                        <TableCell className="text-sm">{a.phone || "—"}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
 
   );
