@@ -84,7 +84,7 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
             className="py-2 px-3 rounded-md hover:!bg-[#4a5d0f] hover:!text-white cursor-pointer"
           >
             <Eye className="mr-2 h-4 w-4" />
-            View Transaction details (Details)
+            View Transaction Details
           </DropdownMenuItem>
 
           {/* Payment History */}
