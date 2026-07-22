@@ -31,6 +31,9 @@ import {
 import salesAdvancedService from "../services/salesAdvancedAPIService";
 import { lgaAndStates } from "../constants";
 import AdminSalesDetailModal from "../admin/components/sales/AdminSalesDetailModal";
+import EditEndUserModal from "./EditEndUserModal";
+import { useAuth } from "../contexts/useAuth";
+import { resolveRole } from "@/lib/permissions";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "N/A";
@@ -56,6 +59,12 @@ const EndUserRecordsContent = () => {
   const [pageSize, setPageSize] = useState(10);
   const [sortOrder, setSortOrder] = useState("desc");
   const [selectedSale, setSelectedSale] = useState(null);
+  const [editSale, setEditSale] = useState(null);
+
+  const { userRole } = useAuth();
+  const canEdit = ["super_admin", "acsl_agent_manager", "partner"].includes(
+    resolveRole(userRole) || ""
+  );
 
   const stateList = useMemo(() => Object.keys(lgaAndStates).sort(), []);
   const lgaList = useMemo(
@@ -197,6 +206,14 @@ const EndUserRecordsContent = () => {
     return pages;
   };
 
+  const formatModifier = (s) => {
+    const name = s.updated_by_profile?.full_name;
+    const when = s.updated_at ? formatDate(s.updated_at) : null;
+    if (!name && !when) return "—";
+    if (name && when) return `${name} · ${when}`;
+    return name || when || "—";
+  };
+
   const handleExport = () => {
     const headers = [
       "Stove ID",
@@ -207,6 +224,7 @@ const EndUserRecordsContent = () => {
       "End User",
       "State",
       "LGA",
+      "Last Modified By",
     ];
     const rows = filteredSales.map((s) => [
       s.stove_serial_no || "",
@@ -217,6 +235,7 @@ const EndUserRecordsContent = () => {
       s.end_user_name || "",
       s.state_backup || "",
       s.lga_backup || "",
+      formatModifier(s),
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -384,13 +403,14 @@ const EndUserRecordsContent = () => {
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">End User</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">State</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">LGA</TableHead>
+                    <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap">Last Modified By</TableHead>
                     <TableHead className="text-white font-semibold py-2 px-2 whitespace-nowrap text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedSales.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                         {searchTerm || hasActiveFilters
                           ? "No records found matching your filters."
                           : "No end user records available."}
@@ -426,15 +446,40 @@ const EndUserRecordsContent = () => {
                         <TableCell className="py-2 px-2 whitespace-nowrap">
                           {sale.lga_backup || "N/A"}
                         </TableCell>
+                        <TableCell className="py-2 px-2 whitespace-nowrap text-xs">
+                          {sale.updated_by_profile?.full_name ? (
+                            <div className="flex flex-col leading-tight">
+                              <span className="font-medium">{sale.updated_by_profile.full_name}</span>
+                              {sale.updated_at && (
+                                <span className="text-gray-500">{formatDate(sale.updated_at)}</span>
+                              )}
+                            </div>
+                          ) : sale.updated_at ? (
+                            <span className="text-gray-500">{formatDate(sale.updated_at)}</span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="py-2 px-2 whitespace-nowrap text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-3 rounded-none border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4]"
-                            onClick={() => setSelectedSale(sale)}
-                          >
-                            Details
-                          </Button>
+                          <div className="inline-flex items-center gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-3 rounded-none border-[#4a5d0f] text-[#4a5d0f] hover:bg-[#eef3c4]"
+                              onClick={() => setSelectedSale(sale)}
+                            >
+                              Details
+                            </Button>
+                            {canEdit && (
+                              <Button
+                                size="sm"
+                                className="h-7 px-3 rounded-none bg-[#4a5d0f] hover:bg-[#3a4a0c] text-white"
+                                onClick={() => setEditSale(sale)}
+                              >
+                                Edit
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -510,6 +555,16 @@ const EndUserRecordsContent = () => {
         onClose={() => setSelectedSale(null)}
         sale={selectedSale}
         viewFrom="superAdmin"
+      />
+      <EditEndUserModal
+        open={!!editSale}
+        sale={editSale}
+        onClose={() => setEditSale(null)}
+        onSaved={(updated) => {
+          setAllSales((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
+          // Refresh in the background to pick up the fresh updated_by_profile join.
+          fetchSales();
+        }}
       />
     </DashboardLayout>
   );

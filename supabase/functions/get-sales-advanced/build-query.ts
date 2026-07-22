@@ -210,6 +210,8 @@ function buildOptimizedSelectFields(filters: Filters): string {
     "cooking_fuel_source",
     "cooking_location",
     "terms_accepted",
+    "updated_at",
+    "updated_by",
   ];
 
   // Add joins based on what's requested to avoid N+1 queries
