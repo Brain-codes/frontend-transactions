@@ -132,6 +132,8 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
   const [orgFilter, setOrgFilter] = useState("all");
   const [approvalFilter, setApprovalFilter] = useState("all");
   const [salesModelFilter, setSalesModelFilter] = useState("all");
+  const [selectedMonth, setSelectedMonth] = useState<string>("all"); // "all" | "0".."11"
+  const [yearFilter, setYearFilter] = useState<string>("all"); // "all" | "2024" ...
   const [salesModels, setSalesModels] = useState<{ id: string; name: string }[]>([]);
   const [trackingFilter, setTrackingFilter] = useState<TrackingKey>("none");
   const [internalSelectedYears, setInternalSelectedYears] = useState<number[]>(loadSelectedYears);
@@ -144,6 +146,7 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
     saveSelectedYears(years);
   };
   const [exporting, setExporting] = useState(false);
+
 
   const stateList = useMemo(() => Object.keys(lgaAndStates).sort(), []);
   const lgaList = useMemo(
