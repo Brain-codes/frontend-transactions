@@ -54,10 +54,12 @@ const CancelSaleModal: React.FC<CancelSaleModalProps> = ({
       onOpenChange={handleClose}
       size="md"
       title={
-        <div className="flex items-center gap-2 text-red-700">
-          <AlertTriangle className="h-5 w-5" />
-          Cancel Sale
-        </div>
+        title ?? (
+          <div className="flex items-center gap-2 text-red-700">
+            <AlertTriangle className="h-5 w-5" />
+            Cancel Sale
+          </div>
+        )
       }
     >
       <div className="space-y-4">
