@@ -80,28 +80,6 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
 
   return (
     <div className="space-y-0">
-      {/* Pagination header */}
-      <div className="rounded-t-lg px-4 py-2 flex items-center justify-end gap-3">
-        <p className="text-sm text-gray-600">
-          Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
-          <span className="font-medium">{totalRecords}</span> records
-        </p>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">per page:</span>
-          <Select value={pageSize.toString()} onValueChange={(val) => onPageSizeChange(Number(val))}>
-            <SelectTrigger className="w-[65px] h-7 bg-white text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10</SelectItem>
-              <SelectItem value="25">25</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-              <SelectItem value="100">100</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
       {/* Table */}
       <div className="bg-white border-x border-gray-200 mt-1 w-full overflow-hidden">
         <Table className="text-sm w-full table-fixed">
