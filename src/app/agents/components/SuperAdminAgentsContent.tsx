@@ -1629,11 +1629,13 @@ function AgentStatesModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [states, setStates] = useState<string[]>([]);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!isOpen || !agent) return;
     setError(null);
     setStates([]);
+    setSearch("");
     const load = async () => {
       setLoading(true);
       try {
@@ -1651,6 +1653,12 @@ function AgentStatesModal({
     load();
   }, [isOpen, agent]);
 
+  const filteredStates = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return states;
+    return states.filter((s) => s.toLowerCase().includes(q));
+  }, [states, search]);
+
   if (!agent) return null;
 
   return (
@@ -1663,12 +1671,25 @@ function AgentStatesModal({
               Agent: <span className="font-semibold text-primary">{agent.full_name}</span>
               {!loading && (
                 <span className="ml-2 bg-primary/10 text-primary text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                  {states.length} state{states.length !== 1 ? "s" : ""}
+                  {filteredStates.length}{search ? ` of ${states.length}` : ""} state{states.length !== 1 ? "s" : ""}
                 </span>
               )}
             </p>
           </div>
         </DialogHeader>
+
+        <div className="px-5 pt-3 pb-2 shrink-0">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Filter states..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-9 pl-9 shadow-none"
+              disabled={loading || states.length === 0}
+            />
+          </div>
+        </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {loading ? (
@@ -1684,12 +1705,16 @@ function AgentStatesModal({
               <MapPin className="h-8 w-8 text-gray-300 mx-auto mb-2" />
               No states assigned to this agent.
             </div>
+          ) : filteredStates.length === 0 ? (
+            <div className="text-center text-muted-foreground py-10 text-sm">
+              No states match "{search}".
+            </div>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {states.map((s) => (
+              {filteredStates.map((s) => (
                 <span
                   key={s}
-                  className="bg-primary/10 text-primary text-[11px] font-mono px-2.5 py-1 rounded"
+                  className="bg-sky-100 text-sky-700 text-[11px] font-semibold px-2.5 py-1 rounded"
                 >
                   {s}
                 </span>
@@ -2648,6 +2673,9 @@ export default function SuperAdminAgentsContent() {
     if (stoveSort.key === "partners") {
       return [...sortedAgents].sort((a, b) => (((a.assigned_organizations_count ?? 0) - (b.assigned_organizations_count ?? 0)) * dir));
     }
+    if (stoveSort.key === "states") {
+      return [...sortedAgents].sort((a, b) => (((a.assigned_states_count ?? 0) - (b.assigned_states_count ?? 0)) * dir));
+    }
     const field = stoveSortFieldMap[stoveSort.key];
     if (!field) return sortedAgents;
     return [...sortedAgents].sort((a, b) => (((a.stove_summary?.[field] ?? 0) - (b.stove_summary?.[field] ?? 0)) * dir));
@@ -2978,7 +3006,11 @@ export default function SuperAdminAgentsContent() {
                 <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Full Name</TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
-                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">States Assigned</TableHead>
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
+                    <button type="button" onClick={() => cycleStoveSort("states")} className="inline-flex items-center gap-1 hover:underline">
+                      States Assigned <StoveSortIcon col="states" />
+                    </button>
+                  </TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
                     <button type="button" onClick={() => cycleStoveSort("partners")} className="inline-flex items-center gap-1 hover:underline">
                       Partners Assigned <StoveSortIcon col="partners" />
@@ -3033,9 +3065,15 @@ export default function SuperAdminAgentsContent() {
                         {agent.phone || ""}
                       </TableCell>
                       <TableCell className="text-center">
-                        <span className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-100 text-sky-700">
+                        <button
+                          type="button"
+                          onClick={() => setStatesModalAgent(agent)}
+                          disabled={(agent.assigned_states_count ?? 0) === 0}
+                          className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-100 text-sky-700 hover:bg-sky-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          title="View assigned states"
+                        >
                           {(agent.assigned_states_count ?? 0).toLocaleString()}
-                        </span>
+                        </button>
                       </TableCell>
                       <TableCell className="text-center">
                         <button
