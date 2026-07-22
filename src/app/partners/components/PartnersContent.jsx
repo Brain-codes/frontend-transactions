@@ -1799,7 +1799,8 @@ export default function PartnersContent() {
                         Available <SortIcon col="available" />
                       </button>
                     </TableHead>
-                    
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Sell-through</TableHead>
+
                     <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap"></TableHead>
                   </TableRow>
                 </TableHeader>
