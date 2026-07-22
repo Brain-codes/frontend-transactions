@@ -23,6 +23,9 @@ const CancelSaleModal: React.FC<CancelSaleModalProps> = ({
   onClose,
   onConfirm,
   sale,
+  title,
+  confirmLabel,
+  requireReason = false,
 }) => {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
