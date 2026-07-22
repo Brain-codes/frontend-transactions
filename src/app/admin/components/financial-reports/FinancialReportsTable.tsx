@@ -138,6 +138,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                 <TableCell className="py-1 px-1 whitespace-nowrap">{formatDate(sale.sales_date || sale.created_at)}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{sale.end_user_name || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{sale.state_backup || "N/A"}</TableCell>
+                <TableCell className="py-1 px-1 whitespace-nowrap">{sale.partner_name || (sale as any).organizations?.name || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">{sale.stove_serial_no || "N/A"}</TableCell>
                 <TableCell className="py-1 px-1 whitespace-nowrap">
                   {sale.is_installment
