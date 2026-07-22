@@ -51,6 +51,15 @@ type SortKey =
   | "notSold"
   | "sellThrough";
 
+interface PartnerDetail {
+  id: string;
+  name: string;
+  phone: string;
+  totalStoves: number;
+  stovesSold: number;
+  stovesAvailable: number;
+}
+
 interface StateRow {
   state: string;
   partners: number;
@@ -61,6 +70,7 @@ interface StateRow {
   sold: number;
   notSold: number;
   sellThrough: number;
+  partnerDetails: PartnerDetail[];
 }
 
 const PAGE_SIZES = [10, 25, 50];
