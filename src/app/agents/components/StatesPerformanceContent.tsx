@@ -1,20 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../contexts/useAuth";
 import { useRealtimeRefresh, useRefreshListener } from "../hooks/useRealtimeRefresh";
-
-const ACSL_AGENT_ROLES = new Set(["acsl_agent", "acsl_agent_manager"]);
-const ACSL_ASSIGNMENT_TABLES = [
-  "super_admin_agent_organizations",
-  "acsl_agent_organizations",
-];
-const ACSL_AGENT_ID_COLUMNS = ["agent_id", "super_admin_agent_id", "user_id"];
-const REALTIME_STATE_TABLES = [
-  "organizations",
-  "profiles",
-  ...ACSL_ASSIGNMENT_TABLES,
-  "sales",
-  "stove_ids",
-];
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,6 +42,20 @@ import {
 } from "lucide-react";
 import { downloadCSV } from "@/utils/csvExportUtils";
 import tokenManager from "@/utils/tokenManager";
+
+const ACSL_AGENT_ROLES = new Set(["acsl_agent", "acsl_agent_manager"]);
+const ACSL_ASSIGNMENT_TABLES = [
+  "super_admin_agent_organizations",
+  "acsl_agent_organizations",
+];
+const ACSL_AGENT_ID_COLUMNS = ["agent_id", "super_admin_agent_id", "user_id"];
+const REALTIME_STATE_TABLES = [
+  "organizations",
+  "profiles",
+  ...ACSL_ASSIGNMENT_TABLES,
+  "sales",
+  "stove_ids",
+];
 
 const PROFILE_ROLES_FOR_STATES = [
   "partner",
@@ -410,7 +410,7 @@ export default function StatesPerformanceContent() {
         });
 
         // ACSL agents (dedupe by agent per partner-derived state)
-        acslStatesByAgent.forEach((stateSet, agentId) => {
+        acslStatesByAgent.forEach((stateSet) => {
           stateSet.forEach((state) => {
             ensure(state).acslAgents += 1;
           });
