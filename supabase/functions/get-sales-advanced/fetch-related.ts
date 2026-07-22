@@ -35,6 +35,10 @@ export async function fetchRelatedData(
     fetchPromises.push(fetchCreators(supabase, sales));
   }
 
+  if (!sales[0]?.updated_by_profile) {
+    fetchPromises.push(fetchModifiers(supabase, sales));
+  }
+
   if (
     (filters.includeImages ||
       filters.includeStoveImage ||
