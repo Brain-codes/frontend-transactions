@@ -32,6 +32,9 @@ interface FinancialReportsFiltersProps {
   assignedOrgs?: { id: string; partner_name: string }[];
   approvalFilter?: string;
   onApprovalChange?: (value: string) => void;
+  salesModelFilter?: string;
+  onSalesModelChange?: (value: string) => void;
+  salesModels?: { id: string; name: string }[];
   stateList?: string[];
   lgaList?: string[];
 }
