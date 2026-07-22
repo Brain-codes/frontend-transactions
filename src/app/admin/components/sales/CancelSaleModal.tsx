@@ -119,10 +119,10 @@ const CancelSaleModal: React.FC<CancelSaleModalProps> = ({
           <Button
             className="bg-red-600 hover:bg-red-700 text-white"
             onClick={handleConfirm}
-            disabled={submitting}
+            disabled={submitting || (requireReason && !reason.trim())}
           >
             {submitting && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
-            Confirm Cancel
+            {confirmLabel ?? "Confirm Cancel"}
           </Button>
         </div>
       </div>
