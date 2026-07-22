@@ -1,30 +1,40 @@
-## Why the two totals differ
+## Problem
 
-Both reports count "agents" from different sources:
+On the **States Performance Report** view:
 
-- **Agents Performance Report** — lists every user with role `acsl_agent` or `acsl_agent_manager` (from `manage-users`). Result: **24**.
-- **States Performance Report** — walks each state and collects unique agent IDs tied to that state via:
-  - `acsl_agent_states` rows (ACSL agent/manager → state), OR
-  - a partner-side profile whose `organization.state` matches.
-  
-  Any ACSL agent/manager with **no `acsl_agent_states` row** (and no partner org state) is invisible to this view. Result: **23** → exactly one ACSL agent/manager currently has no state assignment.
+1. **Agent names blank in modal** — the "Agents in {State}" modal shows agent rows but the **Agent** column is empty (or shows "—").
+2. **Totals mismatch** — the Agents KPI shows **23**, while the Agents Performance Report shows **24**.
 
-This is a data-coverage gap, not a counting bug — the two views ask different questions.
+## Root cause (single cause, both symptoms)
 
-## Reconciliation plan
+`src/app/agents/components/StatesPerformanceContent.tsx` fetches `profiles` directly from Supabase (subject to RLS):
 
-Make both totals agree by having the States Performance KPI use the same authoritative agent list as the Agents Performance report, and surface any unassigned agents so they're visible instead of silently dropped.
+```ts
+const { data: profiles } = await supabase
+  .from("profiles")
+  .select("id,full_name,email,role,organization_id,phone")
+  .in("role", [...]);
+```
 
-1. In `StatesPerformanceContent.tsx`, also fetch the full ACSL agent/manager roster (same query the Agents Performance view uses — profiles where `role in ('acsl_agent','acsl_agent_manager')`).
-2. Change the **Agents** KPI to show the count of unique agent IDs from that roster ∪ the per-state agent details. This guarantees the KPI matches the 24 shown on the Agents Performance report.
-3. Add a small **"Unassigned"** chip under the Agents KPI (e.g. `1 unassigned`) when roster agents have no state linkage. Clicking it opens a modal listing those agents (name, role, phone) so an admin can assign them via User Management.
-4. Leave per-row (per-state) agent counts unchanged — those still correctly reflect coverage in each state.
-5. Update the CSV export totals row to match the reconciled KPI.
+RLS on `profiles` is restricting what the current user can read, so:
 
-No schema changes, no changes to Agents Performance view, no changes to per-state data.
+- The ACSL roster built from this query returns **23**, not 24 (one profile row is invisible under RLS) → KPI reads 23.
+- For agents whose profile row is filtered out, `profileById.get(agentId)` is `undefined`, so `name` falls back to `"—"` in the agents modal.
 
-## Technical notes
+The **Agents Performance Report** view does not hit this problem because it fetches through the `manage-users` Edge Function, which uses the service role and returns the full 24-agent roster with names.
 
-- File: `src/app/agents/components/StatesPerformanceContent.tsx` only.
-- Reuse the existing profiles fetch already in this file (line ~129) — it already pulls the ACSL roles; just build a `Set<string>` of ACSL agent IDs alongside the current per-state aggregation and union it into `totals.agents`.
-- Unassigned = roster IDs not present in any `agentDetails[].id` across `filtered` rows.
+## Fix
+
+Reuse the same authoritative source in States Performance.
+
+Change **`src/app/agents/components/StatesPerformanceContent.tsx`** to:
+
+1. Replace the direct `supabase.from("profiles")…` call with a fetch to the `manage-users` Edge Function (same call shape used by `SuperAdminAgentsContent.tsx`), requesting all users. Map the response into the existing `profiles` array shape (`id, full_name, email, role, organization_id, phone`).
+2. Keep everything downstream unchanged — `profileById`, `acslRoster`, `pushAgent`, partner-side agent iteration, and `totals.agents` all continue to work as-is.
+3. If the Edge Function call fails, fall back to the current direct query so the view still loads (degraded, matches today's behavior).
+
+## Expected outcome
+
+- Agents KPI on States Performance reads **24**, matching the Agents Performance Report.
+- The "Agents in {State}" modal shows every agent's full name in the **Agent** column (email fallback only when `full_name` truly is null in the profile).
+- No other view changes — partner modal, unassigned-agents chip, sorting, pagination, and per-state counts remain as they are.
