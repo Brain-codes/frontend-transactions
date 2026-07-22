@@ -21,10 +21,10 @@ import {
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL + "/functions/v1";
 
 const FALLBACK = {
-  version: "1.0.0",
-  release_notes: "Initial release of the Atmosfair Sales Monitoring App.",
+  version: "1.0.14",
+  release_notes: "Bug fixes and improvements.",
   base_url: "",
-  apk_path: "/downloads/sales-monitoring-app-v1-0-8.apk",
+  apk_path: "/downloads/sales-monitoring-app-v1-0-14.apk",
   is_force_update: false,
   size: "~45 MB",
   requires: "Android 8.0+",
@@ -138,7 +138,9 @@ export default function SalesMonitoringAppPage() {
   const handleDownload = () => {
     const link = document.createElement("a");
     link.href = downloadUrl;
-    link.download = "Atmosfair-sales-monitoring-app-v1-0-8.apk";
+    // Name the saved file after the APK actually being fetched — a hardcoded
+    // name makes an up-to-date download look like a stale version on disk.
+    link.download = downloadUrl.split("/").pop() || "atmosfair-sales-monitoring-app.apk";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
