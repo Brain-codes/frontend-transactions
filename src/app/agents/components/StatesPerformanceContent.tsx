@@ -75,6 +75,11 @@ const AGENT_ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
 };
 
+function formatNumber(n: number | null | undefined): string {
+  if (n == null || Number.isNaN(n)) return "0";
+  return n.toLocaleString("en-US");
+}
+
 type ProfileLite = {
   id: string;
   full_name: string | null;
