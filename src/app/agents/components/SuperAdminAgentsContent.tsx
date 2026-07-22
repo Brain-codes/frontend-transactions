@@ -3039,7 +3039,8 @@ export default function SuperAdminAgentsContent() {
         {/* Table */}
         <div className="space-y-0">
           <div className="flex flex-wrap items-center justify-between gap-3 px-1 pb-2">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <h3 className="text-sm font-semibold text-gray-900">Agents Performance</h3>
               <div className="relative">
                 <Search className="h-4 w-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
