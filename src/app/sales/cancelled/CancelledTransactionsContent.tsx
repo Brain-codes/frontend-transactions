@@ -124,11 +124,13 @@ export default function CancelledTransactionsContent() {
         r.state_backup,
         r.stove_serial_no,
         r.cancel_reason,
+        r.cancelled_by_name,
       ]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q))
     );
   }, [rows, search]);
+
 
   return (
     <DashboardLayout currentRoute="sales-cancelled" title="Cancelled Transactions">
