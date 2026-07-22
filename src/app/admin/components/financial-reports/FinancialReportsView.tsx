@@ -396,6 +396,9 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
           approvalFilter === "approved" ? s.agent_approved : !s.agent_approved
         );
       }
+      if (salesModelFilter !== "all") {
+        exportData = exportData.filter((s: any) => s.payment_model_id === salesModelFilter);
+      }
       if (selectedYears.length > 0 && selectedYears.length < availableYears.length) {
         exportData = exportData.filter((s: any) => {
           const d = s.sales_date || s.created_at;
