@@ -357,10 +357,7 @@ export default function StatesPerformanceContent() {
               pageRows.map((r) => (
                 <TableRow key={r.state} className="border-b text-xs">
                   <TableCell className="align-top font-medium text-gray-800">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-3.5 w-3.5 text-[#4a5d0f]" />
-                      {r.state}
-                    </div>
+                    {r.state}
                   </TableCell>
                   <TableCell className="text-center align-top">
                     <Pill tone="green">{r.partners}</Pill>
