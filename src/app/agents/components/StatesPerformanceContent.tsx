@@ -60,6 +60,14 @@ interface PartnerDetail {
   stovesAvailable: number;
 }
 
+interface AgentDetail {
+  id: string;
+  name: string;
+  role: string;
+  statesCovered: string[];
+  stovesRecorded: number;
+}
+
 interface StateRow {
   state: string;
   partners: number;
@@ -71,6 +79,7 @@ interface StateRow {
   notSold: number;
   sellThrough: number;
   partnerDetails: PartnerDetail[];
+  agentDetails: AgentDetail[];
 }
 
 const PAGE_SIZES = [10, 25, 50];
