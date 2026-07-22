@@ -266,20 +266,64 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
     unpaid:         filteredSales.filter((s) => s.is_installment && (s.total_paid ?? 0) === 0).length,
   }), [filteredSales]);
 
+  const trackingCounts = useMemo(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const startTs = today.getTime();
+    const day = 86400000;
+    const counts = { due30: 0, due14: 0, due7: 0, dueToday: 0, overdue: 0 };
+    for (const s of filteredSales) {
+      const dueStr = s.installment_summary?.next_due_date;
+      if (!dueStr) continue;
+      const balance = getAmountOwed(s);
+      if (balance <= 0) continue;
+      const d = new Date(dueStr); d.setHours(0, 0, 0, 0);
+      const diffDays = Math.round((d.getTime() - startTs) / day);
+      if (diffDays < 0) counts.overdue++;
+      else if (diffDays === 0) counts.dueToday++;
+      if (diffDays >= 0 && diffDays <= 7) counts.due7++;
+      if (diffDays >= 0 && diffDays <= 14) counts.due14++;
+      if (diffDays >= 0 && diffDays <= 30) counts.due30++;
+    }
+    return counts;
+  }, [filteredSales]);
+
+  const trackedSales = useMemo(() => {
+    if (trackingFilter === "none") return filteredSales;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const startTs = today.getTime();
+    const day = 86400000;
+    return filteredSales.filter((s) => {
+      const dueStr = s.installment_summary?.next_due_date;
+      if (!dueStr) return false;
+      if (getAmountOwed(s) <= 0) return false;
+      const d = new Date(dueStr); d.setHours(0, 0, 0, 0);
+      const diffDays = Math.round((d.getTime() - startTs) / day);
+      switch (trackingFilter) {
+        case "overdue":  return diffDays < 0;
+        case "dueToday": return diffDays === 0;
+        case "due7":     return diffDays >= 0 && diffDays <= 7;
+        case "due14":    return diffDays >= 0 && diffDays <= 14;
+        case "due30":    return diffDays >= 0 && diffDays <= 30;
+        default: return true;
+      }
+    });
+  }, [filteredSales, trackingFilter]);
+
   const paginatedSales = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return filteredSales.slice(start, start + pageSize);
-  }, [filteredSales, currentPage, pageSize]);
+    return trackedSales.slice(start, start + pageSize);
+  }, [trackedSales, currentPage, pageSize]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, paymentStatusFilter, startDate, endDate, pageSize, selectedState, selectedLGA, orgFilter, approvalFilter, selectedYears]);
+  }, [searchTerm, paymentStatusFilter, startDate, endDate, pageSize, selectedState, selectedLGA, orgFilter, approvalFilter, selectedYears, trackingFilter]);
 
-  const hasActiveFilters = searchTerm !== "" || paymentStatusFilter !== "all" || startDate !== "" || endDate !== "" || selectedState !== "all" || selectedLGA !== "all" || orgFilter !== "all" || approvalFilter !== "all";
+  const hasActiveFilters = searchTerm !== "" || paymentStatusFilter !== "all" || startDate !== "" || endDate !== "" || selectedState !== "all" || selectedLGA !== "all" || orgFilter !== "all" || approvalFilter !== "all" || trackingFilter !== "none";
 
   const clearFilters = () => {
     setSearchTerm(""); setPaymentStatusFilter("all"); setStartDate(""); setEndDate("");
     setSelectedState("all"); setSelectedLGA("all"); setOrgFilter("all"); setApprovalFilter("all");
+    setTrackingFilter("none");
   };
 
   // Clicking a status card toggles the filter
