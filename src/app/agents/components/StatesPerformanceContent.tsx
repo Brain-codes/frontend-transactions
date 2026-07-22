@@ -52,6 +52,15 @@ const PROFILE_ROLES_FOR_STATES = [
   "acsl_agent_manager",
 ];
 
+const AGENT_ROLE_LABELS: Record<string, string> = {
+  acsl_agent: "ACSL Agent",
+  acsl_agent_manager: "ACSL Manager",
+  partner: "Partner",
+  partner_agent: "Partner Agent",
+  agent: "Agent",
+  admin: "Admin",
+};
+
 type ProfileLite = {
   id: string;
   full_name: string | null;
