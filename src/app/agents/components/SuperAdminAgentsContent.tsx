@@ -2673,6 +2673,9 @@ export default function SuperAdminAgentsContent() {
     if (stoveSort.key === "partners") {
       return [...sortedAgents].sort((a, b) => (((a.assigned_organizations_count ?? 0) - (b.assigned_organizations_count ?? 0)) * dir));
     }
+    if (stoveSort.key === "states") {
+      return [...sortedAgents].sort((a, b) => (((a.assigned_states_count ?? 0) - (b.assigned_states_count ?? 0)) * dir));
+    }
     const field = stoveSortFieldMap[stoveSort.key];
     if (!field) return sortedAgents;
     return [...sortedAgents].sort((a, b) => (((a.stove_summary?.[field] ?? 0) - (b.stove_summary?.[field] ?? 0)) * dir));
