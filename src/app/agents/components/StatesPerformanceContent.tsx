@@ -900,7 +900,7 @@ export default function StatesPerformanceContent() {
       {/* Agents in State Modal */}
       <Dialog open={agentModalOpen} onOpenChange={(open) => !open && closeAgentModal()}>
         <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] p-0 flex flex-col overflow-hidden">
-          <DialogHeader className="border-b bg-[#4a5d0f] px-6 py-4">
+          <DialogHeader className="border-b bg-[#4a5d0f] px-6 py-4 shrink-0">
             <div className="flex items-center justify-between">
               <div>
                 <DialogTitle className="text-base font-semibold text-white">
