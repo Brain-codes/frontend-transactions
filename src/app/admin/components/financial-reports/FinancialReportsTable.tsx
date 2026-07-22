@@ -125,7 +125,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
               <TableHead className="text-white font-semibold py-2 px-1 text-right">Paid</TableHead>
               <TableHead className="text-white font-semibold py-2 px-1 text-right">Balance</TableHead>
               <TableHead className="text-white font-semibold py-2 px-1">Last Modified By</TableHead>
-              <TableHead className="text-white font-semibold py-2 px-1 text-center w-[52px]"> </TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 text-center w-[220px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className={loading ? "opacity-40" : ""}>
