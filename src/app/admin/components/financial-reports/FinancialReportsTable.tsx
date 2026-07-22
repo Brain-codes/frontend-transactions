@@ -123,6 +123,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Expected</TableHead>
               <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Paid</TableHead>
               <TableHead className="text-white font-semibold py-2 px-1 text-right whitespace-nowrap">Balance</TableHead>
+              <TableHead className="text-white font-semibold py-2 px-1 whitespace-nowrap">Last Modified By</TableHead>
               <TableHead className="text-white font-semibold py-2 px-1 text-center whitespace-nowrap"> </TableHead>
             </TableRow>
           </TableHeader>
