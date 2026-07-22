@@ -41,7 +41,13 @@ interface FinancialReportsFiltersProps {
   salesModels?: { id: string; name: string }[];
   stateList?: string[];
   lgaList?: string[];
+  selectedMonth?: string;
+  onMonthChange?: (value: string) => void;
+  yearFilter?: string;
+  onYearFilterChange?: (value: string) => void;
+  availableYears?: number[];
 }
+
 
 const toISO = (d?: Date) => (d ? format(d, "yyyy-MM-dd") : "");
 const fromISO = (s?: string) => {
@@ -76,9 +82,36 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
   salesModels = [],
   stateList = [],
   lgaList = [],
+  selectedMonth,
+  onMonthChange,
+  yearFilter,
+  onYearFilterChange,
+  availableYears = [],
 }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+
+  const MONTHS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+
+  const yearsForSelect = React.useMemo(() => {
+    const set = new Set<number>(availableYears);
+    set.add(currentYear);
+    return Array.from(set).sort((a, b) => b - a);
+  }, [availableYears, currentYear]);
+
+  const selectedYearNum = yearFilter && yearFilter !== "all" ? Number(yearFilter) : null;
+  const isMonthDisabled = (idx: number) => {
+    if (selectedYearNum === null) return idx > currentMonth; // "all years" — restrict future months of current year
+    if (selectedYearNum < currentYear) return false;
+    if (selectedYearNum === currentYear) return idx > currentMonth;
+    return true; // future year
+  };
+
 
   const range: DateRange | undefined = React.useMemo(() => {
     const from = fromISO(startDate);
@@ -173,6 +206,38 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
           </Select>
         )}
 
+        {/* Month */}
+        {onMonthChange && (
+          <Select value={selectedMonth ?? "all"} onValueChange={onMonthChange}>
+            <SelectTrigger className="bg-white shadow-none h-9 text-sm w-[130px] shrink-0">
+              <SelectValue placeholder="Month" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Months</SelectItem>
+              {MONTHS.map((m, idx) => (
+                <SelectItem key={m} value={String(idx)} disabled={isMonthDisabled(idx)}>
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* Year */}
+        {onYearFilterChange && (
+          <Select value={yearFilter ?? "all"} onValueChange={onYearFilterChange}>
+            <SelectTrigger className="bg-white shadow-none h-9 text-sm w-[110px] shrink-0">
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Years</SelectItem>
+              {yearsForSelect.map((y) => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
         {/* Partner */}
         {onOrgChange && (
           <Select value={orgFilter} onValueChange={onOrgChange}>
@@ -247,17 +312,17 @@ const FinancialReportsFilters: React.FC<FinancialReportsFiltersProps> = ({
         </Popover>
 
         {/* Clear all */}
-        {hasActiveFilters && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClearFilters}
-            className="flex items-center gap-1 h-9 px-3 shadow-none shrink-0"
-          >
-            <X className="h-3 w-3" />
-            Clear
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onClearFilters}
+          disabled={!hasActiveFilters}
+          className="flex items-center gap-1 h-9 px-3 shadow-none shrink-0 disabled:opacity-50"
+        >
+          <X className="h-3 w-3" />
+          Clear Filters
+        </Button>
+
       </div>
     </div>
   );

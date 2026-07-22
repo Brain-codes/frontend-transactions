@@ -1,13 +1,16 @@
 import React from "react";
-import { CalendarClock, CalendarDays, Clock, AlertCircle, AlertTriangle, X } from "lucide-react";
+import { CalendarClock, CalendarDays, Clock, AlertTriangle, X, ShoppingCart } from "lucide-react";
 
 export type TrackingKey = "none" | "due30" | "due14" | "due7" | "dueToday" | "overdue";
+
 
 interface Props {
   active: TrackingKey;
   counts: Record<Exclude<TrackingKey, "none">, number>;
+  totalCount: number;
   onChange: (key: TrackingKey) => void;
 }
+
 
 const chips: Array<{
   key: Exclude<TrackingKey, "none">;
@@ -65,9 +68,21 @@ const chips: Array<{
   },
 ];
 
-const SalesTrackingBar: React.FC<Props> = ({ active, counts, onChange }) => {
+const SalesTrackingBar: React.FC<Props> = ({ active, counts, totalCount, onChange }) => {
   return (
     <div className="bg-blue-50/40 border border-blue-100 rounded-lg px-3 py-2.5 flex flex-wrap items-center gap-2">
+      {/* Total sales — display only */}
+      <div
+        className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full border text-xs font-medium bg-white border-emerald-200 text-emerald-700"
+        title="Total sales in current view"
+      >
+        <ShoppingCart className="h-4 w-4 text-emerald-600" />
+        <span>Total Sales</span>
+        <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-semibold bg-emerald-600 text-white">
+          {totalCount}
+        </span>
+      </div>
+
       {chips.map(({ key, label, Icon, pill, activePill, badge, iconColor }) => {
         const isActive = active === key;
         return (
