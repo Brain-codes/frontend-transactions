@@ -75,6 +75,8 @@ export const validateSalesForm = (formData) => {
   // Phone validation
   if (!formData.phone.trim()) {
     errors.phone = "End user phone number is required";
+  } else if (!isValidNgPhone(formData.phone)) {
+    errors.phone = NG_PHONE_FORMAT_MESSAGE;
   }
 
   // Amount validation
