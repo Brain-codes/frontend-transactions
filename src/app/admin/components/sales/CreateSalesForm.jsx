@@ -1705,8 +1705,9 @@ const CreateSalesForm = ({
                 preview={stoveImagePreview}
                 uploading={uploadingImages.stove}
                 onUpload={(file) => handleImageUpload(file, "stove")}
-                placeholder="Upload a clear photo of the stove"
+                placeholder="Take a photo with your camera or upload from your device"
                 error={errors.stoveImage}
+                enableCamera
               />
               <ImageUploadSection
                 label="Agreement Document (optional)"

@@ -2,7 +2,7 @@
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Upload, FileText, Loader2 } from "lucide-react";
+import { Upload, FileText, Loader2, Camera } from "lucide-react";
 
 const ImageUploadSection = ({
   label,
@@ -14,14 +14,18 @@ const ImageUploadSection = ({
   uploadIcon: UploadIcon = Upload,
   accept = "image/*",
   buttonText = "Upload Image",
+  enableCamera = false,
 }) => {
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file && onUpload) {
       onUpload(file);
     }
+    // reset so selecting the same file again still fires onChange
+    e.target.value = "";
   };
 
   return (
@@ -59,24 +63,22 @@ const ImageUploadSection = ({
                 />
               );
             })()}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4 mr-2" />
+            <div className="flex flex-wrap justify-center gap-2">
+              {enableCamera && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => cameraInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4 mr-2" />
+                  )}
+                  Retake
+                </Button>
               )}
-              Change
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <UploadIcon className="h-12 w-12 text-gray-400 mx-auto" />
-            <div>
               <Button
                 type="button"
                 variant="outline"
@@ -88,8 +90,44 @@ const ImageUploadSection = ({
                 ) : (
                   <Upload className="h-4 w-4 mr-2" />
                 )}
-                {buttonText}
+                Change
               </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <UploadIcon className="h-12 w-12 text-gray-400 mx-auto" />
+            <div>
+              <div className="flex flex-wrap justify-center gap-2">
+                {enableCamera && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => cameraInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    {uploading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Camera className="h-4 w-4 mr-2" />
+                    )}
+                    Take Photo
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4 mr-2" />
+                  )}
+                  {buttonText}
+                </Button>
+              </div>
               {placeholder && (
                 <p className="text-sm text-gray-500 mt-2">{placeholder}</p>
               )}
@@ -103,6 +141,16 @@ const ImageUploadSection = ({
           className="hidden"
           onChange={handleFileSelect}
         />
+        {enableCamera && (
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+        )}
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
