@@ -1006,8 +1006,8 @@ export default function StatesPerformanceContent() {
         {/* Footer / pagination */}
         <div className="flex flex-wrap items-center justify-end gap-3 border-t bg-white px-4 py-2 text-xs text-gray-600">
           <div>
-            Showing {filtered.length === 0 ? 0 : start + 1}–
-            {Math.min(start + pageSize, filtered.length)} of {filtered.length} states
+            Showing {filtered.length === 0 ? 0 : formatNumber(start + 1)}–
+            {formatNumber(Math.min(start + pageSize, filtered.length))} of {formatNumber(filtered.length)} states
           </div>
           <div className="flex items-center gap-2">
             <span>per page:</span>
