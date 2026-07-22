@@ -1320,6 +1320,13 @@ export default function PartnersContent() {
 
   useEffect(() => { fetchTypeCounts(); }, []);
 
+  useRealtimeRefresh("partners", REALTIME_PARTNER_TABLES);
+  useRefreshListener("partners", () => {
+    try { fetchOrganizations && fetchOrganizations(); } catch {}
+    try { fetchStats(filters, dateFrom, dateTo); } catch {}
+    try { fetchTypeCounts(); } catch {}
+  });
+
   const STOVE_SORT_MAP = {
     active: "sold_stove_ids",
     stoves_desc: "total_stove_ids",
