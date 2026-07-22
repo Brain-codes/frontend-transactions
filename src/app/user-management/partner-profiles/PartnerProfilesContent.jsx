@@ -53,6 +53,7 @@ import { usePermissions } from "../../hooks/usePermissions";
 import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import PartnerDetailModal from "../../partners/components/PartnerDetailModal";
+import { StoveTransferHistoryModal } from "../../partners/components/PartnersContent";
 import EditPartnerModal from "../../partners/components/EditPartnerModal";
 import ViewCredentialModal from "../../admin/components/credentials/ViewCredentialModal";
 import adminCredentialsService from "../../services/adminCredentialsService";
@@ -182,6 +183,7 @@ const PartnerProfilesContent = () => {
   const [editingPartner, setEditingPartner] = useState(null);
   const [viewingCredential, setViewingCredential] = useState(null);
   const [loadingCredentialOrgId, setLoadingCredentialOrgId] = useState(null);
+  const [transferHistoryOrg, setTransferHistoryOrg] = useState(null);
   const [agentCounts, setAgentCounts] = useState({}); // orgId -> count
   const [agentsModalPartner, setAgentsModalPartner] = useState(null);
   const [agentsModalList, setAgentsModalList] = useState([]);
@@ -745,6 +747,23 @@ const PartnerProfilesContent = () => {
                             <TooltipContent>Edit partner</TooltipContent>
                           </Tooltip>
                           )}
+
+                          {can("manage-all-partners") && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => setTransferHistoryOrg(p)}
+                                aria-label="Purchases from ACSL"
+                                className="inline-flex items-center justify-center h-8 px-3 bg-black text-white text-xs font-medium shadow-sm hover:bg-black/90 active:scale-[0.98] transition"
+                              >
+                                Purchases from ACSL
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>View purchases from ACSL</TooltipContent>
+                          </Tooltip>
+                          )}
+
                         </TooltipProvider>
                       </div>
 
@@ -836,6 +855,13 @@ const PartnerProfilesContent = () => {
         onClose={() => setViewingCredential(null)}
         credential={viewingCredential}
       />
+
+      <StoveTransferHistoryModal
+        organization={transferHistoryOrg}
+        isOpen={!!transferHistoryOrg}
+        onClose={() => setTransferHistoryOrg(null)}
+      />
+
 
       <Dialog open={!!agentsModalPartner} onOpenChange={(o) => !o && setAgentsModalPartner(null)}>
         <DialogContent className="max-w-2xl p-0 overflow-hidden">

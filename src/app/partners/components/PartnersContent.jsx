@@ -417,7 +417,7 @@ const StoveIdsModal = ({ organization, isOpen, onClose, initialFilter = "all" })
 
 // ── Stove Transfer History Modal ──────────────────────────────────────────────
 
-const StoveTransferHistoryModal = ({ organization, isOpen, onClose }) => {
+export const StoveTransferHistoryModal = ({ organization, isOpen, onClose }) => {
   const { supabase } = useAuth();
   const [loading, setLoading] = useState(false);
   const [records, setRecords] = useState([]);
@@ -1753,9 +1753,12 @@ export default function PartnersContent() {
 
           <div className="space-y-0">
             <div className="flex items-center justify-between px-1 py-2">
-              <p className="text-sm text-gray-600">
-                Showing <span className="font-medium">{startRecord}–{endRecord}</span> of <span className="font-medium">{pagination.total}</span> partners
-              </p>
+              <div className="flex items-center gap-3">
+                <h3 className="text-sm font-semibold text-gray-900">Partners Performance</h3>
+                <p className="text-sm text-gray-600">
+                  Showing <span className="font-medium">{startRecord}–{endRecord}</span> of <span className="font-medium">{pagination.total}</span> partners
+                </p>
+              </div>
               <Button
                 size="sm"
                 className="h-8 px-3 text-xs flex items-center gap-1 bg-black hover:bg-black/90 text-white shadow-none rounded-md"
@@ -1799,14 +1802,15 @@ export default function PartnersContent() {
                         Available <SortIcon col="available" />
                       </button>
                     </TableHead>
-                    
+                    <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Sell-through</TableHead>
+
                     <TableHead className="text-right text-white font-semibold text-sm whitespace-nowrap"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className={tableLoading ? "opacity-40" : ""}>
                   {sortedOrgs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-10">
+                      <TableCell colSpan={9} className="text-center py-10">
                         <Building2 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                         <p className="text-gray-500 font-medium">No partners found</p>
                         <p className="text-gray-400 text-sm">Try adjusting your filters</p>
@@ -1815,7 +1819,7 @@ export default function PartnersContent() {
                   ) : (
                     displayedOrgs.map((org, idx) => (
                       <React.Fragment key={org.id}>
-                        <TableRow className="hover:bg-[#eef3c4] text-gray-700" style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f4f7e3" }}>
+                        <TableRow className="hover:bg-[#eef3c4] text-gray-700 bg-white">
                           <TableCell className="text-sm font-medium text-gray-900">{org.partner_name}</TableCell>
                           <TableCell className="text-sm">{org.state || "N/A"}</TableCell>
                           <TableCell className="text-sm">{org.branch || "N/A"}</TableCell>
@@ -1835,16 +1839,26 @@ export default function PartnersContent() {
                               {org.available_stove_ids ?? 0}
                             </button>
                           </TableCell>
+                          <TableCell className="align-middle min-w-[140px]">
+                            {(() => {
+                              const total = org.total_stove_ids ?? 0;
+                              const sold = org.sold_stove_ids ?? 0;
+                              const pct = total > 0 ? (sold / total) * 100 : 0;
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                                    <div className="h-full bg-[#4a5d0f]" style={{ width: `${Math.round(pct)}%` }} />
+                                  </div>
+                                  <span className="w-12 text-right text-[11px] text-gray-600">{pct.toFixed(1)}%</span>
+                                </div>
+                              );
+                            })()}
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
-                              {can("manage-all-partners") && (
-
-                                <Button size="sm" className="h-7 px-2 text-xs rounded-none bg-black hover:bg-black/90 text-white" title="Purchases from ACSL" onClick={() => setTransferHistoryOrg(org)}>
-                                  Purchases from ACSL
-                                </Button>
-                              )}
                             </div>
                           </TableCell>
+
                         </TableRow>
 
                         {expandedOrgId === org.id && (
