@@ -1292,8 +1292,8 @@ export default function StatesPerformanceContent() {
 
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#e5e7eb] pt-3 text-xs text-gray-600 shrink-0">
               <div>
-                Showing {agentModalAgents.length === 0 ? 0 : agentModalStart + 1}–
-                {Math.min(agentModalStart + agentModalPageSize, agentModalAgents.length)} of {agentModalAgents.length} agents
+                Showing {agentModalAgents.length === 0 ? 0 : formatNumber(agentModalStart + 1)}–
+                {formatNumber(Math.min(agentModalStart + agentModalPageSize, agentModalAgents.length))} of {formatNumber(agentModalAgents.length)} agents
               </div>
               <div className="flex items-center gap-2">
                 <span>per page:</span>
