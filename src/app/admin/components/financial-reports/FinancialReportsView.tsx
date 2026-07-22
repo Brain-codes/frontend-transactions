@@ -435,13 +435,16 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
           />
 
 
+          {/* Sales Tracking */}
+          <SalesTrackingBar active={trackingFilter} counts={trackingCounts} onChange={setTrackingFilter} />
+
           {/* Table */}
           <FinancialReportsTable
             data={paginatedSales}
             loading={false}
             currentPage={currentPage}
             pageSize={pageSize}
-            totalRecords={filteredSales.length}
+            totalRecords={trackedSales.length}
             onPageChange={setCurrentPage}
             onPageSizeChange={setPageSize}
             onViewDetails={setDetailModalSale}
