@@ -109,6 +109,7 @@ const SalesTable = ({
           <TableHead className="text-white py-2 px-2 whitespace-nowrap text-right">Expected Amount</TableHead>
           <TableHead className="text-white py-2 px-2 whitespace-nowrap text-right">Amount Paid</TableHead>
           <TableHead className="text-white py-2 px-2 whitespace-nowrap text-right">Balance</TableHead>
+          <TableHead className="text-white py-2 px-2 whitespace-nowrap">Last Modified By</TableHead>
           <TableHead className="text-center text-white py-2 px-2 last:rounded-tr-lg whitespace-nowrap">
             Actions
           </TableHead>
