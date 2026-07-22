@@ -961,7 +961,7 @@ export default function StatesPerformanceContent() {
                       title="View stove IDs in this state"
                       disabled={r.stoves === 0}
                     >
-                      {r.stoves}
+                      {formatNumber(r.stoves)}
                     </button>
                   </TableCell>
                   <TableCell className="text-center align-top">
@@ -971,7 +971,7 @@ export default function StatesPerformanceContent() {
                       title="View sold stove IDs in this state"
                       className="disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <Pill tone="emerald">{r.sold}</Pill>
+                      <Pill tone="emerald">{formatNumber(r.sold)}</Pill>
                     </button>
                   </TableCell>
                   <TableCell className="text-center align-top">
@@ -981,7 +981,7 @@ export default function StatesPerformanceContent() {
                       title="View unsold stove IDs in this state"
                       className="disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <Pill tone="rose">{r.notSold}</Pill>
+                      <Pill tone="rose">{formatNumber(r.notSold)}</Pill>
                     </button>
                   </TableCell>
                   <TableCell className="align-top">
