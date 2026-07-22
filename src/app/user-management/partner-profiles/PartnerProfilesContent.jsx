@@ -53,6 +53,7 @@ import { usePermissions } from "../../hooks/usePermissions";
 import { supabaseFunctionsUrl } from "@/lib/supabaseConfig";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import PartnerDetailModal from "../../partners/components/PartnerDetailModal";
+import { StoveTransferHistoryModal } from "../../partners/components/PartnersContent";
 import EditPartnerModal from "../../partners/components/EditPartnerModal";
 import ViewCredentialModal from "../../admin/components/credentials/ViewCredentialModal";
 import adminCredentialsService from "../../services/adminCredentialsService";
