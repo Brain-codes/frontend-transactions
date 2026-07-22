@@ -3020,17 +3020,21 @@ export default function SuperAdminAgentsContent() {
                   displayedAgents.map((agent, idx) => (
                     <TableRow
                       key={agent.id}
-                      className="hover:bg-[#eef3c4] text-gray-700"
-                      style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f4f7e3" }}
+                      className="hover:bg-[#eef3c4] text-gray-700 bg-white"
                     >
                       <TableCell className="text-sm font-medium text-gray-900">
                         <span>{agent.full_name}</span>
-                        <sup className="ml-0.5 text-[9px] text-[#4a5d0f] font-semibold">
+                        <sup className="ml-0.5 text-[9px] text-blue-600 font-semibold">
                           {AGENTS_PERFORMANCE_ROLE_LABELS[agent.role] || agent.role}
                         </sup>
                       </TableCell>
                       <TableCell className="text-sm text-gray-700">
                         {agent.phone || ""}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-100 text-sky-700">
+                          {(agent.assigned_states_count ?? 0).toLocaleString()}
+                        </span>
                       </TableCell>
                       <TableCell className="text-center">
                         <button
