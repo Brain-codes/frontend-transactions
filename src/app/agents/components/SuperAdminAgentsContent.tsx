@@ -3142,9 +3142,6 @@ export default function SuperAdminAgentsContent() {
                           {AGENTS_PERFORMANCE_ROLE_LABELS[agent.role] || agent.role}
                         </sup>
                       </TableCell>
-                      <TableCell className="text-sm text-gray-700">
-                        {agent.phone || ""}
-                      </TableCell>
                       <TableCell className="text-center">
                         <button
                           type="button"
@@ -3212,6 +3209,21 @@ export default function SuperAdminAgentsContent() {
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
+                      </TableCell>
+                      <TableCell className="align-middle min-w-[140px]">
+                        {(() => {
+                          const total = agent.stove_summary?.received ?? 0;
+                          const sold = agent.stove_summary?.sold ?? 0;
+                          const pct = total > 0 ? (sold / total) * 100 : 0;
+                          return (
+                            <div className="flex items-center gap-2">
+                              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                                <div className="h-full bg-[#4a5d0f]" style={{ width: `${Math.round(pct)}%` }} />
+                              </div>
+                              <span className="w-12 text-right text-[11px] text-gray-600">{pct.toFixed(1)}%</span>
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                     </TableRow>
                   ))
