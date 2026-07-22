@@ -291,7 +291,7 @@ export default function StatesPerformanceContent() {
       {/* KPI strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <Kpi icon={MapPin} label="States" value={filtered.length} tone="blue" />
-        <Kpi icon={Building2} label="Partners" value={totals.partners} tone="indigo" />
+        <Kpi icon={Building2} label="Partners" value={totals.partners} tone="orange" />
         <Kpi icon={Users} label="Agents" value={totals.agents} tone="teal" />
         <Kpi icon={Package} label="Stoves" value={totals.stoves} tone="orange" />
         <Kpi icon={CheckCircle2} label="Sold" value={totals.sold} tone="emerald" />
