@@ -185,6 +185,12 @@ interface AgentDetail {
   stovesRecorded: number;
 }
 
+interface StoveDetail {
+  stove_id: string;
+  partner_name: string;
+  status: "sold" | "available";
+}
+
 interface StateRow {
   state: string;
   partners: number;
@@ -197,6 +203,7 @@ interface StateRow {
   sellThrough: number;
   partnerDetails: PartnerDetail[];
   agentDetails: AgentDetail[];
+  stoveDetails: StoveDetail[];
 }
 
 const PAGE_SIZES = [10, 25, 50];
