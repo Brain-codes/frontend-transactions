@@ -489,10 +489,9 @@ export default function StatesPerformanceContent() {
       },
       { partners: 0, stoves: 0, sold: 0, notSold: 0 },
     );
-    // Union with authoritative ACSL roster so KPI matches the Agents Performance report
-    acslRoster.forEach((a) => uniqueAgentIds.add(a.id));
+    // KPI reflects only agents actually assigned to states (unique across filtered rows)
     return { ...base, agents: uniqueAgentIds.size };
-  }, [filtered, acslRoster]);
+  }, [filtered]);
 
   const unassignedAgents = useMemo(() => {
     const assigned = new Set<string>();
