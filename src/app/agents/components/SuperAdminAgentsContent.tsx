@@ -2438,6 +2438,7 @@ export default function SuperAdminAgentsContent() {
         // matches what was explicitly set in the User Manager.
         const agentToOrgIds: Record<string, string[]> = {};
         const agentToDirectOrgIds: Record<string, string[]> = {};
+        const agentToStates: Record<string, string[]> = {};
         const allOrgIds = new Set<string>();
         for (const r of orgListResults) {
           const ids = r.orgs.map((o: any) => o.id).filter(Boolean);
@@ -2447,8 +2448,20 @@ export default function SuperAdminAgentsContent() {
             .filter(Boolean);
           agentToOrgIds[r.id] = ids;
           agentToDirectOrgIds[r.id] = directIds;
+          // Derive states from ALL reachable orgs (direct + via state assignments)
+          const stateMap = new Map<string, string>();
+          for (const o of r.orgs) {
+            const raw = (o as any).state;
+            if (!raw) continue;
+            const s = String(raw).trim();
+            if (!s) continue;
+            const key = s.toLowerCase();
+            if (!stateMap.has(key)) stateMap.set(key, s);
+          }
+          agentToStates[r.id] = Array.from(stateMap.values());
           ids.forEach((id) => allOrgIds.add(id));
         }
+
 
 
         // 2. Stove counts per org — count TOTAL non-archived stoves per org
@@ -2544,16 +2557,24 @@ export default function SuperAdminAgentsContent() {
             const total_partners_count = isAcslRole
               ? directOrgs.length
               : a.total_partners_count;
+            const states = agentToStates[a.id] || [];
+            const assigned_states = isAcslRole && states.length > 0 ? states : a.assigned_states;
+            const assigned_states_count = isAcslRole
+              ? states.length
+              : a.assigned_states_count;
 
             return {
               ...a,
               assigned_organizations_count,
               total_partners_count,
+              assigned_states,
+              assigned_states_count,
               stove_summary: { received, sold, available },
               direct_org_ids: directOrgs,
             };
           })
         );
+
 
       } catch {
         // silent: columns fall back to em-dash
