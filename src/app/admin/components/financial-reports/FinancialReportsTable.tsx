@@ -192,27 +192,7 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
       </div>
 
       {/* Pagination footer */}
-      <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-between bg-white">
-        <div className="flex items-center gap-3">
-          <p className="text-sm text-gray-600">
-            Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
-            <span className="font-medium">{totalRecords}</span> records
-          </p>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">per page:</span>
-            <Select value={pageSize.toString()} onValueChange={(val) => onPageSizeChange(Number(val))}>
-              <SelectTrigger className="w-[65px] h-7 bg-white text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="25">25</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-                <SelectItem value="100">100</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+      <div className="border border-t-0 border-gray-200 rounded-b-lg px-4 py-3 flex items-center justify-end bg-white gap-4">
         {totalPages > 1 && (
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => onPageChange(1)} disabled={currentPage === 1}>
@@ -237,6 +217,26 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
             </Button>
           </div>
         )}
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-gray-600">
+            Showing <span className="font-medium">{startRecord}–{endRecord}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </p>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">per page:</span>
+            <Select value={pageSize.toString()} onValueChange={(val) => onPageSizeChange(Number(val))}>
+              <SelectTrigger className="w-[65px] h-7 bg-white text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
     </div>
   );
