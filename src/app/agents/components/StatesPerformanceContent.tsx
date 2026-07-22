@@ -529,6 +529,9 @@ export default function StatesPerformanceContent() {
             sellThrough: r.stoves > 0 ? r.sold / r.stoves : 0,
             partnerDetails: partnerDetailsByState.get(r.state) || [],
             agentDetails: agentDetailsByState.get(r.state) || [],
+            stoveDetails: [...r.stoveDetails].sort((a, b) =>
+              (a.stove_id || "").localeCompare(b.stove_id || ""),
+            ),
           }));
 
         if (!cancelled) {
