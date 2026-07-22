@@ -473,6 +473,11 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
             salesModelFilter={salesModelFilter}
             onSalesModelChange={setSalesModelFilter}
             salesModels={salesModels}
+            selectedMonth={selectedMonth}
+            onMonthChange={setSelectedMonth}
+            yearFilter={yearFilter}
+            onYearFilterChange={setYearFilter}
+            availableYears={availableYears}
             // We would need to fetch assignedOrgs if viewFrom === "acsl_agent"
             // For now, we can extract them from allSales
             assignedOrgs={viewFrom === "acsl_agent" ? Array.from(new Set(allSales.map(s => s.organization_id).filter(Boolean))).map(id => ({
@@ -483,7 +488,8 @@ const FinancialReportsView: React.FC<FinancialReportsViewProps> = ({ loadSales, 
 
 
           {/* Sales Tracking */}
-          <SalesTrackingBar active={trackingFilter} counts={trackingCounts} onChange={setTrackingFilter} />
+          <SalesTrackingBar active={trackingFilter} counts={trackingCounts} totalCount={filteredSales.length} onChange={setTrackingFilter} />
+
 
           {/* Table */}
           <FinancialReportsTable
