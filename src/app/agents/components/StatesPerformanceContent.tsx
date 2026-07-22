@@ -1069,7 +1069,7 @@ export default function StatesPerformanceContent() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-[#eef3c4] hover:bg-[#eef3c4]">
-                    <TableHead className="text-left text-[11px] font-semibold text-[#4a5d0f]">Agent</TableHead>
+                    <TableHead className="min-w-[220px] text-left text-[11px] font-semibold text-[#4a5d0f]">Agent</TableHead>
                     <TableHead className="text-center text-[11px] font-semibold text-[#4a5d0f]">States Covered</TableHead>
                     <TableHead className="text-left text-[11px] font-semibold text-[#4a5d0f]">State List</TableHead>
                     <TableHead className="text-center text-[11px] font-semibold text-[#4a5d0f]">Stoves Recorded</TableHead>
