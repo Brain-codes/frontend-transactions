@@ -1069,7 +1069,7 @@ export default function StatesPerformanceContent() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-[#eef3c4] hover:bg-[#eef3c4]">
-                    <TableHead className="text-left text-[11px] font-semibold text-[#4a5d0f]">Agent</TableHead>
+                    <TableHead className="min-w-[220px] text-left text-[11px] font-semibold text-[#4a5d0f]">Agent</TableHead>
                     <TableHead className="text-center text-[11px] font-semibold text-[#4a5d0f]">States Covered</TableHead>
                     <TableHead className="text-left text-[11px] font-semibold text-[#4a5d0f]">State List</TableHead>
                     <TableHead className="text-center text-[11px] font-semibold text-[#4a5d0f]">Stoves Recorded</TableHead>
@@ -1087,9 +1087,11 @@ export default function StatesPerformanceContent() {
                   ) : (
                     agentModalPageRows.map((a) => (
                       <TableRow key={a.id} className="border-b text-xs">
-                        <TableCell className="align-top font-medium text-gray-800">
-                          {a.name}
-                          <sup className="ml-1 text-[9px] font-medium text-blue-600">
+                        <TableCell className="min-w-[220px] align-top whitespace-nowrap">
+                          <span className="inline-block max-w-[180px] truncate align-bottom font-medium text-gray-800" title={a.name}>
+                            {a.name}
+                          </span>
+                          <sup className="ml-1 whitespace-nowrap text-[9px] font-medium text-blue-600">
                             {AGENT_ROLE_LABELS[a.role] || a.role}
                           </sup>
                         </TableCell>
