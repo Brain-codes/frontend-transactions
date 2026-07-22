@@ -152,6 +152,18 @@ const FinancialReportsTable: React.FC<FinancialReportsTableProps> = ({
                 <TableCell className="py-1 px-1 text-right text-red-700 font-medium whitespace-nowrap">
                   {formatCurrency(getAmountOwed(sale))}
                 </TableCell>
+                <TableCell className="py-1 px-1 whitespace-nowrap align-top">
+                  <div className="text-sm text-gray-800">
+                    {(sale as any).n?.full_name ||
+                      (sale as any).n?.email ||
+                      (sale as any).creator?.full_name ||
+                      (sale as any).creator?.email ||
+                      "—"}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {formatDate((sale as any).updated_at || sale.created_at)}
+                  </div>
+                </TableCell>
                 <TableCell className="py-1 px-1 text-center">
                   <FinancialReportRowActions
                     sale={sale}
