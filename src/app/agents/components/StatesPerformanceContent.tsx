@@ -939,7 +939,7 @@ export default function StatesPerformanceContent() {
               </Button>
             </div>
 
-            <div className="overflow-hidden rounded-lg border border-[#e5e7eb]">
+            <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-[#e5e7eb]">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-[#eef3c4] hover:bg-[#eef3c4]">
