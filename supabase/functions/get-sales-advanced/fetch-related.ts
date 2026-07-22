@@ -192,6 +192,38 @@ async function fetchCreators(supabase: any, sales: any[]) {
   });
 }
 
+async function fetchModifiers(supabase: any, sales: any[]) {
+  console.log("✏️ Fetching last-modified profiles...");
+
+  const ids = [
+    ...new Set(
+      sales
+        .map((s) => s.updated_by)
+        .filter((id) => id !== null && id !== undefined)
+    ),
+  ];
+
+  if (ids.length === 0) {
+    sales.forEach((s) => (s.updated_by_profile = null));
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .in("id", ids);
+
+  if (error) {
+    console.log("❌ Error fetching modifiers:", error.message);
+    return;
+  }
+
+  const map = new Map((data || []).map((p: any) => [p.id, p]));
+  sales.forEach((sale) => {
+    sale.updated_by_profile = sale.updated_by ? map.get(sale.updated_by) || null : null;
+  });
+}
+
 async function fetchImages(supabase: any, sales: any[]) {
   console.log("🖼️ Fetching images optimized...");
 
