@@ -3065,9 +3065,15 @@ export default function SuperAdminAgentsContent() {
                         {agent.phone || ""}
                       </TableCell>
                       <TableCell className="text-center">
-                        <span className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-100 text-sky-700">
+                        <button
+                          type="button"
+                          onClick={() => setStatesModalAgent(agent)}
+                          disabled={(agent.assigned_states_count ?? 0) === 0}
+                          className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-100 text-sky-700 hover:bg-sky-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          title="View assigned states"
+                        >
                           {(agent.assigned_states_count ?? 0).toLocaleString()}
-                        </span>
+                        </button>
                       </TableCell>
                       <TableCell className="text-center">
                         <button
