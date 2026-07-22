@@ -39,3 +39,6 @@ dist-ssr
 *.sln
 *.sw?
 ./routine.png
+
+# Claude Code local agent worktrees & session state
+.claude/
