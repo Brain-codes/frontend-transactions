@@ -285,11 +285,15 @@ Deno.serve(async (req) => {
       // The clients already filter the picker to the partner's models; this is
       // the server-side enforcement that makes that filtering real.
       //
-      // An installment sale requires an explicit assignment: a partner with no
-      // assignments has no installment entitlement and is limited to full
-      // payment. The whole list is fetched rather than probing for one link so
-      // a failed lookup is distinguishable from a genuine "not assigned" — the
-      // first is a 500, not a spurious 403. This must stay in step with
+      // A partner with NO assignments may use EVERY active model. The sync only
+      // covers partners the external app has sent, so treating "none assigned"
+      // as "no entitlement" would block sales for every unsynced partner rather
+      // than protect them. Only a partner with an explicit list is restricted
+      // to that list.
+      //
+      // The whole list is fetched rather than probing for one link so a failed
+      // lookup is distinguishable from a genuine "not assigned" — the first is
+      // a 500, not a spurious 403. This must stay in step with
       // `visiblePaymentModels` in both clients; if they diverge, the picker
       // offers models this endpoint then rejects.
       const { data: orgModelLinks, error: linkError } = await supabase
@@ -304,7 +308,7 @@ Deno.serve(async (req) => {
 
       const assignedIds = (orgModelLinks || []).map((l: any) => l.payment_model_id);
 
-      if (!assignedIds.includes(paymentModelId)) {
+      if (assignedIds.length > 0 && !assignedIds.includes(paymentModelId)) {
         return jsonError(
           `This partner is not assigned the "${paymentModel.name}" sales model`,
           403,
