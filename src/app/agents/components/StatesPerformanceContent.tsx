@@ -75,6 +75,11 @@ const AGENT_ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
 };
 
+function formatNumber(n: number | null | undefined): string {
+  if (n == null || Number.isNaN(n)) return "0";
+  return n.toLocaleString("en-US");
+}
+
 type ProfileLite = {
   id: string;
   full_name: string | null;
@@ -859,7 +864,7 @@ export default function StatesPerformanceContent() {
           label="States"
           value={filtered.length}
           tone="blue"
-          sub={`${filtered.filter((r) => agentCoveredStates.has(r.state)).length} of ${filtered.length} covered by an agent`}
+          sub={`${formatNumber(filtered.filter((r) => agentCoveredStates.has(r.state)).length)} of ${formatNumber(filtered.length)} covered by an agent`}
         />
 
         <Kpi icon={Building2} label="Partners" value={totals.partners} tone="orange" />
@@ -935,7 +940,7 @@ export default function StatesPerformanceContent() {
                       className="inline-flex min-w-[2rem] cursor-pointer justify-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#eef3c4] text-[#4a5d0f] hover:bg-[#4a5d0f] hover:text-white"
                       title="View partners in this state"
                     >
-                      {r.partners}
+                      {formatNumber(r.partners)}
                     </button>
                   </TableCell>
                   <TableCell className="text-center align-top">
@@ -944,7 +949,7 @@ export default function StatesPerformanceContent() {
                       className="inline-flex min-w-[2rem] cursor-pointer justify-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#eef3c4] text-[#4a5d0f] hover:bg-[#4a5d0f] hover:text-white"
                       title="View agents in this state"
                     >
-                      {r.agents}
+                      {formatNumber(r.agents)}
                     </button>
                   </TableCell>
 
@@ -956,7 +961,7 @@ export default function StatesPerformanceContent() {
                       title="View stove IDs in this state"
                       disabled={r.stoves === 0}
                     >
-                      {r.stoves}
+                      {formatNumber(r.stoves)}
                     </button>
                   </TableCell>
                   <TableCell className="text-center align-top">
@@ -966,7 +971,7 @@ export default function StatesPerformanceContent() {
                       title="View sold stove IDs in this state"
                       className="disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <Pill tone="emerald">{r.sold}</Pill>
+                      <Pill tone="emerald">{formatNumber(r.sold)}</Pill>
                     </button>
                   </TableCell>
                   <TableCell className="text-center align-top">
@@ -976,7 +981,7 @@ export default function StatesPerformanceContent() {
                       title="View unsold stove IDs in this state"
                       className="disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <Pill tone="rose">{r.notSold}</Pill>
+                      <Pill tone="rose">{formatNumber(r.notSold)}</Pill>
                     </button>
                   </TableCell>
                   <TableCell className="align-top">
@@ -1001,8 +1006,8 @@ export default function StatesPerformanceContent() {
         {/* Footer / pagination */}
         <div className="flex flex-wrap items-center justify-end gap-3 border-t bg-white px-4 py-2 text-xs text-gray-600">
           <div>
-            Showing {filtered.length === 0 ? 0 : start + 1}–
-            {Math.min(start + pageSize, filtered.length)} of {filtered.length} states
+            Showing {filtered.length === 0 ? 0 : formatNumber(start + 1)}–
+            {formatNumber(Math.min(start + pageSize, filtered.length))} of {formatNumber(filtered.length)} states
           </div>
           <div className="flex items-center gap-2">
             <span>per page:</span>
@@ -1055,7 +1060,7 @@ export default function StatesPerformanceContent() {
                   Partners in {modalState}
                 </DialogTitle>
                 <DialogDescription className="text-white/80 text-xs">
-                  {modalPartners.length} partner{modalPartners.length === 1 ? "" : "s"} found
+                  {formatNumber(modalPartners.length)} partner{modalPartners.length === 1 ? "" : "s"} found
                 </DialogDescription>
               </div>
               <button
@@ -1118,13 +1123,13 @@ export default function StatesPerformanceContent() {
                           </span>
                         </TableCell>
                         <TableCell className="text-center align-top">
-                          <Pill tone="slate">{p.totalStoves}</Pill>
+                          <Pill tone="slate">{formatNumber(p.totalStoves)}</Pill>
                         </TableCell>
                         <TableCell className="text-center align-top">
-                          <Pill tone="emerald">{p.stovesSold}</Pill>
+                          <Pill tone="emerald">{formatNumber(p.stovesSold)}</Pill>
                         </TableCell>
                         <TableCell className="text-center align-top">
-                          <Pill tone="green">{p.stovesAvailable}</Pill>
+                          <Pill tone="green">{formatNumber(p.stovesAvailable)}</Pill>
                         </TableCell>
                       </TableRow>
                     ))
@@ -1136,8 +1141,8 @@ export default function StatesPerformanceContent() {
             {/* Modal pagination */}
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#e5e7eb] pt-3 text-xs text-gray-600">
               <div>
-                Showing {modalPartners.length === 0 ? 0 : modalStart + 1}–
-                {Math.min(modalStart + modalPageSize, modalPartners.length)} of {modalPartners.length} partners
+                Showing {modalPartners.length === 0 ? 0 : formatNumber(modalStart + 1)}–
+                {formatNumber(Math.min(modalStart + modalPageSize, modalPartners.length))} of {formatNumber(modalPartners.length)} partners
               </div>
               <div className="flex items-center gap-2">
                 <span>per page:</span>
@@ -1192,7 +1197,7 @@ export default function StatesPerformanceContent() {
                   Agents in {agentModalState}
                 </DialogTitle>
                 <DialogDescription className="text-white/80 text-xs">
-                  {agentModalAgents.length} agent{agentModalAgents.length === 1 ? "" : "s"} · Total stoves in state: {agentModalRow?.stoves ?? 0} · Unsold: {agentModalRow?.notSold ?? 0}
+                  {formatNumber(agentModalAgents.length)} agent{agentModalAgents.length === 1 ? "" : "s"} · Total stoves in state: {formatNumber(agentModalRow?.stoves ?? 0)} · Unsold: {formatNumber(agentModalRow?.notSold ?? 0)}
                 </DialogDescription>
               </div>
               <button
@@ -1255,7 +1260,7 @@ export default function StatesPerformanceContent() {
                           </sup>
                         </TableCell>
                         <TableCell className="text-center align-top">
-                          <Pill tone="slate">{a.statesCovered.length}</Pill>
+                          <Pill tone="slate">{formatNumber(a.statesCovered.length)}</Pill>
                         </TableCell>
                         <TableCell className="align-top text-gray-700">
                           <div className="flex flex-wrap gap-1">
@@ -1270,13 +1275,13 @@ export default function StatesPerformanceContent() {
                           </div>
                         </TableCell>
                         <TableCell className="text-center align-top">
-                          <Pill tone="emerald">{a.stovesRecorded}</Pill>
+                          <Pill tone="emerald">{formatNumber(a.stovesRecorded)}</Pill>
                         </TableCell>
                         <TableCell className="text-center align-top">
-                          <Pill tone="slate">{agentModalRow?.stoves ?? 0}</Pill>
+                          <Pill tone="slate">{formatNumber(agentModalRow?.stoves ?? 0)}</Pill>
                         </TableCell>
                         <TableCell className="text-center align-top">
-                          <Pill tone="rose">{agentModalRow?.notSold ?? 0}</Pill>
+                          <Pill tone="rose">{formatNumber(agentModalRow?.notSold ?? 0)}</Pill>
                         </TableCell>
                       </TableRow>
                     ))
@@ -1287,8 +1292,8 @@ export default function StatesPerformanceContent() {
 
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#e5e7eb] pt-3 text-xs text-gray-600 shrink-0">
               <div>
-                Showing {agentModalAgents.length === 0 ? 0 : agentModalStart + 1}–
-                {Math.min(agentModalStart + agentModalPageSize, agentModalAgents.length)} of {agentModalAgents.length} agents
+                Showing {agentModalAgents.length === 0 ? 0 : formatNumber(agentModalStart + 1)}–
+                {formatNumber(Math.min(agentModalStart + agentModalPageSize, agentModalAgents.length))} of {formatNumber(agentModalAgents.length)} agents
               </div>
               <div className="flex items-center gap-2">
                 <span>per page:</span>
@@ -1343,7 +1348,7 @@ export default function StatesPerformanceContent() {
                   Stove IDs in {stoveModalState}
                 </DialogTitle>
                 <DialogDescription className="text-white/80 text-xs">
-                  {stoveModalRow?.stoves ?? 0} total · {stoveModalRow?.sold ?? 0} sold · {stoveModalRow?.notSold ?? 0} available
+                  {formatNumber(stoveModalRow?.stoves ?? 0)} total · {formatNumber(stoveModalRow?.sold ?? 0)} sold · {formatNumber(stoveModalRow?.notSold ?? 0)} available
                 </DialogDescription>
               </div>
               <button
@@ -1432,8 +1437,8 @@ export default function StatesPerformanceContent() {
 
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#e5e7eb] pt-3 text-xs text-gray-600 shrink-0">
               <div>
-                Showing {stoveModalStoves.length === 0 ? 0 : stoveModalStart + 1}–
-                {Math.min(stoveModalStart + stoveModalPageSize, stoveModalStoves.length)} of {stoveModalStoves.length} stoves
+                Showing {stoveModalStoves.length === 0 ? 0 : formatNumber(stoveModalStart + 1)}–
+                {formatNumber(Math.min(stoveModalStart + stoveModalPageSize, stoveModalStoves.length))} of {formatNumber(stoveModalStoves.length)} stoves
               </div>
               <div className="flex items-center gap-2">
                 <span>per page:</span>
