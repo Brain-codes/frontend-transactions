@@ -429,7 +429,7 @@ const EndUserRecordsContent = () => {
                         key={sale.id}
                         className={`${idx % 2 === 0 ? "bg-white" : "bg-[#eef3c4]"} hover:bg-gray-50`}
                       >
-                        <TableCell className="py-2 px-2 whitespace-nowrap">
+                        <TableCell className="py-2 px-2 whitespace-nowrap align-top">
                           {formatDate(sale.sales_date || sale.created_at)}
                         </TableCell>
                         <TableCell className="py-2 px-2 break-words align-top max-w-[160px]">
