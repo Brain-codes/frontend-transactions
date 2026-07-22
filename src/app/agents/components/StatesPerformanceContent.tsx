@@ -18,6 +18,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   Search,
   MapPin,
   Users,
@@ -30,6 +37,8 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  Phone,
+  X,
 } from "lucide-react";
 import { downloadCSV } from "@/utils/csvExportUtils";
 
@@ -42,6 +51,15 @@ type SortKey =
   | "notSold"
   | "sellThrough";
 
+interface PartnerDetail {
+  id: string;
+  name: string;
+  phone: string;
+  totalStoves: number;
+  stovesSold: number;
+  stovesAvailable: number;
+}
+
 interface StateRow {
   state: string;
   partners: number;
@@ -52,6 +70,7 @@ interface StateRow {
   sold: number;
   notSold: number;
   sellThrough: number;
+  partnerDetails: PartnerDetail[];
 }
 
 const PAGE_SIZES = [10, 25, 50];
@@ -67,6 +86,13 @@ export default function StatesPerformanceContent() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // Partner detail modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalState, setModalState] = useState<string | null>(null);
+  const [modalSearch, setModalSearch] = useState("");
+  const [modalPage, setModalPage] = useState(1);
+  const [modalPageSize, setModalPageSize] = useState(10);
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -74,10 +100,10 @@ export default function StatesPerformanceContent() {
       setLoading(true);
       setError(null);
       try {
-        // Fetch organizations (id, state)
+        // Fetch organizations (id, state, name, phone)
         const { data: orgs, error: oErr } = await supabase
           .from("organizations")
-          .select("id,state");
+          .select("id,state,partner_name,contact_phone,alternative_phone");
         if (oErr) throw oErr;
 
         // Partner-side agents/profiles with an org
@@ -136,10 +162,25 @@ export default function StatesPerformanceContent() {
               sold: 0,
               notSold: 0,
               sellThrough: 0,
+              partnerDetails: [],
             };
             map.set(state, r);
           }
           return r;
+        };
+
+        // Partner stove counts per organization
+        const partnerStoveCounts = new Map<
+          string,
+          { total: number; sold: number; available: number }
+        >();
+        const ensurePartnerCounts = (orgId: string) => {
+          let c = partnerStoveCounts.get(orgId);
+          if (!c) {
+            c = { total: 0, sold: 0, available: 0 };
+            partnerStoveCounts.set(orgId, c);
+          }
+          return c;
         };
 
         // Partners
@@ -173,7 +214,34 @@ export default function StatesPerformanceContent() {
           if (!state || state === "Unknown") return;
           const row = ensure(state);
           row.stoves += 1;
-          if (s.status === "sold" || s.sale_id) row.sold += 1;
+          const isSold = s.status === "sold" || s.sale_id;
+          if (isSold) row.sold += 1;
+          if (s.organization_id) {
+            const c = ensurePartnerCounts(s.organization_id);
+            c.total += 1;
+            if (isSold) c.sold += 1;
+            else c.available += 1;
+          }
+        });
+
+        // Build partner details per state
+        const partnerDetailsByState = new Map<string, PartnerDetail[]>();
+        (orgs || []).forEach((o: any) => {
+          const state = (o.state || "").trim();
+          if (!state) return;
+          const counts = partnerStoveCounts.get(o.id) || { total: 0, sold: 0, available: 0 };
+          const phone = o.contact_phone || o.alternative_phone || "—";
+          const detail: PartnerDetail = {
+            id: o.id,
+            name: o.partner_name || "—",
+            phone,
+            totalStoves: counts.total,
+            stovesSold: counts.sold,
+            stovesAvailable: counts.available,
+          };
+          const list = partnerDetailsByState.get(state) || [];
+          list.push(detail);
+          partnerDetailsByState.set(state, list);
         });
 
         // Finalize computed cols
@@ -184,6 +252,7 @@ export default function StatesPerformanceContent() {
             agents: r.partnerAgents + r.acslAgents,
             notSold: Math.max(0, r.stoves - r.sold),
             sellThrough: r.stoves > 0 ? r.sold / r.stoves : 0,
+            partnerDetails: partnerDetailsByState.get(r.state) || [],
           }));
 
         if (!cancelled) setRows(finalRows);
@@ -286,6 +355,66 @@ export default function StatesPerformanceContent() {
     );
   };
 
+  const openPartnerModal = (state: string) => {
+    setModalState(state);
+    setModalSearch("");
+    setModalPage(1);
+    setModalPageSize(10);
+    setModalOpen(true);
+  };
+
+  const closePartnerModal = () => {
+    setModalOpen(false);
+    setModalState(null);
+    setModalSearch("");
+    setModalPage(1);
+  };
+
+  const modalPartners = useMemo(() => {
+    if (!modalState) return [];
+    const row = rows.find((r) => r.state === modalState);
+    const list = row?.partnerDetails || [];
+    const q = modalSearch.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.phone.toLowerCase().includes(q),
+    );
+  }, [rows, modalState, modalSearch]);
+
+  const modalTotalPages = Math.max(1, Math.ceil(modalPartners.length / modalPageSize));
+  const modalClampedPage = Math.min(modalPage, modalTotalPages);
+  const modalStart = (modalClampedPage - 1) * modalPageSize;
+  const modalPageRows = modalPartners.slice(modalStart, modalStart + modalPageSize);
+
+  useEffect(() => setModalPage(1), [modalSearch, modalPageSize]);
+
+  const handleModalExport = () => {
+    const headers = [
+      "Partner Name",
+      "Phone Number",
+      "Total Stoves",
+      "Stoves Sold",
+      "Stoves Available",
+    ];
+    const lines = [headers.join(",")].concat(
+      modalPartners.map((p) =>
+        [
+          `"${p.name.replace(/"/g, '""')}"`,
+          `"${p.phone.replace(/"/g, '""')}"`,
+          p.totalStoves,
+          p.stovesSold,
+          p.stovesAvailable,
+        ].join(","),
+      ),
+    );
+    downloadCSV(
+      lines.join("\n"),
+      `partners-in-${modalState?.toLowerCase().replace(/\s+/g, "-") || "state"}-${new Date().toISOString().split("T")[0]}.csv`,
+    );
+  };
+
   return (
     <div className="space-y-4 p-6">
       {/* KPI strip */}
@@ -360,7 +489,13 @@ export default function StatesPerformanceContent() {
                     {r.state}
                   </TableCell>
                   <TableCell className="text-center align-top">
-                    <Pill tone="green">{r.partners}</Pill>
+                    <button
+                      onClick={() => openPartnerModal(r.state)}
+                      className="inline-flex min-w-[2rem] cursor-pointer justify-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#eef3c4] text-[#4a5d0f] hover:bg-[#4a5d0f] hover:text-white"
+                      title="View partners in this state"
+                    >
+                      {r.partners}
+                    </button>
                   </TableCell>
                   <TableCell className="text-center align-top">
                     <Pill tone="green">{r.agents}</Pill>
@@ -440,6 +575,143 @@ export default function StatesPerformanceContent() {
           </div>
         </div>
       </div>
+
+      {/* Partners in State Modal */}
+      <Dialog open={modalOpen} onOpenChange={(open) => !open && closePartnerModal()}>
+        <DialogContent className="max-w-3xl p-0">
+          <DialogHeader className="border-b bg-[#4a5d0f] px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-base font-semibold text-white">
+                  Partners in {modalState}
+                </DialogTitle>
+                <DialogDescription className="text-white/80 text-xs">
+                  {modalPartners.length} partner{modalPartners.length === 1 ? "" : "s"} found
+                </DialogDescription>
+              </div>
+              <button
+                onClick={closePartnerModal}
+                className="rounded-md p-1 text-white/80 hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-3 p-5">
+            {/* Modal search + export */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-[220px] flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search partner name or phone..."
+                  value={modalSearch}
+                  onChange={(e) => setModalSearch(e.target.value)}
+                  className="h-9 pl-9 shadow-none"
+                />
+              </div>
+              <Button
+                onClick={handleModalExport}
+                disabled={modalPartners.length === 0}
+                className="h-9 bg-[#4a5d0f] text-white hover:bg-[#3a4a0c] shadow-none"
+              >
+                <Download className="mr-2 h-4 w-4" /> Export CSV
+              </Button>
+            </div>
+
+            {/* Modal table */}
+            <div className="overflow-hidden rounded-lg border border-[#e5e7eb]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-[#eef3c4] hover:bg-[#eef3c4]">
+                    <TableHead className="text-left text-[11px] font-semibold text-[#4a5d0f]">Name</TableHead>
+                    <TableHead className="text-left text-[11px] font-semibold text-[#4a5d0f]">Phone Number</TableHead>
+                    <TableHead className="text-center text-[11px] font-semibold text-[#4a5d0f]">Total Stoves</TableHead>
+                    <TableHead className="text-center text-[11px] font-semibold text-[#4a5d0f]">Stoves Sold</TableHead>
+                    <TableHead className="text-center text-[11px] font-semibold text-[#4a5d0f]">Stoves Available</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {modalPageRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-8 text-center text-sm text-gray-500">
+                        No partners found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    modalPageRows.map((p) => (
+                      <TableRow key={p.id} className="border-b text-xs">
+                        <TableCell className="align-top font-medium text-gray-800">{p.name}</TableCell>
+                        <TableCell className="align-top text-gray-700">
+                          <span className="inline-flex items-center gap-1.5">
+                            <Phone className="h-3 w-3 text-gray-400" />
+                            {p.phone}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center align-top">
+                          <Pill tone="slate">{p.totalStoves}</Pill>
+                        </TableCell>
+                        <TableCell className="text-center align-top">
+                          <Pill tone="emerald">{p.stovesSold}</Pill>
+                        </TableCell>
+                        <TableCell className="text-center align-top">
+                          <Pill tone="green">{p.stovesAvailable}</Pill>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Modal pagination */}
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#e5e7eb] pt-3 text-xs text-gray-600">
+              <div>
+                Showing {modalPartners.length === 0 ? 0 : modalStart + 1}–
+                {Math.min(modalStart + modalPageSize, modalPartners.length)} of {modalPartners.length} partners
+              </div>
+              <div className="flex items-center gap-2">
+                <span>per page:</span>
+                <Select value={String(modalPageSize)} onValueChange={(v) => setModalPageSize(Number(v))}>
+                  <SelectTrigger className="h-8 w-[70px] shadow-none">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZES.map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shadow-none"
+                  disabled={modalClampedPage <= 1}
+                  onClick={() => setModalPage((p) => Math.max(1, p - 1))}
+                >
+                  Prev
+                </Button>
+                <span className="px-2">
+                  Page {modalClampedPage} of {modalTotalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shadow-none"
+                  disabled={modalClampedPage >= modalTotalPages}
+                  onClick={() => setModalPage((p) => Math.min(modalTotalPages, p + 1))}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
