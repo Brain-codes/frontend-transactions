@@ -716,7 +716,14 @@ export default function StatesPerformanceContent() {
     <div className="space-y-4 p-6">
       {/* KPI strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <Kpi icon={MapPin} label="States" value={filtered.length} tone="blue" />
+        <Kpi
+          icon={MapPin}
+          label="States"
+          value={filtered.length}
+          tone="blue"
+          sub={`${filtered.filter((r) => agentCoveredStates.has(r.state)).length} of ${filtered.length} covered by an agent`}
+        />
+
         <Kpi icon={Building2} label="Partners" value={totals.partners} tone="orange" />
         <Kpi icon={Package} label="Stoves" value={totals.stoves} tone="orange" />
         <Kpi icon={CheckCircle2} label="Sold" value={totals.sold} tone="emerald" />
