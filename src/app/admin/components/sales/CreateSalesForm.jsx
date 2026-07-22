@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { supabaseUrl as SUPABASE_URL } from "@/lib/supabaseConfig";
+import { getSupabase } from "@/lib/supabaseClient";
 import { useRouter } from "@/compat/navigation";
 import Link from "@/compat/Link";
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,8 @@ const CreateSalesForm = ({
 
   // Validation state
   const [errors, setErrors] = useState({});
+  const [phoneChecking, setPhoneChecking] = useState(false);
+  const phoneCheckTokenRef = useRef(0);
 
   // Installment payment state
   // `paymentModels` is the full active catalogue, fetched once. The picker is
@@ -145,6 +148,60 @@ const CreateSalesForm = ({
 
   // Determine if this is edit mode
   const isEditMode = mode === "edit" && initialData;
+
+  // Live end-user phone duplicate check (debounced). Flags an existing customer
+  // as the user types so the error surfaces before submit. Cancelled sales live
+  // in `cancelled_purchases` (not `sales`), so cancelling frees the phone.
+  useEffect(() => {
+    const raw = formData.phone || "";
+    const digits = raw.replace(/\D+/g, "");
+    if (digits.length < 7) {
+      setPhoneChecking(false);
+      setErrors((prev) =>
+        prev.phone && prev.phone.startsWith("A customer with this phone")
+          ? { ...prev, phone: null }
+          : prev,
+      );
+      return;
+    }
+    const token = ++phoneCheckTokenRef.current;
+    setPhoneChecking(true);
+    const timer = setTimeout(async () => {
+      try {
+        const sb = getSupabase();
+        const tail = digits.slice(-10);
+        const currentId = isEditMode ? initialData?.id : null;
+        let q = sb
+          .from("sales")
+          .select("id, transaction_id, phone")
+          .ilike("phone", `%${tail}%`)
+          .limit(50);
+        if (currentId) q = q.neq("id", currentId);
+        const { data } = await q;
+        if (token !== phoneCheckTokenRef.current) return;
+        const clash = (data || []).find(
+          (r) => String(r.phone ?? "").replace(/\D+/g, "") === digits,
+        );
+        setErrors((prev) => {
+          if (clash) {
+            return {
+              ...prev,
+              phone: `A customer with this phone number already exists (sale ${clash.transaction_id}).`,
+            };
+          }
+          if (prev.phone && prev.phone.startsWith("A customer with this phone")) {
+            return { ...prev, phone: null };
+          }
+          return prev;
+        });
+      } catch (err) {
+        console.warn("Live phone check failed", err);
+      } finally {
+        if (token === phoneCheckTokenRef.current) setPhoneChecking(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [formData.phone, isEditMode, initialData?.id]);
 
   // Centralized states + LGAs (geo-data edge fn → cache → bundled fallback).
   // Seed synchronously from cache/bundled so the first render has data, then
@@ -1257,8 +1314,13 @@ const CreateSalesForm = ({
                 onChange={(e) => handleInputChange("phone", e.target.value)}
                 placeholder="+234 803 123 4567"
                 className={errors.phone ? "border-red-500" : ""}
+                aria-invalid={errors.phone ? "true" : "false"}
               />
+              {phoneChecking && !errors.phone && (
+                <p className="mt-1 text-xs text-gray-500">Checking…</p>
+              )}
             </FormField>
+
             <FormField label="AKA" htmlFor="aka">
               <Input
                 id="aka"

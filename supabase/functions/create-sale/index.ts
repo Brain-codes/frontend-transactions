@@ -166,6 +166,39 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── End-user phone uniqueness ─────────────────────────────────────────────
+    // Every sale must be tied to a unique end-user phone. Compare digits-only so
+    // "0801…" and "+234 801 …" collide. Cancelled sales live in
+    // `cancelled_purchases` (not `sales`), so cancelling a sale frees the phone.
+    {
+      const phoneDigits = String(phone).replace(/\D+/g, "");
+      if (phoneDigits.length < 7) {
+        return jsonError("End user phone number is invalid", 400);
+      }
+      const tail = phoneDigits.slice(-10);
+      const { data: dupes, error: dupErr } = await supabase
+        .from("sales")
+        .select("id, transaction_id, phone")
+        .ilike("phone", `%${tail}%`)
+        .limit(100);
+      if (dupErr) {
+        console.error("Duplicate-phone check failed:", dupErr);
+      } else {
+        const clash = (dupes ?? []).find(
+          (r: { phone: string | null }) =>
+            String(r.phone ?? "").replace(/\D+/g, "") === phoneDigits
+        );
+        if (clash) {
+          return jsonError(
+            `This end user phone is already used on sale ${clash.transaction_id}. Each sale must have a unique end user phone number.`,
+            409
+          );
+        }
+      }
+    }
+
+
+
     // ── Amount validation ─────────────────────────────────────────────────────
     // The sales amount is the operator-entered value for both direct and
     // installment sales. For installment sales the payment model's fixed price is
