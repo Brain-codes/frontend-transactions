@@ -45,7 +45,6 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
                 className="h-7 px-3 text-xs font-medium rounded-full bg-[#4a5d0f] text-white hover:bg-[#3a4a0c] shadow-sm transition-colors flex items-center gap-1.5"
                 onClick={() => onRecordPayment(sale)}
               >
-                <Plus className="h-3.5 w-3.5" />
                 Pay
               </Button>
             </TooltipTrigger>
