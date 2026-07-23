@@ -1,15 +1,48 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { format } from "date-fns";
 import DashboardLayout from "../../components/DashboardLayout";
 import PageHeader from "../../components/PageHeader";
-import { Plug, ArrowLeft, Copy, Eye, EyeOff, Loader2, Send, CheckCircle2, XCircle } from "lucide-react";
+import {
+  Plug,
+  ArrowLeft,
+  Copy,
+  Eye,
+  EyeOff,
+  Loader2,
+  Send,
+  CheckCircle2,
+  XCircle,
+  Calendar as CalendarIcon,
+  RotateCcw,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "../../contexts/useAuth";
 import { resolveRole } from "@/lib/permissions";
-import { supabaseUrl, supabaseAnonKey } from "@/lib/supabaseConfig";
+import {
+  supabaseUrl,
+  supabaseAnonKey,
+  supabaseFunctionsUrl,
+} from "@/lib/supabaseConfig";
 import { createClientComponentClient } from "@/lib/supabaseClient";
+import { getGeoData, getGeoDataSync } from "@/lib/geoDataService";
 
 const ENDPOINT_URL = `${supabaseUrl}/functions/v1/end-user-records-api`;
 const KEY_FN_URL = `${supabaseUrl}/functions/v1/get-end-user-api-key`;
@@ -83,9 +116,56 @@ const ApiEndpointContent = () => {
   const [sample, setSample] = useState<{ status: number; ms: number; body: string } | null>(null);
   const [sampleLoading, setSampleLoading] = useState(false);
 
-  const [tryParams, setTryParams] = useState<Record<string, string>>({ page: "1", limit: "10" });
+  const DEFAULT_TRY: Record<string, string> = { page: "1", limit: "10" };
+  const [tryParams, setTryParams] = useState<Record<string, string>>(DEFAULT_TRY);
   const [tryResult, setTryResult] = useState<{ status: number; ms: number; body: string } | null>(null);
   const [tryLoading, setTryLoading] = useState(false);
+
+  // Geo data (states + LGAs) and partners for Try-it dropdowns.
+  const initialGeo = getGeoDataSync();
+  const [geo, setGeo] = useState<{ states: string[]; lgas: Record<string, string[]> }>(
+    { states: initialGeo.states, lgas: initialGeo.lgas },
+  );
+  const [partners, setPartners] = useState<Array<{ id: string; name: string }>>([]);
+
+  useEffect(() => {
+    let alive = true;
+    getGeoData().then((g) => {
+      if (alive && g?.states?.length) setGeo({ states: g.states, lgas: g.lgas });
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    let alive = true;
+    (async () => {
+      try {
+        const supabase = createClientComponentClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+        const params = new URLSearchParams({
+          limit: "500",
+          offset: "0",
+          include_admin_users: "false",
+          sortBy: "partner_name",
+          sortOrder: "asc",
+        });
+        const res = await fetch(`${supabaseFunctionsUrl}/manage-organizations?${params}`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const json = await res.json();
+        if (!res.ok || json.success === false) return;
+        const rows: Array<{ id: string; partner_name?: string; name?: string }> = json.data || [];
+        if (alive) {
+          setPartners(rows.map((r) => ({ id: r.id, name: r.partner_name || r.name || r.id })));
+        }
+      } catch {
+        /* non-fatal */
+      }
+    })();
+    return () => { alive = false; };
+  }, [isSuperAdmin]);
 
   const fetchKey = useCallback(async () => {
     if (!isSuperAdmin) {
@@ -338,30 +418,248 @@ console.log(data);`;
                   <span>{sample.ms} ms</span>
                 </div>
               )}
-              <pre className="text-xs bg-gray-50 border border-gray-200 rounded p-3 overflow-auto max-h-96">{sample?.body || "Loading sample response..."}</pre>
+              <pre className="text-xs bg-gray-50 border border-gray-200 rounded p-3 overflow-auto max-h-96">
+                {sampleLoading
+                  ? "Fetching sample response…"
+                  : sample?.body
+                    ? sample.body
+                    : keyLoading
+                      ? "Waiting for API key…"
+                      : keyError
+                        ? `Cannot load sample — ${keyError}`
+                        : !apiKey
+                          ? "Sample unavailable — API key not loaded."
+                          : "No sample yet. Click Refresh sample."}
+              </pre>
             </div>
 
             {/* Try it */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
-              <h2 className="text-base font-semibold text-gray-800">Try it</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {PARAMS.map((p) => (
-                  <div key={p.name}>
-                    <Label className="text-xs">{p.name}</Label>
-                    <Input
-                      className="h-9 text-sm bg-white shadow-none"
-                      placeholder={p.default || ""}
-                      value={tryParams[p.name] || ""}
-                      onChange={(e) => setTryParams((s) => ({ ...s, [p.name]: e.target.value }))}
-                    />
-                  </div>
-                ))}
+            <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-gray-800">Try it</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 rounded-none text-gray-600"
+                  onClick={() => { setTryParams(DEFAULT_TRY); setTryResult(null); }}
+                >
+                  <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reset
+                </Button>
               </div>
-              <div className="flex items-center gap-2">
-                <Button className="bg-[#4a5d0f] hover:bg-[#3d4d0c] text-white rounded-none" onClick={handleTry} disabled={tryLoading || !apiKey}>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* Page */}
+                <div>
+                  <Label className="text-xs">page</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    className="h-9 text-sm bg-white shadow-none"
+                    value={tryParams.page || ""}
+                    onChange={(e) => setTryParams((s) => ({ ...s, page: e.target.value }))}
+                  />
+                </div>
+
+                {/* Limit */}
+                <div>
+                  <Label className="text-xs">limit</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={1000}
+                    className="h-9 text-sm bg-white shadow-none"
+                    value={tryParams.limit || ""}
+                    onChange={(e) => setTryParams((s) => ({ ...s, limit: e.target.value }))}
+                  />
+                </div>
+
+                {/* State */}
+                <div>
+                  <Label className="text-xs">state</Label>
+                  <Select
+                    value={tryParams.state || "__all__"}
+                    onValueChange={(v) =>
+                      setTryParams((s) => ({
+                        ...s,
+                        state: v === "__all__" ? "" : v,
+                        lga: "", // reset LGA when state changes
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="h-9 text-sm bg-white shadow-none">
+                      <SelectValue placeholder="Any state" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      <SelectItem value="__all__">Any state</SelectItem>
+                      {geo.states.map((st) => (
+                        <SelectItem key={st} value={st}>{st}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* LGA */}
+                <div>
+                  <Label className="text-xs">lga</Label>
+                  <Select
+                    value={tryParams.lga || "__all__"}
+                    onValueChange={(v) =>
+                      setTryParams((s) => ({ ...s, lga: v === "__all__" ? "" : v }))
+                    }
+                    disabled={!tryParams.state}
+                  >
+                    <SelectTrigger className="h-9 text-sm bg-white shadow-none">
+                      <SelectValue placeholder={tryParams.state ? "Any LGA" : "Select state first"} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      <SelectItem value="__all__">Any LGA</SelectItem>
+                      {(geo.lgas[tryParams.state] || []).map((l) => (
+                        <SelectItem key={l} value={l}>{l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Partner */}
+                <div>
+                  <Label className="text-xs">partner_id</Label>
+                  <Select
+                    value={tryParams.partner_id || "__all__"}
+                    onValueChange={(v) =>
+                      setTryParams((s) => ({ ...s, partner_id: v === "__all__" ? "" : v }))
+                    }
+                  >
+                    <SelectTrigger className="h-9 text-sm bg-white shadow-none">
+                      <SelectValue placeholder={partners.length ? "Any partner" : "Loading…"} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      <SelectItem value="__all__">Any partner</SelectItem>
+                      {partners.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Date from */}
+                <div>
+                  <Label className="text-xs">dateFrom</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "h-9 w-full justify-start text-left font-normal rounded-md bg-white shadow-none text-sm",
+                          !tryParams.dateFrom && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="h-3.5 w-3.5 mr-2" />
+                        {tryParams.dateFrom ? format(new Date(tryParams.dateFrom), "PPP") : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={tryParams.dateFrom ? new Date(tryParams.dateFrom) : undefined}
+                        onSelect={(d) =>
+                          setTryParams((s) => ({
+                            ...s,
+                            dateFrom: d ? format(d, "yyyy-MM-dd") : "",
+                          }))
+                        }
+                        disabled={(d) =>
+                          tryParams.dateTo ? d > new Date(tryParams.dateTo) : false
+                        }
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Date to */}
+                <div>
+                  <Label className="text-xs">dateTo</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "h-9 w-full justify-start text-left font-normal rounded-md bg-white shadow-none text-sm",
+                          !tryParams.dateTo && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="h-3.5 w-3.5 mr-2" />
+                        {tryParams.dateTo ? format(new Date(tryParams.dateTo), "PPP") : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={tryParams.dateTo ? new Date(tryParams.dateTo) : undefined}
+                        onSelect={(d) =>
+                          setTryParams((s) => ({
+                            ...s,
+                            dateTo: d ? format(d, "yyyy-MM-dd") : "",
+                          }))
+                        }
+                        disabled={(d) => {
+                          const isFuture = d > new Date();
+                          const beforeFrom = tryParams.dateFrom
+                            ? d < new Date(tryParams.dateFrom)
+                            : false;
+                          return isFuture || beforeFrom;
+                        }}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Search */}
+                <div className="md:col-span-2">
+                  <Label className="text-xs">search</Label>
+                  <Input
+                    className="h-9 text-sm bg-white shadow-none"
+                    placeholder="End-user name, phone, or transaction id"
+                    value={tryParams.search || ""}
+                    onChange={(e) => setTryParams((s) => ({ ...s, search: e.target.value }))}
+                  />
+                </div>
+
+                {/* Include cancelled */}
+                <div className="flex items-end pb-1">
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      id="include_cancelled"
+                      checked={tryParams.include_cancelled === "true"}
+                      onCheckedChange={(checked) =>
+                        setTryParams((s) => ({
+                          ...s,
+                          include_cancelled: checked ? "true" : "",
+                        }))
+                      }
+                    />
+                    <Label htmlFor="include_cancelled" className="text-xs">
+                      Include cancelled
+                    </Label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 pt-1">
+                <Button
+                  className="bg-[#4a5d0f] hover:bg-[#3d4d0c] text-white rounded-none"
+                  onClick={handleTry}
+                  disabled={tryLoading || !apiKey}
+                >
                   {tryLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
                   Send request
                 </Button>
+                {!apiKey && !keyLoading && (
+                  <span className="text-xs text-red-600">API key not loaded — cannot send.</span>
+                )}
                 {tryResult && (
                   <div className="text-xs text-gray-600 flex items-center gap-3">
                     {tryResult.status >= 200 && tryResult.status < 300 ? (
