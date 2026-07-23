@@ -1609,7 +1609,7 @@ const CreateSalesForm = ({
                     // geo data resolves, or a legacy LGA name not in the list).
                     if (
                       formData.lgaBackup &&
-                      !list.some((l) => l.toLowerCase() === formData.lgaBackup.toLowerCase())
+                      !list.includes(formData.lgaBackup)
                     ) {
                       list.unshift(formData.lgaBackup);
                     }
