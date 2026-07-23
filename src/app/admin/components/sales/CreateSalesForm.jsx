@@ -1521,8 +1521,7 @@ const CreateSalesForm = ({
                 value={formatAmountInput(formData.amount)}
                 onChange={(e) => handleInputChange("amount", parseAmountInput(e.target.value))}
                 placeholder="Enter amount"
-                className={`${errors.amount ? "border-red-500" : ""} ${isEditMode ? "bg-gray-100" : ""}`}
-                readOnly={isEditMode}
+                className={errors.amount ? "border-red-500" : ""}
               />
             </FormField>
 
