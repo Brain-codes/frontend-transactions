@@ -117,17 +117,6 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
             Payment Histories & Receipts
           </DropdownMenuItem>
 
-          {/* Edit Sale */}
-          {onEditSale && (
-            <DropdownMenuItem
-              onClick={() => onEditSale(sale)}
-              className="py-2 px-3 rounded-md hover:!bg-[#4a5d0f] hover:!text-white cursor-pointer"
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit Sale
-            </DropdownMenuItem>
-          )}
-
           {/* Cancel Sale */}
           {onCancelSale && viewFrom !== "agent" && (
             <DropdownMenuItem
