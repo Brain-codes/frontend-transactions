@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 import DashboardLayout from "../components/DashboardLayout";
 import PageHeader from "../components/PageHeader";
-import { Users, Eye, Pencil } from "lucide-react";
+import { Users, Eye, Pencil, Plug } from "lucide-react";
 import {
   Table,
   TableBody,
