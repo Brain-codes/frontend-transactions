@@ -248,7 +248,18 @@ const SignatureCanvas = ({
         </div>
         {/* {error && <p className="text-sm text-red-600">{error}</p>} */}
       </div>
+      <CameraCaptureModal
+        open={cameraOpen}
+        onOpenChange={setCameraOpen}
+        onCapture={handleCameraCapture}
+        onFallbackUpload={handleUploadClick}
+        title="Capture Signature"
+      />
     </div>
+  );
+};
+
+export default SignatureCanvas;
   );
 };
 
