@@ -1,44 +1,41 @@
-## Plan
+## Root cause
 
-Fix the Agents in State modal so it uses the same partner-derived state assignment rule as the Agents Performance view.
+For stove `101106583` the network trace shows the details endpoint 404s with `"No agreement image found for serial number: 101106583"`. The current source of `supabase/functions/get-agreement-image-by-serial/index.ts` returns `"No sale found for serial number: ..."` on the `details` path, so the production edge function is still the pre-fix version (never redeployed). The client relies entirely on that endpoint to obtain a `sale` object, so when it 404s the fallback PDF path in `page.jsx` never runs.
 
-### What I found
+## Fix (two-sided, so it works regardless of deploy timing)
 
-- The Agents Performance view derives an agent’s assigned states from the states of that agent’s assigned partner organizations.
-- The States Performance view still uses `acsl_agent_states` in two places for ACSL agent counts and the modal’s `States Covered` / `State List` values.
-- That legacy state table is why the modal can show 37 states while Agents Performance shows 25.
+### 1. `supabase/functions/get-agreement-image-by-serial/index.ts`
 
-### Changes to make
+- Keep `return_type=binary` behavior: still requires `agreement_image_id` and 404s if missing.
+- For `return_type=details`:
+  - Query `sales` by `stove_serial_no` with no image filter (already in source — this edit forces a redeploy).
+  - If no row in `sales`, also query `cancelled_purchases` by the same serial and, if found, return it as `sale` with `image: null` and `source: "cancelled_purchases"`.
+  - Only 404 when neither table has a row.
+- Add a trivial log/comment change to force the function to redeploy.
 
-1. **Stop using legacy state rows for the Agents in State modal**
-   - Replace the modal’s `acsl_agent_states` source with partner-derived assignments from:
-     - `super_admin_agent_organizations`
-     - `acsl_agent_organizations`
-   - Use the same agent-id column variants already used elsewhere: `agent_id`, `super_admin_agent_id`, and `user_id`.
+### 2. `src/app/agreement-images/page.jsx`
 
-2. **Build one ACSL agent → assigned states map**
-   - For each assignment row, resolve `organization_id` → `organizations.state`.
-   - Add that state to the assigned agent’s state set.
-   - Deduplicate states per agent.
-   - Ignore empty / unknown states.
+Client-side safety net so the view works even if the edge function is temporarily stale:
 
-3. **Use that map everywhere in States Performance**
-   - `agentCoveredStates`
-   - per-state ACSL agent counts
-   - `Agents in State` modal rows
-   - `States Covered` count
-   - `State List`
+- In `runSearch`, when `detailsResponse.success === false`, fall back to reading the sale directly via the Supabase client:
+  1. `supabase.from("sales").select("*").eq("stove_serial_no", serial).maybeSingle()`
+  2. If empty, `supabase.from("cancelled_purchases").select("*").eq("stove_serial_no", serial).maybeSingle()`
+- If either returns a row, set `imageDetails = { sale: row, image: null }` and continue into the existing `buildAgreementBlobUrl(sale)` branch — the right panel renders the generated PDF and Download saves it.
+- Only show the "No sale found …" error card if the edge function AND both direct queries come back empty.
+- Preserve the existing `latestSerialRef` race-guard and blob-URL cleanup.
 
-4. **Keep partner-side agents separate**
-   - Partner / partner-agent users will still cover only their own organization’s state.
-   - ACSL Agent and ACSL Manager users will cover all states from their assigned partners.
+## Out of scope
 
-5. **Update realtime triggers**
-   - Include the assignment tables in the States Performance realtime refresh list so modal/state counts update when assignments change.
-   - Remove `acsl_agent_states` from this view’s refresh source if it is no longer used.
+- No changes to `AgreementPDFGenerator.ts`, `agreementImagesService.js`, sidebar, routing, or other views.
+- No changes to the binary/image path.
 
-### Expected result
+## Verification
 
-- The Agents in State modal will no longer display legacy 37-state coverage.
-- `States Covered` for each ACSL agent in the modal will match the same partner-derived values used by the Agents Performance `States Assigned` column.
-- The States KPI sublabel such as `25 of 26 covered by an agent` will remain consistent with the Agents Performance total.
+- Type `101106583` on `/agreement-images` → left panel shows the transaction details, right panel renders the generated User Agreement PDF, Download saves `agreement_101106583.pdf`.
+- A serial with a signed uploaded image still shows the image and downloads a JPG.
+- A truly unknown serial still shows the "No sale found …" error card.
+- Fast typing then changing the serial mid-flight still only shows the final serial's result (race guard intact).
+
+## Why this will work
+
+If Supabase hasn't yet redeployed the edge function, step 2 makes the UI succeed by hitting `sales` / `cancelled_purchases` directly under the user's RLS session. Once the redeploy from step 1 lands, the edge function alone satisfies the request and the direct-table fallback simply never runs. Both paths converge on the same `buildAgreementBlobUrl(sale)` code that is already known to render and download correctly.
