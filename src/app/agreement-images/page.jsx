@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
@@ -132,29 +132,45 @@ const AgreementImagesPage = () => {
   const [fallbackPdfUrl, setFallbackPdfUrl] = useState(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
-  const handleSearch = async () => {
-    const searchSerial = searchTerm.trim();
-    if (!searchSerial) {
-      setError("Please enter a stove serial number to search");
-      return;
+  const latestSerialRef = useRef("");
+  const pdfUrlRef = useRef(null);
+
+  const resetResults = () => {
+    setCurrentImage(null);
+    setImageDetails(null);
+    setError("");
+    if (pdfUrlRef.current) {
+      try {
+        URL.revokeObjectURL(pdfUrlRef.current);
+      } catch {}
+      pdfUrlRef.current = null;
     }
+    setFallbackPdfUrl(null);
+  };
+
+  const runSearch = async (searchSerial) => {
+    latestSerialRef.current = searchSerial;
     setSearching(true);
     setError("");
     setCurrentImage(null);
     setImageDetails(null);
-    if (fallbackPdfUrl) {
+    if (pdfUrlRef.current) {
       try {
-        URL.revokeObjectURL(fallbackPdfUrl);
+        URL.revokeObjectURL(pdfUrlRef.current);
       } catch {}
+      pdfUrlRef.current = null;
     }
     setFallbackPdfUrl(null);
+
     try {
       const [imageResponse, detailsResponse] = await Promise.all([
         agreementImagesService.getAgreementImageBinary(searchSerial),
         agreementImagesService.getAgreementImageDetails(searchSerial),
       ]);
 
-      // If we could not fetch any sale record at all, surface the error.
+      // Ignore stale responses.
+      if (latestSerialRef.current !== searchSerial) return;
+
       if (!detailsResponse.success) {
         setError(
           detailsResponse.error ||
@@ -168,28 +184,65 @@ const AgreementImagesPage = () => {
       if (imageResponse.success) {
         setCurrentImage(imageResponse.data);
       } else {
-        // No signed image on file — generate the User Agreement PDF from the
-        // sale record so the user can still view and download it.
         setGeneratingPdf(true);
         try {
           const sale = detailsResponse.data?.sale || {};
           const pdfUrl = await buildAgreementBlobUrl(sale);
+          if (latestSerialRef.current !== searchSerial) {
+            try {
+              URL.revokeObjectURL(pdfUrl);
+            } catch {}
+            return;
+          }
+          pdfUrlRef.current = pdfUrl;
           setFallbackPdfUrl(pdfUrl);
         } catch (pdfErr) {
           console.error("PDF generation failed:", pdfErr);
-          setError(
-            "No signed agreement image is on file for this stove, and the fallback agreement PDF could not be generated."
-          );
+          if (latestSerialRef.current === searchSerial) {
+            setError(
+              "No signed agreement image is on file for this stove, and the fallback agreement PDF could not be generated."
+            );
+          }
         } finally {
-          setGeneratingPdf(false);
+          if (latestSerialRef.current === searchSerial) {
+            setGeneratingPdf(false);
+          }
         }
       }
     } catch (e) {
-      setError(e.message || "An unexpected error occurred");
+      if (latestSerialRef.current === searchSerial) {
+        setError(e.message || "An unexpected error occurred");
+      }
     } finally {
-      setSearching(false);
+      if (latestSerialRef.current === searchSerial) {
+        setSearching(false);
+      }
     }
   };
+
+  // Live search as you type (debounced)
+  useEffect(() => {
+    const trimmed = searchTerm.trim();
+    if (!trimmed) {
+      latestSerialRef.current = "";
+      resetResults();
+      setSearching(false);
+      setGeneratingPdf(false);
+      return;
+    }
+    if (trimmed.length < 4) {
+      latestSerialRef.current = trimmed;
+      resetResults();
+      setSearching(false);
+      setGeneratingPdf(false);
+      return;
+    }
+    const t = setTimeout(() => {
+      runSearch(trimmed);
+    }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
 
   const handleDownload = () => {
     if (currentImage) {
@@ -295,35 +348,19 @@ const AgreementImagesPage = () => {
                 Enter a stove serial number to retrieve the signed agreement
                 form and the associated transaction details.
               </p>
-              <div className="flex flex-col sm:flex-row gap-2 max-w-2xl">
-                <div className="flex-1 relative">
+              <div className="max-w-2xl">
+                <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    placeholder="Enter stove serial number (e.g., 101052766)"
+                    placeholder="Start typing stove serial number (e.g., 101052766)"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    className="pl-9 h-11 bg-white text-gray-900"
-                    disabled={searching}
+                    className="pl-9 pr-10 h-11 bg-white text-gray-900"
                   />
-                </div>
-                <Button
-                  onClick={handleSearch}
-                  disabled={searching || !searchTerm.trim()}
-                  className="h-11 px-6 bg-white text-[#4a5d0f] hover:bg-[#eef3c4] font-semibold"
-                >
-                  {searching ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Searching…
-                    </>
-                  ) : (
-                    <>
-                      <Search className="h-4 w-4 mr-2" />
-                      Search
-                    </>
+                  {(searching || generatingPdf) && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-500" />
                   )}
-                </Button>
+                </div>
               </div>
             </div>
           </div>
