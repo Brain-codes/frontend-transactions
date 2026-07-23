@@ -10,7 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { MoreVertical, History, Plus, Eye, Ban } from "lucide-react";
+import { MoreVertical, History, Eye, Ban, Pencil } from "lucide-react";
 import { AdminSales } from "@/types/adminSales";
 
 
