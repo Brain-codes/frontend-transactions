@@ -28,6 +28,7 @@ import {
   ScrollText,
 } from "lucide-react";
 import agreementImagesService from "../services/agreementImagesService";
+import { getSupabase } from "@/lib/supabaseClient";
 import {
   buildAgreementBlobUrl,
   downloadAgreementPDF,
