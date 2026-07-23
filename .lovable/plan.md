@@ -1,76 +1,38 @@
-## Problem
+## Plan to make LGA recall on Edit Sale work reliably
 
-On the Edit Sale form, the LGA dropdown renders as empty ("Select LGA") even though `lga_backup` is present on the record.
+I checked the current edit flow and confirmed these points:
+- The sales list data includes `lga_backup` for the affected record, for example `Kano Municipal`.
+- `get-sale` selects `*` from `sales`, so the detailed edit payload should also include `lga_backup`.
+- `populateFormDataForEdit()` already maps `lga_backup` into `formData.lgaBackup`.
+- The visible failure is in the UI select: State shows `Kano`, but LGA shows the placeholder. This matches a known Radix/shadcn Select issue where a controlled Select can render blank if its value and matching option are not available in the same render cycle.
 
-## Root cause
+## Fix
 
-`get-sale` does return `lga_backup`, and `populateFormDataForEdit` maps it to `formData.lgaBackup`, so the value reaches state. The failure is in the LGA `<Select>` at `src/app/admin/components/sales/CreateSalesForm.jsx` (≈lines 1560–1582):
+1. **Normalize the saved State/LGA before putting it into form state**
+   - Move the State/LGA reconciliation into the edit-data population step, not after the form has already rendered.
+   - Trim saved values and match them case-insensitively against the LGA catalogue.
+   - Example: saved `kano municipal ` becomes canonical `Kano Municipal` before the Select renders.
 
-- Radix `Select` matches `value` against `<SelectItem value>` **case-sensitively**.
-- The fallback that injects the current LGA when it's not in the geo list dedupes **case-insensitively**:
-  ```
-  !list.some((l) => l.toLowerCase() === formData.lgaBackup.toLowerCase())
-  ```
-- When the DB value differs in case/whitespace from the geo-list entry (e.g. DB `"IKORODU"` vs geo `"Ikorodu"`, or `"Municipal "` with a trailing space), the fallback treats them as equal and does not insert the DB value. The SelectItem is `"Ikorodu"`, `Select.value` is `"IKORODU"` → no match → the trigger falls back to the placeholder.
+2. **Make the LGA options list always contain the selected LGA**
+   - Build a stable `lgaOptionsForSelectedState` list with `useMemo`.
+   - If `formData.lgaBackup` is set but missing from the catalogue, insert it as the first option.
+   - This prevents the selected value from ever being orphaned.
 
-The State select can have the same case-mismatch class of bug (its options come from `Object.keys(geoData.lgas)`), but the more visible one is LGA because `lgaAndStates[stateBackup]` also fails when the key case differs, dropping options to `[]` and only relying on the fallback.
+3. **Force the LGA Select to remount when edit data/options become ready**
+   - Add a `key` to the LGA Select based on `stateBackup`, `lgaBackup`, and the options count.
+   - This resolves the Radix/shadcn timing problem where the trigger remains blank even after the option later appears.
 
-## Fix (single component, no data migration)
+4. **Prevent accidental clearing during edit initialization**
+   - Update `handleStateChange` so it only clears LGA when the user actually changes State.
+   - During edit initialization/reconciliation, State changes must preserve the original LGA.
 
-Normalize the persisted LGA (and State) to match the geo catalogue whenever geo data is present, so Radix's strict value match succeeds.
+5. **Add a safe fallback display**
+   - If the Select still has a value but cannot resolve a label, render the saved `formData.lgaBackup` as the visible selected text instead of showing `Select LGA`.
+   - This guarantees the user sees the returned LGA like every other field.
 
-Edit `src/app/admin/components/sales/CreateSalesForm.jsx`:
-
-1. Add a small case-insensitive resolver:
-   ```js
-   const findCI = (list, v) =>
-     list.find((x) => x.trim().toLowerCase() === String(v || "").trim().toLowerCase());
-   ```
-
-2. After `geoData` finishes loading in edit mode, run a one-shot effect that reconciles `stateBackup` / `lgaBackup` to the canonical spellings from `geoData`:
-   ```js
-   useEffect(() => {
-     if (!isEditMode) return;
-     if (!geoData?.lgas || Object.keys(geoData.lgas).length === 0) return;
-
-     const stateKeys = Object.keys(geoData.lgas);
-     const canonicalState = findCI(stateKeys, formData.stateBackup) || formData.stateBackup;
-     const lgaList = geoData.lgas[canonicalState] || [];
-     const canonicalLga = findCI(lgaList, formData.lgaBackup) || formData.lgaBackup;
-
-     if (canonicalState !== formData.stateBackup || canonicalLga !== formData.lgaBackup) {
-       setFormData((prev) => ({
-         ...prev,
-         stateBackup: canonicalState,
-         lgaBackup: canonicalLga,
-       }));
-     }
-   }, [isEditMode, geoData?.lgas, formData.stateBackup, formData.lgaBackup]);
-   ```
-
-3. Harden the LGA `SelectContent` render (belt-and-braces) so the fallback insertion is exact-match, not case-insensitive:
-   ```js
-   const options = (formData.stateBackup && lgaAndStates[formData.stateBackup]) || [];
-   const list = [...options];
-   if (formData.lgaBackup && !list.includes(formData.lgaBackup)) {
-     list.unshift(formData.lgaBackup);
-   }
-   ```
-   Apply the same `!includes` check to the State select if it uses similar fallback logic.
-
-## Why this works
-
-- Once the LGA `value` string is byte-identical to a `SelectItem value`, Radix Select renders the label — this is the exact contract it enforces.
-- If geo data isn't loaded yet (or the LGA truly isn't in the catalogue), the exact-match fallback still injects the raw DB value as an option, so the field is never empty.
-- The reconciliation only fires in edit mode and only when values actually change, so it can't clobber a user edit or loop.
-
-## Verification
-
-1. Open a sale whose LGA in the DB has a different case (or trailing space) from the geo list — the LGA now shows on open.
-2. Open a sale whose LGA matches exactly — unchanged behaviour, no flicker.
-3. Change State manually — LGA still resets (handleStateChange behaviour unchanged, because `isInitializing` has already been cleared by then).
-4. Submit an unchanged edit — `state_backup` / `lga_backup` in the DB now reflect the canonical spelling (a harmless normalization).
-
-## Scope
-
-Only `src/app/admin/components/sales/CreateSalesForm.jsx` is touched. No backend, service, or schema changes.
+6. **Verify against the real edit modal**
+   - Open the sale edit modal from Sales Records.
+   - Confirm the Location section shows both:
+     - State: `Kano`
+     - LGA: the saved value, e.g. `Kano Municipal`
+   - Confirm changing State manually still resets the LGA so users cannot save a mismatched State/LGA pair.

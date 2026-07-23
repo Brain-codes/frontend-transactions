@@ -6,6 +6,52 @@
 
 import { extractBase64FromSignature, base64ToDataURL } from "./signatureUtils";
 
+const cleanLocationText = (value) => String(value || "").trim();
+
+const findCanonicalLocation = (list, value) => {
+  const needle = cleanLocationText(value).toLowerCase();
+  if (!needle) return "";
+  return (list || []).find((item) => cleanLocationText(item).toLowerCase() === needle) || "";
+};
+
+export const normalizeSaleLocation = (saleData, lgaCatalogue = {}) => {
+  const rawState = cleanLocationText(
+    saleData?.stateBackup ||
+      saleData?.state_backup ||
+      saleData?.addressData?.state ||
+      saleData?.address_data?.state ||
+      saleData?.address?.state ||
+      ""
+  );
+  const rawLga = cleanLocationText(
+    saleData?.lgaBackup || saleData?.lga_backup || saleData?.lga || saleData?.district || ""
+  );
+
+  const states = Object.keys(lgaCatalogue || {});
+  let state = findCanonicalLocation(states, rawState) || rawState;
+  let lgaOptions = state ? lgaCatalogue[state] || [] : [];
+  let lga = findCanonicalLocation(lgaOptions, rawLga) || rawLga;
+
+  if (rawLga && !lgaOptions.length) {
+    for (const stateName of states) {
+      const matchedLga = findCanonicalLocation(lgaCatalogue[stateName], rawLga);
+      if (matchedLga) {
+        state = state || stateName;
+        lgaOptions = lgaCatalogue[stateName] || [];
+        lga = matchedLga;
+        break;
+      }
+    }
+  }
+
+  if (rawLga && lga === rawLga && lgaOptions.length) {
+    const matchedLga = findCanonicalLocation(lgaOptions, rawLga);
+    if (matchedLga) lga = matchedLga;
+  }
+
+  return { stateBackup: state, lgaBackup: lga };
+};
+
 /**
  * Creates initial form data structure
  * @returns {Object} Initial form data with empty values
@@ -64,8 +110,10 @@ export const createInitialFormData = () => ({
  * @param {Object} saleData - Existing sale data from API
  * @returns {Object} Form data populated with sale values
  */
-export const populateFormDataForEdit = (saleData) => {
+export const populateFormDataForEdit = (saleData, lgaCatalogue = {}) => {
   if (!saleData) return createInitialFormData();
+
+  const normalizedLocation = normalizeSaleLocation(saleData, lgaCatalogue);
 
   const result = {
     transactionId: saleData.transactionId || saleData.transaction_id || "",
@@ -91,8 +139,8 @@ export const populateFormDataForEdit = (saleData) => {
       return parts.slice(1).join(" ");
     })(),
     aka: saleData.aka || "",
-    stateBackup: saleData.stateBackup || saleData.state_backup || "",
-    lgaBackup: saleData.lgaBackup || saleData.lga_backup || "",
+    stateBackup: normalizedLocation.stateBackup,
+    lgaBackup: normalizedLocation.lgaBackup,
     phone: saleData.phone || "",
     otherPhone: saleData.otherPhone || saleData.other_phone || "",
     partnerName: saleData.partnerName || saleData.partner_name || "",
