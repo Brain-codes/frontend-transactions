@@ -1583,9 +1583,15 @@ const CreateSalesForm = ({
                   <SelectValue placeholder="Select state" />
                 </SelectTrigger>
                 <SelectContent>
-                  {nigerianStates.map((state) => (
-                    <SelectItem key={state} value={state}>{state}</SelectItem>
-                  ))}
+                  {(() => {
+                    const list = [...nigerianStates];
+                    if (formData.stateBackup && !list.includes(formData.stateBackup)) {
+                      list.unshift(formData.stateBackup);
+                    }
+                    return list.map((state) => (
+                      <SelectItem key={state} value={state}>{state}</SelectItem>
+                    ));
+                  })()}
                 </SelectContent>
               </Select>
             </FormField>
