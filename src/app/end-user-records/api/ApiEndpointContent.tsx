@@ -418,7 +418,19 @@ console.log(data);`;
                   <span>{sample.ms} ms</span>
                 </div>
               )}
-              <pre className="text-xs bg-gray-50 border border-gray-200 rounded p-3 overflow-auto max-h-96">{sample?.body || "Loading sample response..."}</pre>
+              <pre className="text-xs bg-gray-50 border border-gray-200 rounded p-3 overflow-auto max-h-96">
+                {sampleLoading
+                  ? "Fetching sample response…"
+                  : sample?.body
+                    ? sample.body
+                    : keyLoading
+                      ? "Waiting for API key…"
+                      : keyError
+                        ? `Cannot load sample — ${keyError}`
+                        : !apiKey
+                          ? "Sample unavailable — API key not loaded."
+                          : "No sample yet. Click Refresh sample."}
+              </pre>
             </div>
 
             {/* Try it */}
