@@ -243,6 +243,39 @@ const CreateSalesForm = ({
   const nigerianStates = geoData.states;
   const lgaAndStates = geoData.lgas;
 
+  // Case/whitespace-insensitive lookup that returns the canonical string from `list`.
+  const findCI = (list, v) => {
+    const needle = String(v || "").trim().toLowerCase();
+    if (!needle) return undefined;
+    return (list || []).find((x) => String(x).trim().toLowerCase() === needle);
+  };
+
+  // Reconcile persisted state/LGA to the geo catalogue's canonical casing so
+  // Radix Select (strict, case-sensitive value match) can render the saved LGA
+  // on the Edit Sale form.
+  useEffect(() => {
+    if (!isEditMode) return;
+    if (!lgaAndStates || Object.keys(lgaAndStates).length === 0) return;
+    if (!formData.stateBackup && !formData.lgaBackup) return;
+
+    const stateKeys = Object.keys(lgaAndStates);
+    const canonicalState = findCI(stateKeys, formData.stateBackup) || formData.stateBackup;
+    const lgaList = lgaAndStates[canonicalState] || [];
+    const canonicalLga = findCI(lgaList, formData.lgaBackup) || formData.lgaBackup;
+
+    if (
+      canonicalState !== formData.stateBackup ||
+      canonicalLga !== formData.lgaBackup
+    ) {
+      setFormData((prev) => ({
+        ...prev,
+        stateBackup: canonicalState,
+        lgaBackup: canonicalLga,
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode, lgaAndStates, formData.stateBackup, formData.lgaBackup]);
+
   // Helper: resolve the currently active partner organization id(s).
   // Legacy duplicate org rows share the same partner+state+branch, so a stove
   // can live on any one of them — we search/validate across the full set.
