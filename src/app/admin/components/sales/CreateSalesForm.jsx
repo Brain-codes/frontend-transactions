@@ -1330,6 +1330,16 @@ const CreateSalesForm = ({
                 <p className="mt-1 text-xs text-gray-500">Checking…</p>
               )}
             </FormField>
+            <div className="col-span-1 md:col-span-2 lg:col-span-3 flex items-center gap-3 py-2">
+              <Checkbox
+                id="sameAsEndUser"
+                checked={sameAsEndUser}
+                onCheckedChange={(checked) => setSameAsEndUser(Boolean(checked))}
+              />
+              <Label htmlFor="sameAsEndUser" className="text-sm font-medium text-gray-700 cursor-pointer">
+                Select if End User is same as Contact Person
+              </Label>
+            </div>
             <FormField label="AKA" htmlFor="aka">
               <Input
                 id="aka"
