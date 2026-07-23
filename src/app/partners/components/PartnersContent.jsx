@@ -1846,7 +1846,7 @@ export default function PartnersContent() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className={tableLoading ? "opacity-40" : ""}>
-                  {sortedOrgs.length === 0 ? (
+                  {visibleOrgs.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center py-10">
                         <Building2 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
@@ -1855,7 +1855,7 @@ export default function PartnersContent() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    displayedOrgs.map((org, idx) => (
+                    visibleOrgs.map((org, idx) => (
                       <React.Fragment key={org.id}>
                         <TableRow className="hover:bg-[#eef3c4] text-gray-700 bg-white">
                           <TableCell className="text-sm font-medium text-gray-900">{org.partner_name}</TableCell>
