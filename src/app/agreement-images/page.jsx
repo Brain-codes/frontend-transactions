@@ -164,60 +164,47 @@ const AgreementImagesPage = () => {
     setFallbackPdfUrl(null);
 
     try {
-      const detailsResponse = await agreementImagesService.getAgreementImageDetails(
-        searchSerial
-      );
+      // Query Supabase directly for sale details (avoids stale edge function 404s).
+      let details = null;
+      try {
+        const supabase = getSupabase();
+        const { data: saleRow } = await supabase
+          .from("sales")
+          .select("*, uploads:agreement_image_id (id, public_id, url, type, created_at)")
+          .eq("stove_serial_no", searchSerial)
+          .limit(1)
+          .maybeSingle();
 
-      // Ignore stale responses.
-      if (latestSerialRef.current !== searchSerial) return;
+        if (latestSerialRef.current !== searchSerial) return;
 
-      let details = detailsResponse.success ? detailsResponse.data : null;
-
-      // Client-side fallback: if the edge function couldn't find the sale
-      // (or is a stale deployment), try reading sales / cancelled_purchases
-      // directly so we can still render the generated agreement PDF.
-      if (!details) {
-        try {
-          const supabase = getSupabase();
-          const { data: saleRow } = await supabase
-            .from("sales")
+        if (saleRow) {
+          const { uploads, ...saleRest } = saleRow;
+          details = { sale: saleRest, image: uploads || null, source: "sales" };
+        } else {
+          const { data: cancelledRow } = await supabase
+            .from("cancelled_purchases")
             .select("*")
             .eq("stove_serial_no", searchSerial)
             .limit(1)
             .maybeSingle();
-
           if (latestSerialRef.current !== searchSerial) return;
-
-          if (saleRow) {
-            details = { sale: saleRow, image: null, source: "sales" };
-          } else {
-            const { data: cancelledRow } = await supabase
-              .from("cancelled_purchases")
-              .select("*")
-              .eq("stove_serial_no", searchSerial)
-              .limit(1)
-              .maybeSingle();
-            if (latestSerialRef.current !== searchSerial) return;
-            if (cancelledRow) {
-              details = {
-                sale: cancelledRow,
-                image: null,
-                source: "cancelled_purchases",
-              };
-            }
+          if (cancelledRow) {
+            details = {
+              sale: cancelledRow,
+              image: null,
+              source: "cancelled_purchases",
+            };
           }
-        } catch (fallbackErr) {
-          console.error("Direct sales lookup failed:", fallbackErr);
         }
+      } catch (fallbackErr) {
+        console.error("Direct sales lookup failed:", fallbackErr);
       }
 
       if (!details) {
-        setError(
-          detailsResponse.error ||
-            `No sale found for serial number: ${searchSerial}`
-        );
+        setError(`No sale found for serial number: ${searchSerial}`);
         return;
       }
+
 
       setImageDetails(details);
 
