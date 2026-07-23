@@ -10,7 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { MoreVertical, History, Plus, Eye, Ban } from "lucide-react";
+import { MoreVertical, History, Eye, Ban, Pencil } from "lucide-react";
 import { AdminSales } from "@/types/adminSales";
 
 
@@ -45,7 +45,6 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
                 className="h-7 px-3 text-xs font-medium rounded-full bg-[#4a5d0f] text-white hover:bg-[#3a4a0c] shadow-sm transition-colors flex items-center gap-1.5"
                 onClick={() => onRecordPayment(sale)}
               >
-                <Plus className="h-3.5 w-3.5" />
                 Pay
               </Button>
             </TooltipTrigger>
@@ -95,6 +94,17 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
             <History className="mr-2 h-4 w-4" />
             Payment Histories & Receipts
           </DropdownMenuItem>
+
+          {/* Edit Sale */}
+          {onEditSale && (
+            <DropdownMenuItem
+              onClick={() => onEditSale(sale)}
+              className="py-2 px-3 rounded-md hover:!bg-[#4a5d0f] hover:!text-white cursor-pointer"
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit Sale
+            </DropdownMenuItem>
+          )}
 
           {/* Cancel Sale */}
           {onCancelSale && viewFrom !== "agent" && (
