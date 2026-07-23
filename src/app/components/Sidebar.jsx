@@ -97,7 +97,7 @@ const allNavItems = [
 const Sidebar = ({ isOpen, onClose, currentRoute }) => {
   const router = useRouter();
   const { isAcslAgent, isAcslAgentManager } = useAuth();
-  const { canRoute } = usePermissions();
+  const { canRoute, isSuperAdmin } = usePermissions();
 
   const [expandedItems, setExpandedItems] = useState({});
 
@@ -109,6 +109,8 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
   // and drop the parent if no children are visible.
   const navItems = allNavItems
     .map((item) => {
+      // Documentation is restricted to super admins only.
+      if (item.route === "docs" && !isSuperAdmin) return null;
       if (item.children) {
         const visibleChildren = item.children.filter((c) => canRoute(c.route));
         if (visibleChildren.length === 0) return null;
