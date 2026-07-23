@@ -35,6 +35,28 @@ const FinancialReportRowActions: React.FC<FinancialReportRowActionsProps> = ({
 
   return (
     <div className="flex items-center justify-end gap-1">
+      {/* Edit Sale button */}
+      {onEditSale && (
+        <TooltipProvider delayDuration={100}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 text-[#4a5d0f] hover:bg-[#eef3c4] hover:text-[#3a4a0c]"
+                onClick={() => onEditSale(sale)}
+                aria-label="Edit sale"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="bg-[#4a5d0f] text-white border-[#4a5d0f]">
+              <p>Edit sale</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+
       {/* Record Payment button */}
       {showPayButton && (
         <TooltipProvider delayDuration={100}>
