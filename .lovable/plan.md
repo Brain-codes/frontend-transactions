@@ -1,41 +1,76 @@
+## Problem
+
+On the Edit Sale form, the LGA dropdown renders as empty ("Select LGA") even though `lga_backup` is present on the record.
+
 ## Root cause
 
-For stove `101106583` the network trace shows the details endpoint 404s with `"No agreement image found for serial number: 101106583"`. The current source of `supabase/functions/get-agreement-image-by-serial/index.ts` returns `"No sale found for serial number: ..."` on the `details` path, so the production edge function is still the pre-fix version (never redeployed). The client relies entirely on that endpoint to obtain a `sale` object, so when it 404s the fallback PDF path in `page.jsx` never runs.
+`get-sale` does return `lga_backup`, and `populateFormDataForEdit` maps it to `formData.lgaBackup`, so the value reaches state. The failure is in the LGA `<Select>` at `src/app/admin/components/sales/CreateSalesForm.jsx` (≈lines 1560–1582):
 
-## Fix (two-sided, so it works regardless of deploy timing)
+- Radix `Select` matches `value` against `<SelectItem value>` **case-sensitively**.
+- The fallback that injects the current LGA when it's not in the geo list dedupes **case-insensitively**:
+  ```
+  !list.some((l) => l.toLowerCase() === formData.lgaBackup.toLowerCase())
+  ```
+- When the DB value differs in case/whitespace from the geo-list entry (e.g. DB `"IKORODU"` vs geo `"Ikorodu"`, or `"Municipal "` with a trailing space), the fallback treats them as equal and does not insert the DB value. The SelectItem is `"Ikorodu"`, `Select.value` is `"IKORODU"` → no match → the trigger falls back to the placeholder.
 
-### 1. `supabase/functions/get-agreement-image-by-serial/index.ts`
+The State select can have the same case-mismatch class of bug (its options come from `Object.keys(geoData.lgas)`), but the more visible one is LGA because `lgaAndStates[stateBackup]` also fails when the key case differs, dropping options to `[]` and only relying on the fallback.
 
-- Keep `return_type=binary` behavior: still requires `agreement_image_id` and 404s if missing.
-- For `return_type=details`:
-  - Query `sales` by `stove_serial_no` with no image filter (already in source — this edit forces a redeploy).
-  - If no row in `sales`, also query `cancelled_purchases` by the same serial and, if found, return it as `sale` with `image: null` and `source: "cancelled_purchases"`.
-  - Only 404 when neither table has a row.
-- Add a trivial log/comment change to force the function to redeploy.
+## Fix (single component, no data migration)
 
-### 2. `src/app/agreement-images/page.jsx`
+Normalize the persisted LGA (and State) to match the geo catalogue whenever geo data is present, so Radix's strict value match succeeds.
 
-Client-side safety net so the view works even if the edge function is temporarily stale:
+Edit `src/app/admin/components/sales/CreateSalesForm.jsx`:
 
-- In `runSearch`, when `detailsResponse.success === false`, fall back to reading the sale directly via the Supabase client:
-  1. `supabase.from("sales").select("*").eq("stove_serial_no", serial).maybeSingle()`
-  2. If empty, `supabase.from("cancelled_purchases").select("*").eq("stove_serial_no", serial).maybeSingle()`
-- If either returns a row, set `imageDetails = { sale: row, image: null }` and continue into the existing `buildAgreementBlobUrl(sale)` branch — the right panel renders the generated PDF and Download saves it.
-- Only show the "No sale found …" error card if the edge function AND both direct queries come back empty.
-- Preserve the existing `latestSerialRef` race-guard and blob-URL cleanup.
+1. Add a small case-insensitive resolver:
+   ```js
+   const findCI = (list, v) =>
+     list.find((x) => x.trim().toLowerCase() === String(v || "").trim().toLowerCase());
+   ```
 
-## Out of scope
+2. After `geoData` finishes loading in edit mode, run a one-shot effect that reconciles `stateBackup` / `lgaBackup` to the canonical spellings from `geoData`:
+   ```js
+   useEffect(() => {
+     if (!isEditMode) return;
+     if (!geoData?.lgas || Object.keys(geoData.lgas).length === 0) return;
 
-- No changes to `AgreementPDFGenerator.ts`, `agreementImagesService.js`, sidebar, routing, or other views.
-- No changes to the binary/image path.
+     const stateKeys = Object.keys(geoData.lgas);
+     const canonicalState = findCI(stateKeys, formData.stateBackup) || formData.stateBackup;
+     const lgaList = geoData.lgas[canonicalState] || [];
+     const canonicalLga = findCI(lgaList, formData.lgaBackup) || formData.lgaBackup;
+
+     if (canonicalState !== formData.stateBackup || canonicalLga !== formData.lgaBackup) {
+       setFormData((prev) => ({
+         ...prev,
+         stateBackup: canonicalState,
+         lgaBackup: canonicalLga,
+       }));
+     }
+   }, [isEditMode, geoData?.lgas, formData.stateBackup, formData.lgaBackup]);
+   ```
+
+3. Harden the LGA `SelectContent` render (belt-and-braces) so the fallback insertion is exact-match, not case-insensitive:
+   ```js
+   const options = (formData.stateBackup && lgaAndStates[formData.stateBackup]) || [];
+   const list = [...options];
+   if (formData.lgaBackup && !list.includes(formData.lgaBackup)) {
+     list.unshift(formData.lgaBackup);
+   }
+   ```
+   Apply the same `!includes` check to the State select if it uses similar fallback logic.
+
+## Why this works
+
+- Once the LGA `value` string is byte-identical to a `SelectItem value`, Radix Select renders the label — this is the exact contract it enforces.
+- If geo data isn't loaded yet (or the LGA truly isn't in the catalogue), the exact-match fallback still injects the raw DB value as an option, so the field is never empty.
+- The reconciliation only fires in edit mode and only when values actually change, so it can't clobber a user edit or loop.
 
 ## Verification
 
-- Type `101106583` on `/agreement-images` → left panel shows the transaction details, right panel renders the generated User Agreement PDF, Download saves `agreement_101106583.pdf`.
-- A serial with a signed uploaded image still shows the image and downloads a JPG.
-- A truly unknown serial still shows the "No sale found …" error card.
-- Fast typing then changing the serial mid-flight still only shows the final serial's result (race guard intact).
+1. Open a sale whose LGA in the DB has a different case (or trailing space) from the geo list — the LGA now shows on open.
+2. Open a sale whose LGA matches exactly — unchanged behaviour, no flicker.
+3. Change State manually — LGA still resets (handleStateChange behaviour unchanged, because `isInitializing` has already been cleared by then).
+4. Submit an unchanged edit — `state_backup` / `lga_backup` in the DB now reflect the canonical spelling (a harmless normalization).
 
-## Why this will work
+## Scope
 
-If Supabase hasn't yet redeployed the edge function, step 2 makes the UI succeed by hitting `sales` / `cancelled_purchases` directly under the user's RLS session. Once the redeploy from step 1 lands, the edge function alone satisfies the request and the direct-table fallback simply never runs. Both paths converge on the same `buildAgreementBlobUrl(sale)` code that is already known to render and download correctly.
+Only `src/app/admin/components/sales/CreateSalesForm.jsx` is touched. No backend, service, or schema changes.
