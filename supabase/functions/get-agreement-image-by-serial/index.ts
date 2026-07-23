@@ -105,14 +105,7 @@ serve(async (req) => {
       .from("sales")
       .select(
         `
-        id,
-        stove_serial_no,
-        agreement_image_id,
-        sales_date,
-        contact_person,
-        end_user_name,
-        partner_name,
-        status,
+        *,
         uploads:agreement_image_id (
           id,
           public_id,
@@ -182,6 +175,9 @@ serve(async (req) => {
 
     log("✅ Found agreement image:", uploadData.public_id);
 
+    // Strip the nested uploads object off before returning full sale
+    const { uploads: _u, ...fullSale } = saleData as any;
+
     // If return_type is 'details', return metadata only
     if (returnType === "details") {
       return new Response(
@@ -189,15 +185,7 @@ serve(async (req) => {
           success: true,
           message: "Agreement image details retrieved successfully",
           data: {
-            sale: {
-              id: saleData.id,
-              stove_serial_no: saleData.stove_serial_no,
-              sales_date: saleData.sales_date,
-              contact_person: saleData.contact_person,
-              end_user_name: saleData.end_user_name,
-              partner_name: saleData.partner_name,
-              status: saleData.status,
-            },
+            sale: fullSale,
             image: {
               id: uploadData.id,
               public_id: uploadData.public_id,
