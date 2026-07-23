@@ -1,15 +1,48 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { format } from "date-fns";
 import DashboardLayout from "../../components/DashboardLayout";
 import PageHeader from "../../components/PageHeader";
-import { Plug, ArrowLeft, Copy, Eye, EyeOff, Loader2, Send, CheckCircle2, XCircle } from "lucide-react";
+import {
+  Plug,
+  ArrowLeft,
+  Copy,
+  Eye,
+  EyeOff,
+  Loader2,
+  Send,
+  CheckCircle2,
+  XCircle,
+  Calendar as CalendarIcon,
+  RotateCcw,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "../../contexts/useAuth";
 import { resolveRole } from "@/lib/permissions";
-import { supabaseUrl, supabaseAnonKey } from "@/lib/supabaseConfig";
+import {
+  supabaseUrl,
+  supabaseAnonKey,
+  supabaseFunctionsUrl,
+} from "@/lib/supabaseConfig";
 import { createClientComponentClient } from "@/lib/supabaseClient";
+import { getGeoData, getGeoDataSync } from "@/lib/geoDataService";
 
 const ENDPOINT_URL = `${supabaseUrl}/functions/v1/end-user-records-api`;
 const KEY_FN_URL = `${supabaseUrl}/functions/v1/get-end-user-api-key`;
