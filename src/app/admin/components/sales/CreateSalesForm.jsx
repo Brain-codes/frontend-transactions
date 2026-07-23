@@ -93,6 +93,9 @@ const CreateSalesForm = ({
   const initializedRef = useRef(false); // Track if form has been initialized
   const [isInitializing, setIsInitializing] = useState(false); // Track if we're currently initializing
 
+  // Buyer & End User auto-fill toggle
+  const [sameAsEndUser, setSameAsEndUser] = useState(false);
+
   // File refs and states - now using extracted components
   const [stoveImagePreview, setStoveImagePreview] = useState(null);
   const [agreementImagePreview, setAgreementImagePreview] = useState(null);
