@@ -2,7 +2,7 @@
 import { useRef, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { PenTool, Upload, Lock } from "lucide-react";
+import { PenTool, Upload, Lock, Camera } from "lucide-react";
 import {
   getSignatureFromCanvas,
   clearSignatureCanvas,
@@ -10,6 +10,7 @@ import {
   initializeSignatureCanvas,
   getCanvasCoordinates,
 } from "../../utils/signatureUtils";
+import CameraCaptureModal from "./CameraCaptureModal";
 
 const SignatureCanvas = ({
   signature,
@@ -26,6 +27,7 @@ const SignatureCanvas = ({
   // explicitly activates it. This stops accidental marks while scrolling the
   // form up/down (a common complaint on touch screens).
   const [drawingEnabled, setDrawingEnabled] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   useEffect(() => {
     initializeCanvas();
@@ -107,26 +109,29 @@ const SignatureCanvas = ({
   // drawn signature (base64 PNG).
   const handleUploadClick = () => fileInputRef.current?.click();
 
-  const handleFileSelected = (e) => {
-    const file = e.target.files?.[0];
+  const loadFileToCanvas = (file) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result;
       if (typeof dataUrl !== "string") return;
-      // Draw the uploaded image onto the canvas, then export it back to base64
-      // so it flows through the exact same submit path as a drawn signature.
       loadSignatureToCanvas(canvasRef.current, dataUrl);
-      // loadSignatureToCanvas draws asynchronously (img.onload); give it a beat
-      // before reading the canvas back.
       setTimeout(() => {
         const base64Signature = getSignatureFromCanvas(canvasRef.current);
         onSignatureChange(base64Signature || dataUrl.split(",")[1] || "");
       }, 150);
     };
     reader.readAsDataURL(file);
-    // Allow re-selecting the same file later
+  };
+
+  const handleFileSelected = (e) => {
+    const file = e.target.files?.[0];
+    loadFileToCanvas(file);
     e.target.value = "";
+  };
+
+  const handleCameraCapture = (file) => {
+    loadFileToCanvas(file);
   };
 
   // Touch event handlers for mobile support. When drawing is disabled we do NOT
@@ -172,15 +177,26 @@ const SignatureCanvas = ({
               )}
               {drawingEnabled ? "Signing enabled" : "Tap to sign"}
             </button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleUploadClick}
-            >
-              <Upload className="h-4 w-4 mr-1.5" />
-              Upload Image
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCameraOpen(true)}
+              >
+                <Camera className="h-4 w-4 mr-1.5" />
+                Take Photo
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleUploadClick}
+              >
+                <Upload className="h-4 w-4 mr-1.5" />
+                Upload Image
+              </Button>
+            </div>
           </div>
           <input
             ref={fileInputRef}
@@ -232,6 +248,13 @@ const SignatureCanvas = ({
         </div>
         {/* {error && <p className="text-sm text-red-600">{error}</p>} */}
       </div>
+      <CameraCaptureModal
+        open={cameraOpen}
+        onOpenChange={setCameraOpen}
+        onCapture={handleCameraCapture}
+        onFallbackUpload={handleUploadClick}
+        title="Capture Signature"
+      />
     </div>
   );
 };
