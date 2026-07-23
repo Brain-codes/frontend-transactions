@@ -213,6 +213,20 @@ const CreateSalesForm = ({
     return () => clearTimeout(timer);
   }, [formData.phone, isEditMode, initialData?.id]);
 
+  // Auto-fill Contact Person / Buyer and Contact Phone from end-user details
+  // when the "same as end user" checkbox is selected.
+  useEffect(() => {
+    if (!sameAsEndUser) return;
+    const firstName = (formData.endUserName || "").trim();
+    const surname = (formData.endUserSurname || "").trim();
+    const fullName = [firstName, surname].filter(Boolean).join(" ");
+    setFormData((prev) => ({
+      ...prev,
+      contactPerson: fullName,
+      contactPhone: prev.phone || "",
+    }));
+  }, [sameAsEndUser, formData.endUserName, formData.endUserSurname, formData.phone]);
+
   // Centralized states + LGAs (geo-data edge fn → cache → bundled fallback).
   // Seed synchronously from cache/bundled so the first render has data, then
   // refresh from the network.
