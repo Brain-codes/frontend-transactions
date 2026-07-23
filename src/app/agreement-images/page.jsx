@@ -33,6 +33,7 @@ import {
   buildAgreementBlobUrl,
   downloadAgreementPDF,
 } from "../admin/components/sales/agreement/AgreementPDFGenerator";
+import PdfImagePreview from "./PdfImagePreview";
 
 
 const BRAND = "#4a5d0f";
