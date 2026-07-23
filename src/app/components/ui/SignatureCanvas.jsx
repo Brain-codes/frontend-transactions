@@ -27,6 +27,7 @@ const SignatureCanvas = ({
   // explicitly activates it. This stops accidental marks while scrolling the
   // form up/down (a common complaint on touch screens).
   const [drawingEnabled, setDrawingEnabled] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   useEffect(() => {
     initializeCanvas();
