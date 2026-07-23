@@ -105,14 +105,7 @@ serve(async (req) => {
       .from("sales")
       .select(
         `
-        id,
-        stove_serial_no,
-        agreement_image_id,
-        sales_date,
-        contact_person,
-        end_user_name,
-        partner_name,
-        status,
+        *,
         uploads:agreement_image_id (
           id,
           public_id,
