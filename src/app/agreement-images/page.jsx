@@ -28,6 +28,7 @@ import {
   ScrollText,
 } from "lucide-react";
 import agreementImagesService from "../services/agreementImagesService";
+import { getSupabase } from "@/lib/supabaseClient";
 import {
   buildAgreementBlobUrl,
   downloadAgreementPDF,
@@ -171,7 +172,47 @@ const AgreementImagesPage = () => {
       // Ignore stale responses.
       if (latestSerialRef.current !== searchSerial) return;
 
-      if (!detailsResponse.success) {
+      let details = detailsResponse.success ? detailsResponse.data : null;
+
+      // Client-side fallback: if the edge function couldn't find the sale
+      // (or is a stale deployment), try reading sales / cancelled_purchases
+      // directly so we can still render the generated agreement PDF.
+      if (!details) {
+        try {
+          const supabase = getSupabase();
+          const { data: saleRow } = await supabase
+            .from("sales")
+            .select("*")
+            .eq("stove_serial_no", searchSerial)
+            .limit(1)
+            .maybeSingle();
+
+          if (latestSerialRef.current !== searchSerial) return;
+
+          if (saleRow) {
+            details = { sale: saleRow, image: null, source: "sales" };
+          } else {
+            const { data: cancelledRow } = await supabase
+              .from("cancelled_purchases")
+              .select("*")
+              .eq("stove_serial_no", searchSerial)
+              .limit(1)
+              .maybeSingle();
+            if (latestSerialRef.current !== searchSerial) return;
+            if (cancelledRow) {
+              details = {
+                sale: cancelledRow,
+                image: null,
+                source: "cancelled_purchases",
+              };
+            }
+          }
+        } catch (fallbackErr) {
+          console.error("Direct sales lookup failed:", fallbackErr);
+        }
+      }
+
+      if (!details) {
         setError(
           detailsResponse.error ||
             `No sale found for serial number: ${searchSerial}`
@@ -179,14 +220,14 @@ const AgreementImagesPage = () => {
         return;
       }
 
-      setImageDetails(detailsResponse.data);
+      setImageDetails(details);
 
       if (imageResponse.success) {
         setCurrentImage(imageResponse.data);
       } else {
         setGeneratingPdf(true);
         try {
-          const sale = detailsResponse.data?.sale || {};
+          const sale = details.sale || {};
           const pdfUrl = await buildAgreementBlobUrl(sale);
           if (latestSerialRef.current !== searchSerial) {
             try {

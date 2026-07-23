@@ -1,44 +1,41 @@
-## Goal
+## Root cause
 
-Make the Agreement Images view search live as the user types, and reliably show the sales agreement document for the entered stove ID — the uploaded signed image when it exists, otherwise the auto-generated agreement PDF (with a working Download).
+For stove `101106583` the network trace shows the details endpoint 404s with `"No agreement image found for serial number: 101106583"`. The current source of `supabase/functions/get-agreement-image-by-serial/index.ts` returns `"No sale found for serial number: ..."` on the `details` path, so the production edge function is still the pre-fix version (never redeployed). The client relies entirely on that endpoint to obtain a `sale` object, so when it 404s the fallback PDF path in `page.jsx` never runs.
 
-## Current state (verified in `src/app/agreement-images/page.jsx`)
+## Fix (two-sided, so it works regardless of deploy timing)
 
-- Search is button/Enter-triggered via `handleSearch()`.
-- On submit it already calls both `getAgreementImageBinary` and `getAgreementImageDetails` in parallel, and if the image is missing it generates a fallback PDF via `buildAgreementBlobUrl(sale)` from `AgreementPDFGenerator.ts`.
-- `handleDownload` already downloads the uploaded image when present, or calls `downloadAgreementPDF(sale)` otherwise.
-- The edge function `get-agreement-image-by-serial` already returns sale details even when no image is on file (from prior change).
+### 1. `supabase/functions/get-agreement-image-by-serial/index.ts`
 
-So the fallback path exists — the missing piece is live search, plus a couple of correctness fixes so results don't flicker or race as the user types.
+- Keep `return_type=binary` behavior: still requires `agreement_image_id` and 404s if missing.
+- For `return_type=details`:
+  - Query `sales` by `stove_serial_no` with no image filter (already in source — this edit forces a redeploy).
+  - If no row in `sales`, also query `cancelled_purchases` by the same serial and, if found, return it as `sale` with `image: null` and `source: "cancelled_purchases"`.
+  - Only 404 when neither table has a row.
+- Add a trivial log/comment change to force the function to redeploy.
 
-## Changes
+### 2. `src/app/agreement-images/page.jsx`
 
-1. Live "search-as-you-type" in `src/app/agreement-images/page.jsx`
-   - Remove the Search button; keep only the input (with the search icon and a small inline spinner when a lookup is in flight).
-   - Add a `useEffect` on `searchTerm` that debounces ~350 ms and calls a new `runSearch(serial, { signal })` helper.
-   - Trim the value; treat length `< 4` as "not enough yet" — clear results/error and do nothing (avoids hammering the API for 1–2 char inputs).
-   - Track the latest request with an `AbortController` and a `latestSerialRef`; ignore responses whose serial no longer matches the current input. Revoke any prior `fallbackPdfUrl` before setting a new one to prevent blob leaks.
-   - Keep pressing Enter as a no-op shortcut (already effectively covered by the live effect).
+Client-side safety net so the view works even if the edge function is temporarily stale:
 
-2. Result rendering rules (unchanged behavior, tightened)
-   - If `getAgreementImageBinary` succeeds → render the uploaded image (existing right-panel viewer, zoom, print). Download button saves the JPG.
-   - If it fails but `getAgreementImageDetails` succeeds → generate the PDF via `buildAgreementBlobUrl(sale)`, render it in the existing `<iframe>` viewer, and show a subtle "Auto-generated agreement (no signed copy on file)" note. Download button calls `downloadAgreementPDF(sale)`.
-   - If details fail → show the existing error card ("No sale found for serial …").
-
-3. UX polish
-   - Show the inline spinner inside the input's right edge while `searching` or `generatingPdf` is true.
-   - When the input is cleared, reset all state (`currentImage`, `imageDetails`, `fallbackPdfUrl`, `error`) and revoke the blob URL.
+- In `runSearch`, when `detailsResponse.success === false`, fall back to reading the sale directly via the Supabase client:
+  1. `supabase.from("sales").select("*").eq("stove_serial_no", serial).maybeSingle()`
+  2. If empty, `supabase.from("cancelled_purchases").select("*").eq("stove_serial_no", serial).maybeSingle()`
+- If either returns a row, set `imageDetails = { sale: row, image: null }` and continue into the existing `buildAgreementBlobUrl(sale)` branch — the right panel renders the generated PDF and Download saves it.
+- Only show the "No sale found …" error card if the edge function AND both direct queries come back empty.
+- Preserve the existing `latestSerialRef` race-guard and blob-URL cleanup.
 
 ## Out of scope
 
-- No edge function changes (the endpoint already returns sale details without an image).
-- No changes to `AgreementPDFGenerator.ts` or `agreementImagesService.js`.
-- No changes to other views/sidebar/routes.
+- No changes to `AgreementPDFGenerator.ts`, `agreementImagesService.js`, sidebar, routing, or other views.
+- No changes to the binary/image path.
 
 ## Verification
 
-- Type a serial that has an uploaded image → image appears within ~350 ms of stopping typing; Download saves the JPG.
-- Type a serial that has a sale but no uploaded image → generated agreement PDF renders in the iframe with a "no signed copy on file" note; Download saves the PDF.
-- Type a non-existent serial → error card shows "No sale found for serial …".
-- Type quickly and then change the serial mid-flight → only the final serial's result is shown (older responses are ignored, blob URLs revoked).
-- Clear the input → view returns to the empty state.
+- Type `101106583` on `/agreement-images` → left panel shows the transaction details, right panel renders the generated User Agreement PDF, Download saves `agreement_101106583.pdf`.
+- A serial with a signed uploaded image still shows the image and downloads a JPG.
+- A truly unknown serial still shows the "No sale found …" error card.
+- Fast typing then changing the serial mid-flight still only shows the final serial's result (race guard intact).
+
+## Why this will work
+
+If Supabase hasn't yet redeployed the edge function, step 2 makes the UI succeed by hitting `sales` / `cancelled_purchases` directly under the user's RLS session. Once the redeploy from step 1 lands, the edge function alone satisfies the request and the direct-table fallback simply never runs. Both paths converge on the same `buildAgreementBlobUrl(sale)` code that is already known to render and download correctly.
