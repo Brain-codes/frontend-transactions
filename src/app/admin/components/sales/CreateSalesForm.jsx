@@ -35,6 +35,7 @@ import { validateSalesForm, isValidNgPhone, NG_PHONE_FORMAT_MESSAGE } from "../.
 import {
   createInitialFormData,
   populateFormDataForEdit,
+  normalizeSaleLocation,
   transformFormDataForAPI,
   hasFormDataChanged,
 } from "../../../utils/salesFormUtils";
@@ -243,6 +244,26 @@ const CreateSalesForm = ({
   const nigerianStates = geoData.states;
   const lgaAndStates = geoData.lgas;
 
+  const stateOptions = useMemo(() => {
+    const list = [...nigerianStates];
+    if (formData.stateBackup && !list.includes(formData.stateBackup)) {
+      list.unshift(formData.stateBackup);
+    }
+    return list;
+  }, [nigerianStates, formData.stateBackup]);
+
+  const lgaOptionsForSelectedState = useMemo(() => {
+    const options = (formData.stateBackup && lgaAndStates[formData.stateBackup]) || [];
+    const list = [...options];
+    if (formData.lgaBackup && !list.includes(formData.lgaBackup)) {
+      list.unshift(formData.lgaBackup);
+    }
+    return list;
+  }, [lgaAndStates, formData.stateBackup, formData.lgaBackup]);
+
+  const selectedLgaLabel = formData.lgaBackup || "";
+  const selectedStateLabel = formData.stateBackup || "";
+
   // Case/whitespace-insensitive lookup that returns the canonical string from `list`.
   const findCI = (list, v) => {
     const needle = String(v || "").trim().toLowerCase();
@@ -258,10 +279,15 @@ const CreateSalesForm = ({
     if (!lgaAndStates || Object.keys(lgaAndStates).length === 0) return;
     if (!formData.stateBackup && !formData.lgaBackup) return;
 
-    const stateKeys = Object.keys(lgaAndStates);
-    const canonicalState = findCI(stateKeys, formData.stateBackup) || formData.stateBackup;
-    const lgaList = lgaAndStates[canonicalState] || [];
-    const canonicalLga = findCI(lgaList, formData.lgaBackup) || formData.lgaBackup;
+    const normalizedLocation = normalizeSaleLocation(
+      {
+        stateBackup: formData.stateBackup,
+        lgaBackup: formData.lgaBackup,
+      },
+      lgaAndStates
+    );
+    const canonicalState = normalizedLocation.stateBackup;
+    const canonicalLga = normalizedLocation.lgaBackup;
 
     if (
       canonicalState !== formData.stateBackup ||
@@ -437,7 +463,7 @@ const CreateSalesForm = ({
         setIsInitializing(true); // Start initialization
         if (isEditMode && initialData) {
           // Edit mode: populate form with existing data
-          const populatedData = await populateFormDataForEdit(initialData);
+          const populatedData = await populateFormDataForEdit(initialData, lgaAndStates);
           setFormData(populatedData);
           setOriginalFormData(populatedData);
 
@@ -743,12 +769,17 @@ const CreateSalesForm = ({
   };
 
   const handleStateChange = (stateValue) => {
+    if (!stateValue) return;
     setFormData((prev) => ({
       ...prev,
       stateBackup: stateValue,
-      // Only reset LGA if we're not initializing the form
-      lgaBackup: isInitializing ? prev.lgaBackup : "",
+      lgaBackup: isInitializing || prev.stateBackup === stateValue ? prev.lgaBackup : "",
     }));
+  };
+
+  const handleLgaChange = (lgaValue) => {
+    if (!lgaValue) return;
+    handleInputChange("lgaBackup", lgaValue);
   };
 
   const handleImageUpload = async (file, type) => {
@@ -1578,45 +1609,37 @@ const CreateSalesForm = ({
           <h3 className="text-base font-semibold text-gray-900 mb-4">Location</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4">
             <FormField label="State *" error={errors.stateBackup} htmlFor="stateBackup">
-              <Select value={formData.stateBackup} onValueChange={handleStateChange}>
+              <Select
+                key={`state-${selectedStateLabel}-${stateOptions.length}`}
+                value={formData.stateBackup}
+                onValueChange={handleStateChange}
+              >
                 <SelectTrigger className={errors.stateBackup ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Select state" />
+                  <SelectValue placeholder="Select state">{selectedStateLabel || undefined}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {(() => {
-                    const list = [...nigerianStates];
-                    if (formData.stateBackup && !list.includes(formData.stateBackup)) {
-                      list.unshift(formData.stateBackup);
-                    }
-                    return list.map((state) => (
-                      <SelectItem key={state} value={state}>{state}</SelectItem>
-                    ));
-                  })()}
+                  {stateOptions.map((state) => (
+                    <SelectItem key={state} value={state}>{state}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </FormField>
             <FormField label="LGA *" error={errors.lgaBackup} htmlFor="lgaBackup">
-              <Select value={formData.lgaBackup} onValueChange={(v) => handleInputChange("lgaBackup", v)} disabled={!formData.stateBackup}>
+              <Select
+                key={`lga-${selectedStateLabel}-${selectedLgaLabel}-${lgaOptionsForSelectedState.length}`}
+                value={formData.lgaBackup}
+                onValueChange={handleLgaChange}
+                disabled={!formData.stateBackup}
+              >
                 <SelectTrigger className={errors.lgaBackup ? "border-red-500" : ""}>
-                  <SelectValue placeholder={formData.stateBackup ? "Select LGA" : "Select state first"} />
+                  <SelectValue placeholder={formData.stateBackup ? "Select LGA" : "Select state first"}>
+                    {selectedLgaLabel || undefined}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {(() => {
-                    const options = (formData.stateBackup && lgaAndStates[formData.stateBackup]) || [];
-                    const list = [...options];
-                    // Ensure the currently-selected LGA is always renderable so
-                    // Radix Select can display its label (e.g. edit mode before
-                    // geo data resolves, or a legacy LGA name not in the list).
-                    if (
-                      formData.lgaBackup &&
-                      !list.includes(formData.lgaBackup)
-                    ) {
-                      list.unshift(formData.lgaBackup);
-                    }
-                    return list.map((lga) => (
-                      <SelectItem key={lga} value={lga}>{lga}</SelectItem>
-                    ));
-                  })()}
+                  {lgaOptionsForSelectedState.map((lga) => (
+                    <SelectItem key={lga} value={lga}>{lga}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </FormField>
