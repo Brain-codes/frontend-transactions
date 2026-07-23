@@ -33,6 +33,7 @@ import {
   buildAgreementBlobUrl,
   downloadAgreementPDF,
 } from "../admin/components/sales/agreement/AgreementPDFGenerator";
+import PdfImagePreview from "./PdfImagePreview";
 
 
 const BRAND = "#4a5d0f";
@@ -645,11 +646,7 @@ const AgreementImagesPage = () => {
                         </span>
                       </div>
                       {fallbackPdfUrl ? (
-                        <iframe
-                          src={fallbackPdfUrl}
-                          title={`Generated agreement for ${sale.stove_serial_no || ""}`}
-                          className="w-full h-[75vh] bg-white"
-                        />
+                        <PdfImagePreview url={fallbackPdfUrl} />
                       ) : (
                         <div className="flex items-center justify-center h-[40vh] text-gray-500">
                           <Loader2 className="h-5 w-5 animate-spin mr-2" />
