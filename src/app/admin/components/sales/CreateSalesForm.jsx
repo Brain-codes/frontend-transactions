@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -91,6 +92,9 @@ const CreateSalesForm = ({
   const [originalFormData, setOriginalFormData] = useState(null); // For edit mode comparison
   const initializedRef = useRef(false); // Track if form has been initialized
   const [isInitializing, setIsInitializing] = useState(false); // Track if we're currently initializing
+
+  // Buyer & End User auto-fill toggle
+  const [sameAsEndUser, setSameAsEndUser] = useState(false);
 
   // File refs and states - now using extracted components
   const [stoveImagePreview, setStoveImagePreview] = useState(null);
@@ -208,6 +212,20 @@ const CreateSalesForm = ({
     }, 300);
     return () => clearTimeout(timer);
   }, [formData.phone, isEditMode, initialData?.id]);
+
+  // Auto-fill Contact Person / Buyer and Contact Phone from end-user details
+  // when the "same as end user" checkbox is selected.
+  useEffect(() => {
+    if (!sameAsEndUser) return;
+    const firstName = (formData.endUserName || "").trim();
+    const surname = (formData.endUserSurname || "").trim();
+    const fullName = [firstName, surname].filter(Boolean).join(" ");
+    setFormData((prev) => ({
+      ...prev,
+      contactPerson: fullName,
+      contactPhone: prev.phone || "",
+    }));
+  }, [sameAsEndUser, formData.endUserName, formData.endUserSurname, formData.phone]);
 
   // Centralized states + LGAs (geo-data edge fn → cache → bundled fallback).
   // Seed synchronously from cache/bundled so the first render has data, then
@@ -1329,6 +1347,16 @@ const CreateSalesForm = ({
                 placeholder="Alias or nickname"
               />
             </FormField>
+            <div className="col-span-1 md:col-span-2 lg:col-span-3 flex items-center gap-3 py-2">
+              <Checkbox
+                id="sameAsEndUser"
+                checked={sameAsEndUser}
+                onCheckedChange={(checked) => setSameAsEndUser(Boolean(checked))}
+              />
+              <Label htmlFor="sameAsEndUser" className="text-sm font-medium text-gray-700 cursor-pointer">
+                Select if End User is same as Contact Person
+              </Label>
+            </div>
             <FormField label="Contact Person / Buyer *" error={errors.contactPerson} htmlFor="contactPerson">
               <Input
                 id="contactPerson"
