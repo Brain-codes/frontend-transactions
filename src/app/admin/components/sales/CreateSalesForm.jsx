@@ -1289,6 +1289,37 @@ const CreateSalesForm = ({
         <div className="bg-[#fafafa] rounded-xl border border-gray-100 p-5">
           <h3 className="text-base font-semibold text-gray-900 mb-4">Buyer &amp; End User</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-4">
+            <FormField label="End User First Name *" error={errors.endUserName} htmlFor="endUserName">
+              <Input
+                id="endUserName"
+                value={formData.endUserName}
+                onChange={(e) => handleInputChange("endUserName", e.target.value)}
+                placeholder="End user first name"
+                className={errors.endUserName ? "border-red-500" : ""}
+              />
+            </FormField>
+            <FormField label="End User Phone *" error={errors.phone} htmlFor="phone">
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => handleInputChange("phone", e.target.value)}
+                placeholder="+234 803 123 4567"
+                className={errors.phone ? "border-red-500" : ""}
+                aria-invalid={errors.phone ? "true" : "false"}
+              />
+              {phoneChecking && !errors.phone && (
+                <p className="mt-1 text-xs text-gray-500">Checking…</p>
+              )}
+            </FormField>
+            <FormField label="AKA" htmlFor="aka">
+              <Input
+                id="aka"
+                value={formData.aka}
+                onChange={(e) => handleInputChange("aka", e.target.value)}
+                placeholder="Alias or nickname"
+              />
+            </FormField>
             <FormField label="Contact Person / Buyer *" error={errors.contactPerson} htmlFor="contactPerson">
               <Input
                 id="contactPerson"
@@ -1308,15 +1339,6 @@ const CreateSalesForm = ({
                 className={errors.contactPhone ? "border-red-500" : ""}
               />
             </FormField>
-            <FormField label="End User First Name *" error={errors.endUserName} htmlFor="endUserName">
-              <Input
-                id="endUserName"
-                value={formData.endUserName}
-                onChange={(e) => handleInputChange("endUserName", e.target.value)}
-                placeholder="End user first name"
-                className={errors.endUserName ? "border-red-500" : ""}
-              />
-            </FormField>
             <FormField label="End User Surname *" error={errors.endUserSurname} htmlFor="endUserSurname">
               <Input
                 id="endUserSurname"
@@ -1324,29 +1346,6 @@ const CreateSalesForm = ({
                 onChange={(e) => handleInputChange("endUserSurname", e.target.value)}
                 placeholder="End user surname"
                 className={errors.endUserSurname ? "border-red-500" : ""}
-              />
-            </FormField>
-            <FormField label="End User Phone *" error={errors.phone} htmlFor="phone">
-              <Input
-                id="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => handleInputChange("phone", e.target.value)}
-                placeholder="+234 803 123 4567"
-                className={errors.phone ? "border-red-500" : ""}
-                aria-invalid={errors.phone ? "true" : "false"}
-              />
-              {phoneChecking && !errors.phone && (
-                <p className="mt-1 text-xs text-gray-500">Checking…</p>
-              )}
-            </FormField>
-
-            <FormField label="AKA" htmlFor="aka">
-              <Input
-                id="aka"
-                value={formData.aka}
-                onChange={(e) => handleInputChange("aka", e.target.value)}
-                placeholder="Alias or nickname"
               />
             </FormField>
           </div>
@@ -1536,9 +1535,22 @@ const CreateSalesForm = ({
                   <SelectValue placeholder={formData.stateBackup ? "Select LGA" : "Select state first"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {formData.stateBackup && lgaAndStates[formData.stateBackup]?.map((lga) => (
-                    <SelectItem key={lga} value={lga}>{lga}</SelectItem>
-                  ))}
+                  {(() => {
+                    const options = (formData.stateBackup && lgaAndStates[formData.stateBackup]) || [];
+                    const list = [...options];
+                    // Ensure the currently-selected LGA is always renderable so
+                    // Radix Select can display its label (e.g. edit mode before
+                    // geo data resolves, or a legacy LGA name not in the list).
+                    if (
+                      formData.lgaBackup &&
+                      !list.some((l) => l.toLowerCase() === formData.lgaBackup.toLowerCase())
+                    ) {
+                      list.unshift(formData.lgaBackup);
+                    }
+                    return list.map((lga) => (
+                      <SelectItem key={lga} value={lga}>{lga}</SelectItem>
+                    ));
+                  })()}
                 </SelectContent>
               </Select>
             </FormField>
