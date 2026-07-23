@@ -28,6 +28,11 @@ import {
   ScrollText,
 } from "lucide-react";
 import agreementImagesService from "../services/agreementImagesService";
+import {
+  buildAgreementBlobUrl,
+  downloadAgreementPDF,
+} from "../admin/components/sales/agreement/AgreementPDFGenerator";
+
 
 const BRAND = "#4a5d0f";
 const BRAND_SOFT = "#eef3c4";
@@ -124,6 +129,8 @@ const AgreementImagesPage = () => {
   const [imageDetails, setImageDetails] = useState(null);
   const [error, setError] = useState("");
   const [zoom, setZoom] = useState(false);
+  const [fallbackPdfUrl, setFallbackPdfUrl] = useState(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const handleSearch = async () => {
     const searchSerial = searchTerm.trim();
@@ -135,17 +142,48 @@ const AgreementImagesPage = () => {
     setError("");
     setCurrentImage(null);
     setImageDetails(null);
+    if (fallbackPdfUrl) {
+      try {
+        URL.revokeObjectURL(fallbackPdfUrl);
+      } catch {}
+    }
+    setFallbackPdfUrl(null);
     try {
       const [imageResponse, detailsResponse] = await Promise.all([
         agreementImagesService.getAgreementImageBinary(searchSerial),
         agreementImagesService.getAgreementImageDetails(searchSerial),
       ]);
-      if (!imageResponse.success) {
-        setError(imageResponse.error);
+
+      // If we could not fetch any sale record at all, surface the error.
+      if (!detailsResponse.success) {
+        setError(
+          detailsResponse.error ||
+            `No sale found for serial number: ${searchSerial}`
+        );
         return;
       }
-      setCurrentImage(imageResponse.data);
-      if (detailsResponse.success) setImageDetails(detailsResponse.data);
+
+      setImageDetails(detailsResponse.data);
+
+      if (imageResponse.success) {
+        setCurrentImage(imageResponse.data);
+      } else {
+        // No signed image on file — generate the User Agreement PDF from the
+        // sale record so the user can still view and download it.
+        setGeneratingPdf(true);
+        try {
+          const sale = detailsResponse.data?.sale || {};
+          const pdfUrl = await buildAgreementBlobUrl(sale);
+          setFallbackPdfUrl(pdfUrl);
+        } catch (pdfErr) {
+          console.error("PDF generation failed:", pdfErr);
+          setError(
+            "No signed agreement image is on file for this stove, and the fallback agreement PDF could not be generated."
+          );
+        } finally {
+          setGeneratingPdf(false);
+        }
+      }
     } catch (e) {
       setError(e.message || "An unexpected error occurred");
     } finally {
@@ -154,13 +192,20 @@ const AgreementImagesPage = () => {
   };
 
   const handleDownload = () => {
-    if (!currentImage) return;
-    const link = document.createElement("a");
-    link.href = currentImage.imageUrl;
-    link.download = `agreement_${currentImage.serialNumber || "image"}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (currentImage) {
+      const link = document.createElement("a");
+      link.href = currentImage.imageUrl;
+      link.download = `agreement_${currentImage.serialNumber || "image"}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+    if (imageDetails?.sale) {
+      downloadAgreementPDF(imageDetails.sale).catch((err) =>
+        console.error("Download failed:", err)
+      );
+    }
   };
 
   const handlePrint = () => window.print();
@@ -171,6 +216,19 @@ const AgreementImagesPage = () => {
         agreementImagesService.cleanupImageUrl(currentImage.imageUrl);
     };
   }, [currentImage]);
+
+  useEffect(() => {
+    return () => {
+      if (fallbackPdfUrl) {
+        try {
+          URL.revokeObjectURL(fallbackPdfUrl);
+        } catch {}
+      }
+    };
+  }, [fallbackPdfUrl]);
+
+  const hasAnyResult = Boolean(currentImage || fallbackPdfUrl);
+
 
   const sale = imageDetails?.sale || {};
   const image = imageDetails?.image || {};
@@ -288,7 +346,7 @@ const AgreementImagesPage = () => {
           )}
 
           {/* Empty state */}
-          {!currentImage && !error && !searching && (
+          {!hasAnyResult && !error && !searching && !generatingPdf && (
             <Card className="text-center py-16 border-dashed">
               <CardContent>
                 <div
@@ -308,8 +366,16 @@ const AgreementImagesPage = () => {
             </Card>
           )}
 
+          {generatingPdf && !hasAnyResult && (
+            <div className="flex items-center justify-center py-24 text-gray-500">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              Generating agreement document…
+            </div>
+          )}
+
           {/* Result */}
-          {currentImage && (
+          {hasAnyResult && (
+
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 print:grid-cols-1">
               {/* Agreement Form (left) */}
               <div className="lg:col-span-3">
@@ -439,7 +505,7 @@ const AgreementImagesPage = () => {
                 </Card>
               </div>
 
-              {/* Agreement Image (right) */}
+              {/* Agreement Image / Generated PDF (right) */}
               <div className="lg:col-span-2">
                 <Card className="overflow-hidden shadow-sm sticky top-4">
                   <div
@@ -447,19 +513,30 @@ const AgreementImagesPage = () => {
                     style={{ background: BRAND_SOFT }}
                   >
                     <div className="flex items-center gap-2 text-[#4a5d0f] font-semibold text-sm">
-                      <ImageIcon className="h-4 w-4" />
-                      Signed Agreement
+                      {currentImage ? (
+                        <>
+                          <ImageIcon className="h-4 w-4" />
+                          Signed Agreement
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="h-4 w-4" />
+                          User Agreement (Generated)
+                        </>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 print:hidden">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setZoom(true)}
-                        className="text-[#4a5d0f] hover:bg-white"
-                      >
-                        <ZoomIn className="h-4 w-4 mr-1" />
-                        Zoom
-                      </Button>
+                      {currentImage && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setZoom(true)}
+                          className="text-[#4a5d0f] hover:bg-white"
+                        >
+                          <ZoomIn className="h-4 w-4 mr-1" />
+                          Zoom
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -471,21 +548,47 @@ const AgreementImagesPage = () => {
                       </Button>
                     </div>
                   </div>
-                  <div
-                    className="relative bg-[repeating-linear-gradient(45deg,#f8f8f8,#f8f8f8_10px,#f1f1f1_10px,#f1f1f1_20px)] cursor-zoom-in"
-                    onClick={() => setZoom(true)}
-                  >
-                    <img
-                      src={currentImage.imageUrl}
-                      alt={`Agreement for ${currentImage.serialNumber}`}
-                      className="w-full h-auto max-h-[75vh] object-contain mx-auto"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  </div>
+                  {currentImage ? (
+                    <div
+                      className="relative bg-[repeating-linear-gradient(45deg,#f8f8f8,#f8f8f8_10px,#f1f1f1_10px,#f1f1f1_20px)] cursor-zoom-in"
+                      onClick={() => setZoom(true)}
+                    >
+                      <img
+                        src={currentImage.imageUrl}
+                        alt={`Agreement for ${currentImage.serialNumber}`}
+                        className="w-full h-auto max-h-[75vh] object-contain mx-auto"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative bg-gray-100">
+                      <div className="px-4 py-2 text-[11px] text-amber-800 bg-amber-50 border-b border-amber-200 flex items-start gap-2">
+                        <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                        <span>
+                          No signed agreement image is on file for this sale.
+                          Showing the generated User Agreement document from the
+                          transaction record.
+                        </span>
+                      </div>
+                      {fallbackPdfUrl ? (
+                        <iframe
+                          src={fallbackPdfUrl}
+                          title={`Generated agreement for ${sale.stove_serial_no || ""}`}
+                          className="w-full h-[75vh] bg-white"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-[40vh] text-gray-500">
+                          <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                          Preparing document…
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </Card>
               </div>
+
             </div>
           )}
 

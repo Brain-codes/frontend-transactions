@@ -100,8 +100,10 @@ serve(async (req) => {
     log("🔍 Looking for agreement image with serial number:", serialNumber);
     log("📋 Return type:", returnType);
 
-    // Query to get the sale and its agreement image details
-    const { data: salesData, error: salesError } = await supabase
+    // Query to get the sale and its agreement image details.
+    // For 'details' return type we allow sales without a linked image so the
+    // UI can render a generated agreement PDF as a fallback.
+    let salesQuery = supabase
       .from("sales")
       .select(
         `
@@ -115,8 +117,13 @@ serve(async (req) => {
         )
       `
       )
-      .eq("stove_serial_no", serialNumber)
-      .not("agreement_image_id", "is", null);
+      .eq("stove_serial_no", serialNumber);
+
+    if (returnType !== "details") {
+      salesQuery = salesQuery.not("agreement_image_id", "is", null);
+    }
+
+    const { data: salesData, error: salesError } = await salesQuery;
 
     if (salesError) {
       log("❌ Database error:", salesError);
@@ -137,11 +144,14 @@ serve(async (req) => {
     }
 
     if (!salesData || salesData.length === 0) {
-      log("❌ No agreement image found for serial number:", serialNumber);
+      log("❌ No sale found for serial number:", serialNumber);
       return new Response(
         JSON.stringify({
           success: false,
-          message: `No agreement image found for serial number: ${serialNumber}`,
+          message:
+            returnType === "details"
+              ? `No sale found for serial number: ${serialNumber}`
+              : `No agreement image found for serial number: ${serialNumber}`,
         }),
         {
           status: 404,
@@ -155,6 +165,43 @@ serve(async (req) => {
 
     const saleData = salesData[0];
     const uploadData = saleData.uploads;
+
+    // Strip the nested uploads object off before returning full sale
+    const { uploads: _u, ...fullSale } = saleData as any;
+
+    // If return_type is 'details', return metadata (image may be null)
+    if (returnType === "details") {
+      log(
+        uploadData
+          ? "✅ Found sale with agreement image"
+          : "ℹ️ Found sale without agreement image — client will render fallback"
+      );
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Sale details retrieved successfully",
+          data: {
+            sale: fullSale,
+            image: uploadData
+              ? {
+                  id: uploadData.id,
+                  public_id: uploadData.public_id,
+                  url: uploadData.url,
+                  type: uploadData.type,
+                  created_at: uploadData.created_at,
+                }
+              : null,
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
 
     if (!uploadData) {
       log("❌ Agreement image data not found");
@@ -175,35 +222,6 @@ serve(async (req) => {
 
     log("✅ Found agreement image:", uploadData.public_id);
 
-    // Strip the nested uploads object off before returning full sale
-    const { uploads: _u, ...fullSale } = saleData as any;
-
-    // If return_type is 'details', return metadata only
-    if (returnType === "details") {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: "Agreement image details retrieved successfully",
-          data: {
-            sale: fullSale,
-            image: {
-              id: uploadData.id,
-              public_id: uploadData.public_id,
-              url: uploadData.url,
-              type: uploadData.type,
-              created_at: uploadData.created_at,
-            },
-          },
-        }),
-        {
-          status: 200,
-          headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
 
     // For 'binary' return type, fetch the actual image file
     // Extract the storage path from the URL
