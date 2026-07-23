@@ -4,7 +4,6 @@ import DashboardLayout from "../../components/DashboardLayout";
 import PageHeader from "../../components/PageHeader";
 import {
   Plug,
-  ArrowLeft,
   Copy,
   Eye,
   EyeOff,
@@ -270,14 +269,6 @@ console.log(data);`;
       description="Public API for external integrations"
     >
       <div className="p-6 space-y-4 max-w-5xl">
-        <a
-          href="/end-user-records"
-          className="inline-flex items-center gap-1.5 text-sm text-[#4a5d0f] hover:text-[#3d4d0c] font-medium"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to End User Records
-        </a>
-
         <PageHeader
           icon={Plug}
           title="End User Records API"
