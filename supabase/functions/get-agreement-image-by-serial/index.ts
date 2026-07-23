@@ -143,7 +143,43 @@ serve(async (req) => {
       );
     }
 
+    // v2: also check cancelled_purchases when no active sale row exists
     if (!salesData || salesData.length === 0) {
+      if (returnType === "details") {
+        log("ℹ️ No active sale row — checking cancelled_purchases");
+        const { data: cancelledData, error: cancelledError } = await supabase
+          .from("cancelled_purchases")
+          .select("*")
+          .eq("stove_serial_no", serialNumber)
+          .limit(1);
+
+        if (cancelledError) {
+          log("⚠️ cancelled_purchases lookup error:", cancelledError.message);
+        }
+
+        if (cancelledData && cancelledData.length > 0) {
+          log("✅ Found cancelled purchase for serial:", serialNumber);
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: "Sale details retrieved from cancelled_purchases",
+              data: {
+                sale: cancelledData[0],
+                image: null,
+                source: "cancelled_purchases",
+              },
+            }),
+            {
+              status: 200,
+              headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Content-Type": "application/json",
+              },
+            }
+          );
+        }
+      }
+
       log("❌ No sale found for serial number:", serialNumber);
       return new Response(
         JSON.stringify({
@@ -191,6 +227,7 @@ serve(async (req) => {
                   created_at: uploadData.created_at,
                 }
               : null,
+            source: "sales",
           },
         }),
         {
