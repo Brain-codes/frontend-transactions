@@ -98,6 +98,20 @@ Deno.serve(async (req) => {
       stateBackup,
       lgaBackup,
       addressData, // { fullAddress, street, city, state, country, latitude, longitude }
+      salesDate,
+      amount,
+      amountReceived,
+      potQuantity,
+      heatRetentionDevice,
+      previousStoveType,
+      previousStoveOther,
+      mealsPerDay,
+      cookingFuelSource,
+      cookingLocation,
+      termsAccepted,
+      signature,
+      stoveImageId,
+      agreementImageId,
     } = body ?? {};
 
     // Required + format checks
@@ -169,21 +183,52 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Update sale
+    // Build sale update object — only include fields that were provided so
+    // we never accidentally null out untouched columns.
+    const saleUpdate: Record<string, unknown> = {
+      end_user_name: endUserName,
+      aka: aka ?? null,
+      phone,
+      other_phone: otherPhone ?? null,
+      contact_person: contactPerson,
+      contact_phone: contactPhone,
+      state_backup: stateBackup ?? null,
+      lga_backup: lgaBackup ?? null,
+      updated_at: new Date().toISOString(),
+      updated_by: userId,
+    };
+    if (salesDate !== undefined) saleUpdate.sales_date = salesDate;
+    if (amount !== undefined && amount !== null && amount !== "") {
+      const parsed = Number(amount);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        return jsonError("Sale amount must be a positive number", 400);
+      }
+      saleUpdate.amount = parsed;
+    }
+    if (amountReceived !== undefined) {
+      saleUpdate.amount_received =
+        amountReceived === null || amountReceived === ""
+          ? null
+          : Number(amountReceived);
+    }
+    if (potQuantity !== undefined) {
+      saleUpdate.pot_quantity =
+        potQuantity === null || potQuantity === "" ? null : Number(potQuantity);
+    }
+    if (heatRetentionDevice !== undefined) saleUpdate.heat_retention_device = !!heatRetentionDevice;
+    if (previousStoveType !== undefined) saleUpdate.previous_stove_type = previousStoveType || null;
+    if (previousStoveOther !== undefined) saleUpdate.previous_stove_other = previousStoveOther || null;
+    if (mealsPerDay !== undefined) saleUpdate.meals_per_day = mealsPerDay || null;
+    if (cookingFuelSource !== undefined) saleUpdate.cooking_fuel_source = cookingFuelSource || null;
+    if (cookingLocation !== undefined) saleUpdate.cooking_location = cookingLocation || null;
+    if (termsAccepted !== undefined) saleUpdate.terms_accepted = termsAccepted;
+    if (signature !== undefined && signature !== null && signature !== "") saleUpdate.signature = signature;
+    if (stoveImageId !== undefined && stoveImageId !== "") saleUpdate.stove_image_id = stoveImageId || null;
+    if (agreementImageId !== undefined && agreementImageId !== "") saleUpdate.agreement_image_id = agreementImageId || null;
+
     const { data: updated, error: updErr } = await supabase
       .from("sales")
-      .update({
-        end_user_name: endUserName,
-        aka: aka ?? null,
-        phone,
-        other_phone: otherPhone ?? null,
-        contact_person: contactPerson,
-        contact_phone: contactPhone,
-        state_backup: stateBackup ?? null,
-        lga_backup: lgaBackup ?? null,
-        updated_at: new Date().toISOString(),
-        updated_by: userId,
-      })
+      .update(saleUpdate)
       .eq("id", saleId)
       .select("id")
       .maybeSingle();
