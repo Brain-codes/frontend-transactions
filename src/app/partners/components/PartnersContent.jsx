@@ -1497,6 +1497,27 @@ export default function PartnersContent() {
     return [...sortedOrgs].sort((a, b) => (((a[field] ?? 0) - (b[field] ?? 0)) * dir));
   })();
 
+  const [perfSearch, setPerfSearch] = useState("");
+  const [perfState, setPerfState] = useState("all");
+  const perfStateOptions = useMemo(
+    () => [...new Set((organizationsData || []).map((o) => o.state).filter(Boolean))].sort(),
+    [organizationsData]
+  );
+  const visibleOrgs = useMemo(() => {
+    const q = perfSearch.trim().toLowerCase();
+    return displayedOrgs.filter((o) => {
+      if (perfState !== "all" && (o.state || "") !== perfState) return false;
+      if (!q) return true;
+      return (
+        (o.partner_name || "").toLowerCase().includes(q) ||
+        (o.contact_person || "").toLowerCase().includes(q) ||
+        (o.contact_phone || "").toLowerCase().includes(q) ||
+        (o.branch || "").toLowerCase().includes(q) ||
+        (o.state || "").toLowerCase().includes(q)
+      );
+    });
+  }, [displayedOrgs, perfSearch, perfState]);
+
   const startRecord = organizationsData.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
   const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
 
