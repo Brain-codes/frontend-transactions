@@ -98,6 +98,20 @@ Deno.serve(async (req) => {
       stateBackup,
       lgaBackup,
       addressData, // { fullAddress, street, city, state, country, latitude, longitude }
+      salesDate,
+      amount,
+      amountReceived,
+      potQuantity,
+      heatRetentionDevice,
+      previousStoveType,
+      previousStoveOther,
+      mealsPerDay,
+      cookingFuelSource,
+      cookingLocation,
+      termsAccepted,
+      signature,
+      stoveImageId,
+      agreementImageId,
     } = body ?? {};
 
     // Required + format checks
