@@ -116,9 +116,56 @@ const ApiEndpointContent = () => {
   const [sample, setSample] = useState<{ status: number; ms: number; body: string } | null>(null);
   const [sampleLoading, setSampleLoading] = useState(false);
 
-  const [tryParams, setTryParams] = useState<Record<string, string>>({ page: "1", limit: "10" });
+  const DEFAULT_TRY: Record<string, string> = { page: "1", limit: "10" };
+  const [tryParams, setTryParams] = useState<Record<string, string>>(DEFAULT_TRY);
   const [tryResult, setTryResult] = useState<{ status: number; ms: number; body: string } | null>(null);
   const [tryLoading, setTryLoading] = useState(false);
+
+  // Geo data (states + LGAs) and partners for Try-it dropdowns.
+  const initialGeo = getGeoDataSync();
+  const [geo, setGeo] = useState<{ states: string[]; lgas: Record<string, string[]> }>(
+    { states: initialGeo.states, lgas: initialGeo.lgas },
+  );
+  const [partners, setPartners] = useState<Array<{ id: string; name: string }>>([]);
+
+  useEffect(() => {
+    let alive = true;
+    getGeoData().then((g) => {
+      if (alive && g?.states?.length) setGeo({ states: g.states, lgas: g.lgas });
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    let alive = true;
+    (async () => {
+      try {
+        const supabase = createClientComponentClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+        const params = new URLSearchParams({
+          limit: "500",
+          offset: "0",
+          include_admin_users: "false",
+          sortBy: "partner_name",
+          sortOrder: "asc",
+        });
+        const res = await fetch(`${supabaseFunctionsUrl}/manage-organizations?${params}`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const json = await res.json();
+        if (!res.ok || json.success === false) return;
+        const rows: Array<{ id: string; partner_name?: string; name?: string }> = json.data || [];
+        if (alive) {
+          setPartners(rows.map((r) => ({ id: r.id, name: r.partner_name || r.name || r.id })));
+        }
+      } catch {
+        /* non-fatal */
+      }
+    })();
+    return () => { alive = false; };
+  }, [isSuperAdmin]);
 
   const fetchKey = useCallback(async () => {
     if (!isSuperAdmin) {
