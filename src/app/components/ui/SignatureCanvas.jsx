@@ -260,7 +260,3 @@ const SignatureCanvas = ({
 };
 
 export default SignatureCanvas;
-  );
-};
-
-export default SignatureCanvas;
