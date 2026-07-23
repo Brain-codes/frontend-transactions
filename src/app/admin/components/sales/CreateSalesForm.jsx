@@ -243,6 +243,39 @@ const CreateSalesForm = ({
   const nigerianStates = geoData.states;
   const lgaAndStates = geoData.lgas;
 
+  // Case/whitespace-insensitive lookup that returns the canonical string from `list`.
+  const findCI = (list, v) => {
+    const needle = String(v || "").trim().toLowerCase();
+    if (!needle) return undefined;
+    return (list || []).find((x) => String(x).trim().toLowerCase() === needle);
+  };
+
+  // Reconcile persisted state/LGA to the geo catalogue's canonical casing so
+  // Radix Select (strict, case-sensitive value match) can render the saved LGA
+  // on the Edit Sale form.
+  useEffect(() => {
+    if (!isEditMode) return;
+    if (!lgaAndStates || Object.keys(lgaAndStates).length === 0) return;
+    if (!formData.stateBackup && !formData.lgaBackup) return;
+
+    const stateKeys = Object.keys(lgaAndStates);
+    const canonicalState = findCI(stateKeys, formData.stateBackup) || formData.stateBackup;
+    const lgaList = lgaAndStates[canonicalState] || [];
+    const canonicalLga = findCI(lgaList, formData.lgaBackup) || formData.lgaBackup;
+
+    if (
+      canonicalState !== formData.stateBackup ||
+      canonicalLga !== formData.lgaBackup
+    ) {
+      setFormData((prev) => ({
+        ...prev,
+        stateBackup: canonicalState,
+        lgaBackup: canonicalLga,
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode, lgaAndStates, formData.stateBackup, formData.lgaBackup]);
+
   // Helper: resolve the currently active partner organization id(s).
   // Legacy duplicate org rows share the same partner+state+branch, so a stove
   // can live on any one of them — we search/validate across the full set.
@@ -1550,9 +1583,15 @@ const CreateSalesForm = ({
                   <SelectValue placeholder="Select state" />
                 </SelectTrigger>
                 <SelectContent>
-                  {nigerianStates.map((state) => (
-                    <SelectItem key={state} value={state}>{state}</SelectItem>
-                  ))}
+                  {(() => {
+                    const list = [...nigerianStates];
+                    if (formData.stateBackup && !list.includes(formData.stateBackup)) {
+                      list.unshift(formData.stateBackup);
+                    }
+                    return list.map((state) => (
+                      <SelectItem key={state} value={state}>{state}</SelectItem>
+                    ));
+                  })()}
                 </SelectContent>
               </Select>
             </FormField>
@@ -1570,7 +1609,7 @@ const CreateSalesForm = ({
                     // geo data resolves, or a legacy LGA name not in the list).
                     if (
                       formData.lgaBackup &&
-                      !list.some((l) => l.toLowerCase() === formData.lgaBackup.toLowerCase())
+                      !list.includes(formData.lgaBackup)
                     ) {
                       list.unshift(formData.lgaBackup);
                     }
