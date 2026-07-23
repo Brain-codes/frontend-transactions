@@ -164,10 +164,9 @@ const AgreementImagesPage = () => {
     setFallbackPdfUrl(null);
 
     try {
-      const [imageResponse, detailsResponse] = await Promise.all([
-        agreementImagesService.getAgreementImageBinary(searchSerial),
-        agreementImagesService.getAgreementImageDetails(searchSerial),
-      ]);
+      const detailsResponse = await agreementImagesService.getAgreementImageDetails(
+        searchSerial
+      );
 
       // Ignore stale responses.
       if (latestSerialRef.current !== searchSerial) return;
@@ -221,6 +220,14 @@ const AgreementImagesPage = () => {
       }
 
       setImageDetails(details);
+
+      let imageResponse = { success: false, data: null };
+      if (details?.image?.id || details?.sale?.agreement_image_id) {
+        imageResponse = await agreementImagesService.getAgreementImageBinary(
+          searchSerial
+        );
+        if (latestSerialRef.current !== searchSerial) return;
+      }
 
       if (imageResponse.success) {
         setCurrentImage(imageResponse.data);
