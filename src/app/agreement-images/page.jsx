@@ -28,6 +28,11 @@ import {
   ScrollText,
 } from "lucide-react";
 import agreementImagesService from "../services/agreementImagesService";
+import {
+  buildAgreementBlobUrl,
+  downloadAgreementPDF,
+} from "../admin/components/sales/agreement/AgreementPDFGenerator";
+
 
 const BRAND = "#4a5d0f";
 const BRAND_SOFT = "#eef3c4";
