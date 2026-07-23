@@ -346,7 +346,7 @@ const AgreementImagesPage = () => {
           )}
 
           {/* Empty state */}
-          {!currentImage && !error && !searching && (
+          {!hasAnyResult && !error && !searching && !generatingPdf && (
             <Card className="text-center py-16 border-dashed">
               <CardContent>
                 <div
@@ -366,8 +366,16 @@ const AgreementImagesPage = () => {
             </Card>
           )}
 
+          {generatingPdf && !hasAnyResult && (
+            <div className="flex items-center justify-center py-24 text-gray-500">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              Generating agreement document…
+            </div>
+          )}
+
           {/* Result */}
-          {currentImage && (
+          {hasAnyResult && (
+
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 print:grid-cols-1">
               {/* Agreement Form (left) */}
               <div className="lg:col-span-3">
