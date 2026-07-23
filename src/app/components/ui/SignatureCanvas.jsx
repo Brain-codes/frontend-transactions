@@ -2,7 +2,7 @@
 import { useRef, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { PenTool, Upload, Lock } from "lucide-react";
+import { PenTool, Upload, Lock, Camera } from "lucide-react";
 import {
   getSignatureFromCanvas,
   clearSignatureCanvas,
@@ -10,6 +10,7 @@ import {
   initializeSignatureCanvas,
   getCanvasCoordinates,
 } from "../../utils/signatureUtils";
+import CameraCaptureModal from "./CameraCaptureModal";
 
 const SignatureCanvas = ({
   signature,
