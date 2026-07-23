@@ -85,7 +85,6 @@ async function parseParams(req: Request): Promise<Params> {
 const SELECT = `
   id,
   transaction_id,
-  sales_reference,
   sales_date,
   created_at,
   updated_at,
