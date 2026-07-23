@@ -1,61 +1,101 @@
 // Returns the END_USER_RECORDS_API_KEY value — restricted to super_admin users.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
+const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
 };
 
-function withCors(res: Response): Response {
-  const h = new Headers(res.headers);
-  for (const [k, v] of Object.entries(corsHeaders)) h.set(k, v);
-  return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
-}
-
 function json(status: number, body: unknown): Response {
-  return withCors(
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { "Content-Type": "application/json" },
-    })
-  );
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return withCors(new Response("ok", { status: 200 }));
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { status: 200, headers: corsHeaders });
+  }
 
   try {
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+    const ANON =
+      Deno.env.get("SUPABASE_ANON_KEY") ||
+      Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ||
+      "";
+    const SERVICE =
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
+      Deno.env.get("SERVICE_ROLE_KEY") ||
+      "";
+
+    if (!SUPABASE_URL || !ANON || !SERVICE) {
+      return json(500, {
+        success: false,
+        error: "Server not configured (missing Supabase env vars)",
+      });
+    }
+
     const authHeader = req.headers.get("Authorization") || "";
-    const userClient = createClient(
-      Deno.env.get("SUPABASE_URL") || "",
-      Deno.env.get("SUPABASE_ANON_KEY") || "",
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    if (!authHeader) {
+      return json(401, { success: false, error: "Missing Authorization header" });
+    }
+
+    const userClient = createClient(SUPABASE_URL, ANON, {
+      global: { headers: { Authorization: authHeader } },
+    });
     const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData?.user) return json(401, { success: false, error: "Unauthorized" });
+    if (userErr || !userData?.user) {
+      return json(401, { success: false, error: "Unauthorized" });
+    }
 
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL") || "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
-    );
+    const admin = createClient(SUPABASE_URL, SERVICE);
 
-    let isSuperAdmin = userData.user.email === "superadmin@mail.com";
+    // Prefer has_role RPC (matches rest of app); fall back to profiles.role;
+    // final fallback to the well-known super admin email.
+    let isSuperAdmin = false;
+    try {
+      const { data: hasRole } = await admin.rpc("has_role", {
+        _user_id: userData.user.id,
+        _role: "super_admin",
+      });
+      if (hasRole === true) isSuperAdmin = true;
+    } catch (_) {
+      // RPC may not exist — fall through
+    }
+
     if (!isSuperAdmin) {
       const { data: profile } = await admin
         .from("profiles")
         .select("role")
         .eq("id", userData.user.id)
-        .single();
-      isSuperAdmin = profile?.role === "super_admin";
+        .maybeSingle();
+      if (profile?.role === "super_admin") isSuperAdmin = true;
     }
-    if (!isSuperAdmin) return json(403, { success: false, error: "Super admin access required" });
+
+    if (!isSuperAdmin && userData.user.email === "superadmin@mail.com") {
+      isSuperAdmin = true;
+    }
+
+    if (!isSuperAdmin) {
+      return json(403, { success: false, error: "Super admin access required" });
+    }
 
     const key = Deno.env.get("END_USER_RECORDS_API_KEY") || "";
-    if (!key) return json(500, { success: false, error: "API key not configured" });
+    if (!key) {
+      return json(500, {
+        success: false,
+        error: "END_USER_RECORDS_API_KEY not configured",
+      });
+    }
 
     return json(200, { success: true, api_key: key });
   } catch (e) {
-    return json(500, { success: false, error: (e as Error).message });
+    return json(500, {
+      success: false,
+      error: (e as Error).message || "Internal error",
+    });
   }
 });
