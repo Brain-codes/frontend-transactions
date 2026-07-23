@@ -1,4 +1,5 @@
 // Delete operations for super-admin-agents
+import { cleanupUserDependencies, deleteProfileAndAuthUser } from "../_shared/deleteUserCleanup.ts";
 
 export async function deleteAgent(supabase: any, agentId: string, adminId: string, managerScopeId: string | null = null) {
   console.log("🗑️ Deleting agent:", agentId);
@@ -22,29 +23,13 @@ export async function deleteAgent(supabase: any, agentId: string, adminId: strin
     throw new Error(`Database error: ${checkError.message}`);
   }
 
-  // Remove all org assignments first (also handled by CASCADE, but explicit is safer)
-  await supabase
-    .from("acsl_agent_organizations")
-    .delete()
-    .eq("agent_id", agentId);
+  await cleanupUserDependencies(supabase, {
+    userId: agentId,
+    replacementUserId: adminId,
+    email: existing.email,
+  });
 
-  // Delete from Auth (cascades to profiles)
-  const { error: authDeleteError } = await supabase.auth.admin.deleteUser(agentId);
-
-  if (authDeleteError) {
-    throw new Error(`Failed to delete agent: ${authDeleteError.message}`);
-  }
-
-  // Verify profile is gone; clean up manually if needed
-  const { data: stillExists } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("id", agentId)
-    .maybeSingle();
-
-  if (stillExists) {
-    await supabase.from("profiles").delete().eq("id", agentId);
-  }
+  await deleteProfileAndAuthUser(supabase, agentId);
 
   console.log("✅ Agent deleted:", agentId);
 

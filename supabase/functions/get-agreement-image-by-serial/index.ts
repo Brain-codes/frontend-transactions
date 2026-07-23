@@ -100,19 +100,14 @@ serve(async (req) => {
     log("🔍 Looking for agreement image with serial number:", serialNumber);
     log("📋 Return type:", returnType);
 
-    // Query to get the sale and its agreement image details
-    const { data: salesData, error: salesError } = await supabase
+    // Query to get the sale and its agreement image details.
+    // For 'details' return type we allow sales without a linked image so the
+    // UI can render a generated agreement PDF as a fallback.
+    let salesQuery = supabase
       .from("sales")
       .select(
         `
-        id,
-        stove_serial_no,
-        agreement_image_id,
-        sales_date,
-        contact_person,
-        end_user_name,
-        partner_name,
-        status,
+        *,
         uploads:agreement_image_id (
           id,
           public_id,
@@ -122,8 +117,13 @@ serve(async (req) => {
         )
       `
       )
-      .eq("stove_serial_no", serialNumber)
-      .not("agreement_image_id", "is", null);
+      .eq("stove_serial_no", serialNumber);
+
+    if (returnType !== "details") {
+      salesQuery = salesQuery.not("agreement_image_id", "is", null);
+    }
+
+    const { data: salesData, error: salesError } = await salesQuery;
 
     if (salesError) {
       log("❌ Database error:", salesError);
@@ -143,12 +143,51 @@ serve(async (req) => {
       );
     }
 
+    // v2: also check cancelled_purchases when no active sale row exists
     if (!salesData || salesData.length === 0) {
-      log("❌ No agreement image found for serial number:", serialNumber);
+      if (returnType === "details") {
+        log("ℹ️ No active sale row — checking cancelled_purchases");
+        const { data: cancelledData, error: cancelledError } = await supabase
+          .from("cancelled_purchases")
+          .select("*")
+          .eq("stove_serial_no", serialNumber)
+          .limit(1);
+
+        if (cancelledError) {
+          log("⚠️ cancelled_purchases lookup error:", cancelledError.message);
+        }
+
+        if (cancelledData && cancelledData.length > 0) {
+          log("✅ Found cancelled purchase for serial:", serialNumber);
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: "Sale details retrieved from cancelled_purchases",
+              data: {
+                sale: cancelledData[0],
+                image: null,
+                source: "cancelled_purchases",
+              },
+            }),
+            {
+              status: 200,
+              headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Content-Type": "application/json",
+              },
+            }
+          );
+        }
+      }
+
+      log("❌ No sale found for serial number:", serialNumber);
       return new Response(
         JSON.stringify({
           success: false,
-          message: `No agreement image found for serial number: ${serialNumber}`,
+          message:
+            returnType === "details"
+              ? `No sale found for serial number: ${serialNumber}`
+              : `No agreement image found for serial number: ${serialNumber}`,
         }),
         {
           status: 404,
@@ -162,6 +201,44 @@ serve(async (req) => {
 
     const saleData = salesData[0];
     const uploadData = saleData.uploads;
+
+    // Strip the nested uploads object off before returning full sale
+    const { uploads: _u, ...fullSale } = saleData as any;
+
+    // If return_type is 'details', return metadata (image may be null)
+    if (returnType === "details") {
+      log(
+        uploadData
+          ? "✅ Found sale with agreement image"
+          : "ℹ️ Found sale without agreement image — client will render fallback"
+      );
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Sale details retrieved successfully",
+          data: {
+            sale: fullSale,
+            image: uploadData
+              ? {
+                  id: uploadData.id,
+                  public_id: uploadData.public_id,
+                  url: uploadData.url,
+                  type: uploadData.type,
+                  created_at: uploadData.created_at,
+                }
+              : null,
+            source: "sales",
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
 
     if (!uploadData) {
       log("❌ Agreement image data not found");
@@ -182,40 +259,6 @@ serve(async (req) => {
 
     log("✅ Found agreement image:", uploadData.public_id);
 
-    // If return_type is 'details', return metadata only
-    if (returnType === "details") {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: "Agreement image details retrieved successfully",
-          data: {
-            sale: {
-              id: saleData.id,
-              stove_serial_no: saleData.stove_serial_no,
-              sales_date: saleData.sales_date,
-              contact_person: saleData.contact_person,
-              end_user_name: saleData.end_user_name,
-              partner_name: saleData.partner_name,
-              status: saleData.status,
-            },
-            image: {
-              id: uploadData.id,
-              public_id: uploadData.public_id,
-              url: uploadData.url,
-              type: uploadData.type,
-              created_at: uploadData.created_at,
-            },
-          },
-        }),
-        {
-          status: 200,
-          headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
 
     // For 'binary' return type, fetch the actual image file
     // Extract the storage path from the URL

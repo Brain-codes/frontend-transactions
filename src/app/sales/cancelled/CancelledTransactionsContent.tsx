@@ -23,7 +23,10 @@ interface CancelledSale {
   stove_serial_no: string | null;
   cancel_reason: string | null;
   cancelled_at: string | null;
+  cancelled_by: string | null;
+  cancelled_by_name?: string | null;
 }
+
 
 const formatDate = (d?: string | null) => {
   if (!d) return "N/A";
@@ -53,7 +56,7 @@ export default function CancelledTransactionsContent() {
         let { data, error } = await supabase
           .from("sales")
           .select(
-            "id, transaction_id, sales_date, created_at, end_user_name, state_backup, stove_serial_no, cancel_reason, cancelled_at"
+            "id, transaction_id, sales_date, created_at, end_user_name, state_backup, stove_serial_no, cancel_reason, cancelled_at, cancelled_by"
           )
           .not("cancelled_at", "is", null)
           .order("cancelled_at", { ascending: false })
@@ -74,10 +77,32 @@ export default function CancelledTransactionsContent() {
             ...r,
             cancel_reason: null,
             cancelled_at: null,
+            cancelled_by: null,
           }));
         }
 
-        if (!cancelled) setRows((data as CancelledSale[]) || []);
+        let rowsData = (data as CancelledSale[]) || [];
+
+        // Resolve cancelled_by uuid -> profile name
+        const ids = Array.from(
+          new Set(rowsData.map((r) => r.cancelled_by).filter(Boolean) as string[])
+        );
+        if (ids.length > 0) {
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, full_name, email")
+            .in("id", ids);
+          const map = new Map(
+            (profiles || []).map((p: any) => [p.id, p.full_name || p.email || null])
+          );
+          rowsData = rowsData.map((r) => ({
+            ...r,
+            cancelled_by_name: r.cancelled_by ? map.get(r.cancelled_by) ?? null : null,
+          }));
+        }
+
+        if (!cancelled) setRows(rowsData);
+
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Failed to load cancelled transactions");
       } finally {
@@ -99,11 +124,13 @@ export default function CancelledTransactionsContent() {
         r.state_backup,
         r.stove_serial_no,
         r.cancel_reason,
+        r.cancelled_by_name,
       ]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q))
     );
   }, [rows, search]);
+
 
   return (
     <DashboardLayout currentRoute="sales-cancelled" title="Cancelled Transactions">
@@ -140,20 +167,21 @@ export default function CancelledTransactionsContent() {
                 <TableHead className="text-white font-semibold">End User</TableHead>
                 <TableHead className="text-white font-semibold">State</TableHead>
                 <TableHead className="text-white font-semibold">Stove ID</TableHead>
+                <TableHead className="text-white font-semibold">Cancelled By</TableHead>
                 <TableHead className="text-white font-semibold">Reason for Cancel</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-gray-500">
+                  <TableCell colSpan={7} className="py-8 text-center text-gray-500">
                     <Loader2 className="h-5 w-5 animate-spin inline mr-2" />
                     Loading cancelled transactions...
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-gray-500">
+                  <TableCell colSpan={7} className="py-8 text-center text-gray-500">
                     No cancelled transactions found.
                   </TableCell>
                 </TableRow>
@@ -168,12 +196,14 @@ export default function CancelledTransactionsContent() {
                     <TableCell>{r.end_user_name || "N/A"}</TableCell>
                     <TableCell>{r.state_backup || "N/A"}</TableCell>
                     <TableCell className="font-mono">{r.stove_serial_no || "N/A"}</TableCell>
+                    <TableCell>{r.cancelled_by_name || <span className="text-gray-400 italic">Unknown</span>}</TableCell>
                     <TableCell className="text-gray-700">
                       {r.cancel_reason || <span className="text-gray-400 italic">No reason provided</span>}
                     </TableCell>
                   </TableRow>
                 ))
               )}
+
             </TableBody>
           </Table>
         </div>

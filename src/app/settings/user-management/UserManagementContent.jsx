@@ -1114,17 +1114,14 @@ const UserManagementPage = () => {
       if (isOrgBound) {
         // Organization-bound roles bind via profiles.organization_id only.
         // Skip super-admin-agents endpoints — they 404 for non-ACSL roles.
-      } else {
-        // Persist assignment updates (overwrites prior assignments). If the user
-        // group changes to one without these assignments, clear stale links so
-        // old manager/partner relationships do not leak into profile views later.
-        const shouldHaveStates = role === "acsl_agent_manager" || role === "acsl_agent";
-        const shouldHavePartners = role === "acsl_agent_manager" || role === "acsl_agent" || role === "partner";
+      } else if (role === "acsl_agent_manager" || role === "acsl_agent") {
+        // The super-admin-agents endpoints only accept ACSL agent roles; skip
+        // them for anything else to avoid 404 "Agent not found" responses.
         try {
-          await superAdminAgentService.setAgentStates(selectedUser.id, shouldHaveStates ? Array.from(selectedStates) : []);
+          await superAdminAgentService.setAgentStates(selectedUser.id, Array.from(selectedStates));
         } catch { /* non-fatal */ }
         try {
-          await superAdminAgentService.setAgentOrganizations(selectedUser.id, shouldHavePartners ? Array.from(selectedPartnerIds) : []);
+          await superAdminAgentService.setAgentOrganizations(selectedUser.id, Array.from(selectedPartnerIds));
           if (role === "acsl_agent") {
             await persistAgentSupervisorMarker(selectedUser.id, Array.from(selectedPartnerIds), Array.from(selectedManagerIds));
           }
@@ -1177,7 +1174,7 @@ const UserManagementPage = () => {
         { method: "DELETE", headers: { Authorization: `Bearer ${session.access_token}` } },
       );
       const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Failed to delete user");
+      if (!res.ok) throw new Error(result.error || result.message || "Failed to delete user");
 
       toast({ variant: "success", title: "User deleted successfully" });
       setShowDeleteModal(false);

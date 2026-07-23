@@ -114,23 +114,31 @@ Deno.serve(async (req) => {
       return jsonError(`Contact phone: ${PHONE_FORMAT_MESSAGE}`, 400);
     }
 
-    // End-user phone uniqueness (digits-only, excluding this sale).
+    // End-user phone uniqueness (excluding this sale).
     // Skip when the phone is unchanged from the current sale's stored phone.
+    //
+    // Compare the LAST 10 DIGITS, not the full digit string — "08031234567"
+    // and "2348031234567" are the same subscriber. This matters twice here:
+    // re-saving a sale in the other notation counts as unchanged (no needless
+    // lookup), and a genuine clash in a different notation is caught. Same key
+    // as `create-sale`, `get-end-user-phones` and the mobile app; if these
+    // drift apart the create and edit paths disagree about what's a duplicate.
     {
       const phoneDigits = String(phone).replace(/\D+/g, "");
       const currentDigits = String(sale.phone ?? "").replace(/\D+/g, "");
-      if (phoneDigits && phoneDigits !== currentDigits) {
-        const tail = phoneDigits.slice(-10);
+      const tail = phoneDigits.slice(-10);
+      const currentTail = currentDigits.slice(-10);
+      if (phoneDigits && tail !== currentTail) {
         const { data: dupes } = await supabase
           .from("sales")
           .select("id, transaction_id, phone")
           .neq("id", saleId)
           .ilike("phone", `%${tail}%`)
           .limit(100);
-        const clash = (dupes ?? []).find(
-          (r: { phone: string | null }) =>
-            String(r.phone ?? "").replace(/\D+/g, "") === phoneDigits
-        );
+        const clash = (dupes ?? []).find((r: { phone: string | null }) => {
+          const rowDigits = String(r.phone ?? "").replace(/\D+/g, "");
+          return rowDigits.length >= 10 && rowDigits.slice(-10) === tail;
+        });
         if (clash) {
           return jsonError(
             `This end user phone is already used on sale ${clash.transaction_id}.`,

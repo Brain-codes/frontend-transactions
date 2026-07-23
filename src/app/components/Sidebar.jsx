@@ -67,8 +67,8 @@ const allNavItems = [
       { name: "Sell Stove", route: "sales-create", href: "/sales/create" },
       { name: "Sales Records", route: "sales", href: "/sales" },
       { name: "Cancelled Transactions", route: "sales-cancelled", href: "/sales/cancelled" },
-      { name: "Cancelled Purchases", route: "sales-cancelled-purchases", href: "/sales/cancelled-purchases" },
       { name: "Purchases from ACSL", route: "stove-transfer-history", href: "/stove-transfer-history" },
+      { name: "Cancelled Purchases", route: "sales-cancelled-purchases", href: "/sales/cancelled-purchases" },
       { name: "Agreement Images", route: "agreement-images", href: "/agreement-images" },
       { name: "Map", route: "map", href: "/map" },
     ],
@@ -77,6 +77,9 @@ const allNavItems = [
   { name: "Stove Users Data", icon: FileText, route: "end-user-records", href: "/end-user-records" },
 
   { name: "Track Stoves", icon: Tag, route: "stove-management", href: "/stove-management" },
+
+  { name: "API Documentation", icon: FileText, route: "docs", href: "/end-user-records/api" },
+
   {
     name: "Settings",
     icon: Settings,
@@ -94,7 +97,7 @@ const allNavItems = [
 const Sidebar = ({ isOpen, onClose, currentRoute }) => {
   const router = useRouter();
   const { isAcslAgent, isAcslAgentManager } = useAuth();
-  const { canRoute } = usePermissions();
+  const { canRoute, isSuperAdmin } = usePermissions();
 
   const [expandedItems, setExpandedItems] = useState({});
 
@@ -106,6 +109,8 @@ const Sidebar = ({ isOpen, onClose, currentRoute }) => {
   // and drop the parent if no children are visible.
   const navItems = allNavItems
     .map((item) => {
+      // Documentation is restricted to super admins only.
+      if (item.route === "docs" && !isSuperAdmin) return null;
       if (item.children) {
         const visibleChildren = item.children.filter((c) => canRoute(c.route));
         if (visibleChildren.length === 0) return null;

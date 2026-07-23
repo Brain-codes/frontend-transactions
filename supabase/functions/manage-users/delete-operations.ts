@@ -1,6 +1,7 @@
 // Delete operations for users
 
 import { userInScope, CallerContext, CallerScope } from "./scope.ts";
+import { cleanupUserDependencies, deleteProfileAndAuthUser } from "../_shared/deleteUserCleanup.ts";
 
 export async function deleteUser(
   supabase: any,
@@ -46,43 +47,13 @@ export async function deleteUser(
 
     console.log("🔍 User found, proceeding with deletion");
 
-    // Delete from Auth (this should cascade to profiles due to foreign key constraints)
-    const { error: authDeleteError } = await supabase.auth.admin.deleteUser(
-      userId
-    );
+    await cleanupUserDependencies(supabase, {
+      userId,
+      replacementUserId: caller.id,
+      email: existingUser.email,
+    });
 
-    if (authDeleteError) {
-      console.error("❌ Error deleting user from Auth:", authDeleteError);
-      throw new Error(`Failed to delete user: ${authDeleteError.message}`);
-    }
-
-    console.log("✅ User deleted successfully from Auth");
-
-    // Verify deletion from profiles table
-    const { data: stillExists, error: verifyError } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (verifyError) {
-      console.warn("⚠️ Error verifying deletion:", verifyError.message);
-    }
-
-    if (stillExists) {
-      // If profile still exists, delete it manually
-      const { error: profileDeleteError } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("id", userId);
-
-      if (profileDeleteError) {
-        console.error("❌ Error deleting profile:", profileDeleteError);
-        throw new Error(
-          `Failed to delete user profile: ${profileDeleteError.message}`
-        );
-      }
-    }
+    await deleteProfileAndAuthUser(supabase, userId);
 
     console.log("✅ User completely deleted:", userId);
 

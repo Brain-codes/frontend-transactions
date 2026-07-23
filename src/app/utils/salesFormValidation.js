@@ -12,6 +12,10 @@ import { isValidSignature } from "./signatureUtils";
  *   +2348031234567       (with +234 country code)
  *   2348031234567        (13 digits, leading 234)
  * Spaces, dashes and parens in the raw value are ignored.
+ *
+ * Mirrored by `PhoneUtils.isValidNigerianPhone` in the mobile app — keep the
+ * two in step, and note this one additionally enforces the NG mobile prefix
+ * ([7-9][0-1]), so it is the stricter of the pair.
  */
 export const isValidNgPhone = (raw) => {
   if (!raw) return false;
@@ -102,15 +106,11 @@ export const validateSalesForm = (formData) => {
     errors.stoveSerialNo = "Stove serial number is required";
   }
 
-  // Address validation - must be selected from Google Places
+  // Address validation — free text is allowed. The address may be typed
+  // manually (a "raw" address not on Google Maps); GPS coordinates are OPTIONAL
+  // and default to 0,0 on submit when the address was not picked from Google.
   if (!formData.addressData.fullAddress.trim()) {
-    errors.address =
-      "Residential address is required (select from suggestions)";
-  }
-
-  if (!formData.addressData.latitude || !formData.addressData.longitude) {
-    errors.location =
-      "Please select a valid address from the suggestions to get GPS coordinates";
+    errors.address = "Residential address is required";
   }
 
   // Image validation
@@ -180,6 +180,9 @@ export const fieldValidators = {
     if (!value?.trim()) {
       return "Contact phone number is required";
     }
+    if (!isValidNgPhone(value)) {
+      return NG_PHONE_FORMAT_MESSAGE;
+    }
     return null;
   },
 
@@ -208,6 +211,9 @@ export const fieldValidators = {
     if (!value?.trim()) {
       return "End user phone number is required";
     }
+    if (!isValidNgPhone(value)) {
+      return NG_PHONE_FORMAT_MESSAGE;
+    }
     return null;
   },
 
@@ -227,17 +233,14 @@ export const fieldValidators = {
 
   address: (addressData) => {
     if (!addressData?.fullAddress?.trim()) {
-      return "Residential address is required (select from suggestions)";
+      return "Residential address is required";
     }
     return null;
   },
 
-  location: (addressData) => {
-    if (!addressData?.latitude || !addressData?.longitude) {
-      return "Please select a valid address from the suggestions to get GPS coordinates";
-    }
-    return null;
-  },
+  // GPS is optional — a manually typed ("raw") address that isn't on Google
+  // Maps is allowed. Coordinates default to 0,0 on submit when not provided.
+  location: () => null,
 
   stoveImage: () => {
     // Stove photo is optional — never blocks submission.

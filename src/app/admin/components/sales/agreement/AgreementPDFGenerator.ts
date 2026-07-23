@@ -51,8 +51,39 @@ const tryLoadImage = (src: string): Promise<HTMLImageElement | null> =>
     }
   });
 
+// jsPDF embeds an HTMLImageElement at its full natural resolution as raw
+// bitmap data (a 1292x624 PNG costs ~3 MB in the file). Downscale to what the
+// print size actually needs at 200 DPI and hand jsPDF a flattened JPEG so the
+// agreement stays in the tens of KB.
+const MM_PER_INCH = 25.4;
+const TARGET_DPI = 200;
+
+const toPrintJpeg = (
+  img: HTMLImageElement,
+  widthMm: number,
+  heightMm: number
+): string | null => {
+  try {
+    const maxW = Math.round((widthMm / MM_PER_INCH) * TARGET_DPI);
+    const maxH = Math.round((heightMm / MM_PER_INCH) * TARGET_DPI);
+    const scale = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    // flatten transparency onto the white page background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } catch {
+    return null;
+  }
+};
+
 export const generateAgreementPDF = async (sale: any): Promise<jsPDF> => {
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const doc = new jsPDF({ unit: "mm", format: "a4", compress: true });
 
   // ── Layout constants ───────────────────────────────────────────────────────
   const L = 8; // left margin
@@ -112,9 +143,10 @@ export const generateAgreementPDF = async (sale: any): Promise<jsPDF> => {
   const headerH = 20;
   // atmosfair logo (left) — real asset from /logo.png, aspect ~3:1
   const atmosLogo = await tryLoadImage("/logo.png");
-  if (atmosLogo) {
+  const atmosData = atmosLogo ? toPrintJpeg(atmosLogo, 45, 15) : null;
+  if (atmosData) {
     try {
-      doc.addImage(atmosLogo, "PNG", L, y + 2, 45, 15);
+      doc.addImage(atmosData, "JPEG", L, y + 2, 45, 15, "atmoslogo", "FAST");
     } catch {
       /* ignore */
     }
@@ -148,7 +180,10 @@ export const generateAgreementPDF = async (sale: any): Promise<jsPDF> => {
     try {
       const sw = 33;
       const sh = sw / 2.07;
-      doc.addImage(save80Logo, "PNG", R - sw, y + 2, sw, sh);
+      const save80Data = toPrintJpeg(save80Logo, sw, sh);
+      if (save80Data) {
+        doc.addImage(save80Data, "JPEG", R - sw, y + 2, sw, sh, "save80logo", "FAST");
+      }
     } catch {
       /* ignore */
     }
@@ -484,9 +519,10 @@ export const generateAgreementPDF = async (sale: any): Promise<jsPDF> => {
     // signature image
     if (sale?.signature) {
       const sig = await tryLoadImage(`data:image/png;base64,${sale.signature}`);
-      if (sig) {
+      const sigData = sig ? toPrintJpeg(sig, 50, 11) : null;
+      if (sigData) {
         try {
-          doc.addImage(sig, "PNG", L + 4, y + 5, 50, 11);
+          doc.addImage(sigData, "JPEG", L + 4, y + 5, 50, 11, "signature", "FAST");
         } catch {
           /* ignore */
         }

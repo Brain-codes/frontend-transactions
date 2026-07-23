@@ -261,6 +261,24 @@ export async function updateUser(
     // Separate password from profile-updatable fields
     const { password: newPassword, ...profileUpdates } = validatedData;
 
+    // Some deployments have a DB trigger that overwrites profiles.full_name
+    // from auth.users.raw_user_meta_data->>'full_name' whenever profiles is
+    // updated. If we update profiles first, the trigger reverts full_name.
+    // Update auth user_metadata FIRST so any subsequent trigger reads the
+    // correct value.
+    const authMetaPatch: Record<string, unknown> = {};
+    if (profileUpdates.full_name !== undefined) authMetaPatch.full_name = profileUpdates.full_name;
+    if (profileUpdates.phone !== undefined) authMetaPatch.phone = profileUpdates.phone;
+    if (profileUpdates.role !== undefined) authMetaPatch.role = profileUpdates.role;
+    if (Object.keys(authMetaPatch).length > 0) {
+      const { error: metaErr } = await supabase.auth.admin.updateUserById(userId, {
+        user_metadata: authMetaPatch,
+      });
+      if (metaErr) {
+        console.warn("⚠️ Failed to sync auth user_metadata:", metaErr.message);
+      }
+    }
+
     // Update the profile (only if there are profile-level fields to update)
     let updatedUser: any = existingUser;
     if (Object.keys(profileUpdates).length > 0) {
@@ -276,6 +294,30 @@ export async function updateUser(
         throw new Error(`Database error: ${updateError.message}`);
       }
       updatedUser = profileRow;
+
+      // Re-read after any AFTER triggers have run, so the response reflects
+      // the actual persisted state (not the RETURNING snapshot).
+      const { data: refreshed } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, phone, role, status, created_at")
+        .eq("id", userId)
+        .single();
+      if (refreshed) updatedUser = refreshed;
+
+      // Belt-and-braces: if a trigger still reverted full_name to something
+      // other than what we sent, write it back once more directly.
+      if (
+        profileUpdates.full_name !== undefined &&
+        updatedUser.full_name !== profileUpdates.full_name
+      ) {
+        const { data: forced } = await supabase
+          .from("profiles")
+          .update({ full_name: profileUpdates.full_name })
+          .eq("id", userId)
+          .select("id, full_name, email, phone, role, status, created_at")
+          .single();
+        if (forced) updatedUser = forced;
+      }
     }
 
     // If email was updated, update it in Auth as well

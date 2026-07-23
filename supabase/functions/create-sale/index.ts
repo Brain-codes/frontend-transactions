@@ -175,6 +175,11 @@ Deno.serve(async (req) => {
       if (phoneDigits.length < 7) {
         return jsonError("End user phone number is invalid", 400);
       }
+      // Compare the last 10 digits, NOT the full digit string: "08031234567"
+      // (11 digits) and "2348031234567" (13) are the same subscriber, and a
+      // full-string comparison lets the same customer through twice in
+      // different formats. This tail is the shared comparison key — the mobile
+      // app (`PhoneUtils.normalizePhone`) and `get-end-user-phones` use it too.
       const tail = phoneDigits.slice(-10);
       const { data: dupes, error: dupErr } = await supabase
         .from("sales")
@@ -184,10 +189,10 @@ Deno.serve(async (req) => {
       if (dupErr) {
         console.error("Duplicate-phone check failed:", dupErr);
       } else {
-        const clash = (dupes ?? []).find(
-          (r: { phone: string | null }) =>
-            String(r.phone ?? "").replace(/\D+/g, "") === phoneDigits
-        );
+        const clash = (dupes ?? []).find((r: { phone: string | null }) => {
+          const rowDigits = String(r.phone ?? "").replace(/\D+/g, "");
+          return rowDigits.length >= 10 && rowDigits.slice(-10) === tail;
+        });
         if (clash) {
           return jsonError(
             `This end user phone is already used on sale ${clash.transaction_id}. Each sale must have a unique end user phone number.`,

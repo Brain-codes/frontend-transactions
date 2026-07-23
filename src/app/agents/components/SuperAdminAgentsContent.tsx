@@ -1225,7 +1225,6 @@ function AgentsListModal({
       return (
         (a.full_name || "").toLowerCase().includes(q) ||
         (a.email || "").toLowerCase().includes(q) ||
-        (a.phone || "").toLowerCase().includes(q) ||
         (a.role || "").toLowerCase().includes(q)
       );
     });
@@ -1240,9 +1239,9 @@ function AgentsListModal({
       const s = String(v ?? "");
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = ["Full Name", "Role", "Email", "Phone", "Status", "Assigned Partners", "Assigned States", "Created"];
+    const header = ["Full Name", "Role", "Email", "Status", "Assigned Partners", "Assigned States", "Created"];
     const body = filtered.map((a) => [
-      esc(a.full_name), esc(ROLE_LABELS[a.role] || a.role), esc(a.email), esc(a.phone || ""),
+      esc(a.full_name), esc(ROLE_LABELS[a.role] || a.role), esc(a.email),
       esc(a.status), esc(a.total_partners_count ?? a.assigned_organizations_count ?? 0),
       esc(a.assigned_states_count ?? 0),
       esc(a.created_at ? new Date(a.created_at).toISOString().split("T")[0] : ""),
@@ -1271,7 +1270,7 @@ function AgentsListModal({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, email, phone or role..."
+              placeholder="Search name, email or role..."
               className="pl-8"
             />
           </div>
@@ -3039,7 +3038,8 @@ export default function SuperAdminAgentsContent() {
         {/* Table */}
         <div className="space-y-0">
           <div className="flex flex-wrap items-center justify-between gap-3 px-1 pb-2">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <h3 className="text-sm font-semibold text-gray-900">Agents Performance</h3>
               <div className="relative">
                 <Search className="h-4 w-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
@@ -3086,7 +3086,6 @@ export default function SuperAdminAgentsContent() {
               <TableHeader>
                 <TableRow style={{ backgroundColor: "#4a5d0f" }} className="hover:bg-transparent">
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Full Name</TableHead>
-                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Phone Number</TableHead>
                   <TableHead className="text-white font-semibold text-sm whitespace-nowrap text-center">
                     <button type="button" onClick={() => cycleStoveSort("states")} className="inline-flex items-center gap-1 hover:underline">
                       States Assigned <StoveSortIcon col="states" />
@@ -3112,7 +3111,7 @@ export default function SuperAdminAgentsContent() {
                       Records not collected <StoveSortIcon col="in_stock" />
                     </button>
                   </TableHead>
-                  
+                  <TableHead className="text-white font-semibold text-sm whitespace-nowrap">Sell-through</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className={loading ? "opacity-40" : ""}>
@@ -3141,9 +3140,6 @@ export default function SuperAdminAgentsContent() {
                         <sup className="ml-0.5 text-[9px] text-blue-600 font-semibold">
                           {AGENTS_PERFORMANCE_ROLE_LABELS[agent.role] || agent.role}
                         </sup>
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-700">
-                        {agent.phone || ""}
                       </TableCell>
                       <TableCell className="text-center">
                         <button
@@ -3212,6 +3208,21 @@ export default function SuperAdminAgentsContent() {
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
+                      </TableCell>
+                      <TableCell className="align-middle min-w-[140px]">
+                        {(() => {
+                          const total = agent.stove_summary?.received ?? 0;
+                          const sold = agent.stove_summary?.sold ?? 0;
+                          const pct = total > 0 ? (sold / total) * 100 : 0;
+                          return (
+                            <div className="flex items-center gap-2">
+                              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                                <div className="h-full bg-[#4a5d0f]" style={{ width: `${Math.round(pct)}%` }} />
+                              </div>
+                              <span className="w-12 text-right text-[11px] text-gray-600">{pct.toFixed(1)}%</span>
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                     </TableRow>
                   ))

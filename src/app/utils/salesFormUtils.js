@@ -210,7 +210,14 @@ export const transformFormDataForAPI = (formData, isEdit = false) => {
     stoveSerialNo: formData.stoveSerialNo,
     stateBackup: formData.stateBackup,
     lgaBackup: formData.lgaBackup,
-    addressData: formData.addressData,
+    // GPS is optional. When the address was typed manually (a raw address not
+    // on Google Maps) there are no coordinates — default them to 0,0 so the
+    // backend still accepts the sale.
+    addressData: {
+      ...formData.addressData,
+      latitude: formData.addressData?.latitude ?? 0,
+      longitude: formData.addressData?.longitude ?? 0,
+    },
     potQuantity: formData.potQuantity !== "" ? parseInt(formData.potQuantity, 10) : null,
     heatRetentionDevice: formData.heatRetentionDevice,
     previousStoveType: formData.previousStoveType,
