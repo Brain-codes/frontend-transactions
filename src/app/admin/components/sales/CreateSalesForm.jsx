@@ -1339,6 +1339,14 @@ const CreateSalesForm = ({
                 <p className="mt-1 text-xs text-gray-500">Checking…</p>
               )}
             </FormField>
+            <FormField label="AKA" htmlFor="aka">
+              <Input
+                id="aka"
+                value={formData.aka}
+                onChange={(e) => handleInputChange("aka", e.target.value)}
+                placeholder="Alias or nickname"
+              />
+            </FormField>
             <div className="col-span-1 md:col-span-2 lg:col-span-3 flex items-center gap-3 py-2">
               <Checkbox
                 id="sameAsEndUser"
@@ -1349,14 +1357,6 @@ const CreateSalesForm = ({
                 Select if End User is same as Contact Person
               </Label>
             </div>
-            <FormField label="AKA" htmlFor="aka">
-              <Input
-                id="aka"
-                value={formData.aka}
-                onChange={(e) => handleInputChange("aka", e.target.value)}
-                placeholder="Alias or nickname"
-              />
-            </FormField>
             <FormField label="Contact Person / Buyer *" error={errors.contactPerson} htmlFor="contactPerson">
               <Input
                 id="contactPerson"
