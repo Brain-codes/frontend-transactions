@@ -129,6 +129,8 @@ const AgreementImagesPage = () => {
   const [imageDetails, setImageDetails] = useState(null);
   const [error, setError] = useState("");
   const [zoom, setZoom] = useState(false);
+  const [fallbackPdfUrl, setFallbackPdfUrl] = useState(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const handleSearch = async () => {
     const searchSerial = searchTerm.trim();
@@ -140,17 +142,48 @@ const AgreementImagesPage = () => {
     setError("");
     setCurrentImage(null);
     setImageDetails(null);
+    if (fallbackPdfUrl) {
+      try {
+        URL.revokeObjectURL(fallbackPdfUrl);
+      } catch {}
+    }
+    setFallbackPdfUrl(null);
     try {
       const [imageResponse, detailsResponse] = await Promise.all([
         agreementImagesService.getAgreementImageBinary(searchSerial),
         agreementImagesService.getAgreementImageDetails(searchSerial),
       ]);
-      if (!imageResponse.success) {
-        setError(imageResponse.error);
+
+      // If we could not fetch any sale record at all, surface the error.
+      if (!detailsResponse.success) {
+        setError(
+          detailsResponse.error ||
+            `No sale found for serial number: ${searchSerial}`
+        );
         return;
       }
-      setCurrentImage(imageResponse.data);
-      if (detailsResponse.success) setImageDetails(detailsResponse.data);
+
+      setImageDetails(detailsResponse.data);
+
+      if (imageResponse.success) {
+        setCurrentImage(imageResponse.data);
+      } else {
+        // No signed image on file — generate the User Agreement PDF from the
+        // sale record so the user can still view and download it.
+        setGeneratingPdf(true);
+        try {
+          const sale = detailsResponse.data?.sale || {};
+          const pdfUrl = await buildAgreementBlobUrl(sale);
+          setFallbackPdfUrl(pdfUrl);
+        } catch (pdfErr) {
+          console.error("PDF generation failed:", pdfErr);
+          setError(
+            "No signed agreement image is on file for this stove, and the fallback agreement PDF could not be generated."
+          );
+        } finally {
+          setGeneratingPdf(false);
+        }
+      }
     } catch (e) {
       setError(e.message || "An unexpected error occurred");
     } finally {
@@ -159,13 +192,20 @@ const AgreementImagesPage = () => {
   };
 
   const handleDownload = () => {
-    if (!currentImage) return;
-    const link = document.createElement("a");
-    link.href = currentImage.imageUrl;
-    link.download = `agreement_${currentImage.serialNumber || "image"}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (currentImage) {
+      const link = document.createElement("a");
+      link.href = currentImage.imageUrl;
+      link.download = `agreement_${currentImage.serialNumber || "image"}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+    if (imageDetails?.sale) {
+      downloadAgreementPDF(imageDetails.sale).catch((err) =>
+        console.error("Download failed:", err)
+      );
+    }
   };
 
   const handlePrint = () => window.print();
@@ -176,6 +216,19 @@ const AgreementImagesPage = () => {
         agreementImagesService.cleanupImageUrl(currentImage.imageUrl);
     };
   }, [currentImage]);
+
+  useEffect(() => {
+    return () => {
+      if (fallbackPdfUrl) {
+        try {
+          URL.revokeObjectURL(fallbackPdfUrl);
+        } catch {}
+      }
+    };
+  }, [fallbackPdfUrl]);
+
+  const hasAnyResult = Boolean(currentImage || fallbackPdfUrl);
+
 
   const sale = imageDetails?.sale || {};
   const image = imageDetails?.image || {};
