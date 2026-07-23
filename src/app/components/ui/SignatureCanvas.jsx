@@ -177,15 +177,26 @@ const SignatureCanvas = ({
               )}
               {drawingEnabled ? "Signing enabled" : "Tap to sign"}
             </button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleUploadClick}
-            >
-              <Upload className="h-4 w-4 mr-1.5" />
-              Upload Image
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCameraOpen(true)}
+              >
+                <Camera className="h-4 w-4 mr-1.5" />
+                Take Photo
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleUploadClick}
+              >
+                <Upload className="h-4 w-4 mr-1.5" />
+                Upload Image
+              </Button>
+            </div>
           </div>
           <input
             ref={fileInputRef}
