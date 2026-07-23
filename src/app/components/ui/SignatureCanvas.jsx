@@ -109,26 +109,29 @@ const SignatureCanvas = ({
   // drawn signature (base64 PNG).
   const handleUploadClick = () => fileInputRef.current?.click();
 
-  const handleFileSelected = (e) => {
-    const file = e.target.files?.[0];
+  const loadFileToCanvas = (file) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result;
       if (typeof dataUrl !== "string") return;
-      // Draw the uploaded image onto the canvas, then export it back to base64
-      // so it flows through the exact same submit path as a drawn signature.
       loadSignatureToCanvas(canvasRef.current, dataUrl);
-      // loadSignatureToCanvas draws asynchronously (img.onload); give it a beat
-      // before reading the canvas back.
       setTimeout(() => {
         const base64Signature = getSignatureFromCanvas(canvasRef.current);
         onSignatureChange(base64Signature || dataUrl.split(",")[1] || "");
       }, 150);
     };
     reader.readAsDataURL(file);
-    // Allow re-selecting the same file later
+  };
+
+  const handleFileSelected = (e) => {
+    const file = e.target.files?.[0];
+    loadFileToCanvas(file);
     e.target.value = "";
+  };
+
+  const handleCameraCapture = (file) => {
+    loadFileToCanvas(file);
   };
 
   // Touch event handlers for mobile support. When drawing is disabled we do NOT
