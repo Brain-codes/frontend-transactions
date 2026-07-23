@@ -57,9 +57,12 @@ class AgreementImagesService {
 
       if (!response.ok) {
         if (response.status === 404) {
-          throw new Error(
-            `No agreement image found for serial number: ${serialNumber}`
-          );
+          return {
+            success: false,
+            data: null,
+            error: `No agreement image found for serial number: ${serialNumber}`,
+            status: 404,
+          };
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -84,6 +87,7 @@ class AgreementImagesService {
         success: false,
         data: null,
         error: error.message || "Failed to fetch agreement image",
+        status: null,
       };
     }
   }
@@ -110,9 +114,18 @@ class AgreementImagesService {
 
       if (!response.ok) {
         if (response.status === 404) {
-          throw new Error(
-            `No agreement image found for serial number: ${serialNumber}`
-          );
+          let message = `No agreement image found for serial number: ${serialNumber}`;
+          try {
+            const data = await response.json();
+            message = data?.message || message;
+          } catch {}
+
+          return {
+            success: false,
+            data: null,
+            error: message,
+            status: 404,
+          };
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -130,6 +143,7 @@ class AgreementImagesService {
         success: false,
         data: null,
         error: error.message || "Failed to fetch agreement image details",
+        status: null,
       };
     }
   }
