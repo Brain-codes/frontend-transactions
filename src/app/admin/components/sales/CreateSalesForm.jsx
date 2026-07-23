@@ -1532,9 +1532,22 @@ const CreateSalesForm = ({
                   <SelectValue placeholder={formData.stateBackup ? "Select LGA" : "Select state first"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {formData.stateBackup && lgaAndStates[formData.stateBackup]?.map((lga) => (
-                    <SelectItem key={lga} value={lga}>{lga}</SelectItem>
-                  ))}
+                  {(() => {
+                    const options = (formData.stateBackup && lgaAndStates[formData.stateBackup]) || [];
+                    const list = [...options];
+                    // Ensure the currently-selected LGA is always renderable so
+                    // Radix Select can display its label (e.g. edit mode before
+                    // geo data resolves, or a legacy LGA name not in the list).
+                    if (
+                      formData.lgaBackup &&
+                      !list.some((l) => l.toLowerCase() === formData.lgaBackup.toLowerCase())
+                    ) {
+                      list.unshift(formData.lgaBackup);
+                    }
+                    return list.map((lga) => (
+                      <SelectItem key={lga} value={lga}>{lga}</SelectItem>
+                    ));
+                  })()}
                 </SelectContent>
               </Select>
             </FormField>
