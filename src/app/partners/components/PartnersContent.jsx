@@ -1497,6 +1497,27 @@ export default function PartnersContent() {
     return [...sortedOrgs].sort((a, b) => (((a[field] ?? 0) - (b[field] ?? 0)) * dir));
   })();
 
+  const [perfSearch, setPerfSearch] = useState("");
+  const [perfState, setPerfState] = useState("all");
+  const perfStateOptions = useMemo(
+    () => [...new Set((organizationsData || []).map((o) => o.state).filter(Boolean))].sort(),
+    [organizationsData]
+  );
+  const visibleOrgs = useMemo(() => {
+    const q = perfSearch.trim().toLowerCase();
+    return displayedOrgs.filter((o) => {
+      if (perfState !== "all" && (o.state || "") !== perfState) return false;
+      if (!q) return true;
+      return (
+        (o.partner_name || "").toLowerCase().includes(q) ||
+        (o.contact_person || "").toLowerCase().includes(q) ||
+        (o.contact_phone || "").toLowerCase().includes(q) ||
+        (o.branch || "").toLowerCase().includes(q) ||
+        (o.state || "").toLowerCase().includes(q)
+      );
+    });
+  }, [displayedOrgs, perfSearch, perfState]);
+
   const startRecord = organizationsData.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
   const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
 
@@ -1752,11 +1773,28 @@ export default function PartnersContent() {
           </div>
 
           <div className="space-y-0">
-            <div className="flex items-center justify-between px-1 py-2">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-3 px-1 py-2 flex-wrap">
+              <div className="flex items-center gap-3 flex-wrap">
                 <h3 className="text-sm font-semibold text-gray-900">Partners Performance</h3>
+                <Input
+                  value={perfSearch}
+                  onChange={(e) => setPerfSearch(e.target.value)}
+                  placeholder="Search partners..."
+                  className="h-8 text-xs w-56"
+                />
+                <Select value={perfState} onValueChange={setPerfState}>
+                  <SelectTrigger className="w-[160px] h-8 text-xs bg-background">
+                    <SelectValue placeholder="All States" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All States</SelectItem>
+                    {perfStateOptions.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <p className="text-sm text-gray-600">
-                  Showing <span className="font-medium">{startRecord}–{endRecord}</span> of <span className="font-medium">{pagination.total}</span> partners
+                  Showing <span className="font-medium">{visibleOrgs.length}</span> of <span className="font-medium">{pagination.total}</span> partners
                 </p>
               </div>
               <Button
@@ -1764,10 +1802,10 @@ export default function PartnersContent() {
                 className="h-8 px-3 text-xs flex items-center gap-1 bg-black hover:bg-black/90 text-white shadow-none rounded-md"
                 onClick={() => {
                   const headers = ["Partner Name", "Type", "Branch", "State", "Contact Person", "Contact Phone", "Email", "Total Stoves", "Sold", "Available"];
-                  const rows = organizationsData.map((org) => [org.partner_name, org.partner_type || "", org.branch || "", org.state || "", org.contact_person || "", org.contact_phone || "", org.email || "", org.total_stove_ids ?? "", org.sold_stove_ids ?? "", org.available_stove_ids ?? ""]);
+                  const rows = visibleOrgs.map((org) => [org.partner_name, org.partner_type || "", org.branch || "", org.state || "", org.contact_person || "", org.contact_phone || "", org.email || "", org.total_stove_ids ?? "", org.sold_stove_ids ?? "", org.available_stove_ids ?? ""]);
                   downloadTableAsCSV(headers, rows, `partners-${new Date().toISOString().slice(0, 10)}.csv`);
                 }}
-                disabled={organizationsData.length === 0}
+                disabled={visibleOrgs.length === 0}
               >
                 <Download className="h-3.5 w-3.5 mr-1" />Download
               </Button>
@@ -1808,7 +1846,7 @@ export default function PartnersContent() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className={tableLoading ? "opacity-40" : ""}>
-                  {sortedOrgs.length === 0 ? (
+                  {visibleOrgs.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center py-10">
                         <Building2 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
@@ -1817,7 +1855,7 @@ export default function PartnersContent() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    displayedOrgs.map((org, idx) => (
+                    visibleOrgs.map((org, idx) => (
                       <React.Fragment key={org.id}>
                         <TableRow className="hover:bg-[#eef3c4] text-gray-700 bg-white">
                           <TableCell className="text-sm font-medium text-gray-900">{org.partner_name}</TableCell>

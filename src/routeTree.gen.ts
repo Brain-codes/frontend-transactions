@@ -52,6 +52,7 @@ import { Route as SalesFinancialReportsIndexRouteImport } from './routes/sales/f
 import { Route as SalesCancelledIndexRouteImport } from './routes/sales/cancelled/index'
 import { Route as SalesCancelledPurchasesIndexRouteImport } from './routes/sales/cancelled-purchases/index'
 import { Route as SalesIdIndexRouteImport } from './routes/sales/$id/index'
+import { Route as EndUserRecordsApiIndexRouteImport } from './routes/end-user-records/api/index'
 import { Route as DocsSuperadminIndexRouteImport } from './routes/docs/superadmin/index'
 import { Route as DocsAdminIndexRouteImport } from './routes/docs/admin/index'
 import { Route as AdminSystemConfigIndexRouteImport } from './routes/admin/system-config/index'
@@ -298,6 +299,11 @@ const SalesIdIndexRoute = SalesIdIndexRouteImport.update({
   path: '/sales/$id/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EndUserRecordsApiIndexRoute = EndUserRecordsApiIndexRouteImport.update({
+  id: '/end-user-records/api/',
+  path: '/end-user-records/api/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocsSuperadminIndexRoute = DocsSuperadminIndexRouteImport.update({
   id: '/docs/superadmin/',
   path: '/docs/superadmin/',
@@ -429,6 +435,7 @@ export interface FileRoutesByFullPath {
   '/admin/system-config/': typeof AdminSystemConfigIndexRoute
   '/docs/admin/': typeof DocsAdminIndexRoute
   '/docs/superadmin/': typeof DocsSuperadminIndexRoute
+  '/end-user-records/api/': typeof EndUserRecordsApiIndexRoute
   '/sales/$id/': typeof SalesIdIndexRoute
   '/sales/cancelled-purchases/': typeof SalesCancelledPurchasesIndexRoute
   '/sales/cancelled/': typeof SalesCancelledIndexRoute
@@ -491,6 +498,7 @@ export interface FileRoutesByTo {
   '/admin/system-config': typeof AdminSystemConfigIndexRoute
   '/docs/admin': typeof DocsAdminIndexRoute
   '/docs/superadmin': typeof DocsSuperadminIndexRoute
+  '/end-user-records/api': typeof EndUserRecordsApiIndexRoute
   '/sales/$id': typeof SalesIdIndexRoute
   '/sales/cancelled-purchases': typeof SalesCancelledPurchasesIndexRoute
   '/sales/cancelled': typeof SalesCancelledIndexRoute
@@ -554,6 +562,7 @@ export interface FileRoutesById {
   '/admin/system-config/': typeof AdminSystemConfigIndexRoute
   '/docs/admin/': typeof DocsAdminIndexRoute
   '/docs/superadmin/': typeof DocsSuperadminIndexRoute
+  '/end-user-records/api/': typeof EndUserRecordsApiIndexRoute
   '/sales/$id/': typeof SalesIdIndexRoute
   '/sales/cancelled-purchases/': typeof SalesCancelledPurchasesIndexRoute
   '/sales/cancelled/': typeof SalesCancelledIndexRoute
@@ -618,6 +627,7 @@ export interface FileRouteTypes {
     | '/admin/system-config/'
     | '/docs/admin/'
     | '/docs/superadmin/'
+    | '/end-user-records/api/'
     | '/sales/$id/'
     | '/sales/cancelled-purchases/'
     | '/sales/cancelled/'
@@ -680,6 +690,7 @@ export interface FileRouteTypes {
     | '/admin/system-config'
     | '/docs/admin'
     | '/docs/superadmin'
+    | '/end-user-records/api'
     | '/sales/$id'
     | '/sales/cancelled-purchases'
     | '/sales/cancelled'
@@ -742,6 +753,7 @@ export interface FileRouteTypes {
     | '/admin/system-config/'
     | '/docs/admin/'
     | '/docs/superadmin/'
+    | '/end-user-records/api/'
     | '/sales/$id/'
     | '/sales/cancelled-purchases/'
     | '/sales/cancelled/'
@@ -805,6 +817,7 @@ export interface RootRouteChildren {
   AdminSystemConfigIndexRoute: typeof AdminSystemConfigIndexRoute
   DocsAdminIndexRoute: typeof DocsAdminIndexRoute
   DocsSuperadminIndexRoute: typeof DocsSuperadminIndexRoute
+  EndUserRecordsApiIndexRoute: typeof EndUserRecordsApiIndexRoute
   SalesIdIndexRoute: typeof SalesIdIndexRoute
   SalesCancelledPurchasesIndexRoute: typeof SalesCancelledPurchasesIndexRoute
   SalesCancelledIndexRoute: typeof SalesCancelledIndexRoute
@@ -1130,6 +1143,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SalesIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/end-user-records/api/': {
+      id: '/end-user-records/api/'
+      path: '/end-user-records/api'
+      fullPath: '/end-user-records/api/'
+      preLoaderRoute: typeof EndUserRecordsApiIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/docs/superadmin/': {
       id: '/docs/superadmin/'
       path: '/docs/superadmin'
@@ -1293,6 +1313,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminSystemConfigIndexRoute: AdminSystemConfigIndexRoute,
   DocsAdminIndexRoute: DocsAdminIndexRoute,
   DocsSuperadminIndexRoute: DocsSuperadminIndexRoute,
+  EndUserRecordsApiIndexRoute: EndUserRecordsApiIndexRoute,
   SalesIdIndexRoute: SalesIdIndexRoute,
   SalesCancelledPurchasesIndexRoute: SalesCancelledPurchasesIndexRoute,
   SalesCancelledIndexRoute: SalesCancelledIndexRoute,
