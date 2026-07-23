@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 import DashboardLayout from "../components/DashboardLayout";
 import PageHeader from "../components/PageHeader";
-import { Users, Eye, Pencil } from "lucide-react";
+import { Users, Eye, Pencil, Plug } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -281,15 +281,26 @@ const EndUserRecordsContent = () => {
           icon={Users}
           title="End User Records"
           right={
-            <Button
-              size="sm"
-              className="bg-black hover:bg-gray-800 text-white flex items-center gap-1.5 rounded-none"
-              onClick={handleExport}
-              disabled={filteredSales.length === 0}
-            >
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
+            <div className="flex items-center gap-2">
+              {resolvedRole === "super_admin" && (
+                <a
+                  href="/end-user-records/api"
+                  className="inline-flex items-center gap-1.5 text-sm h-9 px-3 rounded-none bg-[#4a5d0f] hover:bg-[#3d4d0c] text-white"
+                >
+                  <Plug className="h-4 w-4" />
+                  API Call
+                </a>
+              )}
+              <Button
+                size="sm"
+                className="bg-black hover:bg-gray-800 text-white flex items-center gap-1.5 rounded-none"
+                onClick={handleExport}
+                disabled={filteredSales.length === 0}
+              >
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
+            </div>
           }
         />
 
