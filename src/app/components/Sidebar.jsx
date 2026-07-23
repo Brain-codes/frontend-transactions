@@ -77,6 +77,9 @@ const allNavItems = [
   { name: "Stove Users Data", icon: FileText, route: "end-user-records", href: "/end-user-records" },
 
   { name: "Track Stoves", icon: Tag, route: "stove-management", href: "/stove-management" },
+
+  { name: "Documentation", icon: FileText, route: "end-user-records-api", href: "/end-user-records/api" },
+
   {
     name: "Settings",
     icon: Settings,
