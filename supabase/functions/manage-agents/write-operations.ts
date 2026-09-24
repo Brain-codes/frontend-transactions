@@ -108,6 +108,12 @@ export async function createAgent(
         email: validatedData.email,
         password: validatedData.password,
         email_confirm: true,
+        // The profile takes role and organisation from app_metadata
+        // (handle_new_user, migration 20260927200000).
+        app_metadata: {
+          role: "partner_agent",
+          organization_id: targetOrganizationId,
+        },
         user_metadata: {
           full_name: validatedData.full_name,
           role: "partner_agent",

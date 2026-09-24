@@ -82,7 +82,13 @@ export async function createUser(
         email: validatedData.email,
         password: password,
         email_confirm: true,
-        app_metadata: { role: validatedData.role },
+        // organization_id is known here (set above for partner callers,
+        // validated against scope for managers), so it goes in app_metadata
+        // too, not only in the later profile patch below.
+        app_metadata: {
+          role: validatedData.role,
+          organization_id: validatedData.organization_id ?? null,
+        },
         user_metadata: {
           full_name: validatedData.full_name,
           role: validatedData.role,

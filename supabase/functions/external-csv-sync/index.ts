@@ -371,6 +371,10 @@ async function createUserForOrganization(
       email,
       password,
       email_confirm: true,
+      // The profile takes role and organisation from app_metadata
+      // (handle_new_user, migration 20260927200000). This path always
+      // settles the profile role to "admin" below, so that is what it writes.
+      app_metadata: { role: "admin", organization_id: organizationId },
       user_metadata: { full_name: partnerName, organization_id: organizationId, username },
     });
     if (authError) throw new Error(`Auth user creation failed: ${authError.message}`);

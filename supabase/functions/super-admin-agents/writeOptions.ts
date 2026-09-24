@@ -35,7 +35,8 @@ export async function createAgent(supabase: any, data: any, adminId: string, man
       email,
       password: data.password,
       email_confirm: true,
-      app_metadata: { role },
+      // ACSL agents/managers/super admins never belong to an organisation.
+      app_metadata: { role, organization_id: null },
       user_metadata: {
         full_name: data.full_name.trim(),
         role,

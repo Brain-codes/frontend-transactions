@@ -42,6 +42,12 @@ export async function createAdminUser(
       email: data.email,
       password: data.password || generateRandomPassword(),
       email_confirm: true,
+      // The profile takes role and organisation from app_metadata
+      // (handle_new_user, migration 20260927200000).
+      app_metadata: {
+        role: "admin",
+        organization_id: data.organization_id,
+      },
       user_metadata: {
         full_name: data.full_name,
         role: "admin",

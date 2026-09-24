@@ -86,6 +86,13 @@ Deno.serve(async (req) => {
       email,
       password,
       email_confirm: true,
+      // The profile takes role and organisation from app_metadata
+      // (handle_new_user, migration 20260927200000). user_metadata is kept
+      // in step so the app's own menus (which read it as a fallback) still work.
+      app_metadata: {
+        role: 'agent',
+        organization_id: adminOrgId,
+      },
       user_metadata: {
         full_name,
         role: 'agent',

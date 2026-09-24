@@ -873,8 +873,9 @@ on conflict (id) do nothing;
 
 -- ---------- sign-in accounts ----------
 -- One per role so the RBAC matrix in ACCESS_CONTROL.md can be walked through on
--- the preview. handle_new_user() turns each of these into a profiles row, so
--- role and organization_id are passed through raw_user_meta_data.
+-- the preview. handle_new_user() turns each of these into a profiles row,
+-- taking role and organization_id from raw_app_meta_data (server-set data only,
+-- since 20260927200000); raw_user_meta_data keeps them too, for the app's menus.
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
   created_at, updated_at, raw_app_meta_data, raw_user_meta_data, is_super_admin,
@@ -883,7 +884,8 @@ insert into auth.users (
 select
   '00000000-0000-0000-0000-000000000000', u.id, 'authenticated', 'authenticated', u.email,
   extensions.crypt('PreviewOnly!2026', extensions.gen_salt('bf')), now(), now(), now(),
-  '{"provider":"email","providers":["email"]}'::jsonb,
+  '{"provider":"email","providers":["email"]}'::jsonb
+    || jsonb_strip_nulls(jsonb_build_object('role', u.role, 'organization_id', u.org)),
   jsonb_strip_nulls(jsonb_build_object('full_name', u.full_name, 'role', u.role, 'organization_id', u.org)),
   false, '', '', '', ''
 from (values

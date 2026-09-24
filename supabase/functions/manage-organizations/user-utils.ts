@@ -86,6 +86,12 @@ export async function createUserInAuth(
         email: userData.email,
         password: password,
         email_confirm: true, // Auto-confirm email
+        // The profile takes role and organisation from app_metadata
+        // (handle_new_user, migration 20260927200000).
+        app_metadata: {
+          role: userData.role || "admin",
+          organization_id: userData.organizationId,
+        },
         user_metadata: {
           full_name: userData.fullName,
           display_name: userData.fullName,

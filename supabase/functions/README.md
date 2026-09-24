@@ -91,3 +91,24 @@ supabase functions download <slug> --project-ref oeiwnpngbnkhcismhpgs
 
 Run that into a scratch directory and diff it against the copy here. See
 `DRIFT.md` for the functions where the two are known to disagree.
+
+## New accounts take their role and organisation from the server (2026-09-27)
+
+`create-agent`, `create-agent-user`, `super-admin-agents`, `manage-users`,
+`manage-organizations` (`user-utils.ts`, used by both `write-operations.ts`
+and `csv-import-operations.ts`), `manage-agents`, `manage-admin-users`,
+`external-sync` and `external-csv-sync` now also write `app_metadata` (role
+and organisation) on every account they create, alongside the existing
+`user_metadata` write. Migration `20260927200000_account_roles_from_server.sql`
+then makes the profile take role and organisation from `app_metadata` only: at
+insert, and again when the auth service writes `app_metadata` a moment later,
+for a profile that has no role yet.
+
+**Deploy order matters:** deploy all nine changed functions above first, then
+apply the migration. Applying the migration before a function redeploys means
+that function's new accounts get no role until it does.
+
+Diff each of the nine against its deployed copy before deploying it
+(`supabase functions download <slug> --project-ref oeiwnpngbnkhcismhpgs`, per
+"Before you deploy anything" above), the same as any other change in this
+directory.
