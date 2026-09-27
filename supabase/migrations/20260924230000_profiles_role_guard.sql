@@ -1,16 +1,4 @@
--- Nobody gives themselves a role (2026-09-24). Found while building the Change Control door (S8).
---
--- Two ways any stranger or any signed-in user could become a super admin of this app, both proven on
--- production in transactions forced to roll back:
---
---   1. Any signed-in user can rewrite their own profile. The policy users_update_own_profile lets a
---      person update their own row, and the authenticated role holds UPDATE on every column, so
---      `update profiles set role = 'super_admin' where id = auth.uid()` from the browser succeeds.
---      Every server function and the Change Control door trust profiles.role.
---   2. Public sign-up is open, and handle_new_user copies the role and the organisation from the
---      sign-up data the person supplies, into a profile that is active by default.
---
--- This file closes both in the database, whatever the sign-up setting says:
+-- Only a super admin or the server sets a role, a status, an organisation or a manager (2026-09-24).
 --
 --   1. A guard on profiles: a person signed in through the API may change their own name, phone and
 --      the like, but only a super admin may set or change a role, a status, an organisation or a
@@ -18,17 +6,11 @@
 --      which run as their owner, are not held to it; the guard is judged by the role running the
 --      statement, so it runs as the caller (SECURITY INVOKER).
 --   2. handle_new_user takes the role and organisation from the account's data only when the account
---      arrives already confirmed. Every account this app makes goes through the admin API with
---      email_confirm: true (create-agent, create-agent-user, manage-admin-users, external-sync,
---      external-csv-sync), and so does the dashboard's Add user. A public sign-up arrives unconfirmed,
---      and gets no role and no organisation until a super admin gives it one.
+--      arrives already confirmed. Reversed the same evening by 20260924233000 (the admin API confirms
+--      an account after inserting it); superseded by 20260927200000, which takes both from
+--      app_metadata.
 --
--- No row changes. The one direct client write to profiles, User Management's super-admin fallback in
--- UserManagementContent.jsx, already matched no rows before this file (the read policy shows a person
--- only their own row); the app does that work through manage-users.
---
--- Part 2 was reversed the same evening by 20260924233000: the admin API confirms an account after
--- inserting it, so the trigger took every admin-created account for a sign-up.
+-- No row changes.
 --
 -- REVERSAL:
 --   drop trigger if exists profiles_guard_privileged_columns on public.profiles;

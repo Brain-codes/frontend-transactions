@@ -1,15 +1,10 @@
 -- Stove records are written by the server only, and read only by people signed in (2026-09-24).
 --
--- Found the same evening as the role guard, proven on production in a transaction forced to roll back:
--- anyone holding the public key could delete or rewrite any stove record. The view public.stove_ids
--- runs with its owner's rights (no security_invoker), so it skips stove_ids_base's row security, and
--- anon held INSERT, UPDATE and DELETE on it. Anon could also read all 24,067 stove records through it.
--- Separately, every signed-in user held UPDATE on stove_ids_base under a policy that allows any row.
---
--- Nothing in the web app or the field app writes stove records directly. Every function that does
--- (create-sale, delete-sale, external-sync, external-csv-sync, manage-organizations,
--- manage-stove-ids, upload-stove-ids-csv) uses the service role, which this file does not touch.
--- Signed-in screens keep reading as they do today.
+-- Write access to public.stove_ids and stove_ids_base is removed from the public key and from signed-in
+-- users, and read access to stove_ids from the public key. Nothing in the web app or the field app
+-- writes stove records directly; the functions that do (create-sale, delete-sale, external-sync,
+-- external-csv-sync, manage-organizations, manage-stove-ids, upload-stove-ids-csv) write as the
+-- server (create-sale since D62, 2026-09-25). Signed-in screens keep reading as they do today.
 --
 -- REVERSAL:
 --   grant insert, update, delete on public.stove_ids to anon, authenticated;

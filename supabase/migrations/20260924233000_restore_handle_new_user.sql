@@ -1,18 +1,12 @@
 -- Put handle_new_user back as it was before 20260924230000 (2026-09-24, same evening).
 --
--- 20260924230000 made the new-user trigger trust a new account's role and organisation only when the
--- account arrived already confirmed, on the belief that the admin API inserts confirmed accounts. It
--- does not: admin.createUser inserts the row first and confirms it in a later statement, so the
--- trigger saw every admin-created account as unconfirmed and gave it no role and no organisation.
--- Proven with a real admin.createUser on the PR's preview branch. No production account was created
--- in between (checked before and after).
+-- 20260924230000 made the new-user trigger take a new account's role and organisation only when the
+-- account arrived already confirmed. admin.createUser inserts the row first and confirms it in a later
+-- statement, so admin-created accounts got no role and no organisation. Proven with a real
+-- admin.createUser on the PR's preview branch; no production account was created in between.
 --
--- This file restores the original function exactly. It is safe because public sign-up is now switched
--- off on the project (disable_signup), so only the admin API and the dashboard create accounts, and
--- they choose the role on purpose. The profiles guard from 20260924230000 stays: it is what stops a
--- signed-in person giving themselves a role. Do not switch sign-up back on while this trigger reads
--- the role from sign-up data; the lasting fix is for the admin functions to write role and
--- organisation themselves and for this trigger to stop reading them.
+-- This file restores the original function exactly. The profiles guard from 20260924230000 stays.
+-- Superseded by 20260927200000, where role and organisation come from app_metadata.
 --
 -- REVERSAL: none needed; this is the reversal of part of 20260924230000.
 
