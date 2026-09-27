@@ -276,9 +276,15 @@ export async function updateUser(
     if (profileUpdates.full_name !== undefined) authMetaPatch.full_name = profileUpdates.full_name;
     if (profileUpdates.phone !== undefined) authMetaPatch.phone = profileUpdates.phone;
     if (profileUpdates.role !== undefined) authMetaPatch.role = profileUpdates.role;
-    if (Object.keys(authMetaPatch).length > 0) {
+    // app_metadata carries the role and organisation the account was created with
+    // (handle_new_user reads them there); keep it in step when either changes.
+    const appMetaPatch: Record<string, unknown> = {};
+    if (profileUpdates.role !== undefined) appMetaPatch.role = profileUpdates.role;
+    if (profileUpdates.organization_id !== undefined) appMetaPatch.organization_id = profileUpdates.organization_id;
+    if (Object.keys(authMetaPatch).length > 0 || Object.keys(appMetaPatch).length > 0) {
       const { error: metaErr } = await supabase.auth.admin.updateUserById(userId, {
-        user_metadata: authMetaPatch,
+        ...(Object.keys(authMetaPatch).length > 0 ? { user_metadata: authMetaPatch } : {}),
+        ...(Object.keys(appMetaPatch).length > 0 ? { app_metadata: appMetaPatch } : {}),
       });
       if (metaErr) {
         console.warn("⚠️ Failed to sync auth user_metadata:", metaErr.message);

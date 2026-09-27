@@ -387,7 +387,8 @@ async function createUserForOrganization(
 
   if (existingProfile) {
     entries.push(mkEntry("create-user", "warn", `Profile already exists, updating username/role`));
-    const { error: updateError } = await supabase.from("profiles").update({ username, role: "admin" }).eq("id", authUserId);
+    // has_changed_password false: a CSV-imported partner is asked to change the password at first sign-in, as before.
+    const { error: updateError } = await supabase.from("profiles").update({ username, role: "admin", has_changed_password: false }).eq("id", authUserId);
     if (updateError) {
       entries.push(mkEntry("create-user", "error", `Profile update failed: ${updateError.message}`));
     } else {

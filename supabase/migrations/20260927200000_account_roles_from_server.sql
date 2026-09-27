@@ -12,13 +12,17 @@
 --   2. sync_role_from_app_metadata (after update) fills them in when app_metadata changes, but only
 --      on a profile that has no role yet. A role someone set later is never overwritten, even when
 --      app_metadata still holds the one the account was created with (8 such accounts on
---      2026-09-27), and the organisation is only ever filled together with the role.
+--      2026-09-27), and the organisation is only ever filled together with the role. Nothing sets
+--      a role back to null today; if something ever does, the next app_metadata write (an identity
+--      link counts) would restore the creation-time role, so clear app_metadata's role with it.
 -- full_name keeps coming from raw_user_meta_data: a name is not privileged. The has_changed_password
 -- rule for 'admin' is kept, applied at whichever moment the role arrives.
 --
--- The update trigger sits on every change to auth.users, sign-ins included, so it never fails one:
--- it waits at most 100ms for a profile row, logs and skips on any error, and names no column in its
--- trigger definition so the auth service's own upgrades can still change the table.
+-- The update trigger sits on every change to auth.users, sign-ins included. It returns at once
+-- unless app_metadata changed and carries a role; it waits at most 100ms for a profile row; it
+-- names no column in its trigger definition, so the auth service's own upgrades can still change
+-- the table. A failure while the account is being created (no role in the old app_metadata) fails
+-- the creation, so no account is left without a role; any later failure is logged and skipped.
 --
 -- Deploy order: the nine changed functions first (supabase/functions/README.md), then this file.
 -- Applied before them, an account made by a function not yet redeployed gets no role.
@@ -78,17 +82,22 @@ as $$
 declare
   app_role text := new.raw_app_meta_data->>'role';
 begin
-  if app_role is not null and new.raw_app_meta_data is distinct from old.raw_app_meta_data then
+  if app_role is null or new.raw_app_meta_data is not distinct from old.raw_app_meta_data then
+    return null;
+  end if;
+  begin
     update public.profiles
        set role = app_role,
            organization_id = nullif(new.raw_app_meta_data->>'organization_id', '')::uuid,
            has_changed_password = case when app_role = 'admin' then true else has_changed_password end
      where id = new.id
        and role is null;
-  end if;
-  return null;
-exception when others then
-  raise log 'sync_role_from_app_metadata skipped for %: % %', new.id, sqlstate, sqlerrm;
+  exception when others then
+    if old.raw_app_meta_data->>'role' is null then
+      raise;
+    end if;
+    raise log 'sync_role_from_app_metadata skipped for %: % %', new.id, sqlstate, sqlerrm;
+  end;
   return null;
 end;
 $$;
