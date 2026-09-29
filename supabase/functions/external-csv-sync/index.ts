@@ -486,12 +486,16 @@ async function writeTransferHistory(
   // One history row per transaction (TX-1). A retry after a partial failure
   // adds the stoves the row does not list yet instead of writing a second row.
   if (salesRef) {
-    const { data: existing, error: readError } = await supabase
+    // transaction_id carries no unique constraint, so take the oldest row
+    // rather than fail forever on a duplicate another path may have written.
+    const { data: rows, error: readError } = await supabase
       .from("stove_transfer_history")
       .select("id, stove_ids")
       .eq("transaction_id", salesRef)
-      .maybeSingle();
+      .order("created_at", { ascending: true })
+      .limit(1);
     if (readError) throw new Error(`Could not read the transfer history for ${salesRef}: ${readError.message}`);
+    const existing = rows?.[0];
     if (existing) {
       const listed = new Set(((existing.stove_ids as any[]) || []).map((s) => s.stove_id));
       const added = data.stove_ids.filter(
