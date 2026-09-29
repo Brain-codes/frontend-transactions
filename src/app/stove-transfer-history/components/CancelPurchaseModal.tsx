@@ -37,12 +37,14 @@ export default function CancelPurchaseModal({ record, isOpen, onClose, onCancell
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [erpWarning, setErpWarning] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !record) return;
     setReason("");
     setError(null);
+    setErpWarning(null);
     setBlocking(null);
     setConfirmed(false);
     setChecking(true);
@@ -62,8 +64,16 @@ export default function CancelPurchaseModal({ record, isOpen, onClose, onCancell
     setSubmitting(true);
     setError(null);
     try {
-      await cancelPurchase(record.id, reason.trim());
+      const result = await cancelPurchase(record.id, reason.trim());
       onCancelled();
+      if (result.erp.status !== "not_from_erp" && !result.erp.notified) {
+        // The cancel stands; the ERP still counts the order as transferred.
+        setErpWarning(
+          `Cancelled here, but the ERP was not updated (${result.erp.status}). ` +
+            `Ask an ERP administrator to reopen order ${result.salesReference ?? ""}.`
+        );
+        return;
+      }
       onClose();
     } catch (e: any) {
       setError(e?.message || "Failed to cancel purchase");
@@ -99,6 +109,13 @@ export default function CancelPurchaseModal({ record, isOpen, onClose, onCancell
           {error && (
             <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3">
               {error}
+            </div>
+          )}
+
+          {erpWarning && (
+            <div className="text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded p-3 flex gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>{erpWarning}</div>
             </div>
           )}
 
@@ -187,7 +204,7 @@ export default function CancelPurchaseModal({ record, isOpen, onClose, onCancell
           <Button variant="outline" onClick={onClose} disabled={submitting}>
             Close
           </Button>
-          {canProceed && (
+          {canProceed && !erpWarning && (
             <Button
               className="bg-red-600 hover:bg-red-700 text-white"
               onClick={handleConfirm}
