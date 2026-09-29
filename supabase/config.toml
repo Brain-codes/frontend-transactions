@@ -434,3 +434,7 @@ verify_jwt = true
 # The ERP cancels a transfer it sent (TX-2a); token auth, no user session.
 [functions.external-transfer-cancel]
 verify_jwt = false
+
+# A super admin's cancel that also tells the ERP (TX-2b); signed-in callers only.
+[functions.cancel-purchase]
+verify_jwt = true
