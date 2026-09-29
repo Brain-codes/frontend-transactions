@@ -28,6 +28,9 @@ interface ExternalCSVSyncRequest {
   application_name: string;
   csv_data: string;
   origin_url?: string;
+  // Sent by the ERP when it re-sends an order whose serials changed after
+  // transfer (TX-3): the list becomes exactly the sent list for that reference.
+  replace?: boolean;
 }
 
 interface ParsedOrganization {
@@ -476,6 +479,8 @@ async function writeTransferHistory(
     stove_ids: Array<{ stove_id: string; factory?: string; sales_reference?: string }>;
     // The subset of stove_ids created by this call; an existing row only gains these.
     created_ids?: Set<string>;
+    // Replace mode (TX-3): an existing row takes exactly stove_ids.
+    replace?: boolean;
     source: "external-sync" | "external-csv-sync";
     application_name?: string;
   },
@@ -498,6 +503,14 @@ async function writeTransferHistory(
     if (readError) throw new Error(`Could not read the transfer history for ${salesRef}: ${readError.message}`);
     const existing = rows?.[0];
     if (existing) {
+      if (data.replace) {
+        const { error: replaceError } = await supabase
+          .from("stove_transfer_history")
+          .update({ stove_ids: data.stove_ids, stove_count: data.stove_ids.length })
+          .eq("id", existing.id);
+        if (replaceError) throw new Error(`Could not replace the transfer history for ${salesRef}: ${replaceError.message}`);
+        return;
+      }
       const listed = new Set(((existing.stove_ids as any[]) || []).map((s) => s.stove_id));
       const added = data.stove_ids.filter(
         (s) => !listed.has(s.stove_id) && (!data.created_ids || data.created_ids.has(s.stove_id)),
@@ -1093,14 +1106,63 @@ serve(async (req) => {
   let stoveIdsCreated = 0;
   let stoveIdsSkipped = 0;
 
+  // Replace mode is the ERP's alone; any other sender keeps the additive sync.
+  const replaceMode =
+    body.replace === true &&
+    String(tokenValidation.token_data?.application_name ?? "").startsWith("Atmosfair ERP System");
+  if (body.replace === true && !replaceMode) {
+    entries.push(mkEntry("replace", "warn", "replace was asked for by a sender other than the ERP and is ignored"));
+  }
+
   // payment_models is read once for the whole file, not once per partner.
   const modelCache: PaymentModelCache = {};
   for (const orgData of parseResult.organizations!) {
     entries.push(mkEntry("partner-processing", "info", `--- Processing partner ${orgData.partner_id}: ${orgData.partner_name} ---`));
     try {
+      // TX-3: find the serials this reference holds here that the ERP no longer
+      // lists, and refuse the whole transfer before writing anything if one of
+      // them is on an active sale.
+      let dropped: Array<{ id: string; stove_id: string }> = [];
+      const replaceRef = replaceMode
+        ? (orgData.stove_ids || []).find((s: any) => typeof s === "object" && s?.sales_reference)?.sales_reference?.trim()
+        : undefined;
+      if (replaceRef) {
+        const sent = new Set((orgData.stove_ids || []).map((s: any) => (typeof s === "string" ? s : s?.stove_id || "").trim()));
+        const { data: held, error: heldError } = await supabase
+          .from("stove_ids_base")
+          .select("id, stove_id")
+          .eq("sales_reference", replaceRef);
+        if (heldError) throw new Error(`Could not read the stoves held under ${replaceRef}: ${heldError.message}`);
+        dropped = (held || []).filter((s: any) => !sent.has(s.stove_id));
+        if (dropped.length > 0) {
+          const { data: sold, error: soldError } = await supabase
+            .from("sales")
+            .select("stove_serial_no")
+            .in("stove_serial_no", dropped.map((s) => s.stove_id))
+            .not("is_archived", "is", true);
+          if (soldError) throw new Error(`Could not check sales for ${replaceRef}: ${soldError.message}`);
+          if ((sold || []).length > 0) {
+            throw new Error(
+              `Replace refused for ${replaceRef}: ${sold!.length} stove(s) the ERP removed are on active sales here ` +
+                `(${sold!.map((s: any) => s.stove_serial_no).slice(0, 5).join(", ")}). Nothing was changed.`,
+            );
+          }
+        }
+        entries.push(mkEntry("replace", "info", `Replace for ${replaceRef}: ${dropped.length} stove(s) no longer listed will be removed`));
+      }
+
       const { result: syncResult, stoveCreated, stoveSkipped } = await processOrganizationSync(
         supabase, orgData, orgData.stove_ids || [], entries,
       );
+
+      if (dropped.length > 0) {
+        const { error: dropError } = await supabase
+          .from("stove_ids_base")
+          .delete()
+          .in("id", dropped.map((s) => s.id))
+          .is("sale_id", null);
+        if (dropError) throw new Error(`Could not remove the stoves ${replaceRef} no longer lists: ${dropError.message}`);
+      }
 
       if (syncResult.summary.organization_action === "created") partnersCreated++;
       else partnersUpdated++;
@@ -1133,6 +1195,7 @@ serve(async (req) => {
           order_sales_model_duration: orgData.order_sales_model_duration ?? null,
           stove_ids: newStoves.map((s: any) => ({ stove_id: s.stove_id, factory: s.factory, sales_reference: s.sales_reference })),
           created_ids: createdIds,
+          replace: !!replaceRef,
           source: "external-csv-sync",
           application_name: body.application_name,
         }, modelCache);
