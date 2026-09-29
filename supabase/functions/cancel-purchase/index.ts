@@ -72,6 +72,13 @@ serve(async (req) => {
   const reason = typeof body?.reason === "string" ? body.reason.trim() : "";
   if (!transferId) return json(400, { success: false, message: "transfer_id is required." });
 
+  // Refuse anyone who is not a super admin before reading anything with the
+  // service role. cancel_purchase checks again as the person below.
+  const { data: profile } = await admin.from("profiles").select("role, full_name, email").eq("id", user.id).maybeSingle();
+  if (profile?.role !== "super_admin") {
+    return json(403, { success: false, message: "Only super admins can cancel purchases" });
+  }
+
   // Read the transfer before it is deleted, to know whether the ERP sent it.
   const { data: transfer } = await admin
     .from("stove_transfer_history")
@@ -92,7 +99,6 @@ serve(async (req) => {
 
   let erp: { notified: boolean; status: string } = { notified: false, status: "not_from_erp" };
   if (transfer?.transaction_id && String(transfer.application_name ?? "").startsWith(ERP_APPLICATION)) {
-    const { data: profile } = await admin.from("profiles").select("full_name, email").eq("id", user.id).maybeSingle();
     const who = profile?.full_name || profile?.email || user.email || "a sales app administrator";
     erp = await tellErp(transfer.transaction_id, reason, who);
   }
