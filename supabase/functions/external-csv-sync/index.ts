@@ -1123,9 +1123,20 @@ serve(async (req) => {
       // lists, and refuse the whole transfer before writing anything if one of
       // them is on an active sale.
       let dropped: Array<{ id: string; stove_id: string }> = [];
-      const replaceRef = replaceMode
-        ? (orgData.stove_ids || []).find((s: any) => typeof s === "object" && s?.sales_reference)?.sales_reference?.trim()
-        : undefined;
+      let replaceRef: string | undefined;
+      if (replaceMode) {
+        // The ERP sends one order per request; a replace over several references
+        // is refused rather than applied to one of them.
+        const refs = new Set(
+          (orgData.stove_ids || [])
+            .map((s: any) => (typeof s === "object" ? s?.sales_reference?.trim() : ""))
+            .filter(Boolean),
+        );
+        if (refs.size > 1) {
+          throw new Error(`Replace refused: one request carries ${refs.size} sales references; send one order at a time.`);
+        }
+        replaceRef = [...refs][0] as string | undefined;
+      }
       if (replaceRef) {
         const sent = new Set((orgData.stove_ids || []).map((s: any) => (typeof s === "string" ? s : s?.stove_id || "").trim()));
         const { data: held, error: heldError } = await supabase
@@ -1156,12 +1167,20 @@ serve(async (req) => {
       );
 
       if (dropped.length > 0) {
-        const { error: dropError } = await supabase
+        const { data: removed, error: dropError } = await supabase
           .from("stove_ids_base")
           .delete()
           .in("id", dropped.map((s) => s.id))
-          .is("sale_id", null);
+          .is("sale_id", null)
+          .select("id");
         if (dropError) throw new Error(`Could not remove the stoves ${replaceRef} no longer lists: ${dropError.message}`);
+        // A dropped stove still linked to an (archived) sale keeps that link and
+        // is not removed; say so rather than leave it unexplained.
+        const removedIds = new Set((removed || []).map((r: any) => r.id));
+        const kept = dropped.filter((s) => !removedIds.has(s.id)).map((s) => s.stove_id);
+        if (kept.length > 0) {
+          entries.push(mkEntry("replace", "warn", `Replace for ${replaceRef} kept ${kept.length} stove(s) still linked to a sale: ${kept.slice(0, 10).join(", ")}`));
+        }
       }
 
       if (syncResult.summary.organization_action === "created") partnersCreated++;
