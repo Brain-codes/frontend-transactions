@@ -430,3 +430,7 @@ verify_jwt = true
 # preview branch carries it.
 [functions.change-request-intake]
 verify_jwt = true
+
+# The ERP cancels a transfer it sent (TX-2a); token auth, no user session.
+[functions.external-transfer-cancel]
+verify_jwt = false
