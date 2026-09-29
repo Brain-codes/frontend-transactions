@@ -473,16 +473,48 @@ async function writeTransferHistory(
     order_sales_model_name?: string | null;
     order_sales_model_duration?: number | null;
     stove_ids: Array<{ stove_id: string; factory?: string; sales_reference?: string }>;
+    // The subset of stove_ids created by this call; an existing row only gains these.
+    created_ids?: Set<string>;
     source: "external-sync" | "external-csv-sync";
     application_name?: string;
   },
   modelCache: PaymentModelCache = {},
 ): Promise<void> {
   if (data.stove_ids.length === 0) return;
-  try {
-    const salesRef = data.stove_ids.find((s) => s.sales_reference)?.sales_reference;
+  const salesRef = data.stove_ids.find((s) => s.sales_reference)?.sales_reference;
+
+  // One history row per transaction (TX-1). A retry after a partial failure
+  // adds the stoves the row does not list yet instead of writing a second row.
+  if (salesRef) {
+    // transaction_id carries no unique constraint, so take the oldest row
+    // rather than fail forever on a duplicate another path may have written.
+    const { data: rows, error: readError } = await supabase
+      .from("stove_transfer_history")
+      .select("id, stove_ids")
+      .eq("transaction_id", salesRef)
+      .order("created_at", { ascending: true })
+      .limit(1);
+    if (readError) throw new Error(`Could not read the transfer history for ${salesRef}: ${readError.message}`);
+    const existing = rows?.[0];
+    if (existing) {
+      const listed = new Set(((existing.stove_ids as any[]) || []).map((s) => s.stove_id));
+      const added = data.stove_ids.filter(
+        (s) => !listed.has(s.stove_id) && (!data.created_ids || data.created_ids.has(s.stove_id)),
+      );
+      if (added.length === 0) return;
+      const merged = [...((existing.stove_ids as any[]) || []), ...added];
+      const { error: updateError } = await supabase
+        .from("stove_transfer_history")
+        .update({ stove_ids: merged, stove_count: merged.length })
+        .eq("id", existing.id);
+      if (updateError) throw new Error(`Could not update the transfer history for ${salesRef}: ${updateError.message}`);
+      return;
+    }
+  }
+
+  {
     const transactionId = salesRef || `TRF-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-    await supabase.from("stove_transfer_history").insert({
+    const { error: insertError } = await supabase.from("stove_transfer_history").insert({
       transaction_id: transactionId,
       organization_id: data.organization_id,
       partner_name: data.partner_name,
@@ -505,8 +537,7 @@ async function writeTransferHistory(
       application_name: data.application_name || null,
       transfer_date: new Date().toISOString(),
     });
-  } catch (e) {
-    console.error("Failed to write transfer history:", e);
+    if (insertError) throw new Error(`Could not write the transfer history for ${transactionId}: ${insertError.message}`);
   }
 }
 
@@ -860,6 +891,9 @@ async function processOrganizationSync(
 
   // Process stove IDs
   const stoveIdResults: StoveIdResult[] = [];
+  // A stove that could not be checked or saved fails this partner, so the
+  // sender does not record a transfer that did not land (TX-1).
+  const stoveErrors: string[] = [];
 
   if (stoveIds && stoveIds.length > 0) {
     entries.push(mkEntry("stove-ids", "info", `Processing ${stoveIds.length} stove ID(s) for ${orgData.partner_name}`));
@@ -890,7 +924,9 @@ async function processOrganizationSync(
         .single();
 
       if (checkError && checkError.code !== "PGRST116") {
-        entries.push(mkEntry("stove-ids", "warn", `Error checking stove ${stoveId}: ${checkError.message}`));
+        entries.push(mkEntry("stove-ids", "error", `Error checking stove ${stoveId}: ${checkError.message}`));
+        stoveErrors.push(`${stoveId}: ${checkError.message}`);
+        continue;
       }
 
       if (!existingStove) {
@@ -908,6 +944,7 @@ async function processOrganizationSync(
         const { error: stoveError } = await supabase.from("stove_ids").insert(insertData).select().single();
         if (stoveError) {
           entries.push(mkEntry("stove-ids", "error", `Failed to create stove ${stoveId}: ${stoveError.message}`));
+          stoveErrors.push(`${stoveId}: ${stoveError.message}`);
         } else {
           stoveIdResults.push({ stove_id: stoveId.trim(), factory, sales_reference: salesReference, action: "created" });
         }
@@ -934,6 +971,13 @@ async function processOrganizationSync(
     const created = stoveIdResults.filter((s) => s.action === "created").length;
     const skipped = stoveIdResults.filter((s) => s.action === "already_exists").length;
     entries.push(mkEntry("stove-ids", "success", `Stove IDs done — created: ${created}, already existed: ${skipped}`));
+  }
+
+  if (stoveErrors.length > 0) {
+    throw new Error(
+      `${stoveErrors.length} of ${stoveIds.length} stove ID(s) could not be saved (first: ${stoveErrors[0]}). ` +
+        `The stoves that did save stay; sending the transfer again completes it.`,
+    );
   }
 
   return {
@@ -1095,8 +1139,14 @@ serve(async (req) => {
       stoveIdsCreated += stoveCreated;
       stoveIdsSkipped += stoveSkipped;
 
-      // Write transfer history for newly created stove IDs
-      const newStoves = syncResult.stove_ids.filter((s: any) => s.action === "created");
+      // Write transfer history for the stoves this transfer holds: those created
+      // now, and on a retry those already saved under the same reference.
+      const newStoves = syncResult.stove_ids.filter(
+        (s: any) => s.action === "created" || (s.action === "already_exists" && !!s.sales_reference),
+      );
+      const createdIds = new Set<string>(
+        syncResult.stove_ids.filter((s: any) => s.action === "created").map((s: any) => s.stove_id),
+      );
       if (newStoves.length > 0) {
         await writeTransferHistory(supabase, {
           organization_id: syncResult.organization.id,
@@ -1112,6 +1162,7 @@ serve(async (req) => {
           order_sales_model_name: orgData.order_sales_model ?? null,
           order_sales_model_duration: orgData.order_sales_model_duration ?? null,
           stove_ids: newStoves.map((s: any) => ({ stove_id: s.stove_id, factory: s.factory, sales_reference: s.sales_reference })),
+          created_ids: createdIds,
           source: "external-csv-sync",
           application_name: body.application_name,
         }, modelCache);
