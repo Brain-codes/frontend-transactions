@@ -7,6 +7,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { validateExternalToken } from "../_shared/externalAppToken.ts";
 
+// Matches the application_name the ERP's transfers carry, as cancel_purchase_from_erp does.
+const ERP_APPLICATION = "Atmosfair ERP System";
+
 const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
@@ -33,6 +36,12 @@ serve(async (req) => {
 
   const auth = await validateExternalToken(supabase, token, secret_key, application_name, origin_url);
   if (!auth.isValid) return json(401, { success: false, status: "error", message: auth.error });
+
+  // Only the ERP's own token may cancel ERP transfers; another application's
+  // valid token (the NABDA Portal's) is refused here.
+  if (!String(auth.token_data?.application_name ?? "").startsWith(ERP_APPLICATION)) {
+    return json(403, { success: false, status: "error", message: "Only the ERP can cancel its transfers." });
+  }
 
   const { data, error } = await supabase.rpc("cancel_purchase_from_erp", {
     _transaction_id: String(sales_reference),
