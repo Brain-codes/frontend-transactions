@@ -9,16 +9,23 @@
  * address row, choices as the words the agreement uses (the registry's label,
  * or the stored value when the list has no such row), CPA as the six consents
  * (D27). A field with no Stove DB name is not in the row.
+ *
+ * One key comes from outside the dictionary: "Sales app ID", the sale's own
+ * id, first in the row. The Stove DB keeps it as the external ID that tells a
+ * synced sale from a stove typed in by hand there; it is set once at creation
+ * and no edit, correction or cancellation changes it.
  */
 
 import { LIVE_FIELDS, type DictionaryField } from "./sale-dictionary.ts";
 import { CHOICE_COLUMNS, type SaleOptionLists } from "./sale-options.ts";
 
+export const SALES_APP_ID_KEY = "Sales app ID";
+
 type Row = Record<string, unknown>;
 
 /** The keys of the shape, in the dictionary's order. */
 export function stoveDbNames(): string[] {
-  return LIVE_FIELDS.map((f) => f.stoveDbName).filter((n): n is string => Boolean(n));
+  return [SALES_APP_ID_KEY, ...LIVE_FIELDS.map((f) => f.stoveDbName).filter((n): n is string => Boolean(n))];
 }
 
 function addressOf(sale: Row): Row | null {
@@ -51,7 +58,7 @@ function valueOf(field: DictionaryField, sale: Row, lists: SaleOptionLists | nul
 
 /** One sale in the Stove DB shape. */
 export function toStoveDbRow(sale: Row, lists: SaleOptionLists | null): Row {
-  const out: Row = {};
+  const out: Row = { [SALES_APP_ID_KEY]: sale.id ?? null };
   for (const field of LIVE_FIELDS) {
     if (!field.stoveDbName) continue;
     out[field.stoveDbName] = valueOf(field, sale, lists);

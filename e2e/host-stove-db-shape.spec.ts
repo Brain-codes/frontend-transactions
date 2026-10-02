@@ -29,7 +29,8 @@ type Field = { key: string; stoveDbName: string | null; column: string; table: s
 const DICTIONARY = JSON.parse(
   readFileSync(fileURLToPath(new URL("../supabase/functions/_shared/sale-dictionary.json", import.meta.url)), "utf-8"),
 ) as { fields: Field[] };
-const STOVE_DB_NAMES = DICTIONARY.fields.map((f) => f.stoveDbName).filter((n): n is string => Boolean(n));
+// The sale's own id leads the row as "Sales app ID", the Stove DB's external ID.
+const STOVE_DB_NAMES = ["Sales app ID", ...DICTIONARY.fields.map((f) => f.stoveDbName).filter((n): n is string => Boolean(n))];
 
 test.afterAll(async () => {
   await branchSql(
@@ -80,8 +81,9 @@ async function ownSale(page: import("@playwright/test").Page): Promise<{ id: str
   return { id: id!, serial: free!.stove_id, tx };
 }
 
-function expectStoveDbRow(row: Record<string, unknown>) {
+function expectStoveDbRow(row: Record<string, unknown>, saleId: string) {
   expect(Object.keys(row).sort()).toEqual([...STOVE_DB_NAMES].sort());
+  expect(row["Sales app ID"]).toBe(saleId);
   expect(row["Serial number"]).toBeTruthy();
   expect(row["User firstname"]).toBe("Mary Jane");
   expect(row["User surname"]).toBe("Okoro");
@@ -109,7 +111,7 @@ test("get-sales-advanced answers stove_db with the Stove DB names, word for word
   expect(body.responseFormat).toBe("stove_db");
   const row = body.data.find((d) => d["Serial number"] === sale.serial);
   expect(row, "our sale, in the Stove DB shape").toBeTruthy();
-  expectStoveDbRow(row!);
+  expectStoveDbRow(row!, sale.id);
 
   // A CSV asked for in the same shape carries the same names as its header.
   const csv = await page.evaluate(
@@ -132,6 +134,7 @@ test("get-sales-advanced answers stove_db with the Stove DB names, word for word
   const header = csv.text.split(/\r?\n/)[0];
   expect(header).toContain("User surname");
   expect(header).toContain("Number of Pots");
+  expect(header).toContain("Sales app ID");
 });
 
 test("format1 takes the name from its two columns and fills cpa", async ({ page }) => {
@@ -179,7 +182,7 @@ test("end-user-records-api answers stove_db too, and its own shape carries the n
   const stove = await fetchShape("stove_db");
   expect(stove.status).toBe(200);
   const row = (stove.body as { data: Record<string, unknown>[] }).data[0];
-  expectStoveDbRow(row);
+  expectStoveDbRow(row, sale.id);
 });
 
 test("the docs page shows the Stove DB shape beside the two it had", async ({ page }) => {
@@ -189,4 +192,5 @@ test("the docs page shows the Stove DB shape beside the two it had", async ({ pa
   await expect(page.getByText(/stove_db/).first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("User surname").first()).toBeVisible();
   await expect(page.getByText("Number of Pots").first()).toBeVisible();
+  await expect(page.getByText("Sales app ID").first()).toBeVisible();
 });
