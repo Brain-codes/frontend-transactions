@@ -836,3 +836,28 @@ rows with a server client, and are the only other functions that write them.
 Rejected: handing signed-in users UPDATE back as a stopgap. It would reopen
 part of what the 24 September change closed, for the length of a fix that
 could ship the same afternoon.
+
+## D63. The Stove DB shape carries the sale's id (2026-10-02)
+
+Asked for by Clara at atmosfair on the 29 September call, and on his word on 2 October.
+
+Her sync keeps an external ID on every sale it writes into the Stove DB, so it can
+tell a synced sale from a stove someone typed in by hand there, and flag the clash
+when both carry one serial number. She asked whether the sale's `id` would do. It
+does: it is set once when the sale is created, and no edit, correction or
+cancellation changes it. It ends only with a hard delete, which is refused for a
+worked sale (D56). A stove sold again after such a delete gets a new id under the
+same serial number, which is the clash her check is for.
+
+But the `stove_db` shape (F4, D29) carried only fields with a Stove DB name, and
+format1 never carried the id at all, so the shape she should pull had no id in it.
+
+Decided: `stove_db` leads every row with "Sales app ID", holding `sales.id`. It is
+the one key in the shape that does not come from the dictionary, because it is not
+a sale field anyone fills in or the agreement names. Both doors serve it, since
+they share one shape, and the CSV carries it as a column.
+
+Rejected: a dictionary entry for it. The dictionary is what the forms, the
+corrections catalogue and the phone app read, and an id is none of their business.
+Rejected: naming the key `id`. Every other key in the shape is a Stove DB name in
+words, and "Sales app ID" says which system the id belongs to.

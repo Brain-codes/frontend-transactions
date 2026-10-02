@@ -173,20 +173,27 @@ export const ROLE_DESCRIPTIONS = {
   },
 };
 
-/** The fields the Stove DB shape carries: every dictionary field with a Stove DB name, in order. */
-export const STOVE_DB_FIELDS = LIVE_FIELDS.filter((f) => Boolean(f.stoveDbName)).map((f) => ({
-  name: f.stoveDbName,
-  label: fieldLabel(f.key),
-  from: f.table === "sales" ? f.column : `${f.table}.${f.column}`,
-  kind:
-    f.key === "terms_accepted"
-      ? "the six consents as an object"
-      : ["previous_stove_type", "cooking_fuel_source", "cooking_location"].includes(f.key)
-        ? "the choice's label"
-        : f.type,
-}));
+/**
+ * The fields the Stove DB shape carries: the sale's own id first (the Stove
+ * DB's external ID), then every dictionary field with a Stove DB name, in order.
+ */
+export const STOVE_DB_FIELDS = [
+  { name: "Sales app ID", label: "The sale's ID in this app, set once and never changed", from: "id", kind: "uuid" },
+  ...LIVE_FIELDS.filter((f) => Boolean(f.stoveDbName)).map((f) => ({
+    name: f.stoveDbName,
+    label: fieldLabel(f.key),
+    from: f.table === "sales" ? f.column : `${f.table}.${f.column}`,
+    kind:
+      f.key === "terms_accepted"
+        ? "the six consents as an object"
+        : ["previous_stove_type", "cooking_fuel_source", "cooking_location"].includes(f.key)
+          ? "the choice's label"
+          : f.type,
+  })),
+];
 
 const STOVE_DB_SAMPLE = {
+  "Sales app ID": "3f2b9c1e-7a4d-4e8b-9c2a-5d6e7f8a9b0c",
   "Sales date": "2026-06-01",
   "Serial number": "SN123456",
   "User surname": "Okoro",
@@ -288,7 +295,7 @@ export const RESPONSE_FORMATS = {
     format3: {
       title: "stove_db, the Stove DB shape",
       description:
-        "The parent Stove DB's own field names, word for word, from the field dictionary. The name travels in its two columns, choices as the words the agreement uses, CPA as the six consents. Ask for it with responseFormat=stove_db on get-sales-advanced, or format=stove_db on end-user-records-api.",
+        "The parent Stove DB's own field names, word for word, from the field dictionary, led by Sales app ID, the sale's own ID, which never changes and serves the Stove DB as its external ID. The name travels in its two columns, choices as the words the agreement uses, CPA as the six consents. Ask for it with responseFormat=stove_db on get-sales-advanced, or format=stove_db on end-user-records-api.",
       usage: "The Stove DB's analysts; the two older shapes stay until they move",
       example: {
         success: true,

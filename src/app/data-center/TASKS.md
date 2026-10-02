@@ -4,6 +4,12 @@ Flat, one line per slice, newest programme first. States: todo, spec red,
 green, in review, merged, live. The why lives in `decisions.md`; the evidence
 lives on each PR.
 
+## Berlin sync, the Stove DB shape carries the sale's id (his ask 2026-10-02)
+
+Clara (atmosfair) keys each synced sale by the sales app's own id, to tell it from a stove typed into the Stove DB by hand. Decision D63.
+
+- [ ] `stove_db` leads every row with "Sales app ID" (`sales.id`), on both doors and in the CSV; the docs page lists it. Spec `host-stove-db-shape`. No migration. Deploy list: get-sales-advanced, end-user-records-api
+
 ## Phase 33, a receipt dated after the rules went live can finish (his ask 2026-09-25)
 
 Rose Adejo's receipts would not save as finished, and nothing said why. Decision D61.
