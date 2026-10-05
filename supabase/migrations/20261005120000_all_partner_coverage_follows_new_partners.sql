@@ -194,10 +194,13 @@ begin
      and exists (select 1 from public.nigeria_states)
      and not exists (
            select 1 from public.organizations o
-            where not (o.id = any (p_org_ids))
+            where not coalesce(o.id = any (p_org_ids), false)
          )
   then
     p_mode := 'state_coverage';
+    -- Every partner was ticked, so an exclusion left over from an earlier
+    -- state setup would take away a partner the admin chose.
+    p_excluded_org_ids := '{}'::uuid[];
     p_states := array(
       select distinct s
         from unnest(coalesce(p_states, '{}'::text[])
