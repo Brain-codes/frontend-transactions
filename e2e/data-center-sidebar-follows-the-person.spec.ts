@@ -72,18 +72,34 @@ test("the next person on the same tab does not inherit the last person's entry",
 
   await signOut(page);
 
+  let partnerRequests = 0;
+  const countAccess = (r: import("@playwright/test").Request) => {
+    if (r.url().includes("/functions/v1/data-center-read") && r.postDataJSON()?.action === "access") {
+      partnerRequests++;
+    }
+  };
+  page.on("request", countAccess);
   const partnerAsked = accessAnswer(page);
   await signInWithForm(page, USERS.partner);
+
+  // An absent entry means nothing until the sidebar it would sit in is drawn.
+  await expect(page.getByRole("link", { name: "Dashboard", exact: true })).toBeVisible();
 
   // Red on the old hook: it opened from the cached answer before asking
   // anybody, and never asked, because the cache looked fresh.
   await expect(dataCentreNavLink(page)).toHaveCount(0);
 
-  // An absence only means something once the partner's own answer is in.
+  // And it stays absent once the partner's own answer is in and applied.
   const answer = await partnerAsked;
   expect(answer.status()).toBe(200);
   expect((await answer.json()).data.hasAccess).toBe(false);
-  await expect(dataCentreNavLink(page)).toHaveCount(0);
+  for (let i = 0; i < 5; i++) {
+    await page.waitForTimeout(300);
+    expect(await dataCentreNavLink(page).count()).toBe(0);
+  }
+  // Someone with no grant costs the sales app one small request, not two.
+  page.off("request", countAccess);
+  expect(partnerRequests).toBe(1);
 
   // And it is not simply stuck closed: the person with the grant gets it back.
   await signOut(page);

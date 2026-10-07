@@ -75,13 +75,15 @@ export async function signedInUserId(): Promise<string | null> {
 }
 
 /**
- * Calls back with the signed-in user's id on every auth event, null once
- * signed out, and returns the unsubscribe. The callback runs inside
- * supabase-js's auth lock: an auth call made from it can deadlock, so defer
- * one with `setTimeout`.
+ * Calls back with the signed-in user's id on every auth event after the
+ * first, null once signed out, and returns the unsubscribe. The initial
+ * session is left out: a caller reads that with `signedInUserId`, and hearing
+ * it twice costs a second request. The callback runs inside supabase-js's auth
+ * lock: an auth call made from it can deadlock, so defer one with `setTimeout`.
  */
 export function onSignedInUser(callback: (userId: string | null) => void): () => void {
-  const { data } = getSupabase().auth.onAuthStateChange((_event, session) => {
+  const { data } = getSupabase().auth.onAuthStateChange((event, session) => {
+    if (event === "INITIAL_SESSION") return;
     callback(session?.user.id ?? null);
   });
   return () => data.subscription.unsubscribe();

@@ -74,6 +74,9 @@ export function useDataCenterModuleAccess(enabled: boolean): boolean {
     // because supabase-js can deadlock on an auth call made inside it.
     const unsubscribe = onSignedInUser((userId) => {
       if (userId === resolvedFor) return;
+      // Retire any check still in flight now, not when the next one starts:
+      // its reply is about the person who just left.
+      latest++;
       if (alive) setHasAccess(false);
       setTimeout(() => void resolve(), 0);
     });
@@ -111,6 +114,8 @@ export function useDataCenterModuleAccess(enabled: boolean): boolean {
     return () => {
       alive = false;
       unsubscribe();
+      // Whoever is here when the hook is next enabled starts closed too.
+      setHasAccess(false);
     };
   }, [enabled]);
 

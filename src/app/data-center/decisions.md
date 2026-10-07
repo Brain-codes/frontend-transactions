@@ -891,6 +891,13 @@ nothing else in this module may. And an answer that arrives after the person has
 changed is dropped rather than shown, because a slow request for the last person
 finishing after the next person's answer is the same defect by a different road.
 
+From the fresh-context review: the listener ignores supabase-js's initial session
+event, which the mount check already covers, because hearing it twice sent two
+access requests on every first load. A change of person retires the check in
+flight at once rather than when the next one starts. And the hook starts closed
+again whenever it is switched off and on. The spec now counts the requests: a
+person with no grant costs exactly one.
+
 Rejected: clearing the cache from `AuthContext.signOut`. It would fix sign-out
 but not a session that ends or changes some other way, and it is a host file this
 module may not edit.
