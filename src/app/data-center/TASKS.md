@@ -8,7 +8,7 @@ lives on each PR.
 
 Found by the Codex review of Recovery, whose hook copied this one. Decision D64.
 
-- [ ] spec red: `useDataCenterModuleAccess` binds its cache to the user, starts closed, and asks again when the signed-in user changes; key `dc_module_access_v2`. Spec `data-center-sidebar-follows-the-person`. No migration. No function deploy
+- [ ] green: `useDataCenterModuleAccess` binds its cache to the user, starts closed, and asks again when the signed-in user changes; key `dc_module_access_v2`. Spec `data-center-sidebar-follows-the-person`. No migration. No function deploy
 
 ## Berlin sync, the Stove DB shape carries the sale's id (his ask 2026-10-02)
 

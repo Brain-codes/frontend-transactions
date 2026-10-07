@@ -30,7 +30,7 @@ function accessAnswer(page: Page) {
  * it would put the first person back after the second signed in.
  */
 async function signInWithForm(page: Page, email: string) {
-  await page.goto("/login");
+  if (new URL(page.url()).pathname !== "/login") await page.goto("/login");
   const identifier = page.locator('input[type="text"]').first();
   await identifier.waitFor({ state: "visible" });
   // Typing before hydration is wiped when the controlled inputs mount.
@@ -43,9 +43,23 @@ async function signInWithForm(page: Page, email: string) {
   await page.waitForURL(/\/dashboard/, { timeout: 40_000 });
 }
 
+/**
+ * Logout moves the router to /login first and reloads the page 100 ms later,
+ * so reaching /login is not the end of it. A marker on `window` survives the
+ * router move and not the reload, which is the one worth waiting for.
+ */
 async function signOut(page: Page) {
+  await page.evaluate(() => Object.assign(window, { __beforeLogout: true }));
   await page.getByRole("button", { name: /logout/i }).click();
-  await page.waitForURL(/\/login/, { timeout: 30_000 });
+  await expect
+    .poll(
+      () =>
+        page
+          .evaluate(() => !("__beforeLogout" in window) && location.pathname)
+          .catch(() => false),
+      { timeout: 30_000 },
+    )
+    .toBe("/login");
 }
 
 test("the next person on the same tab does not inherit the last person's entry", async ({
@@ -68,7 +82,7 @@ test("the next person on the same tab does not inherit the last person's entry",
   // An absence only means something once the partner's own answer is in.
   const answer = await partnerAsked;
   expect(answer.status()).toBe(200);
-  expect((await answer.json()).hasAccess).toBe(false);
+  expect((await answer.json()).data.hasAccess).toBe(false);
   await expect(dataCentreNavLink(page)).toHaveCount(0);
 
   // And it is not simply stuck closed: the person with the grant gets it back.
