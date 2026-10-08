@@ -305,12 +305,22 @@ export default function SaleForm({
     setUploading((u) => ({ ...u, [kind]: true }));
     setUploadError(null);
     try {
-      const type = kind === "stove" ? "stove" : "agreement";
+      // Sell Stove's names, so the fallback files an agreement under agreements/.
+      const type = kind === "stove" ? "stoveImage" : "agreementImage";
       const res = await adminSalesService.uploadImage(file, type);
-      const id = res?.data?.id ?? res?.data?.imageId ?? res?.data?.image_id;
+      /*
+       * The edge function answers { success, message, upload: { id } }; only the
+       * direct-storage fallback puts the id at the top. Reading the top alone
+       * threw "Upload failed" on every photo that had in fact uploaded.
+       */
+      const id = res?.data?.upload?.id ?? res?.data?.id;
       if (!res?.success || !id) throw new Error(res?.error ?? "Upload failed");
       set(kind === "stove" ? "stoveImageId" : "agreementImageId", id);
-      setPreviews((p) => ({ ...p, [kind]: URL.createObjectURL(file) }));
+      // A data URL, as Sell Stove does: a blob URL hides that a scan is a PDF,
+      // and the preview then draws a PDF as a broken image.
+      const reader = new FileReader();
+      reader.onload = (e) => setPreviews((p) => ({ ...p, [kind]: e.target.result }));
+      reader.readAsDataURL(file);
     } catch (err) {
       setUploadError(
         `That image did not upload: ${err?.message ?? "unknown reason"}. ` +
@@ -871,6 +881,7 @@ export default function SaleForm({
             placeholder="A photograph or scan of the signed paper agreement"
             uploadIcon={FileText}
             buttonText="Upload agreement"
+            accept="application/pdf,image/*"
             enableCamera
           />
         </div>
