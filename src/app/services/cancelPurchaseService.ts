@@ -17,14 +17,36 @@ export async function checkPurchaseCancellable(transferId: string): Promise<Bloc
   return (data || []) as BlockingSale[];
 }
 
-export async function cancelPurchase(transferId: string, reason: string): Promise<string> {
+export interface CancelPurchaseResult {
+  cancelledPurchaseId: string;
+  salesReference: string | null;
+  // For a transfer the ERP sent: whether the ERP reopened the order (TX-2b).
+  erp: { notified: boolean; status: string };
+}
+
+// Runs through the cancel-purchase function, which cancels as the signed-in
+// person and then tells the ERP when the ERP sent the transfer.
+export async function cancelPurchase(transferId: string, reason: string): Promise<CancelPurchaseResult> {
   const supabase = createClientComponentClient();
-  const { data, error } = await supabase.rpc("cancel_purchase", {
-    _transfer_id: transferId,
-    _reason: reason,
+  const { data, error } = await supabase.functions.invoke("cancel-purchase", {
+    body: { transfer_id: transferId, reason },
   });
-  if (error) throw new Error(error.message);
-  return data as string;
+  if (error) {
+    let message = error.message;
+    try {
+      const ctx = await (error as any)?.context?.json?.();
+      if (ctx?.message) message = ctx.message;
+    } catch {
+      // keep the plain message
+    }
+    throw new Error(message);
+  }
+  if (!data?.success) throw new Error(data?.message || "Failed to cancel purchase");
+  return {
+    cancelledPurchaseId: data.cancelled_purchase_id,
+    salesReference: data.sales_reference ?? null,
+    erp: data.erp ?? { notified: false, status: "unknown" },
+  };
 }
 
 export interface CancelledPurchaseRecord {

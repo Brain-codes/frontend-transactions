@@ -37,6 +37,7 @@ This app is **one application** with **one UI, one navigation system, one compon
 | Track Stoves | All stoves | Assigned partner stoves | Assigned partner stoves | Organization stoves | Assigned stoves |
 | Map | Full access | No Access | No Access | No Access | No Access |
 | Settings | Full access | No Access | No Access | No Access | No Access |
+| Change Control (`/change-control`, `/change-control/new`, `/change-control/$ref`; sidebar footer "Request a change"; permission `change-control-link`) | Yes | Yes | Yes | No | No |
 
 Legend: **Full access** = complete module access • **No Access / Hidden** = menu item not visible or restricted for this role.
 
@@ -45,6 +46,7 @@ Legend: **Full access** = complete module access • **No Access / Hidden** = me
 - All users log in and land on the same `/dashboard` route (single redirect for all roles).
 - All users share the same sidebar and view scaffolding as Super Admin; visibility is filtered via `canRoute` permission checks, not separate layouts.
 - Users at every level only see information/records relevant to them (org/assignment-based row scoping).
+- Change Control (`change-control-link`) is for ACSL staff only: super admins, ACSL agent managers and ACSL agents. The server function `change-request-intake` checks the same three roles (and the alias `super_admin_agent`) on every call and refuses partners and partner agents whatever the screen shows; keep the two in step.
 - **Partners and Partner Agents**: no access to Partner Management or Agent Management.
 - **Partners**: no access to the ACSL Agents Performance Report tab.
 - **Partners**: in User Management, can create **only** Partner Agent users; the role dropdown is locked to "Partner Agent" and the partner's own organization is preselected in the form (no picker choice).
@@ -65,6 +67,7 @@ Legend: **Full access** = complete module access • **No Access / Hidden** = me
 - **acsl_agent** — like manager, minus User Management and ACSL Agents Profile (Agent Management → ACSL Agents).
 - **partner** — no Partner Management, no ACSL Agents Profile, no Map, no Settings, no User Groups. Performance Report shows the **Partners tab only** (own organization). Still sees User Manager, Partner Agents Profile, Sales, Stove Users Data, Track Stoves.
 - **partner_agent / agent** — Dashboard, Sales, Sell Stove, Stove Manager, Stove Users Data, Sales Monitoring App only.
+- **Request a change** (sidebar footer) — super_admin, acsl_agent_manager and acsl_agent only (and super_admin_agent, which resolves to acsl_agent). It opens `/change-control/new` in this app (same tab), prefilled with the current page as `?from=`, plus a small "My requests" link to `/change-control`. See "Change Control scoping" below. Partners and partner agents report through their ACSL contact (Change Control decision D1).
 
 ## User Manager (create-user) form rules
 
@@ -162,7 +165,14 @@ The **Settings** module (sidebar group with children *Payment Models*, *Credenti
   Any non-super-admin hitting these URLs directly is redirected to `/unauthorized`.
 - **Not part of this module**: `/settings/user-management` is the **User Manager** (User Management matrix row), not the Settings module — it stays gated by `allowedRoles` (`super_admin`, `acsl_agent_manager`, `partner`) per that separate row, and is intentionally left unchanged.
 
-## Data scoping
+## Change Control scoping (implemented, S8c)
+
+`/change-control` (My requests), `/change-control/new` (raise a request) and `/change-control/$ref` (one request) let ACSL staff raise and follow change requests without an ERP login (`src/app/change-control/`).
+
+- **Gate**: `change-control-link` is a *feature*, not an entry in the `PERMISSIONS` route map, so `ProtectedRoute`'s `routeKey` gate does not apply to these three pages. Each one wraps in `ChangeControlGuard` (`src/app/change-control/components/ChangeControlGuard.tsx`), which checks `can("change-control-link")` once the role is known and sends anyone without it to `/unauthorized` — the same destination `routeKey` would use, just driven by the feature flag directly. Sidebar visibility uses the same `can("change-control-link")` check it always did.
+- **Server-side gate**: `supabase/functions/change-request-intake/index.ts` checks the caller's role on every call against the same three roles (plus the `super_admin_agent` alias), independently of what the screen shows — keep the two in step if either changes.
+- **Row scoping**: the `list` action answers only the caller's own requests (scoped server-side, then relayed through by the ERP's own `change-control-intake`); there is no client-side filter and no way to see another person's request.
+- **Data flow**: this app never calls the ERP directly. `src/app/change-control/api.ts` is the only file that calls `change-request-intake`, and it is the only server this app's Change Control screens talk to.
 
 Menu/route visibility is necessary but not sufficient — record-level access must also be enforced wherever a shared view is scoped by organization/assignment (e.g. org filters, RLS in services/edge functions) so that non-admin roles only see rows relevant to them, even inside a shared component.
 
@@ -176,3 +186,14 @@ Menu/route visibility is necessary but not sufficient — record-level access mu
   - Red flag while reviewing a diff: an `if (isSuperAdmin) { ... } else { ... }` (or ternary) that duplicates markup instead of toggling a prop/section. That's a second view in disguise and must be merged into one shared render path.
   - Precedent: the dashboard (`src/app/dashboard/components/DashboardContent.jsx`) originally had exactly this — a full rich view for `super_admin` and a stripped-down KPI-only view for every other role. Fixed by merging into a single render path where all roles get the same charts/cards, and only truly super-admin-only controls (org/state/branch filter toolbar) stay behind an `isSuperAdmin` check inside the shared component. Drilldown-capable roles (`acsl_agent`, `acsl_agent_manager`, `partner`) get clickable KPI tiles instead of navigate-away links — that's a permission-driven *behavior* difference on the same tile, not a different tile.
 - When scoping data for a role (edge functions / services), the response shape returned to the frontend must stay identical across roles (same keys) — only the underlying query filter changes (org id, assignment, `created_by`, etc.). This is what lets one component render every role's data without branching on shape.
+
+## Where scope is enforced
+
+- **One definition.** `public.scope_organization_ids()` returns the organisations the signed-in account may see: every organisation for a super admin; otherwise the account's own organisation, plus, for ACSL agents and managers, the coverage `public.acsl_agent_org_scope` gives them and (managers) their `acsl_agent` team. Disabled accounts see none.
+- **Row rules use it.** Stove records, addresses, instalments and partner payment terms are read within that scope; email settings and the email log are for super admins; payment models are managed by super admins and read by signed-in users. The service role bypasses row rules, so server functions must scope their own queries.
+- **Server functions use it too.** `supabase/functions/_shared/callerScope.ts` verifies the caller's token and asks `scope_organization_ids()` with it, so a function and a row rule cannot disagree. A function that reads with the service key checks `inScope(...)` before answering; one that should only ever be called by a super admin or another server uses `requireSuperAdminOrService(...)`.
+- **Partner agents read their own sales.** `public.is_own_sales_only()` marks a partner agent; the organisation-wide sales read excludes them, and `scope_sale_ids()` (instalments, addresses, history) narrows to sales they created or that were sold on their behalf. Their stock view stays the organisation's.
+- **One sale by id, serial or transaction** (`get-sale`) answers within the same scope as Manage Sales: ACSL agents and managers their assigned partners' sales (it used to answer them for any organisation), a partner their organisation's, a partner agent their own. Anything else reads as not found.
+- **Stored images** (bucket `images`): anyone with a file's public link can open it, which is how every screen shows images. Through the API, an account lists and reads only the files it uploaded (a super admin, every file), and only the server changes or removes a stored file. Uploads stay open to signed-in accounts and never overwrite.
+- **Roles by their current names.** Checks name `partner` and `partner_agent`; the legacy `admin` and `agent` are accepted alongside them, never instead of them.
+

@@ -114,6 +114,9 @@ serve(async (req) => {
         email,
         password,
         email_confirm: true,
+        // The profile takes role and organisation from app_metadata
+        // (handle_new_user, migration 20260927200000).
+        app_metadata: { role: 'agent', organization_id: adminProfile.organization_id },
       });
 
     if (createError || !newUser?.user?.id) {

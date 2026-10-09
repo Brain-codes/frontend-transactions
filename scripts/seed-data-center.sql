@@ -103,7 +103,9 @@ on conflict (id) do nothing;
 -- profiles.id references auth.users, so the auth rows come first, and the
 -- identity is carried in raw_user_meta_data rather than written straight to
 -- profiles. That is deliberate. The database syncs the two in both directions:
--- on_auth_user_created builds the profile from this metadata, and any later
+-- on_auth_user_created builds the profile from it (the name from this metadata;
+-- role and organisation only from raw_app_meta_data since 20260927200000, which
+-- the profiles upsert further down covers), and any later
 -- write to profiles.role updates auth.users, which fires handle_user_update and
 -- pushes the metadata back down. Setting full_name only on profiles loses it on
 -- that return trip. Seeding through the metadata is also how the app itself

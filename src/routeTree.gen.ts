@@ -10,216 +10,92 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as UserManagementIndexRouteImport } from './routes/user-management/index'
-import { Route as UserGuideIndexRouteImport } from './routes/user-guide/index'
-import { Route as UnauthorizedIndexRouteImport } from './routes/unauthorized/index'
-import { Route as SystemDocumentationIndexRouteImport } from './routes/system-documentation/index'
-import { Route as SuperAdminAgentsIndexRouteImport } from './routes/super-admin-agents/index'
-import { Route as SuperAdminAgentIndexRouteImport } from './routes/super-admin-agent/index'
-import { Route as StoveTransferHistoryIndexRouteImport } from './routes/stove-transfer-history/index'
-import { Route as StoveManagerIndexRouteImport } from './routes/stove-manager/index'
-import { Route as StoveManagementIndexRouteImport } from './routes/stove-management/index'
-import { Route as SalesIndexRouteImport } from './routes/sales/index'
-import { Route as SalesMonitoringAppIndexRouteImport } from './routes/sales-monitoring-app/index'
-import { Route as ProfileIndexRouteImport } from './routes/profile/index'
-import { Route as PaymentModelsIndexRouteImport } from './routes/payment-models/index'
-import { Route as PartnersIndexRouteImport } from './routes/partners/index'
-import { Route as MapIndexRouteImport } from './routes/map/index'
-import { Route as LoginIndexRouteImport } from './routes/login/index'
-import { Route as EndUserRecordsIndexRouteImport } from './routes/end-user-records/index'
-import { Route as DownloadIndexRouteImport } from './routes/download/index'
-import { Route as DocsIndexRouteImport } from './routes/docs/index'
-import { Route as DataCenterIndexRouteImport } from './routes/data-center/index'
-import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
-import { Route as AppIndexRouteImport } from './routes/app/index'
-import { Route as AgreementImagesIndexRouteImport } from './routes/agreement-images/index'
-import { Route as AgentsIndexRouteImport } from './routes/agents/index'
-import { Route as AgentIndexRouteImport } from './routes/agent/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as SalesCreateRouteImport } from './routes/sales/create'
-import { Route as PartnersProfilesRouteImport } from './routes/partners/profiles'
-import { Route as DataCenterStoveRecordsRouteImport } from './routes/data-center/stove-records'
-import { Route as DataCenterStockRouteImport } from './routes/data-center/stock'
-import { Route as DataCenterSettingsRouteImport } from './routes/data-center/settings'
-import { Route as DataCenterPartnerRecordsRouteImport } from './routes/data-center/partner-records'
-import { Route as DataCenterMyCallsRouteImport } from './routes/data-center/my-calls'
-import { Route as DataCenterImportRouteImport } from './routes/data-center/import'
-import { Route as DataCenterDashboardRouteImport } from './routes/data-center/dashboard'
-import { Route as DataCenterCorrectionsRouteImport } from './routes/data-center/corrections'
-import { Route as DataCenterCallCentreRouteImport } from './routes/data-center/call-centre'
-import { Route as DataCenterAnalysisRouteImport } from './routes/data-center/analysis'
-import { Route as AgentsProfilesRouteImport } from './routes/agents/profiles'
+import { Route as AgentIndexRouteImport } from './routes/agent/index'
+import { Route as AgentsIndexRouteImport } from './routes/agents/index'
 import { Route as AgentsPartnerAgentsProfilesRouteImport } from './routes/agents/partner-agents-profiles'
-import { Route as UserManagementUsersIndexRouteImport } from './routes/user-management/users/index'
-import { Route as UserManagementUserGroupsIndexRouteImport } from './routes/user-management/user-groups/index'
-import { Route as SuperAdminAgentStoveIdsIndexRouteImport } from './routes/super-admin-agent/stove-ids/index'
-import { Route as SuperAdminAgentSalesIndexRouteImport } from './routes/super-admin-agent/sales/index'
-import { Route as SuperAdminAgentPartnersIndexRouteImport } from './routes/super-admin-agent/partners/index'
-import { Route as SettingsUserManagementIndexRouteImport } from './routes/settings/user-management/index'
-import { Route as SettingsToolsIndexRouteImport } from './routes/settings/tools/index'
-import { Route as SettingsSystemConfigIndexRouteImport } from './routes/settings/system-config/index'
-import { Route as SettingsPaymentModelsIndexRouteImport } from './routes/settings/payment-models/index'
-import { Route as SettingsCredentialsIndexRouteImport } from './routes/settings/credentials/index'
-import { Route as SalesManageIndexRouteImport } from './routes/sales/manage/index'
-import { Route as SalesFinancialReportsIndexRouteImport } from './routes/sales/financial-reports/index'
-import { Route as SalesCancelledIndexRouteImport } from './routes/sales/cancelled/index'
-import { Route as SalesCancelledPurchasesIndexRouteImport } from './routes/sales/cancelled-purchases/index'
-import { Route as SalesIdIndexRouteImport } from './routes/sales/$id/index'
-import { Route as EndUserRecordsApiIndexRouteImport } from './routes/end-user-records/api/index'
-import { Route as DocsSuperadminIndexRouteImport } from './routes/docs/superadmin/index'
-import { Route as DocsAdminIndexRouteImport } from './routes/docs/admin/index'
-import { Route as AdminSystemConfigIndexRouteImport } from './routes/admin/system-config/index'
-import { Route as AdminSettingsIndexRouteImport } from './routes/admin/settings/index'
-import { Route as AdminSalesIndexRouteImport } from './routes/admin/sales/index'
-import { Route as AdminPartnerAgentsIndexRouteImport } from './routes/admin/partner-agents/index'
-import { Route as AdminCredentialsIndexRouteImport } from './routes/admin/credentials/index'
-import { Route as AdminBranchesIndexRouteImport } from './routes/admin/branches/index'
-import { Route as AdminAppConfigIndexRouteImport } from './routes/admin/app-config/index'
-import { Route as AdminAgreementImagesIndexRouteImport } from './routes/admin/agreement-images/index'
+import { Route as AgentsProfilesRouteImport } from './routes/agents/profiles'
+import { Route as AgreementImagesIndexRouteImport } from './routes/agreement-images/index'
+import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as ChangeControlIndexRouteImport } from './routes/change-control/index'
+import { Route as ChangeControlNewRouteImport } from './routes/change-control/new'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as DataCenterIndexRouteImport } from './routes/data-center/index'
+import { Route as DataCenterAnalysisRouteImport } from './routes/data-center/analysis'
+import { Route as DataCenterCallCentreRouteImport } from './routes/data-center/call-centre'
+import { Route as DataCenterCorrectionsRouteImport } from './routes/data-center/corrections'
+import { Route as DataCenterDashboardRouteImport } from './routes/data-center/dashboard'
+import { Route as DataCenterImportRouteImport } from './routes/data-center/import'
+import { Route as DataCenterMyCallsRouteImport } from './routes/data-center/my-calls'
+import { Route as DataCenterPartnerRecordsRouteImport } from './routes/data-center/partner-records'
+import { Route as DataCenterSettingsRouteImport } from './routes/data-center/settings'
+import { Route as DataCenterStockRouteImport } from './routes/data-center/stock'
+import { Route as DataCenterStoveRecordsRouteImport } from './routes/data-center/stove-records'
+import { Route as DocsIndexRouteImport } from './routes/docs/index'
+import { Route as DownloadIndexRouteImport } from './routes/download/index'
+import { Route as EndUserRecordsIndexRouteImport } from './routes/end-user-records/index'
+import { Route as LoginIndexRouteImport } from './routes/login/index'
+import { Route as MapIndexRouteImport } from './routes/map/index'
+import { Route as PartnersIndexRouteImport } from './routes/partners/index'
+import { Route as PartnersProfilesRouteImport } from './routes/partners/profiles'
+import { Route as PaymentModelsIndexRouteImport } from './routes/payment-models/index'
+import { Route as ProfileIndexRouteImport } from './routes/profile/index'
+import { Route as SalesMonitoringAppIndexRouteImport } from './routes/sales-monitoring-app/index'
+import { Route as SalesIndexRouteImport } from './routes/sales/index'
+import { Route as SalesCreateRouteImport } from './routes/sales/create'
+import { Route as StoveManagementIndexRouteImport } from './routes/stove-management/index'
+import { Route as StoveManagerIndexRouteImport } from './routes/stove-manager/index'
+import { Route as StoveTransferHistoryIndexRouteImport } from './routes/stove-transfer-history/index'
+import { Route as SuperAdminAgentIndexRouteImport } from './routes/super-admin-agent/index'
+import { Route as SuperAdminAgentsIndexRouteImport } from './routes/super-admin-agents/index'
+import { Route as SystemDocumentationIndexRouteImport } from './routes/system-documentation/index'
+import { Route as UnauthorizedIndexRouteImport } from './routes/unauthorized/index'
+import { Route as UserGuideIndexRouteImport } from './routes/user-guide/index'
+import { Route as UserManagementIndexRouteImport } from './routes/user-management/index'
 import { Route as AdminAgentsIndexRouteImport } from './routes/admin/agents/index'
-import { Route as DataCenterStoveStoveIdRouteImport } from './routes/data-center/stove.$stoveId'
-import { Route as DataCenterCorrectionsSaleIdRouteImport } from './routes/data-center/corrections_.$saleId'
-import { Route as DataCenterCallCentreSharedPhonesRouteImport } from './routes/data-center/call-centre_.shared-phones'
-import { Route as DataCenterCallCentreRecordsRouteImport } from './routes/data-center/call-centre_.records'
-import { Route as DataCenterCallCentrePartnersRouteImport } from './routes/data-center/call-centre_.partners'
+import { Route as AdminAgreementImagesIndexRouteImport } from './routes/admin/agreement-images/index'
+import { Route as AdminAppConfigIndexRouteImport } from './routes/admin/app-config/index'
+import { Route as AdminBranchesIndexRouteImport } from './routes/admin/branches/index'
+import { Route as AdminCredentialsIndexRouteImport } from './routes/admin/credentials/index'
+import { Route as AdminPartnerAgentsIndexRouteImport } from './routes/admin/partner-agents/index'
+import { Route as AdminSalesIndexRouteImport } from './routes/admin/sales/index'
+import { Route as AdminSettingsIndexRouteImport } from './routes/admin/settings/index'
+import { Route as AdminSystemConfigIndexRouteImport } from './routes/admin/system-config/index'
+import { Route as ChangeControlRefIndexRouteImport } from './routes/change-control/$ref/index'
 import { Route as DataCenterCallCentreActivityRouteImport } from './routes/data-center/call-centre_.activity'
-import { Route as SuperAdminAgentSalesCreateIndexRouteImport } from './routes/super-admin-agent/sales/create/index'
-import { Route as DocsSuperadminSalesIndexRouteImport } from './routes/docs/superadmin/sales/index'
-import { Route as DocsAdminSalesIndexRouteImport } from './routes/docs/admin/sales/index'
-import { Route as AdminSalesFinancialReportsIndexRouteImport } from './routes/admin/sales/financial-reports/index'
+import { Route as DataCenterCallCentrePartnersRouteImport } from './routes/data-center/call-centre_.partners'
+import { Route as DataCenterCallCentreRecordsRouteImport } from './routes/data-center/call-centre_.records'
+import { Route as DataCenterCallCentreSharedPhonesRouteImport } from './routes/data-center/call-centre_.shared-phones'
+import { Route as DataCenterCorrectionsSaleIdRouteImport } from './routes/data-center/corrections_.$saleId'
+import { Route as DataCenterStoveStoveIdRouteImport } from './routes/data-center/stove.$stoveId'
+import { Route as DocsAdminIndexRouteImport } from './routes/docs/admin/index'
+import { Route as DocsSuperadminIndexRouteImport } from './routes/docs/superadmin/index'
+import { Route as EndUserRecordsApiIndexRouteImport } from './routes/end-user-records/api/index'
+import { Route as SalesIdIndexRouteImport } from './routes/sales/$id/index'
+import { Route as SalesCancelledPurchasesIndexRouteImport } from './routes/sales/cancelled-purchases/index'
+import { Route as SalesCancelledIndexRouteImport } from './routes/sales/cancelled/index'
+import { Route as SalesFinancialReportsIndexRouteImport } from './routes/sales/financial-reports/index'
+import { Route as SalesManageIndexRouteImport } from './routes/sales/manage/index'
+import { Route as SettingsCredentialsIndexRouteImport } from './routes/settings/credentials/index'
+import { Route as SettingsPaymentModelsIndexRouteImport } from './routes/settings/payment-models/index'
+import { Route as SettingsSystemConfigIndexRouteImport } from './routes/settings/system-config/index'
+import { Route as SettingsToolsIndexRouteImport } from './routes/settings/tools/index'
+import { Route as SettingsUserManagementIndexRouteImport } from './routes/settings/user-management/index'
+import { Route as SuperAdminAgentPartnersIndexRouteImport } from './routes/super-admin-agent/partners/index'
+import { Route as SuperAdminAgentSalesIndexRouteImport } from './routes/super-admin-agent/sales/index'
+import { Route as SuperAdminAgentStoveIdsIndexRouteImport } from './routes/super-admin-agent/stove-ids/index'
+import { Route as UserManagementUserGroupsIndexRouteImport } from './routes/user-management/user-groups/index'
+import { Route as UserManagementUsersIndexRouteImport } from './routes/user-management/users/index'
 import { Route as AdminSalesCreateIndexRouteImport } from './routes/admin/sales/create/index'
+import { Route as AdminSalesFinancialReportsIndexRouteImport } from './routes/admin/sales/financial-reports/index'
 import { Route as DataCenterCallCentreAgentsAgentIdRouteImport } from './routes/data-center/call-centre_.agents.$agentId'
+import { Route as DocsAdminSalesIndexRouteImport } from './routes/docs/admin/sales/index'
+import { Route as DocsSuperadminSalesIndexRouteImport } from './routes/docs/superadmin/sales/index'
+import { Route as SuperAdminAgentSalesCreateIndexRouteImport } from './routes/super-admin-agent/sales/create/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const UserManagementIndexRoute = UserManagementIndexRouteImport.update({
-  id: '/user-management/',
-  path: '/user-management/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const UserGuideIndexRoute = UserGuideIndexRouteImport.update({
-  id: '/user-guide/',
-  path: '/user-guide/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const UnauthorizedIndexRoute = UnauthorizedIndexRouteImport.update({
-  id: '/unauthorized/',
-  path: '/unauthorized/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SystemDocumentationIndexRoute =
-  SystemDocumentationIndexRouteImport.update({
-    id: '/system-documentation/',
-    path: '/system-documentation/',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const SuperAdminAgentsIndexRoute = SuperAdminAgentsIndexRouteImport.update({
-  id: '/super-admin-agents/',
-  path: '/super-admin-agents/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SuperAdminAgentIndexRoute = SuperAdminAgentIndexRouteImport.update({
-  id: '/super-admin-agent/',
-  path: '/super-admin-agent/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StoveTransferHistoryIndexRoute =
-  StoveTransferHistoryIndexRouteImport.update({
-    id: '/stove-transfer-history/',
-    path: '/stove-transfer-history/',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const StoveManagerIndexRoute = StoveManagerIndexRouteImport.update({
-  id: '/stove-manager/',
-  path: '/stove-manager/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StoveManagementIndexRoute = StoveManagementIndexRouteImport.update({
-  id: '/stove-management/',
-  path: '/stove-management/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SalesIndexRoute = SalesIndexRouteImport.update({
-  id: '/sales/',
-  path: '/sales/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SalesMonitoringAppIndexRoute = SalesMonitoringAppIndexRouteImport.update({
-  id: '/sales-monitoring-app/',
-  path: '/sales-monitoring-app/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileIndexRoute = ProfileIndexRouteImport.update({
-  id: '/profile/',
-  path: '/profile/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PaymentModelsIndexRoute = PaymentModelsIndexRouteImport.update({
-  id: '/payment-models/',
-  path: '/payment-models/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PartnersIndexRoute = PartnersIndexRouteImport.update({
-  id: '/partners/',
-  path: '/partners/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MapIndexRoute = MapIndexRouteImport.update({
-  id: '/map/',
-  path: '/map/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginIndexRoute = LoginIndexRouteImport.update({
-  id: '/login/',
-  path: '/login/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EndUserRecordsIndexRoute = EndUserRecordsIndexRouteImport.update({
-  id: '/end-user-records/',
-  path: '/end-user-records/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DownloadIndexRoute = DownloadIndexRouteImport.update({
-  id: '/download/',
-  path: '/download/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocsIndexRoute = DocsIndexRouteImport.update({
-  id: '/docs/',
-  path: '/docs/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DataCenterIndexRoute = DataCenterIndexRouteImport.update({
-  id: '/data-center/',
-  path: '/data-center/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardIndexRoute = DashboardIndexRouteImport.update({
-  id: '/dashboard/',
-  path: '/dashboard/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppIndexRoute = AppIndexRouteImport.update({
-  id: '/app/',
-  path: '/app/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AgreementImagesIndexRoute = AgreementImagesIndexRouteImport.update({
-  id: '/agreement-images/',
-  path: '/agreement-images/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AgentsIndexRoute = AgentsIndexRouteImport.update({
-  id: '/agents/',
-  path: '/agents/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AgentIndexRoute = AgentIndexRouteImport.update({
-  id: '/agent/',
-  path: '/agent/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -227,70 +103,14 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SalesCreateRoute = SalesCreateRouteImport.update({
-  id: '/sales/create',
-  path: '/sales/create',
+const AgentIndexRoute = AgentIndexRouteImport.update({
+  id: '/agent/',
+  path: '/agent/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PartnersProfilesRoute = PartnersProfilesRouteImport.update({
-  id: '/partners/profiles',
-  path: '/partners/profiles',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DataCenterStoveRecordsRoute = DataCenterStoveRecordsRouteImport.update({
-  id: '/data-center/stove-records',
-  path: '/data-center/stove-records',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DataCenterStockRoute = DataCenterStockRouteImport.update({
-  id: '/data-center/stock',
-  path: '/data-center/stock',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DataCenterSettingsRoute = DataCenterSettingsRouteImport.update({
-  id: '/data-center/settings',
-  path: '/data-center/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DataCenterPartnerRecordsRoute =
-  DataCenterPartnerRecordsRouteImport.update({
-    id: '/data-center/partner-records',
-    path: '/data-center/partner-records',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const DataCenterMyCallsRoute = DataCenterMyCallsRouteImport.update({
-  id: '/data-center/my-calls',
-  path: '/data-center/my-calls',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DataCenterImportRoute = DataCenterImportRouteImport.update({
-  id: '/data-center/import',
-  path: '/data-center/import',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DataCenterDashboardRoute = DataCenterDashboardRouteImport.update({
-  id: '/data-center/dashboard',
-  path: '/data-center/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DataCenterCorrectionsRoute = DataCenterCorrectionsRouteImport.update({
-  id: '/data-center/corrections',
-  path: '/data-center/corrections',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DataCenterCallCentreRoute = DataCenterCallCentreRouteImport.update({
-  id: '/data-center/call-centre',
-  path: '/data-center/call-centre',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DataCenterAnalysisRoute = DataCenterAnalysisRouteImport.update({
-  id: '/data-center/analysis',
-  path: '/data-center/analysis',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AgentsProfilesRoute = AgentsProfilesRouteImport.update({
-  id: '/agents/profiles',
-  path: '/agents/profiles',
+const AgentsIndexRoute = AgentsIndexRouteImport.update({
+  id: '/agents/',
+  path: '/agents/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgentsPartnerAgentsProfilesRoute =
@@ -299,140 +119,202 @@ const AgentsPartnerAgentsProfilesRoute =
     path: '/agents/partner-agents-profiles',
     getParentRoute: () => rootRouteImport,
   } as any)
-const UserManagementUsersIndexRoute =
-  UserManagementUsersIndexRouteImport.update({
-    id: '/user-management/users/',
-    path: '/user-management/users/',
+const AgentsProfilesRoute = AgentsProfilesRouteImport.update({
+  id: '/agents/profiles',
+  path: '/agents/profiles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgreementImagesIndexRoute = AgreementImagesIndexRouteImport.update({
+  id: '/agreement-images/',
+  path: '/agreement-images/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/app/',
+  path: '/app/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangeControlIndexRoute = ChangeControlIndexRouteImport.update({
+  id: '/change-control/',
+  path: '/change-control/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangeControlNewRoute = ChangeControlNewRouteImport.update({
+  id: '/change-control/new',
+  path: '/change-control/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/dashboard/',
+  path: '/dashboard/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataCenterIndexRoute = DataCenterIndexRouteImport.update({
+  id: '/data-center/',
+  path: '/data-center/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataCenterAnalysisRoute = DataCenterAnalysisRouteImport.update({
+  id: '/data-center/analysis',
+  path: '/data-center/analysis',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataCenterCallCentreRoute = DataCenterCallCentreRouteImport.update({
+  id: '/data-center/call-centre',
+  path: '/data-center/call-centre',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataCenterCorrectionsRoute = DataCenterCorrectionsRouteImport.update({
+  id: '/data-center/corrections',
+  path: '/data-center/corrections',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataCenterDashboardRoute = DataCenterDashboardRouteImport.update({
+  id: '/data-center/dashboard',
+  path: '/data-center/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataCenterImportRoute = DataCenterImportRouteImport.update({
+  id: '/data-center/import',
+  path: '/data-center/import',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataCenterMyCallsRoute = DataCenterMyCallsRouteImport.update({
+  id: '/data-center/my-calls',
+  path: '/data-center/my-calls',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataCenterPartnerRecordsRoute =
+  DataCenterPartnerRecordsRouteImport.update({
+    id: '/data-center/partner-records',
+    path: '/data-center/partner-records',
     getParentRoute: () => rootRouteImport,
   } as any)
-const UserManagementUserGroupsIndexRoute =
-  UserManagementUserGroupsIndexRouteImport.update({
-    id: '/user-management/user-groups/',
-    path: '/user-management/user-groups/',
+const DataCenterSettingsRoute = DataCenterSettingsRouteImport.update({
+  id: '/data-center/settings',
+  path: '/data-center/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataCenterStockRoute = DataCenterStockRouteImport.update({
+  id: '/data-center/stock',
+  path: '/data-center/stock',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataCenterStoveRecordsRoute = DataCenterStoveRecordsRouteImport.update({
+  id: '/data-center/stove-records',
+  path: '/data-center/stove-records',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsIndexRoute = DocsIndexRouteImport.update({
+  id: '/docs/',
+  path: '/docs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DownloadIndexRoute = DownloadIndexRouteImport.update({
+  id: '/download/',
+  path: '/download/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EndUserRecordsIndexRoute = EndUserRecordsIndexRouteImport.update({
+  id: '/end-user-records/',
+  path: '/end-user-records/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginIndexRoute = LoginIndexRouteImport.update({
+  id: '/login/',
+  path: '/login/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MapIndexRoute = MapIndexRouteImport.update({
+  id: '/map/',
+  path: '/map/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PartnersIndexRoute = PartnersIndexRouteImport.update({
+  id: '/partners/',
+  path: '/partners/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PartnersProfilesRoute = PartnersProfilesRouteImport.update({
+  id: '/partners/profiles',
+  path: '/partners/profiles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentModelsIndexRoute = PaymentModelsIndexRouteImport.update({
+  id: '/payment-models/',
+  path: '/payment-models/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileIndexRoute = ProfileIndexRouteImport.update({
+  id: '/profile/',
+  path: '/profile/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesMonitoringAppIndexRoute = SalesMonitoringAppIndexRouteImport.update({
+  id: '/sales-monitoring-app/',
+  path: '/sales-monitoring-app/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesIndexRoute = SalesIndexRouteImport.update({
+  id: '/sales/',
+  path: '/sales/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesCreateRoute = SalesCreateRouteImport.update({
+  id: '/sales/create',
+  path: '/sales/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoveManagementIndexRoute = StoveManagementIndexRouteImport.update({
+  id: '/stove-management/',
+  path: '/stove-management/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoveManagerIndexRoute = StoveManagerIndexRouteImport.update({
+  id: '/stove-manager/',
+  path: '/stove-manager/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoveTransferHistoryIndexRoute =
+  StoveTransferHistoryIndexRouteImport.update({
+    id: '/stove-transfer-history/',
+    path: '/stove-transfer-history/',
     getParentRoute: () => rootRouteImport,
   } as any)
-const SuperAdminAgentStoveIdsIndexRoute =
-  SuperAdminAgentStoveIdsIndexRouteImport.update({
-    id: '/super-admin-agent/stove-ids/',
-    path: '/super-admin-agent/stove-ids/',
+const SuperAdminAgentIndexRoute = SuperAdminAgentIndexRouteImport.update({
+  id: '/super-admin-agent/',
+  path: '/super-admin-agent/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuperAdminAgentsIndexRoute = SuperAdminAgentsIndexRouteImport.update({
+  id: '/super-admin-agents/',
+  path: '/super-admin-agents/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SystemDocumentationIndexRoute =
+  SystemDocumentationIndexRouteImport.update({
+    id: '/system-documentation/',
+    path: '/system-documentation/',
     getParentRoute: () => rootRouteImport,
   } as any)
-const SuperAdminAgentSalesIndexRoute =
-  SuperAdminAgentSalesIndexRouteImport.update({
-    id: '/super-admin-agent/sales/',
-    path: '/super-admin-agent/sales/',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const SuperAdminAgentPartnersIndexRoute =
-  SuperAdminAgentPartnersIndexRouteImport.update({
-    id: '/super-admin-agent/partners/',
-    path: '/super-admin-agent/partners/',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const SettingsUserManagementIndexRoute =
-  SettingsUserManagementIndexRouteImport.update({
-    id: '/settings/user-management/',
-    path: '/settings/user-management/',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const SettingsToolsIndexRoute = SettingsToolsIndexRouteImport.update({
-  id: '/settings/tools/',
-  path: '/settings/tools/',
+const UnauthorizedIndexRoute = UnauthorizedIndexRouteImport.update({
+  id: '/unauthorized/',
+  path: '/unauthorized/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SettingsSystemConfigIndexRoute =
-  SettingsSystemConfigIndexRouteImport.update({
-    id: '/settings/system-config/',
-    path: '/settings/system-config/',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const SettingsPaymentModelsIndexRoute =
-  SettingsPaymentModelsIndexRouteImport.update({
-    id: '/settings/payment-models/',
-    path: '/settings/payment-models/',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const SettingsCredentialsIndexRoute =
-  SettingsCredentialsIndexRouteImport.update({
-    id: '/settings/credentials/',
-    path: '/settings/credentials/',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const SalesManageIndexRoute = SalesManageIndexRouteImport.update({
-  id: '/sales/manage/',
-  path: '/sales/manage/',
+const UserGuideIndexRoute = UserGuideIndexRouteImport.update({
+  id: '/user-guide/',
+  path: '/user-guide/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SalesFinancialReportsIndexRoute =
-  SalesFinancialReportsIndexRouteImport.update({
-    id: '/sales/financial-reports/',
-    path: '/sales/financial-reports/',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const SalesCancelledIndexRoute = SalesCancelledIndexRouteImport.update({
-  id: '/sales/cancelled/',
-  path: '/sales/cancelled/',
+const UserManagementIndexRoute = UserManagementIndexRouteImport.update({
+  id: '/user-management/',
+  path: '/user-management/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SalesCancelledPurchasesIndexRoute =
-  SalesCancelledPurchasesIndexRouteImport.update({
-    id: '/sales/cancelled-purchases/',
-    path: '/sales/cancelled-purchases/',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const SalesIdIndexRoute = SalesIdIndexRouteImport.update({
-  id: '/sales/$id/',
-  path: '/sales/$id/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EndUserRecordsApiIndexRoute = EndUserRecordsApiIndexRouteImport.update({
-  id: '/end-user-records/api/',
-  path: '/end-user-records/api/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocsSuperadminIndexRoute = DocsSuperadminIndexRouteImport.update({
-  id: '/docs/superadmin/',
-  path: '/docs/superadmin/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocsAdminIndexRoute = DocsAdminIndexRouteImport.update({
-  id: '/docs/admin/',
-  path: '/docs/admin/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminSystemConfigIndexRoute = AdminSystemConfigIndexRouteImport.update({
-  id: '/admin/system-config/',
-  path: '/admin/system-config/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminSettingsIndexRoute = AdminSettingsIndexRouteImport.update({
-  id: '/admin/settings/',
-  path: '/admin/settings/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminSalesIndexRoute = AdminSalesIndexRouteImport.update({
-  id: '/admin/sales/',
-  path: '/admin/sales/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminPartnerAgentsIndexRoute = AdminPartnerAgentsIndexRouteImport.update({
-  id: '/admin/partner-agents/',
-  path: '/admin/partner-agents/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminCredentialsIndexRoute = AdminCredentialsIndexRouteImport.update({
-  id: '/admin/credentials/',
-  path: '/admin/credentials/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminBranchesIndexRoute = AdminBranchesIndexRouteImport.update({
-  id: '/admin/branches/',
-  path: '/admin/branches/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminAppConfigIndexRoute = AdminAppConfigIndexRouteImport.update({
-  id: '/admin/app-config/',
-  path: '/admin/app-config/',
+const AdminAgentsIndexRoute = AdminAgentsIndexRouteImport.update({
+  id: '/admin/agents/',
+  path: '/admin/agents/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAgreementImagesIndexRoute =
@@ -441,32 +323,50 @@ const AdminAgreementImagesIndexRoute =
     path: '/admin/agreement-images/',
     getParentRoute: () => rootRouteImport,
   } as any)
-const AdminAgentsIndexRoute = AdminAgentsIndexRouteImport.update({
-  id: '/admin/agents/',
-  path: '/admin/agents/',
+const AdminAppConfigIndexRoute = AdminAppConfigIndexRouteImport.update({
+  id: '/admin/app-config/',
+  path: '/admin/app-config/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DataCenterStoveStoveIdRoute = DataCenterStoveStoveIdRouteImport.update({
-  id: '/data-center/stove/$stoveId',
-  path: '/data-center/stove/$stoveId',
+const AdminBranchesIndexRoute = AdminBranchesIndexRouteImport.update({
+  id: '/admin/branches/',
+  path: '/admin/branches/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DataCenterCorrectionsSaleIdRoute =
-  DataCenterCorrectionsSaleIdRouteImport.update({
-    id: '/data-center/corrections_/$saleId',
-    path: '/data-center/corrections/$saleId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const DataCenterCallCentreSharedPhonesRoute =
-  DataCenterCallCentreSharedPhonesRouteImport.update({
-    id: '/data-center/call-centre_/shared-phones',
-    path: '/data-center/call-centre/shared-phones',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const DataCenterCallCentreRecordsRoute =
-  DataCenterCallCentreRecordsRouteImport.update({
-    id: '/data-center/call-centre_/records',
-    path: '/data-center/call-centre/records',
+const AdminCredentialsIndexRoute = AdminCredentialsIndexRouteImport.update({
+  id: '/admin/credentials/',
+  path: '/admin/credentials/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminPartnerAgentsIndexRoute = AdminPartnerAgentsIndexRouteImport.update({
+  id: '/admin/partner-agents/',
+  path: '/admin/partner-agents/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSalesIndexRoute = AdminSalesIndexRouteImport.update({
+  id: '/admin/sales/',
+  path: '/admin/sales/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSettingsIndexRoute = AdminSettingsIndexRouteImport.update({
+  id: '/admin/settings/',
+  path: '/admin/settings/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSystemConfigIndexRoute = AdminSystemConfigIndexRouteImport.update({
+  id: '/admin/system-config/',
+  path: '/admin/system-config/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangeControlRefIndexRoute = ChangeControlRefIndexRouteImport.update({
+  id: '/change-control/$ref/',
+  path: '/change-control/$ref/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataCenterCallCentreActivityRoute =
+  DataCenterCallCentreActivityRouteImport.update({
+    id: '/data-center/call-centre_/activity',
+    path: '/data-center/call-centre/activity',
     getParentRoute: () => rootRouteImport,
   } as any)
 const DataCenterCallCentrePartnersRoute =
@@ -475,27 +375,133 @@ const DataCenterCallCentrePartnersRoute =
     path: '/data-center/call-centre/partners',
     getParentRoute: () => rootRouteImport,
   } as any)
-const DataCenterCallCentreActivityRoute =
-  DataCenterCallCentreActivityRouteImport.update({
-    id: '/data-center/call-centre_/activity',
-    path: '/data-center/call-centre/activity',
+const DataCenterCallCentreRecordsRoute =
+  DataCenterCallCentreRecordsRouteImport.update({
+    id: '/data-center/call-centre_/records',
+    path: '/data-center/call-centre/records',
     getParentRoute: () => rootRouteImport,
   } as any)
-const SuperAdminAgentSalesCreateIndexRoute =
-  SuperAdminAgentSalesCreateIndexRouteImport.update({
-    id: '/super-admin-agent/sales/create/',
-    path: '/super-admin-agent/sales/create/',
+const DataCenterCallCentreSharedPhonesRoute =
+  DataCenterCallCentreSharedPhonesRouteImport.update({
+    id: '/data-center/call-centre_/shared-phones',
+    path: '/data-center/call-centre/shared-phones',
     getParentRoute: () => rootRouteImport,
   } as any)
-const DocsSuperadminSalesIndexRoute =
-  DocsSuperadminSalesIndexRouteImport.update({
-    id: '/docs/superadmin/sales/',
-    path: '/docs/superadmin/sales/',
+const DataCenterCorrectionsSaleIdRoute =
+  DataCenterCorrectionsSaleIdRouteImport.update({
+    id: '/data-center/corrections_/$saleId',
+    path: '/data-center/corrections/$saleId',
     getParentRoute: () => rootRouteImport,
   } as any)
-const DocsAdminSalesIndexRoute = DocsAdminSalesIndexRouteImport.update({
-  id: '/docs/admin/sales/',
-  path: '/docs/admin/sales/',
+const DataCenterStoveStoveIdRoute = DataCenterStoveStoveIdRouteImport.update({
+  id: '/data-center/stove/$stoveId',
+  path: '/data-center/stove/$stoveId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsAdminIndexRoute = DocsAdminIndexRouteImport.update({
+  id: '/docs/admin/',
+  path: '/docs/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsSuperadminIndexRoute = DocsSuperadminIndexRouteImport.update({
+  id: '/docs/superadmin/',
+  path: '/docs/superadmin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EndUserRecordsApiIndexRoute = EndUserRecordsApiIndexRouteImport.update({
+  id: '/end-user-records/api/',
+  path: '/end-user-records/api/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesIdIndexRoute = SalesIdIndexRouteImport.update({
+  id: '/sales/$id/',
+  path: '/sales/$id/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesCancelledPurchasesIndexRoute =
+  SalesCancelledPurchasesIndexRouteImport.update({
+    id: '/sales/cancelled-purchases/',
+    path: '/sales/cancelled-purchases/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SalesCancelledIndexRoute = SalesCancelledIndexRouteImport.update({
+  id: '/sales/cancelled/',
+  path: '/sales/cancelled/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesFinancialReportsIndexRoute =
+  SalesFinancialReportsIndexRouteImport.update({
+    id: '/sales/financial-reports/',
+    path: '/sales/financial-reports/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SalesManageIndexRoute = SalesManageIndexRouteImport.update({
+  id: '/sales/manage/',
+  path: '/sales/manage/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsCredentialsIndexRoute =
+  SettingsCredentialsIndexRouteImport.update({
+    id: '/settings/credentials/',
+    path: '/settings/credentials/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SettingsPaymentModelsIndexRoute =
+  SettingsPaymentModelsIndexRouteImport.update({
+    id: '/settings/payment-models/',
+    path: '/settings/payment-models/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SettingsSystemConfigIndexRoute =
+  SettingsSystemConfigIndexRouteImport.update({
+    id: '/settings/system-config/',
+    path: '/settings/system-config/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SettingsToolsIndexRoute = SettingsToolsIndexRouteImport.update({
+  id: '/settings/tools/',
+  path: '/settings/tools/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsUserManagementIndexRoute =
+  SettingsUserManagementIndexRouteImport.update({
+    id: '/settings/user-management/',
+    path: '/settings/user-management/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SuperAdminAgentPartnersIndexRoute =
+  SuperAdminAgentPartnersIndexRouteImport.update({
+    id: '/super-admin-agent/partners/',
+    path: '/super-admin-agent/partners/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SuperAdminAgentSalesIndexRoute =
+  SuperAdminAgentSalesIndexRouteImport.update({
+    id: '/super-admin-agent/sales/',
+    path: '/super-admin-agent/sales/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SuperAdminAgentStoveIdsIndexRoute =
+  SuperAdminAgentStoveIdsIndexRouteImport.update({
+    id: '/super-admin-agent/stove-ids/',
+    path: '/super-admin-agent/stove-ids/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const UserManagementUserGroupsIndexRoute =
+  UserManagementUserGroupsIndexRouteImport.update({
+    id: '/user-management/user-groups/',
+    path: '/user-management/user-groups/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const UserManagementUsersIndexRoute =
+  UserManagementUsersIndexRouteImport.update({
+    id: '/user-management/users/',
+    path: '/user-management/users/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AdminSalesCreateIndexRoute = AdminSalesCreateIndexRouteImport.update({
+  id: '/admin/sales/create/',
+  path: '/admin/sales/create/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminSalesFinancialReportsIndexRoute =
@@ -504,15 +510,27 @@ const AdminSalesFinancialReportsIndexRoute =
     path: '/admin/sales/financial-reports/',
     getParentRoute: () => rootRouteImport,
   } as any)
-const AdminSalesCreateIndexRoute = AdminSalesCreateIndexRouteImport.update({
-  id: '/admin/sales/create/',
-  path: '/admin/sales/create/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DataCenterCallCentreAgentsAgentIdRoute =
   DataCenterCallCentreAgentsAgentIdRouteImport.update({
     id: '/data-center/call-centre_/agents/$agentId',
     path: '/data-center/call-centre/agents/$agentId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DocsAdminSalesIndexRoute = DocsAdminSalesIndexRouteImport.update({
+  id: '/docs/admin/sales/',
+  path: '/docs/admin/sales/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsSuperadminSalesIndexRoute =
+  DocsSuperadminSalesIndexRouteImport.update({
+    id: '/docs/superadmin/sales/',
+    path: '/docs/superadmin/sales/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SuperAdminAgentSalesCreateIndexRoute =
+  SuperAdminAgentSalesCreateIndexRouteImport.update({
+    id: '/super-admin-agent/sales/create/',
+    path: '/super-admin-agent/sales/create/',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -520,6 +538,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agents/partner-agents-profiles': typeof AgentsPartnerAgentsProfilesRoute
   '/agents/profiles': typeof AgentsProfilesRoute
+  '/change-control/new': typeof ChangeControlNewRoute
   '/data-center/analysis': typeof DataCenterAnalysisRoute
   '/data-center/call-centre': typeof DataCenterCallCentreRoute
   '/data-center/corrections': typeof DataCenterCorrectionsRoute
@@ -537,6 +556,7 @@ export interface FileRoutesByFullPath {
   '/agents/': typeof AgentsIndexRoute
   '/agreement-images/': typeof AgreementImagesIndexRoute
   '/app/': typeof AppIndexRoute
+  '/change-control/': typeof ChangeControlIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/data-center/': typeof DataCenterIndexRoute
   '/docs/': typeof DocsIndexRoute
@@ -573,6 +593,7 @@ export interface FileRoutesByFullPath {
   '/admin/sales/': typeof AdminSalesIndexRoute
   '/admin/settings/': typeof AdminSettingsIndexRoute
   '/admin/system-config/': typeof AdminSystemConfigIndexRoute
+  '/change-control/$ref/': typeof ChangeControlRefIndexRoute
   '/docs/admin/': typeof DocsAdminIndexRoute
   '/docs/superadmin/': typeof DocsSuperadminIndexRoute
   '/end-user-records/api/': typeof EndUserRecordsApiIndexRoute
@@ -602,6 +623,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agents/partner-agents-profiles': typeof AgentsPartnerAgentsProfilesRoute
   '/agents/profiles': typeof AgentsProfilesRoute
+  '/change-control/new': typeof ChangeControlNewRoute
   '/data-center/analysis': typeof DataCenterAnalysisRoute
   '/data-center/call-centre': typeof DataCenterCallCentreRoute
   '/data-center/corrections': typeof DataCenterCorrectionsRoute
@@ -619,6 +641,7 @@ export interface FileRoutesByTo {
   '/agents': typeof AgentsIndexRoute
   '/agreement-images': typeof AgreementImagesIndexRoute
   '/app': typeof AppIndexRoute
+  '/change-control': typeof ChangeControlIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/data-center': typeof DataCenterIndexRoute
   '/docs': typeof DocsIndexRoute
@@ -655,6 +678,7 @@ export interface FileRoutesByTo {
   '/admin/sales': typeof AdminSalesIndexRoute
   '/admin/settings': typeof AdminSettingsIndexRoute
   '/admin/system-config': typeof AdminSystemConfigIndexRoute
+  '/change-control/$ref': typeof ChangeControlRefIndexRoute
   '/docs/admin': typeof DocsAdminIndexRoute
   '/docs/superadmin': typeof DocsSuperadminIndexRoute
   '/end-user-records/api': typeof EndUserRecordsApiIndexRoute
@@ -685,6 +709,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/agents/partner-agents-profiles': typeof AgentsPartnerAgentsProfilesRoute
   '/agents/profiles': typeof AgentsProfilesRoute
+  '/change-control/new': typeof ChangeControlNewRoute
   '/data-center/analysis': typeof DataCenterAnalysisRoute
   '/data-center/call-centre': typeof DataCenterCallCentreRoute
   '/data-center/corrections': typeof DataCenterCorrectionsRoute
@@ -702,6 +727,7 @@ export interface FileRoutesById {
   '/agents/': typeof AgentsIndexRoute
   '/agreement-images/': typeof AgreementImagesIndexRoute
   '/app/': typeof AppIndexRoute
+  '/change-control/': typeof ChangeControlIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/data-center/': typeof DataCenterIndexRoute
   '/docs/': typeof DocsIndexRoute
@@ -738,6 +764,7 @@ export interface FileRoutesById {
   '/admin/sales/': typeof AdminSalesIndexRoute
   '/admin/settings/': typeof AdminSettingsIndexRoute
   '/admin/system-config/': typeof AdminSystemConfigIndexRoute
+  '/change-control/$ref/': typeof ChangeControlRefIndexRoute
   '/docs/admin/': typeof DocsAdminIndexRoute
   '/docs/superadmin/': typeof DocsSuperadminIndexRoute
   '/end-user-records/api/': typeof EndUserRecordsApiIndexRoute
@@ -769,6 +796,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agents/partner-agents-profiles'
     | '/agents/profiles'
+    | '/change-control/new'
     | '/data-center/analysis'
     | '/data-center/call-centre'
     | '/data-center/corrections'
@@ -786,6 +814,7 @@ export interface FileRouteTypes {
     | '/agents/'
     | '/agreement-images/'
     | '/app/'
+    | '/change-control/'
     | '/dashboard/'
     | '/data-center/'
     | '/docs/'
@@ -822,6 +851,7 @@ export interface FileRouteTypes {
     | '/admin/sales/'
     | '/admin/settings/'
     | '/admin/system-config/'
+    | '/change-control/$ref/'
     | '/docs/admin/'
     | '/docs/superadmin/'
     | '/end-user-records/api/'
@@ -851,6 +881,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agents/partner-agents-profiles'
     | '/agents/profiles'
+    | '/change-control/new'
     | '/data-center/analysis'
     | '/data-center/call-centre'
     | '/data-center/corrections'
@@ -868,6 +899,7 @@ export interface FileRouteTypes {
     | '/agents'
     | '/agreement-images'
     | '/app'
+    | '/change-control'
     | '/dashboard'
     | '/data-center'
     | '/docs'
@@ -904,6 +936,7 @@ export interface FileRouteTypes {
     | '/admin/sales'
     | '/admin/settings'
     | '/admin/system-config'
+    | '/change-control/$ref'
     | '/docs/admin'
     | '/docs/superadmin'
     | '/end-user-records/api'
@@ -933,6 +966,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agents/partner-agents-profiles'
     | '/agents/profiles'
+    | '/change-control/new'
     | '/data-center/analysis'
     | '/data-center/call-centre'
     | '/data-center/corrections'
@@ -950,6 +984,7 @@ export interface FileRouteTypes {
     | '/agents/'
     | '/agreement-images/'
     | '/app/'
+    | '/change-control/'
     | '/dashboard/'
     | '/data-center/'
     | '/docs/'
@@ -986,6 +1021,7 @@ export interface FileRouteTypes {
     | '/admin/sales/'
     | '/admin/settings/'
     | '/admin/system-config/'
+    | '/change-control/$ref/'
     | '/docs/admin/'
     | '/docs/superadmin/'
     | '/end-user-records/api/'
@@ -1016,6 +1052,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgentsPartnerAgentsProfilesRoute: typeof AgentsPartnerAgentsProfilesRoute
   AgentsProfilesRoute: typeof AgentsProfilesRoute
+  ChangeControlNewRoute: typeof ChangeControlNewRoute
   DataCenterAnalysisRoute: typeof DataCenterAnalysisRoute
   DataCenterCallCentreRoute: typeof DataCenterCallCentreRoute
   DataCenterCorrectionsRoute: typeof DataCenterCorrectionsRoute
@@ -1033,6 +1070,7 @@ export interface RootRouteChildren {
   AgentsIndexRoute: typeof AgentsIndexRoute
   AgreementImagesIndexRoute: typeof AgreementImagesIndexRoute
   AppIndexRoute: typeof AppIndexRoute
+  ChangeControlIndexRoute: typeof ChangeControlIndexRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DataCenterIndexRoute: typeof DataCenterIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
@@ -1069,6 +1107,7 @@ export interface RootRouteChildren {
   AdminSalesIndexRoute: typeof AdminSalesIndexRoute
   AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute
   AdminSystemConfigIndexRoute: typeof AdminSystemConfigIndexRoute
+  ChangeControlRefIndexRoute: typeof ChangeControlRefIndexRoute
   DocsAdminIndexRoute: typeof DocsAdminIndexRoute
   DocsSuperadminIndexRoute: typeof DocsSuperadminIndexRoute
   EndUserRecordsApiIndexRoute: typeof EndUserRecordsApiIndexRoute
@@ -1104,172 +1143,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/user-management/': {
-      id: '/user-management/'
-      path: '/user-management'
-      fullPath: '/user-management/'
-      preLoaderRoute: typeof UserManagementIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/user-guide/': {
-      id: '/user-guide/'
-      path: '/user-guide'
-      fullPath: '/user-guide/'
-      preLoaderRoute: typeof UserGuideIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/unauthorized/': {
-      id: '/unauthorized/'
-      path: '/unauthorized'
-      fullPath: '/unauthorized/'
-      preLoaderRoute: typeof UnauthorizedIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/system-documentation/': {
-      id: '/system-documentation/'
-      path: '/system-documentation'
-      fullPath: '/system-documentation/'
-      preLoaderRoute: typeof SystemDocumentationIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/super-admin-agents/': {
-      id: '/super-admin-agents/'
-      path: '/super-admin-agents'
-      fullPath: '/super-admin-agents/'
-      preLoaderRoute: typeof SuperAdminAgentsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/super-admin-agent/': {
-      id: '/super-admin-agent/'
-      path: '/super-admin-agent'
-      fullPath: '/super-admin-agent/'
-      preLoaderRoute: typeof SuperAdminAgentIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/stove-transfer-history/': {
-      id: '/stove-transfer-history/'
-      path: '/stove-transfer-history'
-      fullPath: '/stove-transfer-history/'
-      preLoaderRoute: typeof StoveTransferHistoryIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/stove-manager/': {
-      id: '/stove-manager/'
-      path: '/stove-manager'
-      fullPath: '/stove-manager/'
-      preLoaderRoute: typeof StoveManagerIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/stove-management/': {
-      id: '/stove-management/'
-      path: '/stove-management'
-      fullPath: '/stove-management/'
-      preLoaderRoute: typeof StoveManagementIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sales/': {
-      id: '/sales/'
-      path: '/sales'
-      fullPath: '/sales/'
-      preLoaderRoute: typeof SalesIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sales-monitoring-app/': {
-      id: '/sales-monitoring-app/'
-      path: '/sales-monitoring-app'
-      fullPath: '/sales-monitoring-app/'
-      preLoaderRoute: typeof SalesMonitoringAppIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile/': {
-      id: '/profile/'
-      path: '/profile'
-      fullPath: '/profile/'
-      preLoaderRoute: typeof ProfileIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/payment-models/': {
-      id: '/payment-models/'
-      path: '/payment-models'
-      fullPath: '/payment-models/'
-      preLoaderRoute: typeof PaymentModelsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/partners/': {
-      id: '/partners/'
-      path: '/partners'
-      fullPath: '/partners/'
-      preLoaderRoute: typeof PartnersIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/map/': {
-      id: '/map/'
-      path: '/map'
-      fullPath: '/map/'
-      preLoaderRoute: typeof MapIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login/': {
-      id: '/login/'
-      path: '/login'
-      fullPath: '/login/'
-      preLoaderRoute: typeof LoginIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/end-user-records/': {
-      id: '/end-user-records/'
-      path: '/end-user-records'
-      fullPath: '/end-user-records/'
-      preLoaderRoute: typeof EndUserRecordsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/download/': {
-      id: '/download/'
-      path: '/download'
-      fullPath: '/download/'
-      preLoaderRoute: typeof DownloadIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/docs/': {
-      id: '/docs/'
-      path: '/docs'
-      fullPath: '/docs/'
-      preLoaderRoute: typeof DocsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/data-center/': {
-      id: '/data-center/'
-      path: '/data-center'
-      fullPath: '/data-center/'
-      preLoaderRoute: typeof DataCenterIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard/': {
-      id: '/dashboard/'
-      path: '/dashboard'
-      fullPath: '/dashboard/'
-      preLoaderRoute: typeof DashboardIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app/': {
-      id: '/app/'
-      path: '/app'
-      fullPath: '/app/'
-      preLoaderRoute: typeof AppIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/agreement-images/': {
-      id: '/agreement-images/'
-      path: '/agreement-images'
-      fullPath: '/agreement-images/'
-      preLoaderRoute: typeof AgreementImagesIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/agents/': {
-      id: '/agents/'
-      path: '/agents'
-      fullPath: '/agents/'
-      preLoaderRoute: typeof AgentsIndexRouteImport
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agent/': {
@@ -1279,102 +1157,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/': {
-      id: '/admin/'
-      path: '/admin'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sales/create': {
-      id: '/sales/create'
-      path: '/sales/create'
-      fullPath: '/sales/create'
-      preLoaderRoute: typeof SalesCreateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/partners/profiles': {
-      id: '/partners/profiles'
-      path: '/partners/profiles'
-      fullPath: '/partners/profiles'
-      preLoaderRoute: typeof PartnersProfilesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/data-center/stove-records': {
-      id: '/data-center/stove-records'
-      path: '/data-center/stove-records'
-      fullPath: '/data-center/stove-records'
-      preLoaderRoute: typeof DataCenterStoveRecordsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/data-center/stock': {
-      id: '/data-center/stock'
-      path: '/data-center/stock'
-      fullPath: '/data-center/stock'
-      preLoaderRoute: typeof DataCenterStockRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/data-center/settings': {
-      id: '/data-center/settings'
-      path: '/data-center/settings'
-      fullPath: '/data-center/settings'
-      preLoaderRoute: typeof DataCenterSettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/data-center/partner-records': {
-      id: '/data-center/partner-records'
-      path: '/data-center/partner-records'
-      fullPath: '/data-center/partner-records'
-      preLoaderRoute: typeof DataCenterPartnerRecordsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/data-center/my-calls': {
-      id: '/data-center/my-calls'
-      path: '/data-center/my-calls'
-      fullPath: '/data-center/my-calls'
-      preLoaderRoute: typeof DataCenterMyCallsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/data-center/import': {
-      id: '/data-center/import'
-      path: '/data-center/import'
-      fullPath: '/data-center/import'
-      preLoaderRoute: typeof DataCenterImportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/data-center/dashboard': {
-      id: '/data-center/dashboard'
-      path: '/data-center/dashboard'
-      fullPath: '/data-center/dashboard'
-      preLoaderRoute: typeof DataCenterDashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/data-center/corrections': {
-      id: '/data-center/corrections'
-      path: '/data-center/corrections'
-      fullPath: '/data-center/corrections'
-      preLoaderRoute: typeof DataCenterCorrectionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/data-center/call-centre': {
-      id: '/data-center/call-centre'
-      path: '/data-center/call-centre'
-      fullPath: '/data-center/call-centre'
-      preLoaderRoute: typeof DataCenterCallCentreRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/data-center/analysis': {
-      id: '/data-center/analysis'
-      path: '/data-center/analysis'
-      fullPath: '/data-center/analysis'
-      preLoaderRoute: typeof DataCenterAnalysisRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/agents/profiles': {
-      id: '/agents/profiles'
-      path: '/agents/profiles'
-      fullPath: '/agents/profiles'
-      preLoaderRoute: typeof AgentsProfilesRouteImport
+    '/agents/': {
+      id: '/agents/'
+      path: '/agents'
+      fullPath: '/agents/'
+      preLoaderRoute: typeof AgentsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agents/partner-agents-profiles': {
@@ -1384,186 +1171,270 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentsPartnerAgentsProfilesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/user-management/users/': {
-      id: '/user-management/users/'
-      path: '/user-management/users'
-      fullPath: '/user-management/users/'
-      preLoaderRoute: typeof UserManagementUsersIndexRouteImport
+    '/agents/profiles': {
+      id: '/agents/profiles'
+      path: '/agents/profiles'
+      fullPath: '/agents/profiles'
+      preLoaderRoute: typeof AgentsProfilesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/user-management/user-groups/': {
-      id: '/user-management/user-groups/'
-      path: '/user-management/user-groups'
-      fullPath: '/user-management/user-groups/'
-      preLoaderRoute: typeof UserManagementUserGroupsIndexRouteImport
+    '/agreement-images/': {
+      id: '/agreement-images/'
+      path: '/agreement-images'
+      fullPath: '/agreement-images/'
+      preLoaderRoute: typeof AgreementImagesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/super-admin-agent/stove-ids/': {
-      id: '/super-admin-agent/stove-ids/'
-      path: '/super-admin-agent/stove-ids'
-      fullPath: '/super-admin-agent/stove-ids/'
-      preLoaderRoute: typeof SuperAdminAgentStoveIdsIndexRouteImport
+    '/app/': {
+      id: '/app/'
+      path: '/app'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/super-admin-agent/sales/': {
-      id: '/super-admin-agent/sales/'
-      path: '/super-admin-agent/sales'
-      fullPath: '/super-admin-agent/sales/'
-      preLoaderRoute: typeof SuperAdminAgentSalesIndexRouteImport
+    '/change-control/': {
+      id: '/change-control/'
+      path: '/change-control'
+      fullPath: '/change-control/'
+      preLoaderRoute: typeof ChangeControlIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/super-admin-agent/partners/': {
-      id: '/super-admin-agent/partners/'
-      path: '/super-admin-agent/partners'
-      fullPath: '/super-admin-agent/partners/'
-      preLoaderRoute: typeof SuperAdminAgentPartnersIndexRouteImport
+    '/change-control/new': {
+      id: '/change-control/new'
+      path: '/change-control/new'
+      fullPath: '/change-control/new'
+      preLoaderRoute: typeof ChangeControlNewRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/settings/user-management/': {
-      id: '/settings/user-management/'
-      path: '/settings/user-management'
-      fullPath: '/settings/user-management/'
-      preLoaderRoute: typeof SettingsUserManagementIndexRouteImport
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/dashboard'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/settings/tools/': {
-      id: '/settings/tools/'
-      path: '/settings/tools'
-      fullPath: '/settings/tools/'
-      preLoaderRoute: typeof SettingsToolsIndexRouteImport
+    '/data-center/': {
+      id: '/data-center/'
+      path: '/data-center'
+      fullPath: '/data-center/'
+      preLoaderRoute: typeof DataCenterIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/settings/system-config/': {
-      id: '/settings/system-config/'
-      path: '/settings/system-config'
-      fullPath: '/settings/system-config/'
-      preLoaderRoute: typeof SettingsSystemConfigIndexRouteImport
+    '/data-center/analysis': {
+      id: '/data-center/analysis'
+      path: '/data-center/analysis'
+      fullPath: '/data-center/analysis'
+      preLoaderRoute: typeof DataCenterAnalysisRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/settings/payment-models/': {
-      id: '/settings/payment-models/'
-      path: '/settings/payment-models'
-      fullPath: '/settings/payment-models/'
-      preLoaderRoute: typeof SettingsPaymentModelsIndexRouteImport
+    '/data-center/call-centre': {
+      id: '/data-center/call-centre'
+      path: '/data-center/call-centre'
+      fullPath: '/data-center/call-centre'
+      preLoaderRoute: typeof DataCenterCallCentreRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/settings/credentials/': {
-      id: '/settings/credentials/'
-      path: '/settings/credentials'
-      fullPath: '/settings/credentials/'
-      preLoaderRoute: typeof SettingsCredentialsIndexRouteImport
+    '/data-center/corrections': {
+      id: '/data-center/corrections'
+      path: '/data-center/corrections'
+      fullPath: '/data-center/corrections'
+      preLoaderRoute: typeof DataCenterCorrectionsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sales/manage/': {
-      id: '/sales/manage/'
-      path: '/sales/manage'
-      fullPath: '/sales/manage/'
-      preLoaderRoute: typeof SalesManageIndexRouteImport
+    '/data-center/dashboard': {
+      id: '/data-center/dashboard'
+      path: '/data-center/dashboard'
+      fullPath: '/data-center/dashboard'
+      preLoaderRoute: typeof DataCenterDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sales/financial-reports/': {
-      id: '/sales/financial-reports/'
-      path: '/sales/financial-reports'
-      fullPath: '/sales/financial-reports/'
-      preLoaderRoute: typeof SalesFinancialReportsIndexRouteImport
+    '/data-center/import': {
+      id: '/data-center/import'
+      path: '/data-center/import'
+      fullPath: '/data-center/import'
+      preLoaderRoute: typeof DataCenterImportRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sales/cancelled/': {
-      id: '/sales/cancelled/'
-      path: '/sales/cancelled'
-      fullPath: '/sales/cancelled/'
-      preLoaderRoute: typeof SalesCancelledIndexRouteImport
+    '/data-center/my-calls': {
+      id: '/data-center/my-calls'
+      path: '/data-center/my-calls'
+      fullPath: '/data-center/my-calls'
+      preLoaderRoute: typeof DataCenterMyCallsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sales/cancelled-purchases/': {
-      id: '/sales/cancelled-purchases/'
-      path: '/sales/cancelled-purchases'
-      fullPath: '/sales/cancelled-purchases/'
-      preLoaderRoute: typeof SalesCancelledPurchasesIndexRouteImport
+    '/data-center/partner-records': {
+      id: '/data-center/partner-records'
+      path: '/data-center/partner-records'
+      fullPath: '/data-center/partner-records'
+      preLoaderRoute: typeof DataCenterPartnerRecordsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sales/$id/': {
-      id: '/sales/$id/'
-      path: '/sales/$id'
-      fullPath: '/sales/$id/'
-      preLoaderRoute: typeof SalesIdIndexRouteImport
+    '/data-center/settings': {
+      id: '/data-center/settings'
+      path: '/data-center/settings'
+      fullPath: '/data-center/settings'
+      preLoaderRoute: typeof DataCenterSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/end-user-records/api/': {
-      id: '/end-user-records/api/'
-      path: '/end-user-records/api'
-      fullPath: '/end-user-records/api/'
-      preLoaderRoute: typeof EndUserRecordsApiIndexRouteImport
+    '/data-center/stock': {
+      id: '/data-center/stock'
+      path: '/data-center/stock'
+      fullPath: '/data-center/stock'
+      preLoaderRoute: typeof DataCenterStockRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/superadmin/': {
-      id: '/docs/superadmin/'
-      path: '/docs/superadmin'
-      fullPath: '/docs/superadmin/'
-      preLoaderRoute: typeof DocsSuperadminIndexRouteImport
+    '/data-center/stove-records': {
+      id: '/data-center/stove-records'
+      path: '/data-center/stove-records'
+      fullPath: '/data-center/stove-records'
+      preLoaderRoute: typeof DataCenterStoveRecordsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/admin/': {
-      id: '/docs/admin/'
-      path: '/docs/admin'
-      fullPath: '/docs/admin/'
-      preLoaderRoute: typeof DocsAdminIndexRouteImport
+    '/docs/': {
+      id: '/docs/'
+      path: '/docs'
+      fullPath: '/docs/'
+      preLoaderRoute: typeof DocsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/system-config/': {
-      id: '/admin/system-config/'
-      path: '/admin/system-config'
-      fullPath: '/admin/system-config/'
-      preLoaderRoute: typeof AdminSystemConfigIndexRouteImport
+    '/download/': {
+      id: '/download/'
+      path: '/download'
+      fullPath: '/download/'
+      preLoaderRoute: typeof DownloadIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/settings/': {
-      id: '/admin/settings/'
-      path: '/admin/settings'
-      fullPath: '/admin/settings/'
-      preLoaderRoute: typeof AdminSettingsIndexRouteImport
+    '/end-user-records/': {
+      id: '/end-user-records/'
+      path: '/end-user-records'
+      fullPath: '/end-user-records/'
+      preLoaderRoute: typeof EndUserRecordsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/sales/': {
-      id: '/admin/sales/'
-      path: '/admin/sales'
-      fullPath: '/admin/sales/'
-      preLoaderRoute: typeof AdminSalesIndexRouteImport
+    '/login/': {
+      id: '/login/'
+      path: '/login'
+      fullPath: '/login/'
+      preLoaderRoute: typeof LoginIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/partner-agents/': {
-      id: '/admin/partner-agents/'
-      path: '/admin/partner-agents'
-      fullPath: '/admin/partner-agents/'
-      preLoaderRoute: typeof AdminPartnerAgentsIndexRouteImport
+    '/map/': {
+      id: '/map/'
+      path: '/map'
+      fullPath: '/map/'
+      preLoaderRoute: typeof MapIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/credentials/': {
-      id: '/admin/credentials/'
-      path: '/admin/credentials'
-      fullPath: '/admin/credentials/'
-      preLoaderRoute: typeof AdminCredentialsIndexRouteImport
+    '/partners/': {
+      id: '/partners/'
+      path: '/partners'
+      fullPath: '/partners/'
+      preLoaderRoute: typeof PartnersIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/branches/': {
-      id: '/admin/branches/'
-      path: '/admin/branches'
-      fullPath: '/admin/branches/'
-      preLoaderRoute: typeof AdminBranchesIndexRouteImport
+    '/partners/profiles': {
+      id: '/partners/profiles'
+      path: '/partners/profiles'
+      fullPath: '/partners/profiles'
+      preLoaderRoute: typeof PartnersProfilesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/app-config/': {
-      id: '/admin/app-config/'
-      path: '/admin/app-config'
-      fullPath: '/admin/app-config/'
-      preLoaderRoute: typeof AdminAppConfigIndexRouteImport
+    '/payment-models/': {
+      id: '/payment-models/'
+      path: '/payment-models'
+      fullPath: '/payment-models/'
+      preLoaderRoute: typeof PaymentModelsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/agreement-images/': {
-      id: '/admin/agreement-images/'
-      path: '/admin/agreement-images'
-      fullPath: '/admin/agreement-images/'
-      preLoaderRoute: typeof AdminAgreementImagesIndexRouteImport
+    '/profile/': {
+      id: '/profile/'
+      path: '/profile'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof ProfileIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales-monitoring-app/': {
+      id: '/sales-monitoring-app/'
+      path: '/sales-monitoring-app'
+      fullPath: '/sales-monitoring-app/'
+      preLoaderRoute: typeof SalesMonitoringAppIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/': {
+      id: '/sales/'
+      path: '/sales'
+      fullPath: '/sales/'
+      preLoaderRoute: typeof SalesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/create': {
+      id: '/sales/create'
+      path: '/sales/create'
+      fullPath: '/sales/create'
+      preLoaderRoute: typeof SalesCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stove-management/': {
+      id: '/stove-management/'
+      path: '/stove-management'
+      fullPath: '/stove-management/'
+      preLoaderRoute: typeof StoveManagementIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stove-manager/': {
+      id: '/stove-manager/'
+      path: '/stove-manager'
+      fullPath: '/stove-manager/'
+      preLoaderRoute: typeof StoveManagerIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stove-transfer-history/': {
+      id: '/stove-transfer-history/'
+      path: '/stove-transfer-history'
+      fullPath: '/stove-transfer-history/'
+      preLoaderRoute: typeof StoveTransferHistoryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/super-admin-agent/': {
+      id: '/super-admin-agent/'
+      path: '/super-admin-agent'
+      fullPath: '/super-admin-agent/'
+      preLoaderRoute: typeof SuperAdminAgentIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/super-admin-agents/': {
+      id: '/super-admin-agents/'
+      path: '/super-admin-agents'
+      fullPath: '/super-admin-agents/'
+      preLoaderRoute: typeof SuperAdminAgentsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/system-documentation/': {
+      id: '/system-documentation/'
+      path: '/system-documentation'
+      fullPath: '/system-documentation/'
+      preLoaderRoute: typeof SystemDocumentationIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unauthorized/': {
+      id: '/unauthorized/'
+      path: '/unauthorized'
+      fullPath: '/unauthorized/'
+      preLoaderRoute: typeof UnauthorizedIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/user-guide/': {
+      id: '/user-guide/'
+      path: '/user-guide'
+      fullPath: '/user-guide/'
+      preLoaderRoute: typeof UserGuideIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/user-management/': {
+      id: '/user-management/'
+      path: '/user-management'
+      fullPath: '/user-management/'
+      preLoaderRoute: typeof UserManagementIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/agents/': {
@@ -1573,39 +1444,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAgentsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/data-center/stove/$stoveId': {
-      id: '/data-center/stove/$stoveId'
-      path: '/data-center/stove/$stoveId'
-      fullPath: '/data-center/stove/$stoveId'
-      preLoaderRoute: typeof DataCenterStoveStoveIdRouteImport
+    '/admin/agreement-images/': {
+      id: '/admin/agreement-images/'
+      path: '/admin/agreement-images'
+      fullPath: '/admin/agreement-images/'
+      preLoaderRoute: typeof AdminAgreementImagesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/data-center/corrections_/$saleId': {
-      id: '/data-center/corrections_/$saleId'
-      path: '/data-center/corrections/$saleId'
-      fullPath: '/data-center/corrections/$saleId'
-      preLoaderRoute: typeof DataCenterCorrectionsSaleIdRouteImport
+    '/admin/app-config/': {
+      id: '/admin/app-config/'
+      path: '/admin/app-config'
+      fullPath: '/admin/app-config/'
+      preLoaderRoute: typeof AdminAppConfigIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/data-center/call-centre_/shared-phones': {
-      id: '/data-center/call-centre_/shared-phones'
-      path: '/data-center/call-centre/shared-phones'
-      fullPath: '/data-center/call-centre/shared-phones'
-      preLoaderRoute: typeof DataCenterCallCentreSharedPhonesRouteImport
+    '/admin/branches/': {
+      id: '/admin/branches/'
+      path: '/admin/branches'
+      fullPath: '/admin/branches/'
+      preLoaderRoute: typeof AdminBranchesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/data-center/call-centre_/records': {
-      id: '/data-center/call-centre_/records'
-      path: '/data-center/call-centre/records'
-      fullPath: '/data-center/call-centre/records'
-      preLoaderRoute: typeof DataCenterCallCentreRecordsRouteImport
+    '/admin/credentials/': {
+      id: '/admin/credentials/'
+      path: '/admin/credentials'
+      fullPath: '/admin/credentials/'
+      preLoaderRoute: typeof AdminCredentialsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/data-center/call-centre_/partners': {
-      id: '/data-center/call-centre_/partners'
-      path: '/data-center/call-centre/partners'
-      fullPath: '/data-center/call-centre/partners'
-      preLoaderRoute: typeof DataCenterCallCentrePartnersRouteImport
+    '/admin/partner-agents/': {
+      id: '/admin/partner-agents/'
+      path: '/admin/partner-agents'
+      fullPath: '/admin/partner-agents/'
+      preLoaderRoute: typeof AdminPartnerAgentsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/sales/': {
+      id: '/admin/sales/'
+      path: '/admin/sales'
+      fullPath: '/admin/sales/'
+      preLoaderRoute: typeof AdminSalesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/settings/': {
+      id: '/admin/settings/'
+      path: '/admin/settings'
+      fullPath: '/admin/settings/'
+      preLoaderRoute: typeof AdminSettingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/system-config/': {
+      id: '/admin/system-config/'
+      path: '/admin/system-config'
+      fullPath: '/admin/system-config/'
+      preLoaderRoute: typeof AdminSystemConfigIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/change-control/$ref/': {
+      id: '/change-control/$ref/'
+      path: '/change-control/$ref'
+      fullPath: '/change-control/$ref/'
+      preLoaderRoute: typeof ChangeControlRefIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/data-center/call-centre_/activity': {
@@ -1615,32 +1514,165 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DataCenterCallCentreActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/super-admin-agent/sales/create/': {
-      id: '/super-admin-agent/sales/create/'
-      path: '/super-admin-agent/sales/create'
-      fullPath: '/super-admin-agent/sales/create/'
-      preLoaderRoute: typeof SuperAdminAgentSalesCreateIndexRouteImport
+    '/data-center/call-centre_/partners': {
+      id: '/data-center/call-centre_/partners'
+      path: '/data-center/call-centre/partners'
+      fullPath: '/data-center/call-centre/partners'
+      preLoaderRoute: typeof DataCenterCallCentrePartnersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/superadmin/sales/': {
-      id: '/docs/superadmin/sales/'
-      path: '/docs/superadmin/sales'
-      fullPath: '/docs/superadmin/sales/'
-      preLoaderRoute: typeof DocsSuperadminSalesIndexRouteImport
+    '/data-center/call-centre_/records': {
+      id: '/data-center/call-centre_/records'
+      path: '/data-center/call-centre/records'
+      fullPath: '/data-center/call-centre/records'
+      preLoaderRoute: typeof DataCenterCallCentreRecordsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/admin/sales/': {
-      id: '/docs/admin/sales/'
-      path: '/docs/admin/sales'
-      fullPath: '/docs/admin/sales/'
-      preLoaderRoute: typeof DocsAdminSalesIndexRouteImport
+    '/data-center/call-centre_/shared-phones': {
+      id: '/data-center/call-centre_/shared-phones'
+      path: '/data-center/call-centre/shared-phones'
+      fullPath: '/data-center/call-centre/shared-phones'
+      preLoaderRoute: typeof DataCenterCallCentreSharedPhonesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/sales/financial-reports/': {
-      id: '/admin/sales/financial-reports/'
-      path: '/admin/sales/financial-reports'
-      fullPath: '/admin/sales/financial-reports/'
-      preLoaderRoute: typeof AdminSalesFinancialReportsIndexRouteImport
+    '/data-center/corrections_/$saleId': {
+      id: '/data-center/corrections_/$saleId'
+      path: '/data-center/corrections/$saleId'
+      fullPath: '/data-center/corrections/$saleId'
+      preLoaderRoute: typeof DataCenterCorrectionsSaleIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/data-center/stove/$stoveId': {
+      id: '/data-center/stove/$stoveId'
+      path: '/data-center/stove/$stoveId'
+      fullPath: '/data-center/stove/$stoveId'
+      preLoaderRoute: typeof DataCenterStoveStoveIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/admin/': {
+      id: '/docs/admin/'
+      path: '/docs/admin'
+      fullPath: '/docs/admin/'
+      preLoaderRoute: typeof DocsAdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/superadmin/': {
+      id: '/docs/superadmin/'
+      path: '/docs/superadmin'
+      fullPath: '/docs/superadmin/'
+      preLoaderRoute: typeof DocsSuperadminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/end-user-records/api/': {
+      id: '/end-user-records/api/'
+      path: '/end-user-records/api'
+      fullPath: '/end-user-records/api/'
+      preLoaderRoute: typeof EndUserRecordsApiIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/$id/': {
+      id: '/sales/$id/'
+      path: '/sales/$id'
+      fullPath: '/sales/$id/'
+      preLoaderRoute: typeof SalesIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/cancelled-purchases/': {
+      id: '/sales/cancelled-purchases/'
+      path: '/sales/cancelled-purchases'
+      fullPath: '/sales/cancelled-purchases/'
+      preLoaderRoute: typeof SalesCancelledPurchasesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/cancelled/': {
+      id: '/sales/cancelled/'
+      path: '/sales/cancelled'
+      fullPath: '/sales/cancelled/'
+      preLoaderRoute: typeof SalesCancelledIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/financial-reports/': {
+      id: '/sales/financial-reports/'
+      path: '/sales/financial-reports'
+      fullPath: '/sales/financial-reports/'
+      preLoaderRoute: typeof SalesFinancialReportsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/manage/': {
+      id: '/sales/manage/'
+      path: '/sales/manage'
+      fullPath: '/sales/manage/'
+      preLoaderRoute: typeof SalesManageIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/credentials/': {
+      id: '/settings/credentials/'
+      path: '/settings/credentials'
+      fullPath: '/settings/credentials/'
+      preLoaderRoute: typeof SettingsCredentialsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/payment-models/': {
+      id: '/settings/payment-models/'
+      path: '/settings/payment-models'
+      fullPath: '/settings/payment-models/'
+      preLoaderRoute: typeof SettingsPaymentModelsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/system-config/': {
+      id: '/settings/system-config/'
+      path: '/settings/system-config'
+      fullPath: '/settings/system-config/'
+      preLoaderRoute: typeof SettingsSystemConfigIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/tools/': {
+      id: '/settings/tools/'
+      path: '/settings/tools'
+      fullPath: '/settings/tools/'
+      preLoaderRoute: typeof SettingsToolsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/user-management/': {
+      id: '/settings/user-management/'
+      path: '/settings/user-management'
+      fullPath: '/settings/user-management/'
+      preLoaderRoute: typeof SettingsUserManagementIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/super-admin-agent/partners/': {
+      id: '/super-admin-agent/partners/'
+      path: '/super-admin-agent/partners'
+      fullPath: '/super-admin-agent/partners/'
+      preLoaderRoute: typeof SuperAdminAgentPartnersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/super-admin-agent/sales/': {
+      id: '/super-admin-agent/sales/'
+      path: '/super-admin-agent/sales'
+      fullPath: '/super-admin-agent/sales/'
+      preLoaderRoute: typeof SuperAdminAgentSalesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/super-admin-agent/stove-ids/': {
+      id: '/super-admin-agent/stove-ids/'
+      path: '/super-admin-agent/stove-ids'
+      fullPath: '/super-admin-agent/stove-ids/'
+      preLoaderRoute: typeof SuperAdminAgentStoveIdsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/user-management/user-groups/': {
+      id: '/user-management/user-groups/'
+      path: '/user-management/user-groups'
+      fullPath: '/user-management/user-groups/'
+      preLoaderRoute: typeof UserManagementUserGroupsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/user-management/users/': {
+      id: '/user-management/users/'
+      path: '/user-management/users'
+      fullPath: '/user-management/users/'
+      preLoaderRoute: typeof UserManagementUsersIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/sales/create/': {
@@ -1650,11 +1682,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSalesCreateIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/sales/financial-reports/': {
+      id: '/admin/sales/financial-reports/'
+      path: '/admin/sales/financial-reports'
+      fullPath: '/admin/sales/financial-reports/'
+      preLoaderRoute: typeof AdminSalesFinancialReportsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/data-center/call-centre_/agents/$agentId': {
       id: '/data-center/call-centre_/agents/$agentId'
       path: '/data-center/call-centre/agents/$agentId'
       fullPath: '/data-center/call-centre/agents/$agentId'
       preLoaderRoute: typeof DataCenterCallCentreAgentsAgentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/admin/sales/': {
+      id: '/docs/admin/sales/'
+      path: '/docs/admin/sales'
+      fullPath: '/docs/admin/sales/'
+      preLoaderRoute: typeof DocsAdminSalesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/superadmin/sales/': {
+      id: '/docs/superadmin/sales/'
+      path: '/docs/superadmin/sales'
+      fullPath: '/docs/superadmin/sales/'
+      preLoaderRoute: typeof DocsSuperadminSalesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/super-admin-agent/sales/create/': {
+      id: '/super-admin-agent/sales/create/'
+      path: '/super-admin-agent/sales/create'
+      fullPath: '/super-admin-agent/sales/create/'
+      preLoaderRoute: typeof SuperAdminAgentSalesCreateIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -1664,6 +1724,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentsPartnerAgentsProfilesRoute: AgentsPartnerAgentsProfilesRoute,
   AgentsProfilesRoute: AgentsProfilesRoute,
+  ChangeControlNewRoute: ChangeControlNewRoute,
   DataCenterAnalysisRoute: DataCenterAnalysisRoute,
   DataCenterCallCentreRoute: DataCenterCallCentreRoute,
   DataCenterCorrectionsRoute: DataCenterCorrectionsRoute,
@@ -1681,6 +1742,7 @@ const rootRouteChildren: RootRouteChildren = {
   AgentsIndexRoute: AgentsIndexRoute,
   AgreementImagesIndexRoute: AgreementImagesIndexRoute,
   AppIndexRoute: AppIndexRoute,
+  ChangeControlIndexRoute: ChangeControlIndexRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DataCenterIndexRoute: DataCenterIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
@@ -1717,6 +1779,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminSalesIndexRoute: AdminSalesIndexRoute,
   AdminSettingsIndexRoute: AdminSettingsIndexRoute,
   AdminSystemConfigIndexRoute: AdminSystemConfigIndexRoute,
+  ChangeControlRefIndexRoute: ChangeControlRefIndexRoute,
   DocsAdminIndexRoute: DocsAdminIndexRoute,
   DocsSuperadminIndexRoute: DocsSuperadminIndexRoute,
   EndUserRecordsApiIndexRoute: EndUserRecordsApiIndexRoute,

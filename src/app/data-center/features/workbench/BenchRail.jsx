@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Check, PenLine, Circle, X, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Search, Check, PenLine, Circle, Clock, X, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { plural } from "../../lib/plural";
 
 /**
@@ -48,10 +48,15 @@ const TONE = {
     dot: "text-amber-500",
     label: "part typed",
   },
+  finished: {
+    icon: Clock,
+    dot: "text-(--dc-brief-place)",
+    label: "finished, awaiting confirmation",
+  },
   done: {
     icon: Check,
     dot: "text-(--dc-accent)",
-    label: "recorded",
+    label: "typed",
   },
 };
 
@@ -59,8 +64,10 @@ const TONE = {
 export function stoveState(stove, draftSerials) {
   // `just_recorded` is set locally the moment a save returns, so the rail goes
   // green under the typist's hand rather than on the next refetch.
-  if (stove.sale_id || stove.just_recorded) return "done";
-  if (draftSerials.has(String(stove.stove_id).toUpperCase())) return "draft";
+  // Phase 29, D53: the server's reading first, then the local marks.
+  if (stove.typed_state === "typed" || stove.sale_id || stove.just_recorded) return "done";
+  if (stove.typed_state === "finished") return "finished";
+  if (stove.typed_state === "draft" || draftSerials.has(String(stove.stove_id).toUpperCase())) return "draft";
   return "todo";
 }
 
@@ -124,11 +131,16 @@ export default function BenchRail({
 
   // Counted by whoever holds the whole set: the server across a partner, this
   // page when the page is everything there is.
-  const counts = server?.totals ?? {
-    todo: decorated.filter((s) => s.state !== "done").length,
+  // Phase 29, D53: on the rail, Done is what is done at the bench: typed,
+  // and finished but not yet confirmed. The list beside it tells the two
+  // apart; a typist's progress through a run should not wait on the queue.
+  const raw = server?.totals ?? {
+    todo: decorated.filter((s) => s.state === "todo" || s.state === "draft").length,
+    awaiting: decorated.filter((s) => s.state === "finished").length,
     done: decorated.filter((s) => s.state === "done").length,
     all: decorated.length,
   };
+  const counts = { ...raw, done: (raw.done ?? 0) + (raw.awaiting ?? 0) };
 
   const shown = useMemo(() => {
     const needle = term.trim().toUpperCase();
@@ -154,7 +166,7 @@ export default function BenchRail({
       // them again here would only remove rows the server decided to include.
       if (needle) return controlled ? true : String(s.stove_id).toUpperCase().includes(needle);
       if (s.stove_id === current) return true;
-      if (filter === "todo" && s.state === "done") return false;
+      if (filter === "todo" && (s.state === "done" || s.state === "finished")) return false;
       if (filter === "done" && s.state !== "done") return false;
       return true;
     });

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { normalizeModelName, resolveOrderModelId, type PaymentModelCache } from "../_shared/order-model.ts";
+import { validateExternalToken } from "../_shared/externalAppToken.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,6 +28,9 @@ interface ExternalCSVSyncRequest {
   application_name: string;
   csv_data: string;
   origin_url?: string;
+  // Sent by the ERP when it re-sends an order whose serials changed after
+  // transfer (TX-3): the list becomes exactly the sent list for that reference.
+  replace?: boolean;
 }
 
 interface ParsedOrganization {
@@ -371,6 +375,10 @@ async function createUserForOrganization(
       email,
       password,
       email_confirm: true,
+      // The profile takes role and organisation from app_metadata
+      // (handle_new_user, migration 20260927200000). This path always
+      // settles the profile role to "admin" below, so that is what it writes.
+      app_metadata: { role: "admin", organization_id: organizationId },
       user_metadata: { full_name: partnerName, organization_id: organizationId, username },
     });
     if (authError) throw new Error(`Auth user creation failed: ${authError.message}`);
@@ -383,7 +391,8 @@ async function createUserForOrganization(
 
   if (existingProfile) {
     entries.push(mkEntry("create-user", "warn", `Profile already exists, updating username/role`));
-    const { error: updateError } = await supabase.from("profiles").update({ username, role: "admin" }).eq("id", authUserId);
+    // has_changed_password false: a CSV-imported partner is asked to change the password at first sign-in, as before.
+    const { error: updateError } = await supabase.from("profiles").update({ username, role: "admin", has_changed_password: false }).eq("id", authUserId);
     if (updateError) {
       entries.push(mkEntry("create-user", "error", `Profile update failed: ${updateError.message}`));
     } else {
@@ -468,16 +477,58 @@ async function writeTransferHistory(
     order_sales_model_name?: string | null;
     order_sales_model_duration?: number | null;
     stove_ids: Array<{ stove_id: string; factory?: string; sales_reference?: string }>;
+    // The subset of stove_ids created by this call; an existing row only gains these.
+    created_ids?: Set<string>;
+    // Replace mode (TX-3): an existing row takes exactly stove_ids.
+    replace?: boolean;
     source: "external-sync" | "external-csv-sync";
     application_name?: string;
   },
   modelCache: PaymentModelCache = {},
 ): Promise<void> {
   if (data.stove_ids.length === 0) return;
-  try {
-    const salesRef = data.stove_ids.find((s) => s.sales_reference)?.sales_reference;
+  const salesRef = data.stove_ids.find((s) => s.sales_reference)?.sales_reference;
+
+  // One history row per transaction (TX-1). A retry after a partial failure
+  // adds the stoves the row does not list yet instead of writing a second row.
+  if (salesRef) {
+    // transaction_id carries no unique constraint, so take the oldest row
+    // rather than fail forever on a duplicate another path may have written.
+    const { data: rows, error: readError } = await supabase
+      .from("stove_transfer_history")
+      .select("id, stove_ids")
+      .eq("transaction_id", salesRef)
+      .order("created_at", { ascending: true })
+      .limit(1);
+    if (readError) throw new Error(`Could not read the transfer history for ${salesRef}: ${readError.message}`);
+    const existing = rows?.[0];
+    if (existing) {
+      if (data.replace) {
+        const { error: replaceError } = await supabase
+          .from("stove_transfer_history")
+          .update({ stove_ids: data.stove_ids, stove_count: data.stove_ids.length })
+          .eq("id", existing.id);
+        if (replaceError) throw new Error(`Could not replace the transfer history for ${salesRef}: ${replaceError.message}`);
+        return;
+      }
+      const listed = new Set(((existing.stove_ids as any[]) || []).map((s) => s.stove_id));
+      const added = data.stove_ids.filter(
+        (s) => !listed.has(s.stove_id) && (!data.created_ids || data.created_ids.has(s.stove_id)),
+      );
+      if (added.length === 0) return;
+      const merged = [...((existing.stove_ids as any[]) || []), ...added];
+      const { error: updateError } = await supabase
+        .from("stove_transfer_history")
+        .update({ stove_ids: merged, stove_count: merged.length })
+        .eq("id", existing.id);
+      if (updateError) throw new Error(`Could not update the transfer history for ${salesRef}: ${updateError.message}`);
+      return;
+    }
+  }
+
+  {
     const transactionId = salesRef || `TRF-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-    await supabase.from("stove_transfer_history").insert({
+    const { error: insertError } = await supabase.from("stove_transfer_history").insert({
       transaction_id: transactionId,
       organization_id: data.organization_id,
       partner_name: data.partner_name,
@@ -500,8 +551,7 @@ async function writeTransferHistory(
       application_name: data.application_name || null,
       transfer_date: new Date().toISOString(),
     });
-  } catch (e) {
-    console.error("Failed to write transfer history:", e);
+    if (insertError) throw new Error(`Could not write the transfer history for ${transactionId}: ${insertError.message}`);
   }
 }
 
@@ -539,37 +589,6 @@ async function writeSyncLog(
 
 // ─── Token validation ─────────────────────────────────────────────────────────
 
-async function validateExternalToken(
-  supabase: any,
-  token: string,
-  secret_key: string,
-  application_name: string,
-  origin_url?: string,
-): Promise<{ isValid: boolean; token_data?: any; error?: string }> {
-  try {
-    const { data: tokenData, error } = await supabase
-      .from("external_app_tokens")
-      .select("*")
-      .eq("token", token)
-      .eq("secret_key", secret_key)
-      .eq("application_name", application_name)
-      .eq("is_active", true)
-      .single();
-
-    if (error || !tokenData) return { isValid: false, error: "Invalid token, secret key, or application name" };
-
-    if (origin_url && tokenData.allowed_urls?.length > 0) {
-      const isUrlAllowed = tokenData.allowed_urls.some(
-        (allowedUrl: string) => origin_url.includes(allowedUrl) || allowedUrl === "*",
-      );
-      if (!isUrlAllowed) return { isValid: false, error: "Request origin not allowed for this application" };
-    }
-
-    return { isValid: true, token_data: tokenData };
-  } catch {
-    return { isValid: false, error: "Token validation failed" };
-  }
-}
 
 // ─── Sales model entitlements ────────────────────────────────────────────────
 
@@ -855,6 +874,9 @@ async function processOrganizationSync(
 
   // Process stove IDs
   const stoveIdResults: StoveIdResult[] = [];
+  // A stove that could not be checked or saved fails this partner, so the
+  // sender does not record a transfer that did not land (TX-1).
+  const stoveErrors: string[] = [];
 
   if (stoveIds && stoveIds.length > 0) {
     entries.push(mkEntry("stove-ids", "info", `Processing ${stoveIds.length} stove ID(s) for ${orgData.partner_name}`));
@@ -885,7 +907,9 @@ async function processOrganizationSync(
         .single();
 
       if (checkError && checkError.code !== "PGRST116") {
-        entries.push(mkEntry("stove-ids", "warn", `Error checking stove ${stoveId}: ${checkError.message}`));
+        entries.push(mkEntry("stove-ids", "error", `Error checking stove ${stoveId}: ${checkError.message}`));
+        stoveErrors.push(`${stoveId}: ${checkError.message}`);
+        continue;
       }
 
       if (!existingStove) {
@@ -903,6 +927,7 @@ async function processOrganizationSync(
         const { error: stoveError } = await supabase.from("stove_ids").insert(insertData).select().single();
         if (stoveError) {
           entries.push(mkEntry("stove-ids", "error", `Failed to create stove ${stoveId}: ${stoveError.message}`));
+          stoveErrors.push(`${stoveId}: ${stoveError.message}`);
         } else {
           stoveIdResults.push({ stove_id: stoveId.trim(), factory, sales_reference: salesReference, action: "created" });
         }
@@ -929,6 +954,13 @@ async function processOrganizationSync(
     const created = stoveIdResults.filter((s) => s.action === "created").length;
     const skipped = stoveIdResults.filter((s) => s.action === "already_exists").length;
     entries.push(mkEntry("stove-ids", "success", `Stove IDs done — created: ${created}, already existed: ${skipped}`));
+  }
+
+  if (stoveErrors.length > 0) {
+    throw new Error(
+      `${stoveErrors.length} of ${stoveIds.length} stove ID(s) could not be saved (first: ${stoveErrors[0]}). ` +
+        `The stoves that did save stay; sending the transfer again completes it.`,
+    );
   }
 
   return {
@@ -1074,14 +1106,82 @@ serve(async (req) => {
   let stoveIdsCreated = 0;
   let stoveIdsSkipped = 0;
 
+  // Replace mode is the ERP's alone; any other sender keeps the additive sync.
+  const replaceMode =
+    body.replace === true &&
+    String(tokenValidation.token_data?.application_name ?? "").startsWith("Atmosfair ERP System");
+  if (body.replace === true && !replaceMode) {
+    entries.push(mkEntry("replace", "warn", "replace was asked for by a sender other than the ERP and is ignored"));
+  }
+
   // payment_models is read once for the whole file, not once per partner.
   const modelCache: PaymentModelCache = {};
   for (const orgData of parseResult.organizations!) {
     entries.push(mkEntry("partner-processing", "info", `--- Processing partner ${orgData.partner_id}: ${orgData.partner_name} ---`));
     try {
+      // TX-3: find the serials this reference holds here that the ERP no longer
+      // lists, and refuse the whole transfer before writing anything if one of
+      // them is on an active sale.
+      let dropped: Array<{ id: string; stove_id: string }> = [];
+      let replaceRef: string | undefined;
+      if (replaceMode) {
+        // The ERP sends one order per request; a replace over several references
+        // is refused rather than applied to one of them.
+        const refs = new Set(
+          (orgData.stove_ids || [])
+            .map((s: any) => (typeof s === "object" ? s?.sales_reference?.trim() : ""))
+            .filter(Boolean),
+        );
+        if (refs.size > 1) {
+          throw new Error(`Replace refused: one request carries ${refs.size} sales references; send one order at a time.`);
+        }
+        replaceRef = [...refs][0] as string | undefined;
+      }
+      if (replaceRef) {
+        const sent = new Set((orgData.stove_ids || []).map((s: any) => (typeof s === "string" ? s : s?.stove_id || "").trim()));
+        const { data: held, error: heldError } = await supabase
+          .from("stove_ids_base")
+          .select("id, stove_id")
+          .eq("sales_reference", replaceRef);
+        if (heldError) throw new Error(`Could not read the stoves held under ${replaceRef}: ${heldError.message}`);
+        dropped = (held || []).filter((s: any) => !sent.has(s.stove_id));
+        if (dropped.length > 0) {
+          const { data: sold, error: soldError } = await supabase
+            .from("sales")
+            .select("stove_serial_no")
+            .in("stove_serial_no", dropped.map((s) => s.stove_id))
+            .not("is_archived", "is", true);
+          if (soldError) throw new Error(`Could not check sales for ${replaceRef}: ${soldError.message}`);
+          if ((sold || []).length > 0) {
+            throw new Error(
+              `Replace refused for ${replaceRef}: ${sold!.length} stove(s) the ERP removed are on active sales here ` +
+                `(${sold!.map((s: any) => s.stove_serial_no).slice(0, 5).join(", ")}). Nothing was changed.`,
+            );
+          }
+        }
+        entries.push(mkEntry("replace", "info", `Replace for ${replaceRef}: ${dropped.length} stove(s) no longer listed will be removed`));
+      }
+
       const { result: syncResult, stoveCreated, stoveSkipped } = await processOrganizationSync(
         supabase, orgData, orgData.stove_ids || [], entries,
       );
+
+      if (dropped.length > 0) {
+        const { data: removed, error: dropError } = await supabase
+          .from("stove_ids_base")
+          .delete()
+          .in("id", dropped.map((s) => s.id))
+          .is("sale_id", null)
+          .select("id");
+        if (dropError) throw new Error(`Could not remove the stoves ${replaceRef} no longer lists: ${dropError.message}`);
+        // A dropped stove still linked to an (archived) sale keeps that link and
+        // is not removed; say so rather than leave it unexplained.
+        const removedIds = new Set((removed || []).map((r: any) => r.id));
+        const kept = dropped.filter((s) => !removedIds.has(s.id)).map((s) => s.stove_id);
+        if (kept.length > 0) {
+          entries.push(mkEntry("replace", "warn", `Replace for ${replaceRef} kept ${kept.length} stove(s) still linked to a sale: ${kept.slice(0, 10).join(", ")}`));
+        }
+      }
 
       if (syncResult.summary.organization_action === "created") partnersCreated++;
       else partnersUpdated++;
@@ -1090,8 +1190,14 @@ serve(async (req) => {
       stoveIdsCreated += stoveCreated;
       stoveIdsSkipped += stoveSkipped;
 
-      // Write transfer history for newly created stove IDs
-      const newStoves = syncResult.stove_ids.filter((s: any) => s.action === "created");
+      // Write transfer history for the stoves this transfer holds: those created
+      // now, and on a retry those already saved under the same reference.
+      const newStoves = syncResult.stove_ids.filter(
+        (s: any) => s.action === "created" || (s.action === "already_exists" && !!s.sales_reference),
+      );
+      const createdIds = new Set<string>(
+        syncResult.stove_ids.filter((s: any) => s.action === "created").map((s: any) => s.stove_id),
+      );
       if (newStoves.length > 0) {
         await writeTransferHistory(supabase, {
           organization_id: syncResult.organization.id,
@@ -1107,6 +1213,8 @@ serve(async (req) => {
           order_sales_model_name: orgData.order_sales_model ?? null,
           order_sales_model_duration: orgData.order_sales_model_duration ?? null,
           stove_ids: newStoves.map((s: any) => ({ stove_id: s.stove_id, factory: s.factory, sales_reference: s.sales_reference })),
+          created_ids: createdIds,
+          replace: !!replaceRef,
           source: "external-csv-sync",
           application_name: body.application_name,
         }, modelCache);

@@ -420,24 +420,65 @@ serve(async (req) => {
             mine_open: number; mine_fixed: number; review: number; open_all: number;
             fixed_all: number; unconfirmed: number; unrouted: number;
           }>({
-            text: `select
-                     (select count(*)::int from data_center.v_corrections c
-                       where c.state = 'open' and c.is_archived is not true
-                         and (c.current_rep_user_id = $1 or c.assigned_to = $1)) as mine_open,
-                     (select count(*)::int from data_center.v_corrections c
-                       where c.state = 'fixed' and c.fixed_by = $1 and c.is_archived is not true) as mine_fixed,
-                     (select count(*)::int from data_center.v_corrections c
-                       where c.state = 'fixed' and c.is_archived is not true) as review,
-                     (select count(*)::int from data_center.v_corrections c
-                       where c.state = 'open' and c.is_archived is not true) as open_all,
-                     (select count(*)::int from data_center.v_corrections c
-                       where c.state = 'fixed' and c.is_archived is not true) as fixed_all,
+            /*
+             * One pass over the corrections, not six over a view (D58).
+             *
+             * This counted 113 rows and took twelve seconds. It asked
+             * `v_corrections` six separate times, twice for the identical
+             * count, and that view resolves each correction's transfer through
+             * a lateral over `v_transfer_stoves`, which expands every
+             * transfer's `stove_ids` JSON into one row per stove: 23,069 rows
+             * across 794 transfers, re-expanded once per correction.
+             *
+             * Measured on production: 12,038 ms as it was, 3,898 ms as it is.
+             * It was 65% of the entire database's time, because the control
+             * centre polls it every sixty seconds for every manager with the
+             * page open, and each run held one of sixty connections for eight
+             * seconds while it worked.
+             *
+             * One change, not two. The six scans become one pass with FILTER,
+             * and the rep still comes from `v_corrections`, which is the
+             * module's one definition of whose correction this is.
+             *
+             * The faster route was measured and rejected here on purpose.
+             * Reaching the transfer through the sale's own stock row takes
+             * this query to 19.5 ms rather than 3,898, and it named the same
+             * rep for all 113 corrections on production. It was not taken,
+             * because `v_corrections` and `routeFor` both resolve that rep by
+             * matching the serial against every transfer's expanded stove
+             * list, and a third derivation of the same fact is how the badge
+             * and the list come to disagree about who a correction belongs
+             * to. This module has already paid for that once: the hardening
+             * migration of 2026-09-05 exists because a serial in two
+             * transfers doubled an episode. Making the shared definition
+             * itself cheaper is worth doing and is its own slice, because ten
+             * or more surfaces read that view and they all have to move
+             * together.
+             *
+             * Every number this returns is the same number it returned
+             * before. That is the whole contract, and the spec asserts it
+             * against the old shape on data that exercises each count.
+             */
+            text: `with base as (
+                     select c.state, c.assigned_to, c.fixed_by,
+                            c.current_rep_user_id, c.sales_rep
+                       from data_center.v_corrections c
+                      where c.is_archived is not true
+                        and c.state in ('open', 'fixed')
+                   )
+                   select
+                     count(*) filter (where b.state = 'open'
+                       and (b.current_rep_user_id = $1 or b.assigned_to = $1))::int as mine_open,
+                     count(*) filter (where b.state = 'fixed' and b.fixed_by = $1)::int as mine_fixed,
+                     count(*) filter (where b.state = 'fixed')::int as review,
+                     count(*) filter (where b.state = 'open')::int as open_all,
+                     count(*) filter (where b.state = 'fixed')::int as fixed_all,
+                     count(distinct coalesce(b.sales_rep, '')) filter (where b.state = 'open'
+                       and b.current_rep_user_id is null and b.sales_rep is not null)::int as unrouted,
                      (select count(*)::int from data_center.call_records cr
-                       join public.sales s on s.id = cr.sale_id
-                       where cr.serial_unconfirmed_at is not null and s.is_archived is not true) as unconfirmed,
-                     (select count(distinct coalesce(c.sales_rep, ''))::int from data_center.v_corrections c
-                       where c.state = 'open' and c.current_rep_user_id is null
-                         and c.is_archived is not true and c.sales_rep is not null) as unrouted`,
+                       join public.sales s2 on s2.id = cr.sale_id
+                       where cr.serial_unconfirmed_at is not null and s2.is_archived is not true) as unconfirmed
+                     from base b`,
             args: [userId],
           });
           const row = r.rows[0];

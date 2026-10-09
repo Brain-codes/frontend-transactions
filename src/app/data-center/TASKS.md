@@ -4,6 +4,52 @@ Flat, one line per slice, newest programme first. States: todo, spec red,
 green, in review, merged, live. The why lives in `decisions.md`; the evidence
 lives on each PR.
 
+## Berlin sync, the Stove DB shape carries the sale's id (his ask 2026-10-02)
+
+Clara (atmosfair) keys each synced sale by the sales app's own id, to tell it from a stove typed into the Stove DB by hand. Decision D63.
+
+- [ ] `stove_db` leads every row with "Sales app ID" (`sales.id`), on both doors and in the CSV; the docs page lists it. Spec `host-stove-db-shape`. No migration. Deploy list: get-sales-advanced, end-user-records-api
+
+## Phase 33, a receipt dated after the rules went live can finish (his ask 2026-09-25)
+
+Rose Adejo's receipts would not save as finished, and nothing said why. Decision D61.
+
+- [ ] S1 the first-name rule reads the field where both forms keep it (`formKey` in the dictionary), and the bench can point at every field a dated rule can demand. Spec `data-center-bench-finishes-after-go-live`. No migration; no function deploy (the dictionary JSON is read by the browser build)
+
+## Hotfix 2026-09-25, create-sale claims the stove as the server
+
+No sale could be created by a signed-in person after the 24 September stove-rights change. Decision D62.
+
+- [ ] create-sale claims the stove, and undoes its own sale on any failed claim, as the server. Spec `host-create-sale-claims-as-server`. No migration. Deploy list: create-sale
+
+## Phase 32, the corrections badge counts in one pass (his ask 2026-09-16)
+
+One statement was 65% of the database's time: a badge counting 113 rows in twelve seconds. Decision D58.
+
+- [x] S1 `work_waiting` counts once with FILTER instead of scanning `v_corrections` six times. Production: 12,038 ms to 3,898 ms, same seven numbers. The 19.5 ms route was measured and rejected in review: it would have been a third definition of whose correction it is. PR #110, live 2026-09-16 (main 60c5319): corrections v7 on production, measured at 4,000 ms there after the deploy
+
+- [x] S2 `v_corrections` and `routeFor` reach a correction's transfer through the stove's indexed stock row instead of expanding every transfer's JSON; the routing helper gains the ordering it never had. Both routes compared on production for all 114 corrections on every column, identical. Spec `data-center-corrections-by-stock`. Deploy list: data-center-corrections, data-center-write. PR #111, live 2026-09-16 (main 0c01682): migration 20260916020000 applied with its ledger row, 116 corrections in the view and 116 carrying a transfer, badge measured at 219 ms on production
+
+- [x] S3 the module reaches the database through the transaction pooler, switched by a hostname rather than a second connection string; the computation stays on a direct connection because its lock is session-level. Sandbox: 27 of 27 with the pooler live, and a light read about 10 to 16 per cent quicker. Deploy list: every data-center-* function, then set DATA_CENTER_POOLER_HOST. PR #113, live 2026-09-16 (main 6f066b3): all seven functions deployed, the host set on production, module connections 1,099 ms to 833 ms median over five runs each and the computation's direct path unchanged at 1,046 ms. Badge on production 201 ms
+
+## Phase 31, a refused finish leaves a record (his ask 2026-09-16)
+
+A typist reported that pressing Finish did not save a receipt as finished, and nothing anywhere could say why. Decision D57.
+
+- [x] S1 a refused finish keeps the typing, stays a draft and records what refused it (reason, hint, field, when, who); the bench says it when the stove is opened again; a draft save leaves it alone and an accepted finish clears it. Spec `data-center-bench-says-why`. Deploy list: data-center-import. PR #109, live 2026-09-16 (main 4b014e8): red 2 of 2 on main's code with the column applied, green 3 of 3 after the review finding, migration applied on production with its ledger row, import v20
+
+## Phase 30, the sales app's actions reach the Data Center (his ask 2026-09-15)
+
+A purchase cancelled in the app stayed on Partner Records until somebody pressed Recompute. Decisions D54 to D56.
+
+- [x] S1 the Data Center listens: triggers it owns on `stove_transfer_history` and `sales` keep the funnel's membership current, retire an archived sale from its agent's batch and refuse a hard delete of a worked sale (delete-sale asks first, so a refusal never releases the stove); Partner Records and the stove record answer a cancelled purchase by name. Spec `data-center-app-actions-reach`. Deploy list: data-center-read, delete-sale. PR #108, 2026-09-15: red 3 of 3 on main's build with the triggers lifted, green 3 of 3 on the branch and on the merge head, neighbours 103 green with only the two Deferred sheet tests failing; the review held on a critical finding (a refusal at the delete would have released the stove) and shipped after the fix. Live 2026-09-15 (main d6197ad): migration applied with its ledger row, read v29 and delete-sale v11 on production, build aliased, crawl found the words
+
+## Phase 29, the bench knows what is typed (his ask 2026-09-14)
+
+Prevent a typist retyping a stove that is already digitised, from any channel, and learning it only at save. Decision D53.
+
+- [x] S1 `v_stove_typed` and `bench.refresh_seconds`; the bench list and rail show typed and called on every row with Still to type, Awaiting confirmation, Typed and All; a typed stove opens read only with a door to its record; the save refuses a live sale and another typist's finished receipt; the list re-reads on the interval and on focus; partner records read the same words. PR #107, 2026-09-14: red on the sandbox 3 of 3, green on the branch 3 of 3; bench neighbours green bar two stale tests that fail on main's own build too (the signature spec's history locator, repaired here; the keeps-up Done chip, under Deferred); review findings folded in (call-sheet rows excluded from the channel, the older specs count awaiting). Live 2026-09-14 (main 446bb75): migration applied with its ledger row, read v28 and import v19 on production
+
 ## Phase 28, one standing for every call record (approved 2026-09-10)
 
 One SQL definition of where a call record stands, the sheet history given back to the agents who made those calls, Save call as the form's one save path, My calls on New, partner standing for the manager. Boards: https://claude.ai/code/artifact/7b75aa9c-1b08-492c-9baa-42355fd45208. Decisions D41 to D48.
@@ -15,7 +61,7 @@ One SQL definition of where a call record stands, the sheet history given back t
 - [x] S3 My calls on New: seven views with counts for the day, the week and the period, callbacks pinned, five chips plus More on a phone (D45). PR #102 merged and live 2026-09-11 (main 36c33de; no migration; data-center-assign v12; API build; crawl found the new My calls strings; my-calls spec 6 of 6, neighbours 28 of 28 then 19 of 19; review finding folded in: concluded records stay reachable for a week after their batch closes)
 - [x] S5 New first, worked records stay with the agent, nudges for the manager (D49 to D51): picker token never_called and the default order never_called, oldest_sale; reclaim releases only untried numbers; the agent's page as New, callbacks, then a folded Concluded area; the hand-out preview, Reclaim, Move to and the board's expansion say what they do. PR #104, 2026-09-11: red on the sandbox 6 of 6, green on the branch (new-first 4 of 4, my-calls 6 of 6), neighbours 28 of 28 and 20 of 20; review findings folded in (Reclaim reports released and kept, the nudge counts only the new numbers pushed behind, Move to fires on a repeat choice, a draft keeps its record). Merged and live 2026-09-11 (main b1ed62f; migration with ledger row; data-center-assign v14; API build; crawl found the new strings)
 - [x] S4 The manager: two numbers per partner row, the six-way strip on the selected partner and the Partners page, the board's per-partner lines in the row expansion, the board's date control with a day, a month, a year and a range. PR #103 merged and live 2026-09-11 (main f753528; no migration; data-center-assign v13, data-center-read v27; API build; crawl found the dialog and the month cells; partner-standing spec 4 of 4, neighbours 38 of 38 then 19 of 19)
-- [ ] S6 A reopened verdict reopens its batch (D52): the touch trigger reopens a completed batch when one of its records is no longer concluded; backfill of any such batch; spec `e2e/data-center-batch-reopens.spec.ts`. spec red on the sandbox 2026-09-11
+- [x] S6 A reopened verdict reopens its batch (D52): the touch trigger reopens a completed batch when one of its records is no longer concluded; backfill of any such batch; spec `e2e/data-center-batch-reopens.spec.ts`. PR #105 merged and live 2026-09-12 (main 9523f05; migration with ledger row, backfill touched nothing; API build)
 
 ## Phase 27, the import page redrawn (proposed and approved 2026-09-07)
 
@@ -71,12 +117,28 @@ decisions D27 to D29.
 
 ## Deferred
 
-- The board's year view reads every attempt of the year for every agent in one request and buckets by month in the function (PR #103, review note). Fine at today's volume; at the module's 500k target the year and the month should come from per-month aggregates in SQL.
-- Three dashboard definitions still say never called, verified and unreachable their own way: `verification.by_outcome` in compute_metrics, the analysis yield leak's never-called rule, and `pool.never_called`. Phase 28's `record_standing()` is the one definition; moving these three onto it changes dashboard numbers and needs its own conversation (D41).
-- Stale since F3b (seen 2026-09-07 on main's own build): two tests in `e2e/data-center-import.spec.ts` ("the sheet downloads, and the same file uploads back", "the sheet's columns come from settings") expect the previous-stove column to offer the literal `charcoal, wood_stove, other`; since F3b the column reads the registry's `baseline_stove` list. Update the spec to read the list from the registry. Spec only.
-- Host, seen while fixing the render loop (PR #79): the sidebar declares two entries with the same `route` key ("agents"), which React warns about on every render; and a username-based login falls through to the direct email path on any non-ok answer from `login-with-credentials`, reporting a transient server fault as wrong credentials. Two small host fixes.
-- The 181 live sales whose payment model is outside their partner's entitlement: an observation for the sales team, not a module change.
-- The host form's own copy of the previous-stove list (`CreateSalesForm.jsx`): host lane.
-- A structured editor for the sheet columns config.
-- Accounts for sales reps who have none.
-- The commit-chain rollback spec ("rollback under a live chain is refused") is timing-bound: the lease is released between slices, so a rollback that lands in the gap answers 200. Passed on its second run 2026-09-04. Pre-existing; a product fix would hold the lease for the whole chain.
+Cleared 2026-09-16: the two stale specs that had been failing on main's own
+build since Phase 27 and F3b. The bench one was blamed on the model door and
+the terms, and was actually the dated field rules: the fixture never filled
+city, the sales agent, the baseline stove or the sales date, so the bench
+refused the finish on the screen before sending anything, which is why no
+refusal was ever recorded against it. The sheet ones pinned a choice list
+that Settings is meant to edit, which is the feature they existed to prove;
+they read the registry now.
+
+**Waiting on a decision of yours.** Each one is a question, not a task.
+
+- Three dashboard definitions still say never called, verified and unreachable their own way: `verification.by_outcome` in compute_metrics, the analysis yield leak's never-called rule, and `pool.never_called`. Phase 28's `record_standing()` is the one definition; moving these three onto it changes dashboard numbers, which is why it has never been done quietly (D41).
+- The board's year view reads every attempt of the year for every agent in one request and buckets by month in the function (PR #103). Fine at today's volume, wrong at the module's 500k target, where the year and the month want per-month aggregates in SQL.
+- The fixed cost on every Data Center request, roughly 690 ms of auth and profile round trips and about 1.2 s of raw connection. Measured 2026-09-16; an attempt to cut it by sharing one connection per request made both paths worse and was discarded. The remaining candidate is the transaction pooler, which needs a measured trial on production.
+
+**Somebody else's lane, recorded so it is not lost.**
+
+- Host (seen while fixing the render loop, PR #79): the sidebar declares two entries with the same `route` key, which React warns about on every render; and a username login falls through to the direct email path on any non-ok answer from `login-with-credentials`, reporting a transient fault as wrong credentials.
+- Host: the form's own copy of the previous-stove list in `CreateSalesForm.jsx`.
+- Operations, not code: accounts for the sales reps who have none, and the 181 live sales whose payment model sits outside their partner's entitlement.
+
+**Known and left alone, with the reason.**
+
+- The commit-chain rollback spec ("rollback under a live chain is refused") is timing-bound: the lease is released between slices, so a rollback landing in the gap answers 200. Pre-existing, and the product fix is to hold the lease for the whole chain, which is a change to the chain rather than to the spec.
+- A structured editor for the sheet columns config. Nobody is building it; it is here so the idea is not re-invented, not as work in hand.

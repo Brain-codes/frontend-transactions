@@ -424,3 +424,17 @@ verify_jwt = true
 # the rest of config.toml.
 [functions.sale-dictionary]
 verify_jwt = true
+
+# Change Control from inside the sales app (D14 to D16). Checks the session and role itself and calls
+# the ERP with a key from this project's secrets. Declared so a merge to main deploys it, and so a PR's
+# preview branch carries it.
+[functions.change-request-intake]
+verify_jwt = true
+
+# The ERP cancels a transfer it sent (TX-2a); token auth, no user session.
+[functions.external-transfer-cancel]
+verify_jwt = false
+
+# A super admin's cancel that also tells the ERP (TX-2b); signed-in callers only.
+[functions.cancel-purchase]
+verify_jwt = true

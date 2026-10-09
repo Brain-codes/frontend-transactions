@@ -1084,6 +1084,40 @@ serve(async (req) => {
           const rows = (row?.rows ?? []) as Record<string, unknown>[];
           const totals = (row?.totals ?? {}) as Record<string, number>;
 
+          /*
+           * A cancelled purchase is answered, not hidden (D55).
+           *
+           * The sales app moves a cancelled transfer out of the history and
+           * into public.cancelled_purchases, and the funnel row goes with it
+           * (D54). Somebody searching for that reference here would otherwise
+           * meet "No transfers match" and wonder whether the record was lost.
+           * When a search term is given, the cancelled purchases it matches
+           * ride along, within the same scope, so the page can say when it
+           * was cancelled, by whom and why.
+           */
+          let cancelled: Record<string, unknown>[] = [];
+          const searchTerm = String(filters.search ?? "").trim().slice(0, 100);
+          if (searchTerm) {
+            const cScope = buildTransferScopeSql(
+              { ...scopeInput, requestedOrgId: filters.organizationId ?? null },
+              2,
+              "c",
+            );
+            const c = await connection.queryObject<Record<string, unknown>>({
+              text: `select c.transaction_id, c.partner_name, c.organization_id::text,
+                            c.stove_count, c.sales_date::text, c.cancelled_at,
+                            c.cancellation_reason, p.full_name as cancelled_by_name
+                       from public.cancelled_purchases c
+                       left join public.profiles p on p.id = c.cancelled_by
+                      where ${cScope.sql}
+                        and (c.transaction_id ilike $1 or c.partner_name ilike $1)
+                      order by c.cancelled_at desc
+                      limit 20`,
+              args: [`%${searchTerm}%`, ...cScope.args],
+            });
+            cancelled = c.rows;
+          }
+
           return json(
             {
               data: {
@@ -1095,6 +1129,7 @@ serve(async (req) => {
                 limit,
                 scope: scope.description,
                 computedAt: row?.computed_at ?? null,
+                cancelled,
               },
             },
             200,
@@ -1543,7 +1578,11 @@ serve(async (req) => {
                           ba.assigned_to::text as agent_id,
                           ap.full_name as agent_name,
                           ba.state as batch_state,
-                          sth.order_sales_model_name as order_model_name
+                          sth.order_sales_model_name as order_model_name,
+                          -- Phase 29, D53: where the receipt stands, from the one view.
+                          t.typed_state, t.typed_at, t.typed_via, t.typed_by_name,
+                          t.last_edited_by_name as typed_last_edited_by_name,
+                          t.last_edited_at as typed_last_edited_at
                      from data_center.v_transfer_stoves b
                      join data_center.transfer_funnel f on f.transfer_id = b.transfer_id
                      left join public.stove_ids_base sb on sb.stove_id = b.stove_id
@@ -1553,6 +1592,7 @@ serve(async (req) => {
                      left join data_center.assignment_batches ba on ba.id = ai.batch_id
                      left join public.profiles ap on ap.id = ba.assigned_to
                      left join public.stove_transfer_history sth on sth.id = b.transfer_id
+                     left join data_center.v_stove_typed t on t.stove_id = b.stove_id
                     where b.transfer_id = $1 and ${scope.sql}
                     order by b.stove_id
                     limit 2000`,
@@ -1647,12 +1687,17 @@ serve(async (req) => {
          * definition the list already draws its "Already recorded" mark from,
          * moved to where it can be counted honestly.
          */
-        const recorded = b.recorded === "yes" ? "yes" : b.recorded === "no" ? "no" : null;
+        // Phase 29, D53: "still to type" is a stove with no live sale and no
+        // finished receipt waiting to be confirmed; a part-typed one is still
+        // to type (whoever started it), a finished one waits on the queue.
+        const recorded = b.recorded === "yes" ? "yes" : b.recorded === "no" ? "no" : b.recorded === "awaiting" ? "awaiting" : null;
         const recordedSql =
           recorded === "yes"
-            ? " and sb.sale_id is not null"
+            ? " and t.typed_state = 'typed'"
             : recorded === "no"
-            ? " and sb.sale_id is null"
+            ? " and t.typed_state in ('untyped', 'draft')"
+            : recorded === "awaiting"
+            ? " and t.typed_state = 'finished'"
             : "";
 
         const scopeInput = await resolveScope(
@@ -1687,7 +1732,11 @@ serve(async (req) => {
                           ba.assigned_to::text as agent_id,
                           ap.full_name as agent_name,
                           ba.state as batch_state,
-                          sth.order_sales_model_name as order_model_name
+                          sth.order_sales_model_name as order_model_name,
+                          -- Phase 29, D53: where the receipt stands, from the one view.
+                          t.typed_state, t.typed_at, t.typed_via, t.typed_by_name,
+                          t.last_edited_by_name as typed_last_edited_by_name,
+                          t.last_edited_at as typed_last_edited_at
                      from data_center.v_transfer_stoves b
                      join data_center.transfer_funnel f on f.transfer_id = b.transfer_id
                      left join public.stove_ids_base sb on sb.stove_id = b.stove_id
@@ -1697,6 +1746,7 @@ serve(async (req) => {
                      left join data_center.assignment_batches ba on ba.id = ai.batch_id
                      left join public.profiles ap on ap.id = ba.assigned_to
                      left join public.stove_transfer_history sth on sth.id = b.transfer_id
+                     left join data_center.v_stove_typed t on t.stove_id = b.stove_id
                     where ${scope.sql}
                       and ($1::text is null
                            or (f.sales_date ~ '^[0-9]{4}-[0-9]{2}'
@@ -1734,14 +1784,19 @@ serve(async (req) => {
           const counted = await connection.queryObject<{
             total: number;
             todo: number;
+            awaiting: number;
             done: number;
+            refresh_seconds: number;
           }>({
             text: `select count(*)::int as total,
-                          count(*) filter (where sb.sale_id is null)::int as todo,
-                          count(*) filter (where sb.sale_id is not null)::int as done
+                          count(*) filter (where t.typed_state in ('untyped', 'draft'))::int as todo,
+                          count(*) filter (where t.typed_state = 'finished')::int as awaiting,
+                          count(*) filter (where t.typed_state = 'typed')::int as done,
+                          coalesce((select (value #>> '{}')::int from data_center.workflow_config
+                                     where key = 'bench.refresh_seconds'), 60) as refresh_seconds
                      from data_center.v_transfer_stoves b
                      join data_center.transfer_funnel f on f.transfer_id = b.transfer_id
-                     left join public.stove_ids_base sb on sb.stove_id = b.stove_id
+                     left join data_center.v_stove_typed t on t.stove_id = b.stove_id
                     where ${countScope.sql}
                       and ($1::text is null
                            or (f.sales_date ~ '^[0-9]{4}-[0-9]{2}'
@@ -1754,7 +1809,7 @@ serve(async (req) => {
           const all = rows.rows as { stove_id: string }[];
           const hasMore = all.length > limit;
           const stoves = hasMore ? all.slice(0, limit) : all;
-          const t = counted.rows[0] ?? { total: 0, todo: 0, done: 0 };
+          const t = counted.rows[0] ?? { total: 0, todo: 0, awaiting: 0, done: 0, refresh_seconds: 60 };
           return json(
             {
               data: {
@@ -1763,8 +1818,9 @@ serve(async (req) => {
                 // The denominator for the CURRENT filter, which is what the
                 // page controls divide by. The three totals ride beside it so
                 // every chip can be honest whichever one is selected.
-                total: recorded === "yes" ? t.done : recorded === "no" ? t.todo : t.total,
-                totals: { all: t.total, todo: t.todo, done: t.done },
+                total: recorded === "yes" ? t.done : recorded === "no" ? t.todo : recorded === "awaiting" ? t.awaiting : t.total,
+                totals: { all: t.total, todo: t.todo, awaiting: t.awaiting, done: t.done },
+                refreshSeconds: Number(t.refresh_seconds ?? 60),
                 nextCursor: hasMore ? stoves[stoves.length - 1].stove_id : null,
                 scope: scope.description,
               },
@@ -1841,6 +1897,32 @@ serve(async (req) => {
           });
           const stove = found.rows[0] as Record<string, unknown> | undefined;
           if (!stove) {
+            // A serial that left stock with a cancelled purchase is not a typo
+            // (D55). The snapshot the sales app keeps of the cancelled transfer
+            // still names it, so the page can say where it went.
+            const gone = await connection.queryObject<Record<string, unknown>>({
+              text: `select c.transaction_id, c.partner_name, c.cancelled_at,
+                            c.cancellation_reason, p.full_name as cancelled_by_name
+                       from public.cancelled_purchases c
+                       left join public.profiles p on p.id = c.cancelled_by
+                      where exists (select 1 from jsonb_array_elements(coalesce(c.stove_ids_snapshot, '[]'::jsonb)) e
+                                     where upper(trim(e.value ->> 'stove_id')) = upper($1))
+                      order by c.cancelled_at desc
+                      limit 1`,
+              args: [stoveId],
+            });
+            const c = gone.rows[0];
+            if (c) {
+              return json(
+                {
+                  error: "This stove left stock with a cancelled purchase",
+                  code: "cancelled_purchase",
+                  data: c,
+                },
+                404,
+                cors,
+              );
+            }
             return json({ error: "No such stove", code: "not_found" }, 404, cors);
           }
 

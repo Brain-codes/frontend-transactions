@@ -532,3 +532,332 @@ runs on every call record change carries the rule, so a verdict-only save
 and a save with a call both do it. Nothing goes back to the pool. Seen first
 on the sandbox when the specs reset verdicts; production had no such batch
 on the day, so the backfill was a no-op there. Built in slice 6.
+
+## D53. The bench knows what is typed before anyone types (2026-09-14)
+
+His words: "the plan is to prevent a user retyping a stove that has already
+been digitalized only to find out after wasting that time when they are
+trying to save", and "it should also show typed and called. remember this
+also applies to create sale channel". One view, `v_stove_typed`, says where a
+stove's receipt stands: typed (a live sale from any channel, with when, by
+whom and through what), finished (a bench receipt waiting to be confirmed),
+part typed, or not typed. The bench list and rail show it on every row beside
+the call standing (D41); Still to type holds only untyped and part-typed
+stoves, and Awaiting confirmation is its own chip. A typed stove opens read
+only with the buyer and the call, and a door to its record. The save refuses
+a stove with a live sale, and a receipt somebody else finished, before
+writing anything. The list re-reads on `bench.refresh_seconds` and when the
+tab comes back. The partner records read the same words. Built in Phase 29,
+slice 1.
+
+## D54. The Data Center listens to the sales app's transfers (2026-09-15)
+
+His words: "in /stove-transfer-history we can cancel a purchase, it shows
+here /cancelled-purchases in cancelled purchase but on search of the transfer
+record here - /data-center/partner-records, you can see that the record still
+exists", then "unify the actions across the sales app, ensure that actions
+carried out on records balance out across". The cause: `transfer_funnel` is a
+copy of the transfers with the counts added up, rebuilt only by the full
+computation, and the sweep that drops a vanished transfer lives inside that
+rebuild. Nothing schedules the rebuild; a super admin presses Recompute. In
+between, thirteen surfaces read the copy. The rule now: the app owns the
+transfers, the Data Center owns what it derives from them and keeps that
+current by listening. A trigger the module owns on
+`public.stove_transfer_history` writes the transfer's funnel row when it
+appears or changes and removes it when it goes, through
+`refresh_transfer_funnel(uuid)`, which reads the same view as the full pass
+(3 ms for the largest transfer on production, an index walk over its
+serials). The counts on the row stay the computation's and keep its date; the
+page's "computed" line still describes them. A cancelled purchase also
+releases the bench's claims on its vanished serials. The app's functions do
+not change. Built in Phase 30, slice 1.
+
+## D55. A cancelled purchase is answered, not hidden (2026-09-15)
+
+Once D54 removes the row, a reference typed into Partner Records would meet
+"No transfers match" with nothing to tell a cancellation from a loss, which is
+the confusion that opened this phase. When a search term is given, the read
+returns the cancelled purchases it matches, from the app's own
+`cancelled_purchases`, within the caller's scope, and the page says when it
+was cancelled, by whom, why, and how many stoves left. A stove record opened
+on a serial that left with a cancelled purchase says which purchase and when,
+instead of "no such stove". Nothing is copied: both read the app's table.
+
+## D56. The app's sale lifecycle reaches the agents (2026-09-15)
+
+The audit behind his ask ("actions in other parts that should impact the data
+center") found two more gaps in the same shape. An archived sale (cancel_sale,
+the stove archive) left the pool and the standing counts at once but stayed
+on its agent's list, because the list reads active assignment items and
+nothing retired them. A hard delete of a sale (delete-sale, the app's Delete)
+cascaded the call record, its attempts and its corrections away without a
+word, where the module's own import rollback refuses to delete sales that
+carry call work. Two triggers the module owns on `public.sales`: archiving a
+sale retires its active items and closes a batch left empty; deleting a sale
+that carries logged calls, a verdict or a correction is refused with the
+reason and the way through (cancel it instead). The refusal is the same rule
+the rollback already applies, now in one place for every deleter. One change
+in the app itself, from the review: delete-sale releases the stove and then
+deletes the sale in two calls, so a refusal at the delete would have left the
+stove free while the sale stood. It now asks `public.sale_call_work` first
+and answers 409 before touching the stove; the trigger stays as the backstop,
+and a delete that fails after the release puts the stove back. Left as
+observations, not changed: the agent's verified counts and the feed's total
+still count archived sales as work done, which they were; a partner rename in
+the app does not reach `sales.partner_name`; the full computation still runs
+only when pressed, so the counts on Partner Records are as current as the
+last press.
+
+## D57. A refused finish leaves a record (2026-09-16)
+
+Reported through a typist: receipts typed at the bench "when you hit finish
+does not save as finished", with one stove to look at, 101114218. It carried
+every field it needed, its partner's one sales model, and a part payment that
+model allows, and an identical receipt for the same partner finished two
+minutes earlier. Nothing could say what had happened, because a refused finish
+answered 400 and wrote nothing at all: the row kept whatever the twenty-second
+autosave last left, which is indistinguishable from a receipt nobody ever
+pressed Finish on. The edge logs return only the last minute or two, so they
+could not reach back either.
+
+A refused finish now keeps the typing, stays a draft, and records what refused
+it on the row: the reason the typist was told, the hint, the field it belongs
+to, when, and whose attempt it was. The bench says it when the stove is opened
+again, so the answer meets the next person to touch that receipt rather than
+only the one who was standing there. It can also be counted, so "which rule
+refuses the most receipts" becomes a query rather than an afternoon.
+
+The three refusals this covers are the ones that judge the receipt: its shape,
+the payment door, and a model the partner is not assigned. The ownership
+refusals stay exactly as they are. A stove somebody else has typed or finished
+answers 409 and writes nothing, because recording a refusal on their row would
+be writing to a receipt that is not this typist's to touch. A draft save leaves
+the record alone, since the autosave that follows a refusal would otherwise
+erase it within twenty seconds, and an accepted finish clears it.
+
+What this does not do: it does not change which receipts are refused. Every
+rule is the one that was already there, asked in the same order, answering the
+same sentence. Built in Phase 31, slice 1.
+
+## D58. The corrections badge counts in one pass (2026-09-16)
+
+His ask: look into the three to five second response times and propose a fix
+where substantiated. Measured on production, the answer was not the functions
+at all. One statement was 65% of the entire database's time: the corrections
+badge, `work_waiting`, 2,301 calls averaging 8.1 seconds and peaking at 35.
+It counts 113 rows.
+
+Two things made it cost that. It asked `v_corrections` six separate times,
+twice for the identical count. And that view resolves each correction's
+transfer through a lateral over `v_transfer_stoves`, which expands every
+transfer's `stove_ids` JSON into one row per stove, 23,069 rows across 794
+transfers, re-expanded once per correction row. The control centre polls the
+badge every sixty seconds for every manager with the page open, and each run
+held one of the database's sixty connections for eight seconds.
+
+Now it is one pass with FILTER over the same view. Measured on production:
+12,038 ms before, 3,898 ms after, for the same 113 rows and the same seven
+numbers.
+
+**The faster route was measured and deliberately not taken.** Reaching the
+transfer through the sale's own indexed stock row instead of the view takes
+this query to 19.5 ms, and it named the same rep for all 113 corrections on
+production. It was rejected in review because `v_corrections` and `routeFor`
+both resolve that rep their own way, and a third derivation of the same fact
+is how the badge and the corrections list come to disagree about whose
+correction it is. The module has already paid for that once: the hardening
+migration of 2026-09-05 exists because a serial appearing in two transfers
+doubled an episode. Two thirds of the cost for one definition is the right
+trade; the remaining 3,898 ms belongs to the view, and making the view itself
+cheaper is the next slice, where all ten or more of its readers move together.
+
+The numbers were compared old against new for three accounts on production,
+and the spec arranges a correction for every count, including the states and
+the routing production holds none of, then asserts the endpoint agrees with
+the old definition on each. It also proves each count was exercised, with the
+unrouted fixture picking a sale whose rep genuinely has no account rather than
+hoping one turns up, and the unconfirmed guard raising a serial itself. The
+spec was shown to have teeth: one count was deliberately miswired and it
+failed on that count by name. The fixed
+overhead on every Data Center request, roughly 1.4 seconds of connection
+establishment and two HTTP round trips, is a separate matter and is written up
+in the plan. Built in Phase 32, slice 1.
+
+## D59. A correction finds its transfer without reading every transfer (2026-09-16)
+
+Slice 1 took the corrections badge from twelve seconds to four by counting once
+instead of six times. The four seconds that remained were the view's own, and
+they were spent in one place: `v_corrections` resolved each correction's
+transfer through a lateral over `v_transfer_stoves`, which expands every
+transfer's `stove_ids` JSON into one row per stove. That is 23,069 rows across
+794 transfers, re-expanded once per correction row, and then matched on the
+serial as text, because nothing about a JSON expansion can be indexed.
+
+The stove's own stock row already carries the answer. All 23,067 stoves in
+stock have a `sales_reference`, 23,066 of them name a transfer that exists, and
+`stove_ids_base.sale_id` is indexed, so the transfer is one index lookup from
+the sale. Measured on production before the change, both routes were compared
+for every correction on every column the lateral feeds: 114 of 114 identical,
+none different. The same query shape runs in 19.5 ms against the 4,000 ms the
+view costs today.
+
+`routeFor` moves in the same PR, because it answers the same question for the
+send-back panel and must not answer it differently. It also gains the ordering
+it never had: it took `limit 1` from an unordered join, so a stove named in two
+transfers could route to either of them. That is the fault the hardening
+migration of 2026-09-05 fixed in the view and left standing here.
+
+Not changed, deliberately: `v_transfer_stoves` itself. Nineteen other places
+read it, and it means "every stove this transfer ever named", which is a
+different question from "which transfer is this stove on now". Making it faster
+by changing what it means would be a different slice with a different proof.
+Built in Phase 32, slice 2.
+## D60. The module reaches the database through the pooler (2026-09-16)
+
+Measured today, the fixed cost on a Data Center request is roughly 690 ms of
+auth and profile round trips and about 1,200 ms of raw Postgres connection.
+The first attempt at the second half was to share one connection per request
+instead of two. It was built, measured against a reproduced baseline, and
+discarded: a light read went from 1,947 ms to 2,046 and a cheap one from 731
+to 1,852. The reason is that the cost is not per connection, it is the first
+connection a request opens, so halving the count buys nothing while opening
+one earlier for every request costs.
+
+That leaves the connection itself, which is what a pooler is for. The module's
+own header records the pooler being tried and rejected, measured, because "the
+pooler host sits in a different region from the project". That was the preview
+branch. Production is us-east-2 and its pooler is
+`aws-0-us-east-2.pooler.supabase.com`, the same region, so the reason does not
+apply here and was never re-tested.
+
+Measured inside the edge runtime, connect, one query, close, five runs each:
+direct 1,088 ms, pooled 840 ms. End to end on the sandbox, a light read: about
+1,960 ms direct against about 1,790 pooled by median over several samples, and
+1,780 against 1,500 by minimum. So roughly 10 to 16 per cent, which is real
+and modest. The second reason to take it matters more: the
+database allows 60 connections, a module-level pool once exhausted them and
+took the sales app down with it, and a pooler is the shape that makes that
+impossible rather than merely avoided.
+
+Two things this does not do. It does not put a password in a secret: the
+switch is `DATA_CENTER_POOLER_HOST`, a hostname, and the URL is built from the
+credentials already injected as `SUPABASE_DB_URL`, so nothing goes stale
+against a rotation. And it does not touch the computation, which takes a
+session-level advisory lock so that it cannot run twice at once; transaction
+pooling promises a connection per transaction, not per session, so
+`data-center-compute` now asks for a direct connection by name. Everything
+else in the module already used transaction-scoped locks and transaction-local
+`set_config`, which pool safely, and that was verified statement shape by
+statement shape through the pooler before any of this was written.
+
+Undo is removing one environment variable. Built in Phase 32, slice 3.
+
+## D61. A dated rule reads the field where the forms keep it (2026-09-25)
+
+His words: "whenever you save it just spins and saves as draft not as
+finished. specific case, Rose Adejo has over 40 entered records refusing to
+save to finish, diagnose what the problem is and fix holistically."
+
+None of her drafts carried a recorded refusal (D57), so the server had never
+refused a finish: the bench had refused in the browser before sending one.
+Running the bench's own check over every live draft on production named the
+cause. From 11 September the dated rules made the first name mandatory on any
+sale dated that day or later. The rule looked the first name up by its
+dictionary payload key, `endUserFirstName`, which is what create-sale is sent.
+Both forms hold the first name under `endUserName` and translate it on the way
+out, so the rule found nothing on either form and refused every such receipt.
+The refusal was reported under a key no field displays, so nothing turned red,
+nothing scrolled, and the box said "Still to sort out: endUserFirstName" about
+a name the typist could see was filled in. On 2026-09-25, 140 bench receipts
+were dated on or after 11 September, and not one had ever finished. Before
+that date, 2,123 had committed. Rose types current receipts; Hassan and Ridwan
+were mostly typing older ones, which is why the wall looked like hers.
+
+Decided: the dictionary says where the forms keep a field whenever that is not
+its payload key (`formKey`), and a rule reads that. It is data rather than a
+special case in `ruleFormKey`, so the next field that differs is one line.
+The Sell Stove form runs the same validator over the same rules and had the
+same fault; it has been used for one sale in two weeks, so nobody met it
+there, and the same line fixes it.
+
+Also decided, because the same review found them: every field a dated rule can
+demand has an entry on the bench, so a refusal names it as the agreement does
+and brings it into view. The baseline stove has been required since
+11 September and had none; pots, heat retention and cooking fuel start on
+5 January 2027 and had none either, which would have been the next receipt
+that would not finish. A key the bench still cannot map is named in words
+from the dictionary, never as code. And a spec now reads the rules from the
+database and checks that every one lands on a key both forms hold, so a rule
+added in Settings is checked by the same test.
+
+Why no spec saw it: every bench spec typed a sale date of 5 January 2026,
+months before the rules. The new one types a September receipt.
+
+Rejected: finishing the stuck drafts for the typists. The fix lets 126 of the
+202 live drafts pass the bench's check as they stand (99 of Rose's 134), but
+finishing is the typist's judgement on a paper receipt, and the other 76 are
+genuinely short of something, mostly a phone number, the address, a consent
+or the LGA. They open, they press Save as finished, and the ones that are
+short now say which field and point at it.
+
+## D62. create-sale claims the stove as the server (2026-09-25)
+
+Found while verifying D61, and fixed on his word: "Fix create-sale now".
+
+Since 2026-09-24 stove rows are written by the server only
+(`20260924234000_stove_ids_writes_server_only`): signed-in users lost UPDATE
+on `stove_ids` and `stove_ids_base`. That is right, and it assumed create-sale
+already wrote them as the server. It did not. Its client carries the service
+key but forwards the caller's Authorization header, and PostgREST takes its
+role from that header, so every write ran as the signed-in person. From the
+moment the migration landed, every sale made by a signed-in person failed at
+the stove claim with "Failed to update stove_ids": the Sell Stove form, the
+phone app, and the Data Center's commit, which calls create-sale with the
+confirming person's own login. Production had created no sale since 14:01 on
+the 24th and had refused none yet, so nothing had been damaged; the next
+attempt would have been refused.
+
+And it would have left a sale behind. create-sale inserts the sale, then
+claims the stove, and undid the sale only when another sale had won the race.
+A claim that errored returned 500 with the sale standing and its stove still
+free. The sandbox collected seven such sales from one morning's test runs.
+
+Decided: the claim, and the undo of create-sale's own sale, run on a second
+client that is the server and nothing else. Everything else create-sale writes
+stays on the caller's client, so row policies and anything that records who
+made the sale behave exactly as before. The only trigger on stove rows
+(`sync_transfer_sales_date_on_stove`) does not read the caller, so the claim
+moving to the server changes nothing downstream. The undo now runs on any
+failed claim, not only a lost race.
+
+Checked and left alone: delete-sale and manage-stove-ids already write stove
+rows with a server client, and are the only other functions that write them.
+
+Rejected: handing signed-in users UPDATE back as a stopgap. It would reopen
+part of what the 24 September change closed, for the length of a fix that
+could ship the same afternoon.
+
+## D63. The Stove DB shape carries the sale's id (2026-10-02)
+
+Asked for by Clara at atmosfair on the 29 September call, and on his word on 2 October.
+
+Her sync keeps an external ID on every sale it writes into the Stove DB, so it can
+tell a synced sale from a stove someone typed in by hand there, and flag the clash
+when both carry one serial number. She asked whether the sale's `id` would do. It
+does: it is set once when the sale is created, and no edit, correction or
+cancellation changes it. It ends only with a hard delete, which is refused for a
+worked sale (D56). A stove sold again after such a delete gets a new id under the
+same serial number, which is the clash her check is for.
+
+But the `stove_db` shape (F4, D29) carried only fields with a Stove DB name, and
+format1 never carried the id at all, so the shape she should pull had no id in it.
+
+Decided: `stove_db` leads every row with "Sales app ID", holding `sales.id`. It is
+the one key in the shape that does not come from the dictionary, because it is not
+a sale field anyone fills in or the agreement names. Both doors serve it, since
+they share one shape, and the CSV carries it as a column.
+
+Rejected: a dictionary entry for it. The dictionary is what the forms, the
+corrections catalogue and the phone app read, and an id is none of their business.
+Rejected: naming the key `id`. Every other key in the shape is a Stove DB name in
+words, and "Sales app ID" says which system the id belongs to.
